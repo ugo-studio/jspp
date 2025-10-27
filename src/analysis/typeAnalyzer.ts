@@ -23,6 +23,7 @@ export class TypeAnalyzer {
     >();
     public readonly identifierToDeclaration = new Map<ts.Identifier, ts.Node>();
     public readonly dependencyGraph = new Map<string, string[]>();
+    public readonly capturedVariables = new Set<ts.Node>();
     private functionStack: (ts.FunctionDeclaration | ts.ArrowFunction)[] = [];
 
     public analyze(ast: Node) {
@@ -205,6 +206,10 @@ export class TypeAnalyzer {
                                     if (info) {
                                         info.isClosure = true;
                                         info.captures?.set(node.text, type);
+                                        const declaration = this.identifierToDeclaration.get(node);
+                                        if (declaration) {
+                                            this.capturedVariables.add(declaration);
+                                        }
                                     }
                                 }
                             }

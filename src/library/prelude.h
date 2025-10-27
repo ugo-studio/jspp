@@ -5,6 +5,7 @@
 #include <functional>
 #include <any>
 #include <sstream>
+#include <memory>
 
 struct Undefined
 {

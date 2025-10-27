@@ -4,6 +4,7 @@ function main() {
   local0();
   local1();
   function local0() {
+    local1();
     console.log("local0");
   }
   function local1() {
