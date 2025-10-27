@@ -1,17 +1,9 @@
-let str;
-let str1;
+const console_log = "hello";
 
-function hello() {
-  str = "hello";
-  str1 = "hello";
-  console.log(str, str1);
-}
+const func1 = () => {
+  console.log("func1");
+};
+const func2 = () => console.log("func2");
 
-function world() {
-  str = "world";
-  str1 = "world";
-  console.log(str, str1);
-}
-
-hello();
-world();
+func1();
+func2();

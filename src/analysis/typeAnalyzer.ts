@@ -17,11 +17,11 @@ export class TypeAnalyzer {
     private traverser = new Traverser();
     public readonly scopeManager = new ScopeManager();
     public readonly functionTypeInfo = new Map<
-        ts.FunctionDeclaration,
+        ts.FunctionDeclaration | ts.ArrowFunction,
         TypeInfo
     >();
     public readonly dependencyGraph = new Map<string, string[]>();
-    private functionStack: ts.FunctionDeclaration[] = [];
+    private functionStack: (ts.FunctionDeclaration | ts.ArrowFunction)[] = [];
 
     public analyze(ast: Node) {
         const visitor: Visitor = {
@@ -37,6 +37,34 @@ export class TypeAnalyzer {
             ForOfStatement: {
                 enter: () => this.scopeManager.enterScope(),
                 exit: () => this.scopeManager.exitScope(),
+            },
+
+            ArrowFunction: {
+                enter: (node) => {
+                    if (ts.isArrowFunction(node)) {
+                        const funcType: TypeInfo = {
+                            type: "function",
+                            isClosure: false,
+                            captures: new Map(),
+                        };
+                        this.functionTypeInfo.set(node, funcType);
+
+                        this.scopeManager.enterScope();
+                        // Define parameters in the new scope
+                        node.parameters.forEach((p) =>
+                            this.scopeManager.define(p.name.getText(), {
+                                type: "auto",
+                            })
+                        );
+                        this.functionStack.push(node);
+                    }
+                },
+                exit: (node) => {
+                    if (ts.isArrowFunction(node)) {
+                        this.functionStack.pop();
+                    }
+                    this.scopeManager.exitScope();
+                },
             },
 
             FunctionDeclaration: {
@@ -106,6 +134,7 @@ export class TypeAnalyzer {
                             this.functionStack[this.functionStack.length - 1];
                         if (
                             currentFuncNode &&
+                            ts.isFunctionDeclaration(currentFuncNode) &&
                             node.text === currentFuncNode.name?.getText()
                         ) {
                             return; // Don't treat recursive call as capture

@@ -2,6 +2,8 @@ import * as ts from "typescript";
 
 import { TypeAnalyzer, type TypeInfo } from "../analysis/typeAnalyzer";
 import type { Node } from "../ast/types";
+// @ts-ignore
+import prelude from "../library/prelude.h" with { type: "text" };
 
 export class CodeGenerator {
     private indentationLevel: number = 0;
@@ -81,27 +83,7 @@ export class CodeGenerator {
         this.indentationLevel--;
         mainCode += "  return 0;\n}\n";
 
-        const includes =
-            `#include <iostream>\n#include <string>\n#include <vector>\n#include <variant>\n#include <functional>\n\n` +
-            `struct Undefined {};\nUndefined undefined;\n\n` +
-            `struct Null {};\nNull null;\n\n` +
-            `using JsVariant = std::variant<Undefined, Null, bool, int, double, std::string>;\n\n` +
-            `template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };\n` +
-            `template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;\n\n` +
-            `std::ostream& operator<<(std::ostream& os, const JsVariant& v) {\n` +
-            `    std::visit(overloaded {\n` +
-            `        [&](const Undefined& arg) { os << "undefined"; },\n` +
-            `        [&](const Null& arg) { os << "null"; },\n` +
-            `        [&](bool arg) { os << std::boolalpha << arg; },\n` +
-            `        [&](int arg) { os << arg; },\n` +
-            `        [&](double arg) { os << arg; },\n` +
-            `        [&](const std::string& arg) { os << arg; },\n` +
-            `        [&](const auto& arg) { os << "Unprintable"; }\n` +
-            `    }, v);\n` +
-            `    return os;\n` +
-            `}\n\n`;
-
-        return includes + declarations + mainCode;
+        return prelude + declarations + mainCode;
     }
 
     /**
@@ -189,9 +171,10 @@ export class CodeGenerator {
         }
     }
 
-    private generateLambda(node: ts.FunctionDeclaration): string {
+    private generateLambda(
+        node: ts.ArrowFunction | ts.FunctionDeclaration,
+    ): string {
         const info = this.typeAnalyzer.functionTypeInfo.get(node);
-        const funcName = node.name?.getText();
 
         let lambda = "";
         if (info?.isClosure && info.captures) {
@@ -207,19 +190,32 @@ export class CodeGenerator {
         lambda += `(${params}) `;
 
         if (node.body) {
-            lambda += this.visit(node.body, {
-                isMainContext: false,
-                isInsideFunction: true,
-                isFunctionBody: true,
-            });
+            if (ts.isBlock(node.body)) {
+                lambda += this.visit(node.body, {
+                    isMainContext: false,
+                    isInsideFunction: true,
+                    isFunctionBody: true,
+                });
+            } else {
+                lambda += `{ return ${
+                    this.visit(node.body, {
+                        isMainContext: false,
+                        isInsideFunction: true,
+                        isFunctionBody: false,
+                    })
+                }; }`;
+            }
         } else {
             lambda += "{ return undefined; }\n";
         }
 
-        if (funcName) {
-            return `${this.indent()}auto ${funcName} = ${lambda};\n`;
+        if (ts.isFunctionDeclaration(node)) {
+            const funcName = node.name?.getText();
+            if (funcName) {
+                return `${this.indent()}auto ${funcName} = ${lambda};\n`;
+            }
         }
-        return `${this.indent()}${lambda};\n`;
+        return lambda;
     }
 
     /**
@@ -241,6 +237,9 @@ export class CodeGenerator {
         }
 
         switch (node.kind) {
+            case ts.SyntaxKind.ArrowFunction:
+                return this.generateLambda(node as ts.ArrowFunction);
+
             case ts.SyntaxKind.SourceFile:
                 return (node as ts.SourceFile).statements.map((stmt) =>
                     this.visit(stmt, context)
@@ -366,16 +365,11 @@ export class CodeGenerator {
 
                 if (
                     ts.isPropertyAccessExpression(callee) &&
-                    callee.expression.getText() === "console" &&
-                    callee.name.getText() === "log"
+                    callee.expression.getText() === "console"
                 ) {
-                    return `std::cout << std::boolalpha << ${
-                        args.length === 0
-                            ? '""'
-                            : args.replace(/, /g, ' << " " << ')
-                    } << std::endl`;
+                    const methodName = callee.name.getText();
+                    return `console.${methodName}(${args})`;
                 }
-
                 const calleeName = callee.getText();
                 const funcInfo = this.findFunctionInfo(calleeName);
                 if (funcInfo?.isClosure) {
@@ -389,7 +383,11 @@ export class CodeGenerator {
                     return code;
                 }
 
-                return `${calleeName}(${args})`;
+                return `std::visit([&](auto&& func) {
+                    if constexpr (std::is_invocable_v<decltype(func)>) {
+                        func();
+                    }
+                }, ${calleeName});`;
             }
 
             case ts.SyntaxKind.ReturnStatement: {
@@ -453,7 +451,10 @@ export class CodeGenerator {
             const [funcNode, info] of this.typeAnalyzer.functionTypeInfo
                 .entries()
         ) {
-            if (funcNode.name?.getText() === name) {
+            if (
+                ts.isFunctionDeclaration(funcNode) &&
+                funcNode.name?.getText() === name
+            ) {
                 return info;
             }
         }

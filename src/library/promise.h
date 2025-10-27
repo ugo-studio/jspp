@@ -1,4 +1,3 @@
-#pragma once
 #include <functional>
 #include <future>
 #include <condition_variable>
