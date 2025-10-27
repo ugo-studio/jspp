@@ -1,6 +1,15 @@
 console.log("--- Functions ---");
 
 function main() {
+  function main() {
+    local();
+    console.log("main");
+  }
+  main();
+  function local() {
+    console.log("local");
+  }
+  local();
   hoisted();
 }
 

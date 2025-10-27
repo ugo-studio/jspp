@@ -11,6 +11,7 @@ export interface TypeInfo {
     structName?: string;
     properties?: Map<string, string>;
     elementType?: string;
+    declaration?: ts.Node;
 }
 
 export class TypeAnalyzer {
@@ -20,10 +21,41 @@ export class TypeAnalyzer {
         ts.FunctionDeclaration | ts.ArrowFunction,
         TypeInfo
     >();
+    public readonly identifierToDeclaration = new Map<ts.Identifier, ts.Node>();
     public readonly dependencyGraph = new Map<string, string[]>();
     private functionStack: (ts.FunctionDeclaration | ts.ArrowFunction)[] = [];
 
     public analyze(ast: Node) {
+        // Hoist all function declarations in the global scope
+        if (ts.isSourceFile(ast)) {
+            ast.statements.forEach((stmt) => {
+                if (ts.isFunctionDeclaration(stmt) && stmt.name) {
+                    const funcName = stmt.name.getText();
+                    const dependencies: string[] = [];
+                    if (stmt.body) {
+                        const findCalls = (n: ts.Node) => {
+                            if (ts.isCallExpression(n)) {
+                                const callee = n.expression.getText();
+                                dependencies.push(callee);
+                            }
+                            ts.forEachChild(n, findCalls);
+                        };
+                        ts.forEachChild(stmt.body, findCalls);
+                    }
+                    this.dependencyGraph.set(funcName, dependencies);
+
+                    const funcType: TypeInfo = {
+                        type: "function",
+                        isClosure: false,
+                        captures: new Map(),
+                        declaration: stmt,
+                    };
+                    this.scopeManager.define(funcName, funcType);
+                    this.functionTypeInfo.set(stmt, funcType);
+                }
+            });
+        }
+
         const visitor: Visitor = {
             // Enter new scope for any block-like structure
             Block: {
@@ -54,7 +86,8 @@ export class TypeAnalyzer {
                         node.parameters.forEach((p) =>
                             this.scopeManager.define(p.name.getText(), {
                                 type: "auto",
-                            })
+                                declaration: p,
+                            }),
                         );
                         this.functionStack.push(node);
                     }
@@ -70,36 +103,30 @@ export class TypeAnalyzer {
             FunctionDeclaration: {
                 enter: (node) => {
                     if (ts.isFunctionDeclaration(node)) {
-                        const funcName = node.name?.getText();
-                        // Pre-define the function in the parent scope
-                        if (funcName) {
-                            const dependencies: string[] = [];
-                            if (node.body) {
-                                const findCalls = (n: ts.Node) => {
-                                    if (ts.isCallExpression(n)) {
-                                        const callee = n.expression.getText();
-                                        dependencies.push(callee);
-                                    }
-                                    ts.forEachChild(n, findCalls);
-                                };
-                                ts.forEachChild(node.body, findCalls);
-                            }
-                            this.dependencyGraph.set(funcName, dependencies);
-
+                        // If it's a nested function, define it in the current scope.
+                        // Top-level functions are already hoisted.
+                        if (
+                            node.parent.kind !== ts.SyntaxKind.SourceFile &&
+                            node.name
+                        ) {
+                            const funcName = node.name.getText();
                             const funcType: TypeInfo = {
                                 type: "function",
                                 isClosure: false,
                                 captures: new Map(),
+                                declaration: node,
                             };
                             this.scopeManager.define(funcName, funcType);
                             this.functionTypeInfo.set(node, funcType);
                         }
+
                         this.scopeManager.enterScope();
                         // Define parameters in the new scope
                         node.parameters.forEach((p) =>
                             this.scopeManager.define(p.name.getText(), {
                                 type: "auto",
-                            })
+                                declaration: p,
+                            }),
                         );
                         this.functionStack.push(node);
                     }
@@ -117,7 +144,10 @@ export class TypeAnalyzer {
                     if (ts.isVariableDeclaration(node)) {
                         const name = node.name.getText();
                         // We can add more detailed inference here if needed
-                        const typeInfo = { type: "auto" };
+                        const typeInfo: TypeInfo = {
+                            type: "auto",
+                            declaration: node,
+                        };
                         this.scopeManager.define(name, typeInfo);
                     }
                 },
@@ -126,6 +156,14 @@ export class TypeAnalyzer {
             Identifier: {
                 enter: (node, parent) => {
                     if (ts.isIdentifier(node)) {
+                        const typeInfo = this.scopeManager.lookup(node.text);
+                        if (typeInfo?.declaration) {
+                            this.identifierToDeclaration.set(
+                                node,
+                                typeInfo.declaration,
+                            );
+                        }
+
                         if (node.text === "console") {
                             return;
                         }
@@ -148,6 +186,12 @@ export class TypeAnalyzer {
                             definingScope &&
                             definingScope !== this.scopeManager.currentScope
                         ) {
+                            const declaration = this.identifierToDeclaration.get(node);
+                            if (declaration && ts.isFunctionDeclaration(declaration) && declaration.parent.kind === ts.SyntaxKind.SourceFile) {
+                                // It's a global function, not a capture.
+                                return;
+                            }
+
                             // This is a potential capture!
                             // Find which function we are currently in and mark the capture.
                             if (currentFuncNode) {

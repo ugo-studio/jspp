@@ -218,7 +218,10 @@ export class CodeGenerator {
         if (ts.isFunctionDeclaration(node)) {
             const funcName = node.name?.getText();
             if (funcName) {
-                return `${this.indent()}auto ${funcName} = ${lambda};\n`;
+                const signature = `JsVariant(${
+                    node.parameters.map(() => "JsVariant").join(", ")
+                })`;
+                return `${this.indent()}auto ${funcName} = std::function<${signature}>(${lambda});\n`;
             }
         }
         return lambda;
@@ -388,28 +391,37 @@ export class CodeGenerator {
                     const methodName = callee.name.getText();
                     return `console.${methodName}(${args})`;
                 }
-                const calleeName = callee.getText();
-                const funcInfo = this.findFunctionInfo(calleeName);
 
-                if (ts.isIdentifier(callee) && funcInfo) {
-                    const funcNode = this.findFunctionNode(calleeName);
-                    // Check if it's a top-level function declaration
+                if (ts.isIdentifier(callee)) {
+                    const declaration = this.findDeclarationNode(callee);
+
                     if (
-                        funcNode &&
-                        funcNode.parent.kind === ts.SyntaxKind.SourceFile
+                        declaration &&
+                        ts.isFunctionDeclaration(declaration)
                     ) {
-                        if (funcInfo.isClosure) {
-                            const capturedArgs = [...funcInfo.captures!.keys()]
-                                .join(", ");
-                            const instanceName = `${calleeName}_instance`;
-                            return `auto ${instanceName} = ${calleeName}_functor(${capturedArgs});\n${this.indent()}${instanceName}(${args})`;
-                        } else {
-                            return `${calleeName}_functor()(${args})`;
+                        const funcInfo = this.typeAnalyzer.functionTypeInfo.get(
+                            declaration,
+                        );
+                        if (
+                            declaration.parent.kind ===
+                                ts.SyntaxKind.SourceFile
+                        ) {
+                            const calleeName = callee.getText();
+                            if (funcInfo?.isClosure) {
+                                const capturedArgs = [
+                                    ...funcInfo.captures!.keys(),
+                                ].join(", ");
+                                const instanceName = `${calleeName}_instance`;
+                                return `auto ${instanceName} = ${calleeName}_functor(${capturedArgs});\n${this.indent()}${instanceName}(${args})`;
+                            } else {
+                                return `${calleeName}_functor()(${args})`;
+                            }
                         }
                     }
                 }
 
-                const paramTypes = callExpr.arguments.map(() => "JsVariant").join(", ");
+                const paramTypes = callExpr.arguments.map(() => "JsVariant")
+                    .join(", ");
                 const calleeCode = this.visit(callee, context);
                 return `std::any_cast<std::function<JsVariant(${paramTypes})>>(${calleeCode})(${args})`;
             }
@@ -419,14 +431,23 @@ export class CodeGenerator {
                 if (returnStmt.expression) {
                     const exprText = this.visit(returnStmt.expression, context);
                     if (ts.isIdentifier(returnStmt.expression)) {
-                        const funcInfo = this.findFunctionInfo(exprText);
-                        const funcNode = this.findFunctionNode(exprText);
-                        if (funcInfo && funcNode) {
-                            const signature = `JsVariant(${
-                                funcNode.parameters.map(() => "JsVariant")
-                                    .join(", ")
-                            })`;
-                            return `${this.indent()}return std::function<${signature}>(${exprText});\n`;
+                        const declaration = this.findDeclarationNode(
+                            returnStmt.expression,
+                        );
+                        if (
+                            declaration &&
+                            ts.isFunctionDeclaration(declaration)
+                        ) {
+                            const funcInfo = this.findFunctionInfo(
+                                declaration,
+                            );
+                            if (funcInfo) {
+                                const signature = `JsVariant(${
+                                    declaration.parameters.map(() => "JsVariant")
+                                        .join(", ")
+                                })`;
+                                return `${this.indent()}return std::function<${signature}>(${exprText});\n`;
+                            }
                         }
                     }
                     return `${this.indent()}return ${exprText};\n`;
@@ -475,35 +496,15 @@ export class CodeGenerator {
         return funcs;
     }
 
-    private findFunctionNode(name: string): ts.FunctionDeclaration | undefined {
-        let found: ts.FunctionDeclaration | undefined;
-        const visitor = (child: Node) => {
-            if (
-                ts.isFunctionDeclaration(child) &&
-                child.name?.getText() === name
-            ) {
-                found = child;
-            }
-            if (!found) {
-                ts.forEachChild(child, visitor);
-            }
-        };
-        ts.forEachChild(this.ast, visitor);
-        return found;
+    private findDeclarationNode(
+        identifier: ts.Identifier,
+    ): ts.Node | undefined {
+        return this.typeAnalyzer.identifierToDeclaration.get(identifier);
     }
 
-    private findFunctionInfo(name: string): TypeInfo | undefined {
-        for (
-            const [funcNode, info] of this.typeAnalyzer.functionTypeInfo
-                .entries()
-        ) {
-            if (
-                ts.isFunctionDeclaration(funcNode) &&
-                funcNode.name?.getText() === name
-            ) {
-                return info;
-            }
-        }
-        return undefined;
+    private findFunctionInfo(
+        node: ts.FunctionDeclaration,
+    ): TypeInfo | undefined {
+        return this.typeAnalyzer.functionTypeInfo.get(node);
     }
 }
