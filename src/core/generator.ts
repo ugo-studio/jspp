@@ -55,13 +55,22 @@ export class CodeGenerator {
         let lambda = "[=]";
         lambda += `(const std::vector<JsVariant>& args) mutable -> JsVariant `;
 
+        const visitContext = {
+            isMainContext: false,
+            isInsideFunction: true,
+            isFunctionBody: false,
+        };
+
         if (node.body) {
             if (ts.isBlock(node.body)) {
                 let paramExtraction = "";
                 this.indentationLevel++;
                 node.parameters.forEach((p, i) => {
                     const name = p.name.getText();
-                    paramExtraction += `${this.indent()}auto ${name} = args.size() > ${i} ? args[${i}] : undefined;\n`;
+                    const defaultValue = p.initializer
+                        ? this.visit(p.initializer, visitContext)
+                        : "undefined";
+                    paramExtraction += `${this.indent()}auto ${name} = args.size() > ${i} ? args[${i}] : ${defaultValue};\n`;
                 });
                 this.indentationLevel--;
 
@@ -77,7 +86,10 @@ export class CodeGenerator {
                 this.indentationLevel++;
                 node.parameters.forEach((p, i) => {
                     const name = p.name.getText();
-                    lambda += `${this.indent()}auto ${name} = args.size() > ${i} ? args[${i}] : undefined;\n`;
+                    const defaultValue = p.initializer
+                        ? this.visit(p.initializer, visitContext)
+                        : "undefined";
+                    lambda += `${this.indent()}auto ${name} = args.size() > ${i} ? args[${i}] : ${defaultValue};\n`;
                 });
                 lambda += `${this.indent()}return ${
                     this.visit(node.body, {

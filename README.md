@@ -17,15 +17,15 @@ This project serves as a deep dive into compiler design, language semantics, and
 
 JSPP currently supports a foundational set of JavaScript features:
 
-*   **Dynamic Variables:** Declaration (`let`), assignment, and type changes at runtime.
-*   **Primitive Types:** `undefined`, `null`, `boolean`, `number`, and `string`.
-*   **Functions:**
-    *   Function declarations and arrow functions.
-    *   Correct hoisting for both variables and functions.
-    *   Closures with proper lexical scoping and lifetime management.
-*   **Operators:** Basic arithmetic (`+`) and assignment (`=`).
-*   **Control Flow:** `void` operator.
-*   **Built-in APIs:** A `console` object with `log()`, `warn()`, and `error()` methods.
+- **Dynamic Variables:** Declaration (`let`), assignment, and type changes at runtime.
+- **Primitive Types:** `undefined`, `null`, `boolean`, `number`, and `string`.
+- **Functions:**
+  - Function declarations and arrow functions.
+  - Correct hoisting for both variables and functions.
+  - Closures with proper lexical scoping and lifetime management.
+- **Operators:** Basic arithmetic (`+`) and assignment (`=`).
+- **Control Flow:** `void` operator.
+- **Built-in APIs:** A `console` object with `log()`, `warn()`, and `error()` methods.
 
 ## How It Works
 
@@ -36,9 +36,9 @@ The transpilation process is a classic three-stage pipeline:
 2.  **Analysis:** The `TypeAnalyzer` traverses the AST. While it doesn't perform traditional static type checking, it plays a crucial role in understanding the code's structure. It identifies scopes (global, function, block) and detects when variables are "captured" by closures.
 
 3.  **Code Generation:** The `CodeGenerator` performs a final traversal of the AST. It translates each node into its C++ equivalent.
-    *   All variables are declared as `std::shared_ptr<JsVariant>` (where `JsVariant` is an alias for `std::any`). This approach elegantly mimics JavaScript's dynamic types and reference-based memory model.
-    *   Closures are implemented as C++ lambdas that capture `shared_ptr`s by value, ensuring variable lifetimes are correctly extended beyond their original scope.
-    *   The entire script is wrapped into a single `main` function, with hoisting logic carefully replicated to ensure correct execution order.
+    - All variables are declared as `std::shared_ptr<JsVariant>` (where `JsVariant` is an alias for `std::any`). This approach elegantly mimics JavaScript's dynamic types and reference-based memory model.
+    - Closures are implemented as C++ lambdas that capture `shared_ptr`s by value, ensuring variable lifetimes are correctly extended beyond their original scope.
+    - The entire script is wrapped into a single `main` function, with hoisting logic carefully replicated to ensure correct execution order.
 
 ## Getting Started
 
@@ -46,10 +46,10 @@ To get a local copy up and running, follow these simple steps.
 
 ### Prerequisites
 
-*   **Bun:** This project uses Bun for package management and script execution.
-    *   [Install Bun](https://bun.sh/docs/installation)
-*   **C++ Compiler:** A compiler with support for C++23 is required. This project is tested with `g++`.
-    *   `g++` (MinGW on Windows, or available via build-essentials on Linux)
+- **Bun:** This project uses Bun for package management and script execution.
+  - [Install Bun](https://bun.sh/docs/installation)
+- **C++ Compiler:** A compiler with support for C++23 is required. This project is tested with `g++`.
+  - `g++` (MinGW on Windows, or available via build-essentials on Linux)
 
 ### Installation
 
@@ -71,9 +71,10 @@ bun run test
 ```
 
 This command chains the following scripts (defined in `package.json`):
-*   `bun run test:compile`: Transpiles the JS test files to C++ output files in `test/output/`.
-*   `bun run test:build`: Compiles the generated C++ files into executables.
-*   `bun run test:run`: Runs the compiled C++ executables to verify their output.
+
+- `bun run test:compile`: Transpiles the JS test files to C++ output files in `test/output/`.
+- `bun run test:build`: Compiles the generated C++ files into executables.
+- `bun run test:run`: Runs the compiled C++ executables to verify their output.
 
 ## Roadmap
 
@@ -85,11 +86,12 @@ This project is ambitious, and there is a long and exciting road ahead. Here is 
 
 This phase focuses on building a solid foundation that correctly models JavaScript's core runtime behavior.
 
-*   [x] Dynamic Variables & Primitives (`let`, `string`, `number`, `boolean`, etc.)
-*   [x] Function Declarations & Arrow Functions
-*   [x] Correct Hoisting for Variables and Functions
-*   [x] Closures & Lexical Scoping (via `std::shared_ptr` capture)
-*   [x] Basic `console` API
+- [x] Dynamic Variables & Primitives (`let`, `string`, `number`, `boolean`, etc.)
+- [x] Function Declarations & Arrow Functions
+- [x] Correct Hoisting for Variables and Functions
+- [x] Closures & Lexical Scoping (via `std::shared_ptr` capture)
+- [x] Basic `console` API
+- [x] if/else conditions
 
 ---
 
@@ -97,27 +99,27 @@ This phase focuses on building a solid foundation that correctly models JavaScri
 
 This phase will broaden the range of supported JavaScript syntax and features.
 
-*   [ ] **Objects:** Literals, property access (dot and bracket notation), methods.
-*   [ ] **Arrays:** Literals, indexing, and core methods (`.push`, `.pop`, `.length`, etc.).
-*   [ ] **Control Flow:** `if/else`, `for` loops, `while` loops, `switch`.
-*   [ ] **Operators:** Full suite of arithmetic, logical, and comparison operators.
-*   [ ] **Error Handling:** `try`/`catch`/`finally` blocks and `throw`.
+- [ ] **Objects:** Literals, property access (dot and bracket notation), methods.
+- [ ] **Arrays:** Literals, indexing, and core methods (`.push`, `.pop`, `.length`, etc.).
+- [ ] **Control Flow:** tenary operators, `for` loops, `while` loops, `switch`.
+- [ ] **Operators:** Full suite of arithmetic, logical, and comparison operators.
+- [ ] **Error Handling:** `try`/`catch`/`finally` blocks and `throw`.
 
 ### **Phase 3: Interoperability & Standard Library**
 
 This phase will focus on building out the standard library and enabling modular code.
 
-*   [ ] **JS Standard Library:** Implementation of common built-in objects and functions (`Math`, `Date`, `String.prototype.*`, `Array.prototype.*`).
-*   [ ] **Module System:** Support for `import` and `export` to transpile multi-file projects.
-*   [ ] **Asynchronous Operations:** A C++ implementation of the JavaScript event loop, `Promise`, and `async/await`.
+- [ ] **JS Standard Library:** Implementation of common built-in objects and functions (`Math`, `Date`, `String.prototype.*`, `Array.prototype.*`).
+- [ ] **Module System:** Support for `import` and `export` to transpile multi-file projects.
+- [ ] **Asynchronous Operations:** A C++ implementation of the JavaScript event loop, `Promise`, and `async/await`.
 
 ### **Phase 4: Optimization & Advanced Features**
 
 With a feature-complete transpiler, the focus will shift to performance and advanced capabilities.
 
-*   [ ] **Type Inference:** Analyze code to replace `std::any` with concrete C++ types (`int`, `double`, `std::string`) where possible, unlocking massive performance gains.
-*   [ ] **Performance Benchmarking:** Create a suite to compare transpiled C++ performance against V8 and other JS engines.
-*   [ ] **C++ Interoperability:** Define a clear API for calling C++ functions from the transpiled JavaScript and vice-versa.
+- [ ] **Type Inference:** Analyze code to replace `std::any` with concrete C++ types (`int`, `double`, `std::string`) where possible, unlocking massive performance gains.
+- [ ] **Performance Benchmarking:** Create a suite to compare transpiled C++ performance against V8 and other JS engines.
+- [ ] **C++ Interoperability:** Define a clear API for calling C++ functions from the transpiled JavaScript and vice-versa.
 
 ## Contributing
 
