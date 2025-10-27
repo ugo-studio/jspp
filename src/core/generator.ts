@@ -8,16 +8,14 @@ import prelude from "../library/prelude.h" with { type: "text" };
 export class CodeGenerator {
     private indentationLevel: number = 0;
     private typeAnalyzer!: TypeAnalyzer;
-    private ast!: Node;
 
     /**
      * Main entry point for the code generation process.
      */
     public generate(ast: Node, analyzer: TypeAnalyzer): string {
-        this.ast = ast;
         this.typeAnalyzer = analyzer;
 
-        const declarations = this.generateStructs() + "\n";
+        const declarations = "\n";
 
         let mainCode = "int main() {\n";
         this.indentationLevel++;
@@ -31,30 +29,6 @@ export class CodeGenerator {
         mainCode += "  return 0;\n}\n";
 
         return prelude + declarations + mainCode;
-    }
-
-    /**
-     * Generates all C++ struct definitions based on the TypeAnalyzer's findings.
-     */
-    private generateStructs(): string {
-        const structDefs = new Set<string>();
-        for (const scope of this.typeAnalyzer.scopeManager.getAllScopes()) {
-            for (const info of scope.symbols.values()) {
-                if (
-                    info.type === "struct" && info.structName && info.properties
-                ) {
-                    let structDef = `struct ${info.structName} {\n`;
-                    for (
-                        const [propName, propType] of info.properties.entries()
-                    ) {
-                        structDef += `  ${propType} ${propName};\n`;
-                    }
-                    structDef += "};\n";
-                    structDefs.add(structDef);
-                }
-            }
-        }
-        return Array.from(structDefs).join("\n");
     }
 
     private generateLambda(
@@ -442,29 +416,5 @@ export class CodeGenerator {
 
     private indent() {
         return "  ".repeat(this.indentationLevel);
-    }
-
-    private collectFunctions(node: Node): ts.FunctionDeclaration[] {
-        const funcs: ts.FunctionDeclaration[] = [];
-        const visitor = (child: Node) => {
-            if (ts.isFunctionDeclaration(child)) {
-                funcs.push(child);
-            }
-            ts.forEachChild(child, visitor);
-        };
-        ts.forEachChild(node, visitor);
-        return funcs;
-    }
-
-    private findDeclarationNode(
-        identifier: ts.Identifier,
-    ): ts.Node | undefined {
-        return this.typeAnalyzer.identifierToDeclaration.get(identifier);
-    }
-
-    private findFunctionInfo(
-        node: ts.FunctionDeclaration,
-    ): TypeInfo | undefined {
-        return this.typeAnalyzer.functionTypeInfo.get(node);
     }
 }

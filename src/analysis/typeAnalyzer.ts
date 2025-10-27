@@ -21,41 +21,9 @@ export class TypeAnalyzer {
         ts.FunctionDeclaration | ts.ArrowFunction,
         TypeInfo
     >();
-    public readonly identifierToDeclaration = new Map<ts.Identifier, ts.Node>();
-    public readonly dependencyGraph = new Map<string, string[]>();
     private functionStack: (ts.FunctionDeclaration | ts.ArrowFunction)[] = [];
 
     public analyze(ast: Node) {
-        // Hoist all function declarations in the global scope
-        if (ts.isSourceFile(ast)) {
-            ast.statements.forEach((stmt) => {
-                if (ts.isFunctionDeclaration(stmt) && stmt.name) {
-                    const funcName = stmt.name.getText();
-                    const dependencies: string[] = [];
-                    if (stmt.body) {
-                        const findCalls = (n: ts.Node) => {
-                            if (ts.isCallExpression(n)) {
-                                const callee = n.expression.getText();
-                                dependencies.push(callee);
-                            }
-                            ts.forEachChild(n, findCalls);
-                        };
-                        ts.forEachChild(stmt.body, findCalls);
-                    }
-                    this.dependencyGraph.set(funcName, dependencies);
-
-                    const funcType: TypeInfo = {
-                        type: "function",
-                        isClosure: false,
-                        captures: new Map(),
-                        declaration: stmt,
-                    };
-                    this.scopeManager.define(funcName, funcType);
-                    this.functionTypeInfo.set(stmt, funcType);
-                }
-            });
-        }
-
         const visitor: Visitor = {
             // Enter new scope for any block-like structure
             Block: {
@@ -156,14 +124,6 @@ export class TypeAnalyzer {
             Identifier: {
                 enter: (node, parent) => {
                     if (ts.isIdentifier(node)) {
-                        const typeInfo = this.scopeManager.lookup(node.text);
-                        if (typeInfo?.declaration) {
-                            this.identifierToDeclaration.set(
-                                node,
-                                typeInfo.declaration,
-                            );
-                        }
-
                         if (node.text === "console") {
                             return;
                         }
@@ -186,11 +146,6 @@ export class TypeAnalyzer {
                             definingScope &&
                             definingScope !== this.scopeManager.currentScope
                         ) {
-                            const declaration = this.identifierToDeclaration.get(node);
-                            if (declaration && ts.isFunctionDeclaration(declaration) && declaration.parent.kind === ts.SyntaxKind.SourceFile) {
-                                // It's a global function, not a capture.
-                                return;
-                            }
 
                             // This is a potential capture!
                             // Find which function we are currently in and mark the capture.
