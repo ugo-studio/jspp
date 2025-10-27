@@ -59,6 +59,11 @@ export class ScopeManager {
         return scope ? scope.symbols.get(name) ?? null : null;
     }
 
+    lookupFromScope(name: string, scope: Scope): TypeInfo | null {
+        const definingScope = scope.findScopeFor(name);
+        return definingScope ? definingScope.symbols.get(name) ?? null : null;
+    }
+
     // *** NEW: The missing method to retrieve all scopes for the generator.
     public getAllScopes(): Scope[] {
         return this.allScopes;

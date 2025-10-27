@@ -2,11 +2,12 @@ import * as ts from "typescript";
 
 import type { Node, Visitor } from "../ast/types";
 import { Traverser } from "../core/traverser";
-import { ScopeManager } from "./scope";
+import { Scope, ScopeManager } from "./scope";
 
 export interface TypeInfo {
     type: string;
     isClosure?: boolean;
+    isParameter?: boolean;
     captures?: Map<string, TypeInfo>; // <name, typeInfo>
     structName?: string;
     properties?: Map<string, string>;
@@ -22,20 +23,31 @@ export class TypeAnalyzer {
         TypeInfo
     >();
     private functionStack: (ts.FunctionDeclaration | ts.ArrowFunction)[] = [];
+    public readonly nodeToScope = new Map<ts.Node, Scope>();
 
     public analyze(ast: Node) {
+        this.nodeToScope.set(ast, this.scopeManager.currentScope);
         const visitor: Visitor = {
             // Enter new scope for any block-like structure
             Block: {
-                enter: () => this.scopeManager.enterScope(),
+                enter: (node) => {
+                    this.scopeManager.enterScope();
+                    this.nodeToScope.set(node, this.scopeManager.currentScope);
+                },
                 exit: () => this.scopeManager.exitScope(),
             },
             ForStatement: {
-                enter: () => this.scopeManager.enterScope(),
+                enter: (node) => {
+                    this.scopeManager.enterScope();
+                    this.nodeToScope.set(node, this.scopeManager.currentScope);
+                },
                 exit: () => this.scopeManager.exitScope(),
             },
             ForOfStatement: {
-                enter: () => this.scopeManager.enterScope(),
+                enter: (node) => {
+                    this.scopeManager.enterScope();
+                    this.nodeToScope.set(node, this.scopeManager.currentScope);
+                },
                 exit: () => this.scopeManager.exitScope(),
             },
 
@@ -50,10 +62,12 @@ export class TypeAnalyzer {
                         this.functionTypeInfo.set(node, funcType);
 
                         this.scopeManager.enterScope();
+                        this.nodeToScope.set(node, this.scopeManager.currentScope);
                         // Define parameters in the new scope
                         node.parameters.forEach((p) =>
                             this.scopeManager.define(p.name.getText(), {
                                 type: "auto",
+                                isParameter: true,
                                 declaration: p,
                             }),
                         );
@@ -89,10 +103,12 @@ export class TypeAnalyzer {
                         }
 
                         this.scopeManager.enterScope();
+                        this.nodeToScope.set(node, this.scopeManager.currentScope);
                         // Define parameters in the new scope
                         node.parameters.forEach((p) =>
                             this.scopeManager.define(p.name.getText(), {
                                 type: "auto",
+                                isParameter: true,
                                 declaration: p,
                             }),
                         );

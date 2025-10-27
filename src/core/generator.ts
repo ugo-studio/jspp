@@ -4,10 +4,23 @@ import { TypeAnalyzer, type TypeInfo } from "../analysis/typeAnalyzer";
 import type { Node } from "../ast/types";
 // @ts-ignore
 import prelude from "../library/prelude.h" with { type: "text" };
+import { Scope } from "../analysis/scope";
 
 export class CodeGenerator {
     private indentationLevel: number = 0;
     private typeAnalyzer!: TypeAnalyzer;
+
+    private getScopeForNode(node: ts.Node): Scope {
+        let current: ts.Node | undefined = node;
+        while (current) {
+            const scope = this.typeAnalyzer.nodeToScope.get(current);
+            if (scope) {
+                return scope;
+            }
+            current = current.parent;
+        }
+        return this.typeAnalyzer.scopeManager.getAllScopes()[0];
+    }
 
     /**
      * Main entry point for the code generation process.
@@ -39,7 +52,7 @@ export class CodeGenerator {
 
         const params = node.parameters.map((p) => `auto ${p.name.getText()}`)
             .join(", ");
-        lambda += `(${params}) mutable `;
+        lambda += `(${params}) mutable -> JsVariant `;
 
         if (node.body) {
             if (ts.isBlock(node.body)) {
@@ -49,7 +62,7 @@ export class CodeGenerator {
                     isFunctionBody: true,
                 });
             } else {
-                lambda += `{ return ${
+                lambda += `{ return ${ 
                     this.visit(node.body, {
                         isMainContext: false,
                         isInsideFunction: true,
@@ -61,8 +74,8 @@ export class CodeGenerator {
             lambda += "{ return undefined; }\n";
         }
 
-        const signature = `JsVariant(${
-            node.parameters.map(() => "JsVariant").join(", ")
+        const signature = `JsVariant(${ 
+            node.parameters.map(() => "JsVariant").join(", ") 
         })`;
         const fullExpression = `std::function<${signature}>(${lambda})`;
 
@@ -241,12 +254,12 @@ export class CodeGenerator {
                 if (varDecl.initializer) {
                     if (ts.isArrowFunction(varDecl.initializer)) {
                         const arrowFunc = varDecl.initializer;
-                        const signature = `JsVariant(${
+                        const signature = `JsVariant(${ 
                             arrowFunc.parameters.map(() => "JsVariant").join(
                                 ", ",
                             )
                         })`;
-                        initializer = ` = std::function<${signature}>(${
+                        initializer = ` = std::function<${signature}>(${ 
                             this.visit(arrowFunc, context)
                         })`;
                     } else {
@@ -292,16 +305,27 @@ export class CodeGenerator {
                 ) {
                     varName = forOf.initializer.declarations[0].name.getText();
                 }
-                let code = `${this.indent()}for (const auto& ${varName} : ${
+                let code = `${this.indent()}for (const auto& ${varName} : ${ 
                     this.visit(forOf.expression, context)
                 }) `;
                 code += this.visit(forOf.statement, context);
                 return code;
             }
 
+            case ts.SyntaxKind.IfStatement: {
+                const ifStmt = node as ts.IfStatement;
+                const condition = this.visit(ifStmt.expression, context);
+                const thenStmt = this.visit(ifStmt.thenStatement, context);
+                let elseStmt = "";
+                if (ifStmt.elseStatement) {
+                    elseStmt = " else " + this.visit(ifStmt.elseStatement, context);
+                }
+                return `${this.indent()}if (std::any_cast<bool>(${condition})) ${thenStmt}${elseStmt}`;
+            }
+
             case ts.SyntaxKind.PropertyAccessExpression: {
                 const propAccess = node as ts.PropertyAccessExpression;
-                return `(*${
+                return `(*${ 
                     this.visit(propAccess.expression, context)
                 }).${propAccess.name.getText()}`;
             }
@@ -315,10 +339,10 @@ export class CodeGenerator {
 
             case ts.SyntaxKind.BinaryExpression: {
                 const binExpr = node as ts.BinaryExpression;
-                const op = binExpr.operatorToken.kind ===
-                        ts.SyntaxKind.EqualsEqualsEqualsToken
-                    ? "=="
-                    : binExpr.operatorToken.getText();
+                let op = binExpr.operatorToken.getText();
+                if (binExpr.operatorToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken) {
+                    op = "==";
+                }
 
                 const leftText = this.visit(binExpr.left, context);
                 const rightText = this.visit(binExpr.right, context);
@@ -326,7 +350,7 @@ export class CodeGenerator {
                 if (binExpr.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
                      if (ts.isArrowFunction(binExpr.right)) {
                          const arrowFunc = binExpr.right;
-                         const signature = `JsVariant(${
+                         const signature = `JsVariant(${ 
                              arrowFunc.parameters.map(() => "JsVariant").join(
                                  ", ",
                              )
@@ -334,16 +358,28 @@ export class CodeGenerator {
                          const lambda = this.visit(arrowFunc, context);
                          return `*${leftText} ${op} std::function<${signature}>(${lambda})`;
                     }
-                   return `*${leftText} ${op} ${rightText}`;
-                }
+                   
+                   if (ts.isBinaryExpression(binExpr.right)) {
+                       return `*${leftText} ${op} ${this.visit(binExpr.right, context)}`;
+                   }
+
+                  return `*${leftText} ${op} ${rightText}`;
+               }
 
                 const leftIsIdentifier = ts.isIdentifier(binExpr.left);
                 const rightIsIdentifier = ts.isIdentifier(binExpr.right);
 
-                const finalLeft = leftIsIdentifier ? `(*${leftText})` : leftText;
-                const finalRight = rightIsIdentifier ? `(*${rightText})` : rightText;
+                const scope = this.getScopeForNode(node);
+                const leftTypeInfo = leftIsIdentifier ? this.typeAnalyzer.scopeManager.lookupFromScope(leftText, scope) : null;
+                const rightTypeInfo = rightIsIdentifier ? this.typeAnalyzer.scopeManager.lookupFromScope(rightText, scope) : null;
 
-                return `*${leftText} = *(${finalLeft} ${op} ${finalRight})`;
+                const finalLeft = leftIsIdentifier && leftTypeInfo && !leftTypeInfo.isParameter ? `(*${leftText})` : leftText;
+                const finalRight = rightIsIdentifier && rightTypeInfo && !rightTypeInfo.isParameter ? `(*${rightText})` : rightText;
+
+                if (op === "+" || op === "-" || op === "*") {
+                    return `(${finalLeft} ${op} ${finalRight})`;
+                }
+                return `${finalLeft} ${op} ${finalRight}`;
             }
 
             case ts.SyntaxKind.CallExpression: {
@@ -352,8 +388,9 @@ export class CodeGenerator {
                 const args = callExpr.arguments.map((arg) => {
                     const argText = this.visit(arg, context);
                     if (ts.isIdentifier(arg)) {
-                        const scope = this.typeAnalyzer.scopeManager.currentScope.findScopeFor(arg.text);
-                        if (scope) {
+                        const scope = this.getScopeForNode(arg);
+                        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(arg.text, scope);
+                        if (typeInfo && !typeInfo.isParameter) {
                             return `*${argText}`;
                         }
                     }
@@ -380,7 +417,11 @@ export class CodeGenerator {
                     const expr = returnStmt.expression;
                     const exprText = this.visit(expr, context);
                     if (ts.isIdentifier(expr)) {
-                        return `${this.indent()}return *${exprText};\n`;
+                        const scope = this.getScopeForNode(expr);
+                        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(exprText, scope);
+                        if (typeInfo && !typeInfo.isParameter) {
+                            return `${this.indent()}return *${exprText};\n`;
+                        }
                     }
                     return `${this.indent()}return ${exprText};\n`;
                 }

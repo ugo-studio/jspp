@@ -26,6 +26,7 @@ const main = async () => {
         "console",
         "void",
         "log-function",
+        "recursion",
     ];
 
     for (const caseName of cases) {

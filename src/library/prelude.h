@@ -110,23 +110,173 @@ struct Console
 
 inline Console console;
 
-inline std::shared_ptr<JsVariant> operator+(const JsVariant &lhs, const JsVariant &rhs)
+inline JsVariant operator+(const JsVariant &lhs, const JsVariant &rhs)
+
+{
+
+    if (lhs.type() == typeid(int) && rhs.type() == typeid(int))
+
+    {
+
+        return std::any_cast<int>(lhs) + std::any_cast<int>(rhs);
+
+    }
+
+    if (lhs.type() == typeid(double) && rhs.type() == typeid(double))
+
+    {
+
+        return std::any_cast<double>(lhs) + std::any_cast<double>(rhs);
+
+    }
+
+    if (lhs.type() == typeid(int) && rhs.type() == typeid(double))
+
+    {
+
+        return std::any_cast<int>(lhs) + std::any_cast<double>(rhs);
+
+    }
+
+    if (lhs.type() == typeid(double) && rhs.type() == typeid(int))
+
+    {
+
+        return std::any_cast<double>(lhs) + std::any_cast<int>(rhs);
+
+    }
+
+    return undefined;
+
+}
+
+
+
+inline JsVariant operator*(const JsVariant &lhs, const JsVariant &rhs)
+
+{
+
+    if (lhs.type() == typeid(int) && rhs.type() == typeid(int))
+
+    {
+
+        return std::any_cast<int>(lhs) * std::any_cast<int>(rhs);
+
+    }
+
+    if (lhs.type() == typeid(double) && rhs.type() == typeid(double))
+
+    {
+
+        return std::any_cast<double>(lhs) * std::any_cast<double>(rhs);
+
+    }
+
+    if (lhs.type() == typeid(int) && rhs.type() == typeid(double))
+
+    {
+
+        return std::any_cast<int>(lhs) * std::any_cast<double>(rhs);
+
+    }
+
+    if (lhs.type() == typeid(double) && rhs.type() == typeid(int))
+
+    {
+
+        return std::any_cast<double>(lhs) * std::any_cast<int>(rhs);
+
+    }
+
+    return undefined;
+
+}
+
+
+
+inline JsVariant operator-(const JsVariant &lhs, const JsVariant &rhs)
+
+{
+
+    if (lhs.type() == typeid(int) && rhs.type() == typeid(int))
+
+    {
+
+        return std::any_cast<int>(lhs) - std::any_cast<int>(rhs);
+
+    }
+
+    if (lhs.type() == typeid(double) && rhs.type() == typeid(double))
+
+    {
+
+        return std::any_cast<double>(lhs) - std::any_cast<double>(rhs);
+
+    }
+
+    if (lhs.type() == typeid(int) && rhs.type() == typeid(double))
+
+    {
+
+        return std::any_cast<int>(lhs) - std::any_cast<double>(rhs);
+
+    }
+
+    if (lhs.type() == typeid(double) && rhs.type() == typeid(int))
+
+    {
+
+        return std::any_cast<double>(lhs) - std::any_cast<int>(rhs);
+
+    }
+
+    return undefined;
+
+}
+
+inline bool operator<=(const JsVariant &lhs, const JsVariant &rhs)
 {
     if (lhs.type() == typeid(int) && rhs.type() == typeid(int))
     {
-        return std::make_shared<JsVariant>(std::any_cast<int>(lhs) + std::any_cast<int>(rhs));
+        return std::any_cast<int>(lhs) <= std::any_cast<int>(rhs);
     }
     if (lhs.type() == typeid(double) && rhs.type() == typeid(double))
     {
-        return std::make_shared<JsVariant>(std::any_cast<double>(lhs) + std::any_cast<double>(rhs));
+        return std::any_cast<double>(lhs) <= std::any_cast<double>(rhs);
     }
     if (lhs.type() == typeid(int) && rhs.type() == typeid(double))
     {
-        return std::make_shared<JsVariant>(std::any_cast<int>(lhs) + std::any_cast<double>(rhs));
+        return std::any_cast<int>(lhs) <= std::any_cast<double>(rhs);
     }
     if (lhs.type() == typeid(double) && rhs.type() == typeid(int))
     {
-        return std::make_shared<JsVariant>(std::any_cast<double>(lhs) + std::any_cast<int>(rhs));
+        return std::any_cast<double>(lhs) <= std::any_cast<int>(rhs);
     }
-    return std::make_shared<JsVariant>(undefined);
+    return false;
 }
+
+inline bool operator==(const JsVariant &lhs, const JsVariant &rhs)
+{
+    if (lhs.type() == typeid(int) && rhs.type() == typeid(int))
+    {
+        return std::any_cast<int>(lhs) == std::any_cast<int>(rhs);
+    }
+    if (lhs.type() == typeid(double) && rhs.type() == typeid(double))
+    {
+        return std::any_cast<double>(lhs) == std::any_cast<double>(rhs);
+    }
+    if (lhs.type() == typeid(int) && rhs.type() == typeid(double))
+    {
+        return std::any_cast<int>(lhs) == std::any_cast<double>(rhs);
+    }
+    if (lhs.type() == typeid(double) && rhs.type() == typeid(int))
+    {
+        return std::any_cast<double>(lhs) == std::any_cast<int>(rhs);
+    }
+    if (lhs.type() == typeid(bool) && rhs.type() == typeid(bool))
+    {
+        return std::any_cast<bool>(lhs) == std::any_cast<bool>(rhs);
+    }
+    return false;
+}
+
