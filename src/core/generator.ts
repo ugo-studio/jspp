@@ -15,8 +15,16 @@ export class CodeGenerator {
 
         const allFuncs = this.collectFunctions(ast);
 
+        const closures = allFuncs.filter(f => this.typeAnalyzer.functionTypeInfo.get(f)?.isClosure);
+        const regularFuncs = allFuncs.filter(f => !this.typeAnalyzer.functionTypeInfo.get(f)?.isClosure);
+
         let declarations = this.generateStructs() + "\n"; // This now works
-        allFuncs.forEach((funcNode) => {
+
+        closures.forEach((funcNode) => {
+            declarations += this.generateFunctionOrClosure(funcNode) + "\n";
+        });
+
+        regularFuncs.forEach((funcNode) => {
             declarations += this.generateFunctionOrClosure(funcNode) + "\n";
         });
 
@@ -27,7 +35,7 @@ export class CodeGenerator {
         mainCode += "  return 0;\n}\n";
 
         const includes =
-            "#include <iostream>\n#include <cstdio>\n#include <string>\n#include <vector>\n#include <variant>\n#include <functional>\n\n";
+            "#include <iostream>\n#include <string>\n#include <vector>\n#include <variant>\n#include <functional>\n\n";
 
         return includes + declarations + mainCode;
     }
@@ -67,19 +75,19 @@ export class CodeGenerator {
             .join(", ");
 
         if (info?.isClosure && info.captures) {
-            let code = `struct ${funcName}_functor {\n`;
+            const captureNames = [...info.captures.keys()];
+            const templateParams = captureNames.map((_, i) => `typename T${i}`).join(', ');
+
+            let code = `template<${templateParams}>\nstruct ${funcName}_functor {\n`;
             this.indentationLevel++;
-            info.captures.forEach((type, name) => {
-                code += `${this.indent()}auto& ${name};\n`;
+            captureNames.forEach((name, i) => {
+                code += `${this.indent()}T${i} ${name};\n`;
             });
-            const constructorParams = [...info.captures.entries()].map((
-                [name],
-            ) => `auto& ${name}_arg`).join(", ");
-            const initializers = [...info.captures.keys()].map((name) =>
-                `${name}(${name}_arg)`
-            ).join(", ");
-            code +=
-                `\n${this.indent()}${funcName}_functor(${constructorParams}) : ${initializers} {}\n\n`;
+
+            const constructorParams = captureNames.map((name, i) => `T${i} ${name}_arg`).join(", ");
+            const initializers = captureNames.map((name) => `${name}(${name}_arg)`).join(", ");
+            code += `\n${this.indent()}${funcName}_functor(${constructorParams}) : ${initializers} {}\n\n`;
+
             code += `${this.indent()}${returnType} operator()(${params}) `;
             if (node.body) {
                 code += this.visit(node.body, { isMainContext: false });
@@ -104,7 +112,7 @@ export class CodeGenerator {
      * The core recursive visitor that translates a TypeScript AST node into a C++ code string.
      */
     private visit(node: Node, context: { isMainContext: boolean }): string {
-        if (context.isMainContext && ts.isFunctionDeclaration(node)) {
+        if (ts.isFunctionDeclaration(node)) {
             return "";
         }
 

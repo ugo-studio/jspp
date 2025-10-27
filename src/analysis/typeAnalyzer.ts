@@ -20,6 +20,7 @@ export class TypeAnalyzer {
         ts.FunctionDeclaration,
         TypeInfo
     >();
+    private functionStack: ts.FunctionDeclaration[] = [];
 
     public analyze(ast: Node) {
         const visitor: Visitor = {
@@ -58,9 +59,15 @@ export class TypeAnalyzer {
                                 type: "auto",
                             })
                         );
+                        this.functionStack.push(node);
                     }
                 },
-                exit: () => this.scopeManager.exitScope(),
+                exit: (node) => {
+                    if (ts.isFunctionDeclaration(node)) {
+                        this.functionStack.pop();
+                    }
+                    this.scopeManager.exitScope();
+                },
             },
 
             VariableDeclaration: {
@@ -77,6 +84,15 @@ export class TypeAnalyzer {
             Identifier: {
                 enter: (node, parent) => {
                     if (ts.isIdentifier(node)) {
+                        if (node.text === "console") {
+                            return;
+                        }
+
+                        const currentFuncNode = this.functionStack[this.functionStack.length - 1];
+                        if (currentFuncNode && node.text === currentFuncNode.name?.getText()) {
+                            return; // Don't treat recursive call as capture
+                        }
+
                         // Check if this identifier is being used as a variable (not a function name, etc.)
                         // And see if it belongs to an outer scope
                         const definingScope = this.scopeManager.currentScope
@@ -87,22 +103,18 @@ export class TypeAnalyzer {
                         ) {
                             // This is a potential capture!
                             // Find which function we are currently in and mark the capture.
-                            // (A more robust implementation would traverse up the parent nodes to find the enclosing function)
-                            this.functionTypeInfo.forEach((info, funcNode) => {
-                                // A simplified check: does this function contain the current node?
-                                if (
-                                    node.getStart() > funcNode.getStart() &&
-                                    node.getEnd() < funcNode.getEnd()
-                                ) {
-                                    const type = this.scopeManager.lookup(
-                                        node.text,
-                                    );
-                                    if (type) {
+                            if (currentFuncNode) {
+                                const type = this.scopeManager.lookup(
+                                    node.text,
+                                );
+                                if (type) {
+                                    const info = this.functionTypeInfo.get(currentFuncNode);
+                                    if (info) {
                                         info.isClosure = true;
                                         info.captures?.set(node.text, type);
                                     }
                                 }
-                            });
+                            }
                         }
                     }
                 },
