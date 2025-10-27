@@ -32,6 +32,8 @@ inline std::ostream& operator<<(std::ostream& os, const JsVariant& v) {
         os << std::any_cast<int>(v);
     } else if (v.type() == typeid(double)) {
         os << std::any_cast<double>(v);
+    } else if (v.type() == typeid(const char*)) {
+        os << std::any_cast<const char*>(v);
     } else if (v.type() == typeid(std::string)) {
         os << std::any_cast<std::string>(v);
     } else {
@@ -43,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const JsVariant& v) {
 struct Console {
     template<typename... Args>
     Undefined log(Args... args) {
-        ( (std::cout << args << " "), ... );
+        ( (std::cout << JsVariant(args) << " "), ... );
         std::cout << std::endl;
         return undefined;
     }
@@ -51,7 +53,7 @@ struct Console {
     template<typename... Args>
     Undefined warn(Args... args) {
         std::cerr << "Warning: ";
-        ( (std::cerr << args << " "), ... );
+        ( (std::cerr << JsVariant(args) << " "), ... );
         std::cerr << std::endl;
         return undefined;
     }
@@ -59,7 +61,7 @@ struct Console {
     template<typename... Args>
     Undefined error(Args... args) {
         std::cerr << "Error: ";
-        ( (std::cerr << args << " "), ... );
+        ( (std::cerr << JsVariant(args) << " "), ... );
         std::cerr << std::endl;
         return undefined;
     }

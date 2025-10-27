@@ -1,3 +1,5 @@
+console.log("--- Dynamic ---")
+
 let a;
 console.log(a);
 

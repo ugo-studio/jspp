@@ -1,3 +1,5 @@
+console.log("--- Values ---");
+
 console.log(undefined);
 console.log(null);
 console.log(true);

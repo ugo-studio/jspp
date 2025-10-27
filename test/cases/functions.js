@@ -1,20 +1,24 @@
+console.log("--- Functions ---");
+
 function hoisted() {
-    console.log("hoisted");
+  console.log("hoisted");
 }
 
 function main() {
-    hoisted();
+  hoisted();
 }
 
 main();
 
 function counter() {
-    let count = 0;
-    function increment() {
-        count = count + 1;
-        return count;
-    }
-    return increment;
+  let count = 0;
+  function increment() {
+    console.log("adding count");
+    count = count + 1;
+    console.log("added count");
+    return count;
+  }
+  return increment;
 }
 
 const myCounter = counter();
@@ -22,7 +26,7 @@ console.log(myCounter());
 console.log(myCounter());
 
 function returnsUndefined() {
-    // no return
+  // no return
 }
 
 console.log(returnsUndefined());

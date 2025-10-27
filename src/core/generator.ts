@@ -189,7 +189,7 @@ export class CodeGenerator {
 
         const params = node.parameters.map((p) => `auto ${p.name.getText()}`)
             .join(", ");
-        lambda += `(${params}) `;
+        lambda += `(${params}) mutable `;
 
         if (node.body) {
             if (ts.isBlock(node.body)) {
@@ -378,9 +378,13 @@ export class CodeGenerator {
                 if (ts.isIdentifier(callee) && funcInfo) {
                     const funcNode = this.findFunctionNode(calleeName);
                     // Check if it's a top-level function declaration
-                    if (funcNode && funcNode.parent.kind === ts.SyntaxKind.SourceFile) {
+                    if (
+                        funcNode &&
+                        funcNode.parent.kind === ts.SyntaxKind.SourceFile
+                    ) {
                         if (funcInfo.isClosure) {
-                            const capturedArgs = [...funcInfo.captures!.keys()].join(", ");
+                            const capturedArgs = [...funcInfo.captures!.keys()]
+                                .join(", ");
                             const instanceName = `${calleeName}_instance`;
                             return `auto ${instanceName} = ${calleeName}_functor(${capturedArgs});\n${this.indent()}${instanceName}(${args})`;
                         } else {
@@ -389,8 +393,9 @@ export class CodeGenerator {
                     }
                 }
 
+                const paramTypes = callExpr.arguments.map(() => "JsVariant").join(", ");
                 const calleeCode = this.visit(callee, context);
-                return `std::any_cast<std::function<JsVariant(${args ? 'JsVariant' : ''})>>(${calleeCode})(${args})`;
+                return `std::any_cast<std::function<JsVariant(${paramTypes})>>(${calleeCode})(${args})`;
             }
 
             case ts.SyntaxKind.ReturnStatement: {
@@ -399,13 +404,13 @@ export class CodeGenerator {
                     const exprText = this.visit(returnStmt.expression, context);
                     if (ts.isIdentifier(returnStmt.expression)) {
                         const funcInfo = this.findFunctionInfo(exprText);
-                        if (funcInfo?.isClosure) {
-                            const funcNode = this.findFunctionNode(exprText);
-                            if (funcNode && funcNode.parent.kind === ts.SyntaxKind.SourceFile) {
-                                const capturedArgs = [...funcInfo.captures!.keys()]
-                                    .join(", ");
-                                return `${this.indent()}return ${exprText}_functor(${capturedArgs});\n`;
-                            }
+                        const funcNode = this.findFunctionNode(exprText);
+                        if (funcInfo && funcNode) {
+                            const signature = `JsVariant(${
+                                funcNode.parameters.map(() => "JsVariant")
+                                    .join(", ")
+                            })`;
+                            return `${this.indent()}return std::function<${signature}>(${exprText});\n`;
                         }
                     }
                     return `${this.indent()}return ${exprText};\n`;
@@ -457,7 +462,10 @@ export class CodeGenerator {
     private findFunctionNode(name: string): ts.FunctionDeclaration | undefined {
         let found: ts.FunctionDeclaration | undefined;
         const visitor = (child: Node) => {
-            if (ts.isFunctionDeclaration(child) && child.name?.getText() === name) {
+            if (
+                ts.isFunctionDeclaration(child) &&
+                child.name?.getText() === name
+            ) {
                 found = child;
             }
             if (!found) {

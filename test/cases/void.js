@@ -1,3 +1,5 @@
+console.log("--- Void ---");
+
 const a = "hello";
 void console.log(a);
 

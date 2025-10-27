@@ -1,13 +1,15 @@
+console.log("--- Mutability ---");
+
 let str;
 
 function hello() {
-    str = "hello";
-    console.log(str);
+  str = "hello";
+  console.log(str);
 }
 
 function world() {
-    str = "world";
-    console.log(str);
+  str = "world";
+  console.log(str);
 }
 
 hello();
