@@ -22,9 +22,7 @@ function hoisted() {
 function counter() {
   let count = 0;
   function increment() {
-    console.log("adding count");
     count = count + 1;
-    console.log("added count");
     return count;
   }
   return increment;
@@ -37,5 +35,4 @@ console.log(myCounter());
 function returnsUndefined() {
   // no return
 }
-
 console.log(returnsUndefined());

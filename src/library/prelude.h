@@ -29,11 +29,15 @@ overloaded(Ts...) -> overloaded<Ts...>;
 
 inline std::ostream &operator<<(std::ostream &os, const JsVariant &v)
 {
-    if (v.type() == typeid(std::shared_ptr<JsVariant>)) {
-        const auto& ptr = std::any_cast<std::shared_ptr<JsVariant>>(v);
-        if (ptr) {
+    if (v.type() == typeid(std::shared_ptr<JsVariant>))
+    {
+        const auto &ptr = std::any_cast<std::shared_ptr<JsVariant>>(v);
+        if (ptr)
+        {
             return os << *ptr;
-        } else {
+        }
+        else
+        {
             os << "undefined";
             return os;
         }
@@ -111,127 +115,66 @@ struct Console
 inline Console console;
 
 inline JsVariant operator+(const JsVariant &lhs, const JsVariant &rhs)
-
 {
-
     if (lhs.type() == typeid(int) && rhs.type() == typeid(int))
-
     {
-
         return std::any_cast<int>(lhs) + std::any_cast<int>(rhs);
-
     }
-
     if (lhs.type() == typeid(double) && rhs.type() == typeid(double))
-
     {
-
         return std::any_cast<double>(lhs) + std::any_cast<double>(rhs);
-
     }
-
     if (lhs.type() == typeid(int) && rhs.type() == typeid(double))
-
     {
-
         return std::any_cast<int>(lhs) + std::any_cast<double>(rhs);
-
     }
-
     if (lhs.type() == typeid(double) && rhs.type() == typeid(int))
-
     {
-
         return std::any_cast<double>(lhs) + std::any_cast<int>(rhs);
-
     }
-
     return undefined;
-
 }
-
-
 
 inline JsVariant operator*(const JsVariant &lhs, const JsVariant &rhs)
-
 {
-
     if (lhs.type() == typeid(int) && rhs.type() == typeid(int))
-
     {
-
         return std::any_cast<int>(lhs) * std::any_cast<int>(rhs);
-
     }
-
     if (lhs.type() == typeid(double) && rhs.type() == typeid(double))
-
     {
-
         return std::any_cast<double>(lhs) * std::any_cast<double>(rhs);
-
     }
-
     if (lhs.type() == typeid(int) && rhs.type() == typeid(double))
-
     {
-
         return std::any_cast<int>(lhs) * std::any_cast<double>(rhs);
-
     }
-
     if (lhs.type() == typeid(double) && rhs.type() == typeid(int))
-
     {
-
         return std::any_cast<double>(lhs) * std::any_cast<int>(rhs);
-
     }
-
     return undefined;
-
 }
 
-
-
 inline JsVariant operator-(const JsVariant &lhs, const JsVariant &rhs)
-
 {
-
     if (lhs.type() == typeid(int) && rhs.type() == typeid(int))
-
     {
-
         return std::any_cast<int>(lhs) - std::any_cast<int>(rhs);
-
     }
-
     if (lhs.type() == typeid(double) && rhs.type() == typeid(double))
-
     {
-
         return std::any_cast<double>(lhs) - std::any_cast<double>(rhs);
-
     }
-
     if (lhs.type() == typeid(int) && rhs.type() == typeid(double))
-
     {
-
         return std::any_cast<int>(lhs) - std::any_cast<double>(rhs);
-
     }
-
     if (lhs.type() == typeid(double) && rhs.type() == typeid(int))
-
     {
-
         return std::any_cast<double>(lhs) - std::any_cast<int>(rhs);
-
     }
-
     return undefined;
-
 }
 
 inline bool operator<=(const JsVariant &lhs, const JsVariant &rhs)
@@ -251,6 +194,48 @@ inline bool operator<=(const JsVariant &lhs, const JsVariant &rhs)
     if (lhs.type() == typeid(double) && rhs.type() == typeid(int))
     {
         return std::any_cast<double>(lhs) <= std::any_cast<int>(rhs);
+    }
+    return false;
+}
+
+inline bool operator>(const JsVariant &lhs, const JsVariant &rhs)
+{
+    if (lhs.type() == typeid(int) && rhs.type() == typeid(int))
+    {
+        return std::any_cast<int>(lhs) > std::any_cast<int>(rhs);
+    }
+    if (lhs.type() == typeid(double) && rhs.type() == typeid(double))
+    {
+        return std::any_cast<double>(lhs) > std::any_cast<double>(rhs);
+    }
+    if (lhs.type() == typeid(int) && rhs.type() == typeid(double))
+    {
+        return std::any_cast<int>(lhs) > std::any_cast<double>(rhs);
+    }
+    if (lhs.type() == typeid(double) && rhs.type() == typeid(int))
+    {
+        return std::any_cast<double>(lhs) > std::any_cast<int>(rhs);
+    }
+    return false;
+}
+
+inline bool operator<(const JsVariant &lhs, const JsVariant &rhs)
+{
+    if (lhs.type() == typeid(int) && rhs.type() == typeid(int))
+    {
+        return std::any_cast<int>(lhs) < std::any_cast<int>(rhs);
+    }
+    if (lhs.type() == typeid(double) && rhs.type() == typeid(double))
+    {
+        return std::any_cast<double>(lhs) < std::any_cast<double>(rhs);
+    }
+    if (lhs.type() == typeid(int) && rhs.type() == typeid(double))
+    {
+        return std::any_cast<int>(lhs) < std::any_cast<double>(rhs);
+    }
+    if (lhs.type() == typeid(double) && rhs.type() == typeid(int))
+    {
+        return std::any_cast<double>(lhs) < std::any_cast<int>(rhs);
     }
     return false;
 }
@@ -279,4 +264,3 @@ inline bool operator==(const JsVariant &lhs, const JsVariant &rhs)
     }
     return false;
 }
-

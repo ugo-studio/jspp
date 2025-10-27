@@ -1,10 +1,10 @@
 import * as ts from "typescript";
 
+import { Scope } from "../analysis/scope";
 import { TypeAnalyzer, type TypeInfo } from "../analysis/typeAnalyzer";
 import type { Node } from "../ast/types";
 // @ts-ignore
 import prelude from "../library/prelude.h" with { type: "text" };
-import { Scope } from "../analysis/scope";
 
 export class CodeGenerator {
     private indentationLevel: number = 0;
@@ -66,7 +66,7 @@ export class CodeGenerator {
                     isFunctionBody: true,
                 });
             } else {
-                lambda += `{ return ${ 
+                lambda += `{ return ${
                     this.visit(node.body, {
                         isMainContext: false,
                         isInsideFunction: true,
@@ -78,8 +78,8 @@ export class CodeGenerator {
             lambda += "{ return undefined; }\n";
         }
 
-        const signature = `JsVariant(${ 
-            node.parameters.map(() => "JsVariant").join(", ") 
+        const signature = `JsVariant(${
+            node.parameters.map(() => "JsVariant").join(", ")
         })`;
         const fullExpression = `std::function<${signature}>(${lambda})`;
 
@@ -124,26 +124,28 @@ export class CodeGenerator {
                 let code = "";
                 const varDecls = sourceFile.statements
                     .filter(ts.isVariableStatement)
-                    .flatMap(stmt => stmt.declarationList.declarations);
+                    .flatMap((stmt) => stmt.declarationList.declarations);
 
                 const funcDecls = sourceFile.statements.filter(
                     ts.isFunctionDeclaration,
                 );
 
                 // 1. Hoist all variable and function declarations
-                varDecls.forEach(decl => {
+                varDecls.forEach((decl) => {
                     const name = decl.name.getText();
-                    code += `${this.indent()}auto ${name} = std::make_shared<JsVariant>(undefined);\n`;
+                    code +=
+                        `${this.indent()}auto ${name} = std::make_shared<JsVariant>(undefined);\n`;
                 });
-                funcDecls.forEach(func => {
+                funcDecls.forEach((func) => {
                     const funcName = func.name?.getText();
                     if (funcName) {
-                        code += `${this.indent()}auto ${funcName} = std::make_shared<JsVariant>(undefined);\n`;
+                        code +=
+                            `${this.indent()}auto ${funcName} = std::make_shared<JsVariant>(undefined);\n`;
                     }
                 });
 
                 // 2. Assign all hoisted functions first
-                funcDecls.forEach(stmt => {
+                funcDecls.forEach((stmt) => {
                     const funcName = stmt.name?.getText();
                     if (funcName) {
                         const lambda = this.generateLambda(stmt, true);
@@ -152,12 +154,18 @@ export class CodeGenerator {
                 });
 
                 // 3. Process other statements
-                sourceFile.statements.forEach(stmt => {
-                     if (ts.isFunctionDeclaration(stmt)) {
+                sourceFile.statements.forEach((stmt) => {
+                    if (ts.isFunctionDeclaration(stmt)) {
                         // Already handled
                     } else if (ts.isVariableStatement(stmt)) {
-                        const assignmentContext = { ...context, isAssignmentOnly: true };
-                        const assignments = this.visit(stmt.declarationList, assignmentContext);
+                        const assignmentContext = {
+                            ...context,
+                            isAssignmentOnly: true,
+                        };
+                        const assignments = this.visit(
+                            stmt.declarationList,
+                            assignmentContext,
+                        );
                         if (assignments) {
                             code += `${this.indent()}${assignments};\n`;
                         }
@@ -182,14 +190,16 @@ export class CodeGenerator {
                 );
 
                 // 1. Hoist all variable and function declarations
-                varDecls.forEach(decl => {
+                varDecls.forEach((decl) => {
                     const name = decl.name.getText();
-                    code += `${this.indent()}auto ${name} = std::make_shared<JsVariant>(undefined);\n`;
+                    code +=
+                        `${this.indent()}auto ${name} = std::make_shared<JsVariant>(undefined);\n`;
                 });
-                funcDecls.forEach(func => {
+                funcDecls.forEach((func) => {
                     const funcName = func.name?.getText();
                     if (funcName) {
-                        code += `${this.indent()}auto ${funcName} = std::make_shared<JsVariant>(undefined);\n`;
+                        code +=
+                            `${this.indent()}auto ${funcName} = std::make_shared<JsVariant>(undefined);\n`;
                     }
                 });
 
@@ -258,12 +268,12 @@ export class CodeGenerator {
                 if (varDecl.initializer) {
                     if (ts.isArrowFunction(varDecl.initializer)) {
                         const arrowFunc = varDecl.initializer;
-                        const signature = `JsVariant(${ 
+                        const signature = `JsVariant(${
                             arrowFunc.parameters.map(() => "JsVariant").join(
                                 ", ",
                             )
                         })`;
-                        initializer = ` = std::function<${signature}>(${ 
+                        initializer = ` = std::function<${signature}>(${
                             this.visit(arrowFunc, context)
                         })`;
                     } else {
@@ -276,7 +286,9 @@ export class CodeGenerator {
                     if (!initializer) return "";
                     return `*${name}${initializer}`;
                 } else {
-                    const initValue = initializer ? initializer.substring(3) : "undefined";
+                    const initValue = initializer
+                        ? initializer.substring(3)
+                        : "undefined";
                     return `auto ${name} = std::make_shared<JsVariant>(${initValue})`;
                 }
             }
@@ -309,7 +321,7 @@ export class CodeGenerator {
                 ) {
                     varName = forOf.initializer.declarations[0].name.getText();
                 }
-                let code = `${this.indent()}for (const auto& ${varName} : ${ 
+                let code = `${this.indent()}for (const auto& ${varName} : ${
                     this.visit(forOf.expression, context)
                 }) `;
                 code += this.visit(forOf.statement, context);
@@ -319,17 +331,32 @@ export class CodeGenerator {
             case ts.SyntaxKind.IfStatement: {
                 const ifStmt = node as ts.IfStatement;
                 const condition = this.visit(ifStmt.expression, context);
-                const thenStmt = this.visit(ifStmt.thenStatement, context);
+                const thenStmt = this.visit(ifStmt.thenStatement, {
+                    ...context,
+                    isFunctionBody: false,
+                });
                 let elseStmt = "";
                 if (ifStmt.elseStatement) {
-                    elseStmt = " else " + this.visit(ifStmt.elseStatement, context);
+                    elseStmt = " else " +
+                        this.visit(ifStmt.elseStatement, {
+                            ...context,
+                            isFunctionBody: false,
+                        });
                 }
+                // return `${this.indent()}if (${condition}) ${thenStmt}${elseStmt}`;
                 return `${this.indent()}if (std::any_cast<bool>(${condition})) ${thenStmt}${elseStmt}`;
+            }
+
+            case ts.SyntaxKind.PrefixUnaryExpression: {
+                const prefixUnaryExpr = node as ts.PrefixUnaryExpression;
+                const operand = this.visit(prefixUnaryExpr.operand, context);
+                const operator = ts.tokenToString(prefixUnaryExpr.operator);
+                return `${operator}${operand}`;
             }
 
             case ts.SyntaxKind.PropertyAccessExpression: {
                 const propAccess = node as ts.PropertyAccessExpression;
-                return `(*${ 
+                return `(*${
                     this.visit(propAccess.expression, context)
                 }).${propAccess.name.getText()}`;
             }
@@ -344,7 +371,10 @@ export class CodeGenerator {
             case ts.SyntaxKind.BinaryExpression: {
                 const binExpr = node as ts.BinaryExpression;
                 let op = binExpr.operatorToken.getText();
-                if (binExpr.operatorToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken) {
+                if (
+                    binExpr.operatorToken.kind ===
+                        ts.SyntaxKind.EqualsEqualsEqualsToken
+                ) {
                     op = "==";
                 }
 
@@ -352,33 +382,53 @@ export class CodeGenerator {
                 const rightText = this.visit(binExpr.right, context);
 
                 if (binExpr.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
-                     if (ts.isArrowFunction(binExpr.right)) {
-                         const arrowFunc = binExpr.right;
-                         const signature = `JsVariant(${ 
-                             arrowFunc.parameters.map(() => "JsVariant").join(
-                                 ", ",
-                             )
-                         })`;
-                         const lambda = this.visit(arrowFunc, context);
-                         return `*${leftText} ${op} std::function<${signature}>(${lambda})`;
+                    if (ts.isArrowFunction(binExpr.right)) {
+                        const arrowFunc = binExpr.right;
+                        const signature = `JsVariant(${
+                            arrowFunc.parameters.map(() => "JsVariant").join(
+                                ", ",
+                            )
+                        })`;
+                        const lambda = this.visit(arrowFunc, context);
+                        return `*${leftText} ${op} std::function<${signature}>(${lambda})`;
                     }
-                   
-                   if (ts.isBinaryExpression(binExpr.right)) {
-                       return `*${leftText} ${op} ${this.visit(binExpr.right, context)}`;
-                   }
 
-                  return `*${leftText} ${op} ${rightText}`;
-               }
+                    if (ts.isBinaryExpression(binExpr.right)) {
+                        return `*${leftText} ${op} ${
+                            this.visit(binExpr.right, context)
+                        }`;
+                    }
+
+                    return `*${leftText} ${op} ${rightText}`;
+                }
 
                 const leftIsIdentifier = ts.isIdentifier(binExpr.left);
                 const rightIsIdentifier = ts.isIdentifier(binExpr.right);
 
                 const scope = this.getScopeForNode(node);
-                const leftTypeInfo = leftIsIdentifier ? this.typeAnalyzer.scopeManager.lookupFromScope(leftText, scope) : null;
-                const rightTypeInfo = rightIsIdentifier ? this.typeAnalyzer.scopeManager.lookupFromScope(rightText, scope) : null;
+                const leftTypeInfo = leftIsIdentifier
+                    ? this.typeAnalyzer.scopeManager.lookupFromScope(
+                        leftText,
+                        scope,
+                    )
+                    : null;
+                const rightTypeInfo = rightIsIdentifier
+                    ? this.typeAnalyzer.scopeManager.lookupFromScope(
+                        rightText,
+                        scope,
+                    )
+                    : null;
 
-                const finalLeft = leftIsIdentifier && leftTypeInfo && !leftTypeInfo.isParameter ? `(*${leftText})` : leftText;
-                const finalRight = rightIsIdentifier && rightTypeInfo && !rightTypeInfo.isParameter ? `(*${rightText})` : rightText;
+                const finalLeft =
+                    leftIsIdentifier && leftTypeInfo &&
+                        !leftTypeInfo.isParameter
+                        ? `(*${leftText})`
+                        : leftText;
+                const finalRight =
+                    rightIsIdentifier && rightTypeInfo &&
+                        !rightTypeInfo.isParameter
+                        ? `(*${rightText})`
+                        : rightText;
 
                 if (op === "+" || op === "-" || op === "*") {
                     return `(${finalLeft} ${op} ${finalRight})`;
@@ -393,7 +443,8 @@ export class CodeGenerator {
                     const argText = this.visit(arg, context);
                     if (ts.isIdentifier(arg)) {
                         const scope = this.getScopeForNode(arg);
-                        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(arg.text, scope);
+                        const typeInfo = this.typeAnalyzer.scopeManager
+                            .lookupFromScope(arg.text, scope);
                         if (typeInfo && !typeInfo.isParameter) {
                             return `*${argText}`;
                         }
@@ -422,7 +473,8 @@ export class CodeGenerator {
                     const exprText = this.visit(expr, context);
                     if (ts.isIdentifier(expr)) {
                         const scope = this.getScopeForNode(expr);
-                        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(exprText, scope);
+                        const typeInfo = this.typeAnalyzer.scopeManager
+                            .lookupFromScope(exprText, scope);
                         if (typeInfo && !typeInfo.isParameter) {
                             return `${this.indent()}return *${exprText};\n`;
                         }

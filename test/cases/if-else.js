@@ -16,6 +16,11 @@ testNumber(0);
 
 let a = 10;
 if (a === 10) {
-    a = 20;
+  a = 20;
 }
 console.log(a);
+
+const isGreaterThan5 = (n) => n > 5;
+if (isGreaterThan5(6)) {
+  console.log("GreaterThan5");
+}
