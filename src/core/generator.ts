@@ -410,6 +410,18 @@ export class CodeGenerator {
                         ts.SyntaxKind.EqualsEqualsEqualsToken
                     ? "=="
                     : binExpr.operatorToken.getText();
+
+                if (binExpr.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isArrowFunction(binExpr.right)) {
+                     const arrowFunc = binExpr.right;
+                     const signature = `JsVariant(${
+                         arrowFunc.parameters.map(() => "JsVariant").join(
+                             ", ",
+                         )
+                     })`;
+                     const lambda = this.visit(arrowFunc, context);
+                     return `${this.visit(binExpr.left, context)} ${op} std::function<${signature}>(${lambda})`;
+                }
+
                 return `${this.visit(binExpr.left, context)} ${op} ${
                     this.visit(binExpr.right, context)
                 }`;

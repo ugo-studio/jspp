@@ -25,6 +25,7 @@ const main = async () => {
         "mutability",
         "console",
         "void",
+        "log-function",
     ];
 
     for (const caseName of cases) {
