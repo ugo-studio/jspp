@@ -1,11 +1,11 @@
 console.log("--- Functions ---");
 
-function hoisted() {
-  console.log("hoisted");
-}
-
 function main() {
   hoisted();
+}
+
+function hoisted() {
+  console.log("hoisted");
 }
 
 main();

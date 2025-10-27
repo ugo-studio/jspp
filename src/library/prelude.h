@@ -52,17 +52,17 @@ struct Console {
 
     template<typename... Args>
     Undefined warn(Args... args) {
-        std::cerr << "Warning: ";
+        std::cerr << "\033[33m"; // Yellow
         ( (std::cerr << JsVariant(args) << " "), ... );
-        std::cerr << std::endl;
+        std::cerr << "\033[0m" << std::endl; // Reset
         return undefined;
     }
 
     template<typename... Args>
     Undefined error(Args... args) {
-        std::cerr << "Error: ";
+        std::cerr << "\033[31m"; // Red
         ( (std::cerr << JsVariant(args) << " "), ... );
-        std::cerr << std::endl;
+        std::cerr << "\033[0m" << std::endl; // Reset
         return undefined;
     }
 };

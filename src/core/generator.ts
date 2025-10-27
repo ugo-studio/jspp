@@ -180,8 +180,7 @@ export class CodeGenerator {
 
         let lambda = "";
         if (info?.isClosure && info.captures) {
-            const capturedArgs = [...info.captures.keys()].map((n) => `&${n}`)
-                .join(", ");
+            const capturedArgs = [...info.captures.keys()].join(", ");
             lambda += `[${capturedArgs}]`;
         } else {
             lambda += `[]`;
@@ -290,8 +289,20 @@ export class CodeGenerator {
 
                 let initializer = "";
                 if (varDecl.initializer) {
-                    initializer = " = " +
-                        this.visit(varDecl.initializer, context);
+                    if (ts.isArrowFunction(varDecl.initializer)) {
+                        const arrowFunc = varDecl.initializer;
+                        const signature = `JsVariant(${
+                            arrowFunc.parameters.map(() => "JsVariant").join(
+                                ", ",
+                            )
+                        })`;
+                        initializer = ` = std::function<${signature}>(${
+                            this.visit(arrowFunc, context)
+                        })`;
+                    } else {
+                        initializer = " = " +
+                            this.visit(varDecl.initializer, context);
+                    }
                 } else {
                     initializer = " = undefined";
                 }
