@@ -17,70 +17,15 @@ export class CodeGenerator {
         this.ast = ast;
         this.typeAnalyzer = analyzer;
 
-        const allFuncs = this.collectFunctions(ast);
-
-        const topLevelFuncs = allFuncs.filter((f) =>
-            f.parent.kind === ts.SyntaxKind.SourceFile
-        );
-
-        const closures = topLevelFuncs.filter((f) =>
-            this.typeAnalyzer.functionTypeInfo.get(f)?.isClosure
-        );
-        const regularFuncs = topLevelFuncs.filter((f) =>
-            !this.typeAnalyzer.functionTypeInfo.get(f)?.isClosure
-        );
-
-        let declarations = this.generateStructs() + "\n"; // This now works
-
-        // Topological sort
-        const sortedFuncs: ts.FunctionDeclaration[] = [];
-        const visited = new Set<string>();
-        const visiting = new Set<string>(); // for cycle detection
-
-        const visitFunc = (funcNode: ts.FunctionDeclaration) => {
-            const funcName = funcNode.name!.getText();
-            if (visited.has(funcName)) return;
-            if (visiting.has(funcName)) {
-                console.error(
-                    `Cycle detected in function calls involving ${funcName}`,
-                );
-                return;
-            }
-
-            visiting.add(funcName);
-
-            const dependencies =
-                this.typeAnalyzer.dependencyGraph.get(funcName) || [];
-            dependencies.forEach((depName) => {
-                const depNode = regularFuncs.find((f) =>
-                    f.name?.getText() === depName
-                );
-                if (depNode) {
-                    visitFunc(depNode);
-                }
-            });
-
-            visiting.delete(funcName);
-            visited.add(funcName);
-            sortedFuncs.push(funcNode);
-        };
-
-        regularFuncs.forEach(visitFunc);
-
-        closures.forEach((funcNode) => {
-            declarations += this.generateFunctionOrClosure(funcNode) + "\n";
-        });
-
-        sortedFuncs.forEach((funcNode) => {
-            declarations += this.generateFunctionOrClosure(funcNode) + "\n";
-        });
+        const declarations = this.generateStructs() + "\n";
 
         let mainCode = "int main() {\n";
         this.indentationLevel++;
+        // The entire script is treated as a single function body now.
         mainCode += this.visit(ast, {
             isMainContext: true,
-            isInsideFunction: false,
-            isFunctionBody: false,
+            isInsideFunction: true,
+            isFunctionBody: true,
         });
         this.indentationLevel--;
         mainCode += "  return 0;\n}\n";
@@ -112,93 +57,11 @@ export class CodeGenerator {
         return Array.from(structDefs).join("\n");
     }
 
-    /**
-     * Generates the C++ code for a given JavaScript function or closure.
-     */
-    private generateFunctionOrClosure(node: ts.FunctionDeclaration): string {
-        const info = this.typeAnalyzer.functionTypeInfo.get(node);
-        const funcName = node.name?.getText() ?? "anonymous";
-        const returnType = "auto";
-        const params = node.parameters.map((p) => `auto ${p.name.getText()}`)
-            .join(", ");
-
-        const isTopLevel = node.parent.kind === ts.SyntaxKind.SourceFile;
-
-        if (info?.isClosure || isTopLevel) {
-            const captures = info?.captures;
-            const captureNames = captures ? [...captures.keys()] : [];
-            const hasCaptures = captureNames.length > 0;
-
-            let code = "";
-            if (hasCaptures) {
-                const templateParams = captureNames.map((_, i) =>
-                    `typename T${i}`
-                ).join(", ");
-                code += `template<${templateParams}>\n`;
-            }
-            code += `struct ${funcName}_functor {\n`;
-
-            this.indentationLevel++;
-
-            if (hasCaptures) {
-                captureNames.forEach((name, i) => {
-                    code += `${this.indent()}T${i}& ${name};\n`;
-                });
-
-                const constructorParams = captureNames.map((name, i) =>
-                    `T${i}& ${name}_arg`
-                ).join(", ");
-                const initializers = captureNames.map((name) =>
-                    `${name}(${name}_arg)`
-                ).join(", ");
-                code +=
-                    `\n${this.indent()}${funcName}_functor(${constructorParams}) : ${initializers} {}\n\n`;
-            } else {
-                code += `\n${this.indent()}${funcName}_functor() {}\n\n`;
-            }
-
-            code += `${this.indent()}${returnType} operator()(${params}) `;
-            if (node.body) {
-                code += this.visit(node.body, {
-                    isMainContext: false,
-                    isInsideFunction: true,
-                    isFunctionBody: true,
-                });
-            } else {
-                code += "{ return undefined; }\n";
-            }
-            this.indentationLevel--;
-            code += `};\n`;
-            return code;
-        } else {
-            let code = `${returnType} ${funcName}(${params}) `;
-            if (node.body) {
-                code += this.visit(node.body, {
-                    isMainContext: false,
-                    isInsideFunction: true,
-                    isFunctionBody: true,
-                });
-            } else {
-                code += "{ return undefined; }\n";
-            }
-            return code;
-        }
-    }
-
     private generateLambda(
         node: ts.ArrowFunction | ts.FunctionDeclaration,
         isAssignment: boolean = false,
     ): string {
-        const info = this.typeAnalyzer.functionTypeInfo.get(node);
-        const captures = info?.captures ? [...info.captures.keys()] : [];
-
-        let lambda = "[";
-        if (captures.length > 0) {
-            lambda += captures.join(", ");
-        } else {
-            lambda += "&";
-        }
-        lambda += "]";
+        let lambda = "[=]";
 
         const params = node.parameters.map((p) => `auto ${p.name.getText()}`)
             .join(", ");
@@ -264,10 +127,55 @@ export class CodeGenerator {
             case ts.SyntaxKind.ArrowFunction:
                 return this.generateLambda(node as ts.ArrowFunction);
 
-            case ts.SyntaxKind.SourceFile:
-                return (node as ts.SourceFile).statements.map((stmt) =>
-                    this.visit(stmt, context)
-                ).join("");
+            case ts.SyntaxKind.SourceFile: {
+                // Treat the source file as the top-level block
+                const sourceFile = node as ts.SourceFile;
+                let code = "";
+                const varDecls = sourceFile.statements
+                    .filter(ts.isVariableStatement)
+                    .flatMap(stmt => stmt.declarationList.declarations);
+
+                const funcDecls = sourceFile.statements.filter(
+                    ts.isFunctionDeclaration,
+                );
+
+                // 1. Hoist all variable and function declarations
+                varDecls.forEach(decl => {
+                    const name = decl.name.getText();
+                    code += `${this.indent()}auto ${name} = std::make_shared<JsVariant>(undefined);\n`;
+                });
+                funcDecls.forEach(func => {
+                    const funcName = func.name?.getText();
+                    if (funcName) {
+                        code += `${this.indent()}auto ${funcName} = std::make_shared<JsVariant>(undefined);\n`;
+                    }
+                });
+
+                // 2. Assign all hoisted functions first
+                funcDecls.forEach(stmt => {
+                    const funcName = stmt.name?.getText();
+                    if (funcName) {
+                        const lambda = this.generateLambda(stmt, true);
+                        code += `${this.indent()}*${funcName} = ${lambda};\n`;
+                    }
+                });
+
+                // 3. Process other statements
+                sourceFile.statements.forEach(stmt => {
+                     if (ts.isFunctionDeclaration(stmt)) {
+                        // Already handled
+                    } else if (ts.isVariableStatement(stmt)) {
+                        const assignmentContext = { ...context, isAssignmentOnly: true };
+                        const assignments = this.visit(stmt.declarationList, assignmentContext);
+                        if (assignments) {
+                            code += `${this.indent()}${assignments};\n`;
+                        }
+                    } else {
+                        code += this.visit(stmt, context);
+                    }
+                });
+                return code;
+            }
 
             case ts.SyntaxKind.Block: {
                 let code = "{\n";
@@ -285,16 +193,12 @@ export class CodeGenerator {
                 // 1. Hoist all variable and function declarations
                 varDecls.forEach(decl => {
                     const name = decl.name.getText();
-                    if (this.typeAnalyzer.capturedVariables.has(decl)) {
-                        code += `${this.indent()}auto ${name} = std::make_shared<JsVariant>(undefined);\n`;
-                    } else {
-                        code += `${this.indent()}JsVariant ${name} = undefined;\n`;
-                    }
+                    code += `${this.indent()}auto ${name} = std::make_shared<JsVariant>(undefined);\n`;
                 });
                 funcDecls.forEach(func => {
                     const funcName = func.name?.getText();
                     if (funcName) {
-                        code += `${this.indent()}JsVariant ${funcName} = undefined;\n`;
+                        code += `${this.indent()}auto ${funcName} = std::make_shared<JsVariant>(undefined);\n`;
                     }
                 });
 
@@ -303,7 +207,7 @@ export class CodeGenerator {
                     const funcName = stmt.name?.getText();
                     if (funcName) {
                         const lambda = this.generateLambda(stmt, true);
-                        code += `${this.indent()}${funcName} = ${lambda};\n`;
+                        code += `${this.indent()}*${funcName} = ${lambda};\n`;
                     }
                 });
 
@@ -358,7 +262,6 @@ export class CodeGenerator {
             case ts.SyntaxKind.VariableDeclaration: {
                 const varDecl = node as ts.VariableDeclaration;
                 const name = varDecl.name.getText();
-                const isCaptured = this.typeAnalyzer.capturedVariables.has(varDecl);
 
                 let initializer = "";
                 if (varDecl.initializer) {
@@ -376,25 +279,14 @@ export class CodeGenerator {
                         initializer = " = " +
                             this.visit(varDecl.initializer, context);
                     }
-                } else if (!context.isAssignmentOnly) { // Add undefined only if declaring
-                    initializer = " = undefined";
                 }
 
                 if (context.isAssignmentOnly) {
-                    // Only return the assignment part, and only if there is one.
                     if (!initializer) return "";
-                    if (isCaptured) {
-                        return `*${name}${initializer}`;
-                    }
-                    return `${name}${initializer}`;
+                    return `*${name}${initializer}`;
                 } else {
-                    // Full declaration
-                    if (isCaptured) {
-                        const initValue = initializer ? initializer.substring(3) : "undefined";
-                        return `auto ${name} = std::make_shared<JsVariant>(${initValue})`;
-                    }
-                    const type = "JsVariant";
-                    return `${type} ${name}${initializer}`;
+                    const initValue = initializer ? initializer.substring(3) : "undefined";
+                    return `auto ${name} = std::make_shared<JsVariant>(${initValue})`;
                 }
             }
 
@@ -435,9 +327,9 @@ export class CodeGenerator {
 
             case ts.SyntaxKind.PropertyAccessExpression: {
                 const propAccess = node as ts.PropertyAccessExpression;
-                return `${
+                return `(*${
                     this.visit(propAccess.expression, context)
-                }.${propAccess.name.getText()}`;
+                }).${propAccess.name.getText()}`;
             }
 
             case ts.SyntaxKind.ExpressionStatement:
@@ -454,84 +346,68 @@ export class CodeGenerator {
                     ? "=="
                     : binExpr.operatorToken.getText();
 
+                const leftText = this.visit(binExpr.left, context);
+                const rightText = this.visit(binExpr.right, context);
+
                 if (binExpr.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
-                    if (ts.isArrowFunction(binExpr.right)) {
-                        const arrowFunc = binExpr.right;
-                        const signature = `JsVariant(${
-                            arrowFunc.parameters.map(() => "JsVariant").join(
-                                ", ",
-                            )
-                        })`;
-                        const lambda = this.visit(arrowFunc, context);
-                        return `${
-                            this.visit(binExpr.left, context)
-                        } ${op} std::function<${signature}>(${lambda})`;
+                     if (ts.isArrowFunction(binExpr.right)) {
+                         const arrowFunc = binExpr.right;
+                         const signature = `JsVariant(${
+                             arrowFunc.parameters.map(() => "JsVariant").join(
+                                 ", ",
+                             )
+                         })`;
+                         const lambda = this.visit(arrowFunc, context);
+                         return `*${leftText} ${op} std::function<${signature}>(${lambda})`;
                     }
-
-                    const leftText = this.visit(binExpr.left, context);
-                    const rightText = this.visit(binExpr.right, context);
-
-                    return `${leftText} ${op} ${rightText}`;
+                   return `*${leftText} ${op} ${rightText}`;
                 }
 
-                return `${this.visit(binExpr.left, context)} ${op} ${
-                    this.visit(binExpr.right, context)
-                }`;
+                const leftIsIdentifier = ts.isIdentifier(binExpr.left);
+                const rightIsIdentifier = ts.isIdentifier(binExpr.right);
+
+                const finalLeft = leftIsIdentifier ? `(*${leftText})` : leftText;
+                const finalRight = rightIsIdentifier ? `(*${rightText})` : rightText;
+
+                return `*${leftText} = *(${finalLeft} ${op} ${finalRight})`;
             }
 
             case ts.SyntaxKind.CallExpression: {
                 const callExpr = node as ts.CallExpression;
                 const callee = callExpr.expression;
-                const args = callExpr.arguments.map((arg) =>
-                    this.visit(arg, context)
-                ).join(", ");
+                const args = callExpr.arguments.map((arg) => {
+                    const argText = this.visit(arg, context);
+                    if (ts.isIdentifier(arg)) {
+                        const scope = this.typeAnalyzer.scopeManager.currentScope.findScopeFor(arg.text);
+                        if (scope) {
+                            return `*${argText}`;
+                        }
+                    }
+                    return argText;
+                }).join(", ");
 
                 if (
                     ts.isPropertyAccessExpression(callee) &&
-                    callee.expression.getText() === "console"
+                    this.visit(callee.expression, context) === "console"
                 ) {
                     const methodName = callee.name.getText();
                     return `console.${methodName}(${args})`;
                 }
 
-                if (ts.isIdentifier(callee)) {
-                    const declaration = this.findDeclarationNode(callee);
-
-                    if (
-                        declaration &&
-                        ts.isFunctionDeclaration(declaration)
-                    ) {
-                        const funcInfo = this.typeAnalyzer.functionTypeInfo.get(
-                            declaration,
-                        );
-                        if (
-                            declaration.parent.kind ===
-                                ts.SyntaxKind.SourceFile
-                        ) {
-                            const calleeName = callee.getText();
-                            if (funcInfo?.isClosure) {
-                                const capturedArgs = [
-                                    ...funcInfo.captures!.keys(),
-                                ].join(", ");
-                                const instanceName = `${calleeName}_instance`;
-                                return `auto ${instanceName} = ${calleeName}_functor(${capturedArgs});\n${this.indent()}${instanceName}(${args})`;
-                            } else {
-                                return `${calleeName}_functor()(${args})`;
-                            }
-                        }
-                    }
-                }
-
                 const paramTypes = callExpr.arguments.map(() => "JsVariant")
                     .join(", ");
                 const calleeCode = this.visit(callee, context);
-                return `std::any_cast<std::function<JsVariant(${paramTypes})>>(${calleeCode})(${args})`;
+                return `std::any_cast<std::function<JsVariant(${paramTypes})>>(*${calleeCode})(${args})`;
             }
 
             case ts.SyntaxKind.ReturnStatement: {
                 const returnStmt = node as ts.ReturnStatement;
                 if (returnStmt.expression) {
-                    const exprText = this.visit(returnStmt.expression, context);
+                    const expr = returnStmt.expression;
+                    const exprText = this.visit(expr, context);
+                    if (ts.isIdentifier(expr)) {
+                        return `${this.indent()}return *${exprText};\n`;
+                    }
                     return `${this.indent()}return ${exprText};\n`;
                 }
                 return `${this.indent()}return undefined;\n`;
@@ -539,40 +415,6 @@ export class CodeGenerator {
 
             case ts.SyntaxKind.Identifier: {
                 const identifier = node as ts.Identifier;
-                const declaration = this.findDeclarationNode(identifier);
-
-                if (
-                    declaration &&
-                    this.typeAnalyzer.capturedVariables.has(declaration)
-                ) {
-                     return `(*${identifier.text})`;
-                }
-
-                if (
-                    declaration &&
-                    ts.isFunctionDeclaration(declaration) &&
-                    declaration.parent.kind === ts.SyntaxKind.SourceFile
-                ) {
-                    // If the identifier is being called, don't wrap it in std::function.
-                    // The CallExpression handler will deal with it.
-                    if (
-                        identifier.parent &&
-                        ts.isCallExpression(identifier.parent) &&
-                        identifier.parent.expression === identifier
-                    ) {
-                        return identifier.text;
-                    }
-
-                    const funcInfo = this.findFunctionInfo(declaration);
-                    if (funcInfo) {
-                        const signature = `JsVariant(${
-                            declaration.parameters
-                                .map(() => "JsVariant")
-                                .join(", ")
-                        })`;
-                        return `std::function<${signature}>(${identifier.text}_functor())`;
-                    }
-                }
                 return identifier.text;
             }
             case ts.SyntaxKind.NumericLiteral:

@@ -29,6 +29,16 @@ overloaded(Ts...) -> overloaded<Ts...>;
 
 inline std::ostream &operator<<(std::ostream &os, const JsVariant &v)
 {
+    if (v.type() == typeid(std::shared_ptr<JsVariant>)) {
+        const auto& ptr = std::any_cast<std::shared_ptr<JsVariant>>(v);
+        if (ptr) {
+            return os << *ptr;
+        } else {
+            os << "undefined";
+            return os;
+        }
+    }
+
     if (!v.has_value())
     {
         os << "undefined";
@@ -100,23 +110,23 @@ struct Console
 
 inline Console console;
 
-inline JsVariant operator+(const JsVariant &lhs, const JsVariant &rhs)
+inline std::shared_ptr<JsVariant> operator+(const JsVariant &lhs, const JsVariant &rhs)
 {
     if (lhs.type() == typeid(int) && rhs.type() == typeid(int))
     {
-        return std::any_cast<int>(lhs) + std::any_cast<int>(rhs);
+        return std::make_shared<JsVariant>(std::any_cast<int>(lhs) + std::any_cast<int>(rhs));
     }
     if (lhs.type() == typeid(double) && rhs.type() == typeid(double))
     {
-        return std::any_cast<double>(lhs) + std::any_cast<double>(rhs);
+        return std::make_shared<JsVariant>(std::any_cast<double>(lhs) + std::any_cast<double>(rhs));
     }
     if (lhs.type() == typeid(int) && rhs.type() == typeid(double))
     {
-        return std::any_cast<int>(lhs) + std::any_cast<double>(rhs);
+        return std::make_shared<JsVariant>(std::any_cast<int>(lhs) + std::any_cast<double>(rhs));
     }
     if (lhs.type() == typeid(double) && rhs.type() == typeid(int))
     {
-        return std::any_cast<double>(lhs) + std::any_cast<int>(rhs);
+        return std::make_shared<JsVariant>(std::any_cast<double>(lhs) + std::any_cast<int>(rhs));
     }
-    return undefined;
+    return std::make_shared<JsVariant>(undefined);
 }
