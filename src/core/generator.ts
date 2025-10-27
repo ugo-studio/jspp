@@ -240,11 +240,10 @@ export class CodeGenerator {
                 ).join("");
 
                 if (context.isFunctionBody) {
-                    const lastStatement =
-                        (node as ts.Block)
-                            .statements[
-                                (node as ts.Block).statements.length - 1
-                            ];
+                    const lastStatement = (node as ts.Block)
+                        .statements[
+                            (node as ts.Block).statements.length - 1
+                        ];
                     if (
                         !lastStatement || !ts.isReturnStatement(lastStatement)
                     ) {
@@ -359,8 +358,10 @@ export class CodeGenerator {
                     callee.expression.getText() === "console" &&
                     callee.name.getText() === "log"
                 ) {
-                    return `std::cout << ${
-                        args.replace(/, /g, ' << " " << ')
+                    return `std::cout << std::boolalpha << ${
+                        args.length === 0
+                            ? '""'
+                            : args.replace(/, /g, ' << " " << ')
                     } << std::endl`;
                 }
 
