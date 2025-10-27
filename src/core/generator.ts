@@ -147,18 +147,19 @@ export class CodeGenerator {
                 `template<${templateParams}>\nstruct ${funcName}_functor {\n`;
             this.indentationLevel++;
             captureNames.forEach((name, i) => {
-                code += `${this.indent()}T${i} ${name};\n`;
+                code += `${this.indent()}T${i}& ${name};\n`;
             });
 
             const constructorParams = captureNames.map((name, i) =>
-                `T${i} ${name}_arg`
+                `T${i}& ${name}_arg`
             ).join(", ");
             const initializers = captureNames.map((name) =>
                 `${name}(${name}_arg)`
             ).join(", ");
             code +=
                 `\n${this.indent()}${funcName}_functor(${constructorParams}) : ${initializers} {}
-\n`;
+
+`;
 
             code += `${this.indent()}${returnType} operator()(${params}) `;
             if (node.body) {
@@ -381,7 +382,11 @@ export class CodeGenerator {
                     const capturedArgs = [...funcInfo.captures!.keys()].join(
                         ", ",
                     );
-                    return `${calleeName}_functor(${capturedArgs})`;
+                    const instanceName = `${calleeName}_instance`;
+                    let code =
+                        `auto ${instanceName} = ${calleeName}_functor(${capturedArgs});\n`;
+                    code += `${this.indent()}${instanceName}(${args});`;
+                    return code;
                 }
 
                 return `${calleeName}(${args})`;

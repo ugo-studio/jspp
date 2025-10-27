@@ -86,7 +86,7 @@ export class TypeAnalyzer {
 
             VariableDeclaration: {
                 enter: (node) => {
-                    if (ts.isVariableDeclaration(node) && node.initializer) {
+                    if (ts.isVariableDeclaration(node)) {
                         const name = node.name.getText();
                         // We can add more detailed inference here if needed
                         const typeInfo = { type: "auto" };
