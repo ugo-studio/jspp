@@ -3,7 +3,10 @@
   "module": "src/index.ts",
   "type": "module",
   "scripts": {
-    "dev": "bun --watch src/index.ts"
+    "test:compile": "bun run test/index.test.ts",
+    "test:build": "g++ ./test/output.cpp -o ./test/output.exe -std=c++23",
+    "test:run": "./test/output.exe",
+    "test": "bun run test:compile && bun run test:build && bun run test:run"
   },
   "devDependencies": {
     "@types/bun": "latest"

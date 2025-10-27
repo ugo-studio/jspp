@@ -1,41 +1,15 @@
+import { TypeAnalyzer } from "./analysis/typeAnalyzer";
 import { CodeGenerator } from "./core/generator";
 import { Parser } from "./core/parser";
 
-class Interpreter {
+export class Interpreter {
     private parser = new Parser();
+    private analyzer = new TypeAnalyzer();
     private generator = new CodeGenerator();
 
     public interpret(jsCode: string): string {
         const ast = this.parser.parse(jsCode);
-        return this.generator.generate(ast);
+        this.analyzer.analyze(ast);
+        return this.generator.generate(ast, this.analyzer);
     }
 }
-
-// Example Usage
-const jsCode = `
-let message = "Hello from JavaScript!";
-console.log(message);
-
-function greet(name) {
-    console.log("Hello, " + name);
-    return 0;
-}
-
-greet("C++");
-
-let x = 10.1+'';
-
-for (let i = 0; i < 5; i++) {
-    if (i % 2 === 0) {
-        console.log(i, "is even");
-    } else {
-        console.log(i, "is odd");
-    }
-}
-`;
-
-const interpreter = new Interpreter();
-const cppCode = interpreter.interpret(jsCode);
-
-console.log("--- Generated C++ Code ---");
-console.log(cppCode);

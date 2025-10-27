@@ -1,222 +1,305 @@
 import * as ts from "typescript";
 
+import { TypeAnalyzer, type TypeInfo } from "../analysis/typeAnalyzer";
 import type { Node } from "../ast/types";
 
 export class CodeGenerator {
     private indentationLevel: number = 0;
-    private functionDeclarations: string = "";
-    private mainCode: string = "";
-    private currentOutput: "main" | "function" = "main";
-    private symbolTable = new Map<string, string>();
+    private typeAnalyzer!: TypeAnalyzer;
 
-    public generate(node: Node): string {
-        this.visit(node);
-        let finalCode =
-            "#include <iostream>\n#include <string>\n#include <vector>\n\n";
-        finalCode += this.functionDeclarations;
-        finalCode += "\nint main() {\n";
-        finalCode += this.mainCode;
-        finalCode += "  return 0;\n}\n";
-        return finalCode;
+    /**
+     * Main entry point for the code generation process.
+     */
+    public generate(ast: Node, analyzer: TypeAnalyzer): string {
+        this.typeAnalyzer = analyzer;
+
+        const allFuncs = this.collectFunctions(ast);
+
+        let declarations = this.generateStructs() + "\n"; // This now works
+        allFuncs.forEach((funcNode) => {
+            declarations += this.generateFunctionOrClosure(funcNode) + "\n";
+        });
+
+        let mainCode = "int main() {\n";
+        this.indentationLevel++;
+        mainCode += this.visit(ast, { isMainContext: true });
+        this.indentationLevel--;
+        mainCode += "  return 0;\n}\n";
+
+        const includes =
+            "#include <iostream>\n#include <cstdio>\n#include <string>\n#include <vector>\n#include <variant>\n#include <functional>\n\n";
+
+        return includes + declarations + mainCode;
+    }
+
+    /**
+     * Generates all C++ struct definitions based on the TypeAnalyzer's findings.
+     */
+    private generateStructs(): string {
+        const structDefs = new Set<string>();
+        for (const scope of this.typeAnalyzer.scopeManager.getAllScopes()) {
+            for (const info of scope.symbols.values()) {
+                if (
+                    info.type === "struct" && info.structName && info.properties
+                ) {
+                    let structDef = `struct ${info.structName} {\n`;
+                    for (
+                        const [propName, propType] of info.properties.entries()
+                    ) {
+                        structDef += `  ${propType} ${propName};\n`;
+                    }
+                    structDef += "};\n";
+                    structDefs.add(structDef);
+                }
+            }
+        }
+        return Array.from(structDefs).join("\n");
+    }
+
+    /**
+     * Generates the C++ code for a given JavaScript function or closure.
+     */
+    private generateFunctionOrClosure(node: ts.FunctionDeclaration): string {
+        const info = this.typeAnalyzer.functionTypeInfo.get(node);
+        const funcName = node.name?.getText() ?? "anonymous";
+        const returnType = "auto";
+        const params = node.parameters.map((p) => `auto ${p.name.getText()}`)
+            .join(", ");
+
+        if (info?.isClosure && info.captures) {
+            let code = `struct ${funcName}_functor {\n`;
+            this.indentationLevel++;
+            info.captures.forEach((type, name) => {
+                code += `${this.indent()}auto& ${name};\n`;
+            });
+            const constructorParams = [...info.captures.entries()].map((
+                [name],
+            ) => `auto& ${name}_arg`).join(", ");
+            const initializers = [...info.captures.keys()].map((name) =>
+                `${name}(${name}_arg)`
+            ).join(", ");
+            code +=
+                `\n${this.indent()}${funcName}_functor(${constructorParams}) : ${initializers} {}\n\n`;
+            code += `${this.indent()}${returnType} operator()(${params}) `;
+            if (node.body) {
+                code += this.visit(node.body, { isMainContext: false });
+            } else {
+                code += "{}\n";
+            }
+            this.indentationLevel--;
+            code += `};\n`;
+            return code;
+        } else {
+            let code = `${returnType} ${funcName}(${params}) `;
+            if (node.body) {
+                code += this.visit(node.body, { isMainContext: false });
+            } else {
+                code += "{}\n";
+            }
+            return code;
+        }
+    }
+
+    /**
+     * The core recursive visitor that translates a TypeScript AST node into a C++ code string.
+     */
+    private visit(node: Node, context: { isMainContext: boolean }): string {
+        if (context.isMainContext && ts.isFunctionDeclaration(node)) {
+            return "";
+        }
+
+        switch (node.kind) {
+            case ts.SyntaxKind.SourceFile:
+                return (node as ts.SourceFile).statements.map((stmt) =>
+                    this.visit(stmt, context)
+                ).join("");
+
+            case ts.SyntaxKind.Block: {
+                let code = "{\n";
+                this.indentationLevel++;
+                code += (node as ts.Block).statements.map((stmt) =>
+                    this.visit(stmt, context)
+                ).join("");
+                this.indentationLevel--;
+                code += `${this.indent()}}\n`;
+                return code;
+            }
+
+            case ts.SyntaxKind.VariableStatement:
+                return this.indent() +
+                    this.visit(
+                        (node as ts.VariableStatement).declarationList,
+                        context,
+                    ) + ";\n";
+
+            case ts.SyntaxKind.VariableDeclarationList:
+                return (node as ts.VariableDeclarationList).declarations.map(
+                    (d) => this.visit(d, context),
+                ).join(", ");
+
+            case ts.SyntaxKind.VariableDeclaration: {
+                const varDecl = node as ts.VariableDeclaration;
+                const name = varDecl.name.getText();
+                const info = this.typeAnalyzer.scopeManager.lookup(name);
+
+                let type = "auto";
+                if (info) {
+                    type = info.structName ?? info.type;
+                }
+
+                let initializer = "";
+                if (varDecl.initializer) {
+                    initializer = " = " +
+                        this.visit(varDecl.initializer, context);
+                }
+                return `${type} ${name}${initializer}`;
+            }
+
+            case ts.SyntaxKind.ObjectLiteralExpression: {
+                const props = (node as ts.ObjectLiteralExpression).properties
+                    .map((prop) => {
+                        if (ts.isPropertyAssignment(prop)) {
+                            return this.visit(prop.initializer, context);
+                        }
+                        return "";
+                    })
+                    .join(", ");
+                return `{${props}}`;
+            }
+
+            case ts.SyntaxKind.ArrayLiteralExpression: {
+                const elements = (node as ts.ArrayLiteralExpression).elements
+                    .map((elem) => this.visit(elem, context))
+                    .join(", ");
+                return `{${elements}}`;
+            }
+
+            case ts.SyntaxKind.ForOfStatement: {
+                const forOf = node as ts.ForOfStatement;
+                let varName = "";
+                if (
+                    ts.isVariableDeclarationList(forOf.initializer) &&
+                    forOf.initializer.declarations[0]
+                ) {
+                    varName = forOf.initializer.declarations[0].name.getText();
+                }
+                let code = `${this.indent()}for (const auto& ${varName} : ${
+                    this.visit(forOf.expression, context)
+                }) `;
+                code += this.visit(forOf.statement, context);
+                return code;
+            }
+
+            case ts.SyntaxKind.PropertyAccessExpression: {
+                const propAccess = node as ts.PropertyAccessExpression;
+                return `${
+                    this.visit(propAccess.expression, context)
+                }.${propAccess.name.getText()}`;
+            }
+
+            case ts.SyntaxKind.ExpressionStatement:
+                return this.indent() +
+                    this.visit(
+                        (node as ts.ExpressionStatement).expression,
+                        context,
+                    ) + ";\n";
+
+            case ts.SyntaxKind.BinaryExpression: {
+                const binExpr = node as ts.BinaryExpression;
+                const op = binExpr.operatorToken.kind ===
+                        ts.SyntaxKind.EqualsEqualsEqualsToken
+                    ? "=="
+                    : binExpr.operatorToken.getText();
+                return `${this.visit(binExpr.left, context)} ${op} ${
+                    this.visit(binExpr.right, context)
+                }`;
+            }
+
+            case ts.SyntaxKind.CallExpression: {
+                const callExpr = node as ts.CallExpression;
+                const callee = callExpr.expression;
+                const args = callExpr.arguments.map((arg) =>
+                    this.visit(arg, context)
+                ).join(", ");
+
+                if (
+                    ts.isPropertyAccessExpression(callee) &&
+                    callee.expression.getText() === "console" &&
+                    callee.name.getText() === "log"
+                ) {
+                    return `std::cout << ${
+                        args.replace(/, /g, ' << " " << ')
+                    } << std::endl`;
+                }
+
+                const calleeName = callee.getText();
+                const funcInfo = this.findFunctionInfo(calleeName);
+                if (funcInfo?.isClosure) {
+                    const capturedArgs = [...funcInfo.captures!.keys()].join(
+                        ", ",
+                    );
+                    return `${calleeName}_functor(${capturedArgs})`;
+                }
+
+                return `${calleeName}(${args})`;
+            }
+
+            case ts.SyntaxKind.ReturnStatement: {
+                const returnStmt = node as ts.ReturnStatement;
+                if (returnStmt.expression) {
+                    const exprText = this.visit(returnStmt.expression, context);
+                    const funcInfo = this.findFunctionInfo(exprText);
+                    if (funcInfo?.isClosure) {
+                        const capturedArgs = [...funcInfo.captures!.keys()]
+                            .join(", ");
+                        return `${this.indent()}return ${exprText}_functor(${capturedArgs});\n`;
+                    }
+                    return `${this.indent()}return ${exprText};\n`;
+                }
+                return `${this.indent()}return;\n`;
+            }
+
+            case ts.SyntaxKind.Identifier:
+                return (node as ts.Identifier).text;
+            case ts.SyntaxKind.NumericLiteral:
+                return (node as ts.NumericLiteral).text;
+            case ts.SyntaxKind.StringLiteral:
+                return `"${(node as ts.StringLiteral).text}"`;
+            case ts.SyntaxKind.TrueKeyword:
+                return "true";
+            case ts.SyntaxKind.FalseKeyword:
+                return "false";
+
+            default:
+                return `/* Unhandled node: ${ts.SyntaxKind[node.kind]} */`;
+        }
     }
 
     private indent() {
         return "  ".repeat(this.indentationLevel);
     }
 
-    private appendTo(code: string) {
-        if (this.currentOutput === "main") {
-            this.mainCode += code;
-        } else {
-            this.functionDeclarations += code;
-        }
+    private collectFunctions(node: Node): ts.FunctionDeclaration[] {
+        const funcs: ts.FunctionDeclaration[] = [];
+        const visitor = (child: Node) => {
+            if (ts.isFunctionDeclaration(child)) {
+                funcs.push(child);
+            }
+            ts.forEachChild(child, visitor);
+        };
+        ts.forEachChild(node, visitor);
+        return funcs;
     }
 
-    private inferType(node: ts.Expression): string {
-        if (ts.isStringLiteral(node)) {
-            return "std::string";
+    private findFunctionInfo(name: string): TypeInfo | undefined {
+        for (
+            const [funcNode, info] of this.typeAnalyzer.functionTypeInfo
+                .entries()
+        ) {
+            if (funcNode.name?.getText() === name) {
+                return info;
+            }
         }
-        if (ts.isNumericLiteral(node)) {
-            // Basic check for float/double
-            return node.text.includes(".") ? "double" : "int";
-        }
-        // Default or more complex inference can be added here
-        return "auto";
-    }
-
-    private visit(node: Node) {
-        switch (node.kind) {
-            case ts.SyntaxKind.SourceFile:
-                ts.forEachChild(node, (child) => this.visit(child));
-                break;
-
-            case ts.SyntaxKind.VariableStatement:
-                this.visit((node as ts.VariableStatement).declarationList);
-                this.appendTo(";\n");
-                break;
-
-            case ts.SyntaxKind.VariableDeclarationList:
-                const varList = node as ts.VariableDeclarationList;
-                varList.declarations.forEach((declaration, index) => {
-                    this.visit(declaration);
-                    if (index < varList.declarations.length - 1) {
-                        this.appendTo(", ");
-                    }
-                });
-                break;
-
-            case ts.SyntaxKind.VariableDeclaration:
-                const varDecl = node as ts.VariableDeclaration;
-                const varName = varDecl.name.getText();
-                let varType = "auto";
-                if (varDecl.initializer) {
-                    varType = this.inferType(varDecl.initializer);
-                    this.symbolTable.set(varName, varType);
-                    this.appendTo(`${this.indent()}${varType} ${varName} = `);
-                    this.visit(varDecl.initializer);
-                } else {
-                    // Default to int for uninitialized variables, or handle differently
-                    this.symbolTable.set(varName, "int");
-                    this.appendTo(`${this.indent()}int ${varName}`);
-                }
-                break;
-
-            case ts.SyntaxKind.FunctionDeclaration:
-                this.currentOutput = "function";
-                const funcDecl = node as ts.FunctionDeclaration;
-                const funcName = funcDecl.name?.getText() ?? "anonymous";
-                // Simple return type inference, defaults to void
-                let returnType = "void";
-                if (funcDecl.body) {
-                    funcDecl.body.statements.forEach((statement) => {
-                        if (
-                            ts.isReturnStatement(statement) &&
-                            statement.expression
-                        ) {
-                            returnType = this.inferType(statement.expression);
-                        }
-                    });
-                }
-                this.appendTo(`${returnType} ${funcName}(`);
-                funcDecl.parameters.forEach((param, index) => {
-                    // Defaulting parameter types to auto, a real implementation would need more info
-                    this.appendTo(`auto ${param.name.getText()}`);
-                    if (index < funcDecl.parameters.length - 1) {
-                        this.appendTo(", ");
-                    }
-                });
-                this.appendTo(")");
-                this.visit(funcDecl.body!);
-                this.appendTo("\n");
-                this.currentOutput = "main";
-                break;
-
-            case ts.SyntaxKind.IfStatement:
-                const ifStmt = node as ts.IfStatement;
-                this.appendTo(`${this.indent()}if (`);
-                this.visit(ifStmt.expression);
-                this.appendTo(") ");
-                this.visit(ifStmt.thenStatement);
-                if (ifStmt.elseStatement) {
-                    this.appendTo(" else ");
-                    this.visit(ifStmt.elseStatement);
-                }
-                break;
-
-            case ts.SyntaxKind.ForStatement:
-                const forStmt = node as ts.ForStatement;
-                this.appendTo(`${this.indent()}for (`);
-                if (forStmt.initializer) this.visit(forStmt.initializer);
-                this.appendTo("; ");
-                if (forStmt.condition) this.visit(forStmt.condition);
-                this.appendTo("; ");
-                if (forStmt.incrementor) this.visit(forStmt.incrementor);
-                this.appendTo(") ");
-                this.visit(forStmt.statement);
-                break;
-
-            case ts.SyntaxKind.BinaryExpression:
-                const binExpr = node as ts.BinaryExpression;
-                this.visit(binExpr.left);
-                this.appendTo(` ${binExpr.operatorToken.getText()} `);
-                this.visit(binExpr.right);
-                break;
-
-            case ts.SyntaxKind.PrefixUnaryExpression: // handles i++
-                const prefixUnary = node as ts.PrefixUnaryExpression;
-                this.appendTo(ts.SyntaxKind[prefixUnary.operator]);
-                this.visit(prefixUnary.operand);
-                break;
-
-            case ts.SyntaxKind.PostfixUnaryExpression: // handles i++
-                const postfixUnary = node as ts.PostfixUnaryExpression;
-                this.visit(postfixUnary.operand);
-                this.appendTo(
-                    postfixUnary.operator === ts.SyntaxKind.PlusPlusToken
-                        ? "++"
-                        : "--",
-                );
-                break;
-
-            case ts.SyntaxKind.Block:
-                this.appendTo("{\n");
-                this.indentationLevel++;
-                (node as ts.Block).statements.forEach((stmt) => {
-                    this.appendTo(this.indent());
-                    this.visit(stmt);
-                });
-                this.indentationLevel--;
-                this.appendTo(`${this.indent()}}\n`);
-                break;
-
-            case ts.SyntaxKind.ExpressionStatement:
-                this.visit((node as ts.ExpressionStatement).expression);
-                this.appendTo(";\n");
-                break;
-
-            case ts.SyntaxKind.CallExpression:
-                const callExpr = node as ts.CallExpression;
-                // Special handling for console.log
-                if (
-                    ts.isPropertyAccessExpression(callExpr.expression) &&
-                    callExpr.expression.name.getText() === "log"
-                ) {
-                    this.appendTo("std::cout << ");
-                    callExpr.arguments.forEach((arg, index) => {
-                        this.visit(arg);
-                        if (index < callExpr.arguments.length - 1) {
-                            this.appendTo(' << " " << ');
-                        }
-                    });
-                    this.appendTo(" << std::endl");
-                } else {
-                    this.visit(callExpr.expression);
-                    this.appendTo("(");
-                    callExpr.arguments.forEach((arg, index) => {
-                        this.visit(arg);
-                        if (index < callExpr.arguments.length - 1) {
-                            this.appendTo(", ");
-                        }
-                    });
-                    this.appendTo(")");
-                }
-                break;
-
-            case ts.SyntaxKind.Identifier:
-                this.appendTo((node as ts.Identifier).text);
-                break;
-            case ts.SyntaxKind.StringLiteral:
-                this.appendTo(`"${(node as ts.StringLiteral).text}"`);
-                break;
-            case ts.SyntaxKind.NumericLiteral:
-                this.appendTo((node as ts.NumericLiteral).text);
-                break;
-
-            default:
-                // For debugging unhandled nodes
-                // console.log("Unhandled node type:", ts.SyntaxKind[node.kind]);
-                ts.forEachChild(node, (child) => this.visit(child));
-                break;
-        }
+        return undefined;
     }
 }
