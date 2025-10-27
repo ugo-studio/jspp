@@ -131,7 +131,9 @@ export class CodeGenerator {
 
             let code = "";
             if (hasCaptures) {
-                const templateParams = captureNames.map((_, i) => `typename T${i}`).join(", ");
+                const templateParams = captureNames.map((_, i) =>
+                    `typename T${i}`
+                ).join(", ");
                 code += `template<${templateParams}>\n`;
             }
             code += `struct ${funcName}_functor {\n`;
@@ -143,9 +145,14 @@ export class CodeGenerator {
                     code += `${this.indent()}T${i}& ${name};\n`;
                 });
 
-                const constructorParams = captureNames.map((name, i) => `T${i}& ${name}_arg`).join(", ");
-                const initializers = captureNames.map((name) => `${name}(${name}_arg)`).join(", ");
-                code += `\n${this.indent()}${funcName}_functor(${constructorParams}) : ${initializers} {}\n\n`;
+                const constructorParams = captureNames.map((name, i) =>
+                    `T${i}& ${name}_arg`
+                ).join(", ");
+                const initializers = captureNames.map((name) =>
+                    `${name}(${name}_arg)`
+                ).join(", ");
+                code +=
+                    `\n${this.indent()}${funcName}_functor(${constructorParams}) : ${initializers} {}\n\n`;
             } else {
                 code += `\n${this.indent()}${funcName}_functor() {}\n\n`;
             }
@@ -257,7 +264,38 @@ export class CodeGenerator {
             case ts.SyntaxKind.Block: {
                 let code = "{\n";
                 this.indentationLevel++;
-                code += (node as ts.Block).statements.map((stmt) =>
+                const block = node as ts.Block;
+                const funcDecls = block.statements.filter(
+                    ts.isFunctionDeclaration,
+                );
+                const otherStmts = block.statements.filter((s) =>
+                    !ts.isFunctionDeclaration(s)
+                );
+
+                const [closureFuncs, nonClosureFuncs] = funcDecls.reduce<
+                    [ts.FunctionDeclaration[], ts.FunctionDeclaration[]]
+                >(([closures, nonClosures], func) => {
+                    const info = this.typeAnalyzer.functionTypeInfo.get(func);
+                    if (info?.isClosure) {
+                        closures.push(func);
+                    } else {
+                        nonClosures.push(func);
+                    }
+                    return [closures, nonClosures];
+                }, [[], []]);
+
+                // Hoist non-closures
+                code += nonClosureFuncs.map((stmt) =>
+                    this.visit(stmt, { ...context, isFunctionBody: false })
+                ).join("");
+
+                // Process other statements and closures in order
+                const mixedStmts = [...otherStmts, ...closureFuncs].sort((
+                    a,
+                    b,
+                ) => a.pos - b.pos);
+
+                code += mixedStmts.map((stmt) =>
                     this.visit(stmt, { ...context, isFunctionBody: false })
                 ).join("");
 
@@ -443,7 +481,9 @@ export class CodeGenerator {
                             );
                             if (funcInfo) {
                                 const signature = `JsVariant(${
-                                    declaration.parameters.map(() => "JsVariant")
+                                    declaration.parameters.map(() =>
+                                        "JsVariant"
+                                    )
                                         .join(", ")
                                 })`;
                                 return `${this.indent()}return std::function<${signature}>(${exprText});\n`;

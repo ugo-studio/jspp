@@ -1,15 +1,14 @@
 console.log("--- Functions ---");
 
 function main() {
-  function main() {
-    local();
-    console.log("main");
+  local0();
+  local1();
+  function local0() {
+    console.log("local0");
   }
-  main();
-  function local() {
-    console.log("local");
+  function local1() {
+    console.log("local1");
   }
-  local();
   hoisted();
 }
 
