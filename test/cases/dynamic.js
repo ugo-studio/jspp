@@ -1,4 +1,4 @@
-console.log("--- Dynamic ---")
+console.log("--- Dynamic ---");
 
 let a;
 console.log(a);
@@ -13,4 +13,7 @@ a = true;
 console.log(a);
 
 a = null;
+console.log(a);
+
+a = undefined;
 console.log(a);

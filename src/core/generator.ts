@@ -53,34 +53,47 @@ export class CodeGenerator {
         isAssignment: boolean = false,
     ): string {
         let lambda = "[=]";
-
-        const params = node.parameters.map((p) => `auto ${p.name.getText()}`)
-            .join(", ");
-        lambda += `(${params}) mutable -> JsVariant `;
+        lambda += `(const std::vector<JsVariant>& args) mutable -> JsVariant `;
 
         if (node.body) {
             if (ts.isBlock(node.body)) {
-                lambda += this.visit(node.body, {
+                let paramExtraction = "";
+                this.indentationLevel++;
+                node.parameters.forEach((p, i) => {
+                    const name = p.name.getText();
+                    paramExtraction += `${this.indent()}auto ${name} = args.size() > ${i} ? args[${i}] : undefined;\n`;
+                });
+                this.indentationLevel--;
+
+                const blockContent = this.visit(node.body, {
                     isMainContext: false,
                     isInsideFunction: true,
                     isFunctionBody: true,
                 });
+                // The block visitor already adds braces, so we need to inject the param extraction.
+                lambda += "{\n" + paramExtraction + blockContent.substring(2);
             } else {
-                lambda += `{ return ${
+                lambda += "{\n";
+                this.indentationLevel++;
+                node.parameters.forEach((p, i) => {
+                    const name = p.name.getText();
+                    lambda += `${this.indent()}auto ${name} = args.size() > ${i} ? args[${i}] : undefined;\n`;
+                });
+                lambda += `${this.indent()}return ${
                     this.visit(node.body, {
                         isMainContext: false,
                         isInsideFunction: true,
                         isFunctionBody: false,
                     })
-                }; }`;
+                };\n`;
+                this.indentationLevel--;
+                lambda += `${this.indent()}}`;
             }
         } else {
             lambda += "{ return undefined; }\n";
         }
 
-        const signature = `JsVariant(${
-            node.parameters.map(() => "JsVariant").join(", ")
-        })`;
+        const signature = `JsVariant(const std::vector<JsVariant>&)`;
         const fullExpression = `std::function<${signature}>(${lambda})`;
 
         if (ts.isFunctionDeclaration(node) && !isAssignment) {
@@ -266,20 +279,8 @@ export class CodeGenerator {
 
                 let initializer = "";
                 if (varDecl.initializer) {
-                    if (ts.isArrowFunction(varDecl.initializer)) {
-                        const arrowFunc = varDecl.initializer;
-                        const signature = `JsVariant(${
-                            arrowFunc.parameters.map(() => "JsVariant").join(
-                                ", ",
-                            )
-                        })`;
-                        initializer = ` = std::function<${signature}>(${
-                            this.visit(arrowFunc, context)
-                        })`;
-                    } else {
-                        initializer = " = " +
-                            this.visit(varDecl.initializer, context);
-                    }
+                    initializer = " = " +
+                        this.visit(varDecl.initializer, context);
                 }
 
                 if (context.isAssignmentOnly) {
@@ -382,23 +383,6 @@ export class CodeGenerator {
                 const rightText = this.visit(binExpr.right, context);
 
                 if (binExpr.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
-                    if (ts.isArrowFunction(binExpr.right)) {
-                        const arrowFunc = binExpr.right;
-                        const signature = `JsVariant(${
-                            arrowFunc.parameters.map(() => "JsVariant").join(
-                                ", ",
-                            )
-                        })`;
-                        const lambda = this.visit(arrowFunc, context);
-                        return `*${leftText} ${op} std::function<${signature}>(${lambda})`;
-                    }
-
-                    if (ts.isBinaryExpression(binExpr.right)) {
-                        return `*${leftText} ${op} ${
-                            this.visit(binExpr.right, context)
-                        }`;
-                    }
-
                     return `*${leftText} ${op} ${rightText}`;
                 }
 
@@ -460,10 +444,8 @@ export class CodeGenerator {
                     return `console.${methodName}(${args})`;
                 }
 
-                const paramTypes = callExpr.arguments.map(() => "JsVariant")
-                    .join(", ");
                 const calleeCode = this.visit(callee, context);
-                return `std::any_cast<std::function<JsVariant(${paramTypes})>>(*${calleeCode})(${args})`;
+                return `std::any_cast<std::function<JsVariant(const std::vector<JsVariant>&)>>(*${calleeCode})({${args}})`;
             }
 
             case ts.SyntaxKind.ReturnStatement: {
