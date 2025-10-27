@@ -15,8 +15,10 @@ export class CodeGenerator {
 
         const allFuncs = this.collectFunctions(ast);
 
-        const closures = allFuncs.filter(f => this.typeAnalyzer.functionTypeInfo.get(f)?.isClosure);
-        const regularFuncs = allFuncs.filter(f => !this.typeAnalyzer.functionTypeInfo.get(f)?.isClosure);
+        const topLevelFuncs = allFuncs.filter(f => f.parent.kind === ts.SyntaxKind.SourceFile);
+
+        const closures = topLevelFuncs.filter(f => this.typeAnalyzer.functionTypeInfo.get(f)?.isClosure);
+        const regularFuncs = topLevelFuncs.filter(f => !this.typeAnalyzer.functionTypeInfo.get(f)?.isClosure);
 
         let declarations = this.generateStructs() + "\n"; // This now works
 
@@ -30,7 +32,7 @@ export class CodeGenerator {
 
         let mainCode = "int main() {\n";
         this.indentationLevel++;
-        mainCode += this.visit(ast, { isMainContext: true });
+        mainCode += this.visit(ast, { isMainContext: true, isInsideFunction: false });
         this.indentationLevel--;
         mainCode += "  return 0;\n}\n";
 
@@ -71,7 +73,7 @@ export class CodeGenerator {
         const info = this.typeAnalyzer.functionTypeInfo.get(node);
         const funcName = node.name?.getText() ?? "anonymous";
         const returnType = "auto";
-        const params = node.parameters.map((p) => `auto ${p.name.getText()}`)
+        const params = node.parameters.map((p) => `auto ${p.name.getText()}`) 
             .join(", ");
 
         if (info?.isClosure && info.captures) {
@@ -86,11 +88,13 @@ export class CodeGenerator {
 
             const constructorParams = captureNames.map((name, i) => `T${i} ${name}_arg`).join(", ");
             const initializers = captureNames.map((name) => `${name}(${name}_arg)`).join(", ");
-            code += `\n${this.indent()}${funcName}_functor(${constructorParams}) : ${initializers} {}\n\n`;
+            code += `\n${this.indent()}${funcName}_functor(${constructorParams}) : ${initializers} {}
+
+`;
 
             code += `${this.indent()}${returnType} operator()(${params}) `;
             if (node.body) {
-                code += this.visit(node.body, { isMainContext: false });
+                code += this.visit(node.body, { isMainContext: false, isInsideFunction: true });
             } else {
                 code += "{}\n";
             }
@@ -100,7 +104,7 @@ export class CodeGenerator {
         } else {
             let code = `${returnType} ${funcName}(${params}) `;
             if (node.body) {
-                code += this.visit(node.body, { isMainContext: false });
+                code += this.visit(node.body, { isMainContext: false, isInsideFunction: true });
             } else {
                 code += "{}\n";
             }
@@ -108,11 +112,41 @@ export class CodeGenerator {
         }
     }
 
+    private generateLambda(node: ts.FunctionDeclaration): string {
+        const info = this.typeAnalyzer.functionTypeInfo.get(node);
+        const funcName = node.name?.getText();
+
+        let lambda = "";
+        if (info?.isClosure && info.captures) {
+            const capturedArgs = [...info.captures.keys()].map(n => `&${n}`).join(', ');
+            lambda += `[${capturedArgs}]`;
+        } else {
+            lambda += `[]`;
+        }
+
+        const params = node.parameters.map((p) => `auto ${p.name.getText()}`).join(", ");
+        lambda += `(${params}) `;
+
+        if (node.body) {
+            lambda += this.visit(node.body, { isMainContext: false, isInsideFunction: true });
+        } else {
+            lambda += "{}\n";
+        }
+
+        if (funcName) {
+            return `${this.indent()}auto ${funcName} = ${lambda};\n`;
+        }
+        return `${this.indent()}${lambda};\n`;
+    }
+
     /**
      * The core recursive visitor that translates a TypeScript AST node into a C++ code string.
      */
-    private visit(node: Node, context: { isMainContext: boolean }): string {
+    private visit(node: Node, context: { isMainContext: boolean; isInsideFunction: boolean }): string {
         if (ts.isFunctionDeclaration(node)) {
+            if (context.isInsideFunction) {
+                return this.generateLambda(node as ts.FunctionDeclaration);
+            }
             return "";
         }
 
@@ -191,8 +225,8 @@ export class CodeGenerator {
                 ) {
                     varName = forOf.initializer.declarations[0].name.getText();
                 }
-                let code = `${this.indent()}for (const auto& ${varName} : ${
-                    this.visit(forOf.expression, context)
+                let code = `${this.indent()}for (const auto& ${varName} : ${ 
+                    this.visit(forOf.expression, context) 
                 }) `;
                 code += this.visit(forOf.statement, context);
                 return code;
@@ -200,8 +234,8 @@ export class CodeGenerator {
 
             case ts.SyntaxKind.PropertyAccessExpression: {
                 const propAccess = node as ts.PropertyAccessExpression;
-                return `${
-                    this.visit(propAccess.expression, context)
+                return `${ 
+                    this.visit(propAccess.expression, context) 
                 }.${propAccess.name.getText()}`;
             }
 
@@ -218,8 +252,8 @@ export class CodeGenerator {
                         ts.SyntaxKind.EqualsEqualsEqualsToken
                     ? "=="
                     : binExpr.operatorToken.getText();
-                return `${this.visit(binExpr.left, context)} ${op} ${
-                    this.visit(binExpr.right, context)
+                return `${this.visit(binExpr.left, context)} ${op} ${ 
+                    this.visit(binExpr.right, context) 
                 }`;
             }
 
@@ -235,8 +269,8 @@ export class CodeGenerator {
                     callee.expression.getText() === "console" &&
                     callee.name.getText() === "log"
                 ) {
-                    return `std::cout << ${
-                        args.replace(/, /g, ' << " " << ')
+                    return `std::cout << ${ 
+                        args.replace(/, /g, ' << " " << ') 
                     } << std::endl`;
                 }
 
