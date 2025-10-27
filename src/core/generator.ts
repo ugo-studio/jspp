@@ -15,10 +15,16 @@ export class CodeGenerator {
 
         const allFuncs = this.collectFunctions(ast);
 
-        const topLevelFuncs = allFuncs.filter(f => f.parent.kind === ts.SyntaxKind.SourceFile);
+        const topLevelFuncs = allFuncs.filter((f) =>
+            f.parent.kind === ts.SyntaxKind.SourceFile
+        );
 
-        const closures = topLevelFuncs.filter(f => this.typeAnalyzer.functionTypeInfo.get(f)?.isClosure);
-        const regularFuncs = topLevelFuncs.filter(f => !this.typeAnalyzer.functionTypeInfo.get(f)?.isClosure);
+        const closures = topLevelFuncs.filter((f) =>
+            this.typeAnalyzer.functionTypeInfo.get(f)?.isClosure
+        );
+        const regularFuncs = topLevelFuncs.filter((f) =>
+            !this.typeAnalyzer.functionTypeInfo.get(f)?.isClosure
+        );
 
         let declarations = this.generateStructs() + "\n"; // This now works
 
@@ -31,15 +37,20 @@ export class CodeGenerator {
             const funcName = funcNode.name!.getText();
             if (visited.has(funcName)) return;
             if (visiting.has(funcName)) {
-                console.error(`Cycle detected in function calls involving ${funcName}`);
+                console.error(
+                    `Cycle detected in function calls involving ${funcName}`,
+                );
                 return;
             }
 
             visiting.add(funcName);
 
-            const dependencies = this.typeAnalyzer.dependencyGraph.get(funcName) || [];
-            dependencies.forEach(depName => {
-                const depNode = regularFuncs.find(f => f.name?.getText() === depName);
+            const dependencies =
+                this.typeAnalyzer.dependencyGraph.get(funcName) || [];
+            dependencies.forEach((depName) => {
+                const depNode = regularFuncs.find((f) =>
+                    f.name?.getText() === depName
+                );
                 if (depNode) {
                     visitFunc(depNode);
                 }
@@ -62,12 +73,20 @@ export class CodeGenerator {
 
         let mainCode = "int main() {\n";
         this.indentationLevel++;
-        mainCode += this.visit(ast, { isMainContext: true, isInsideFunction: false });
+        mainCode += this.visit(ast, {
+            isMainContext: true,
+            isInsideFunction: false,
+            isFunctionBody: false,
+        });
         this.indentationLevel--;
         mainCode += "  return 0;\n}\n";
 
         const includes =
-            "#include <iostream>\n#include <string>\n#include <vector>\n#include <variant>\n#include <functional>\n\n";
+            `#include <iostream>\n#include <string>\n#include <vector>\n#include <variant>\n#include <functional>\n\n` +
+            `struct Undefined {};\nUndefined undefined;\n\n` +
+            `struct Null {};\nNull null;\n\n` +
+            `std::ostream& operator<<(std::ostream& os, const Undefined&) { os << "undefined"; return os; }\n` +
+            `std::ostream& operator<<(std::ostream& os, const Null&) { os << "null"; return os; }\n\n`;
 
         return includes + declarations + mainCode;
     }
@@ -102,42 +121,55 @@ export class CodeGenerator {
     private generateFunctionOrClosure(node: ts.FunctionDeclaration): string {
         const info = this.typeAnalyzer.functionTypeInfo.get(node);
         const funcName = node.name?.getText() ?? "anonymous";
-        const returnType = info?.returnsValue ? "auto" : "void";
+        const returnType = "auto";
         const params = node.parameters.map((p) => `auto ${p.name.getText()}`)
             .join(", ");
 
         if (info?.isClosure && info.captures) {
             const captureNames = [...info.captures.keys()];
-            const templateParams = captureNames.map((_, i) => `typename T${i}`).join(', ');
+            const templateParams = captureNames.map((_, i) => `typename T${i}`)
+                .join(", ");
 
-            let code = `template<${templateParams}>\nstruct ${funcName}_functor {
-`;
+            let code =
+                `template<${templateParams}>\nstruct ${funcName}_functor {\n`;
             this.indentationLevel++;
             captureNames.forEach((name, i) => {
                 code += `${this.indent()}T${i} ${name};\n`;
             });
 
-            const constructorParams = captureNames.map((name, i) => `T${i} ${name}_arg`).join(", ");
-            const initializers = captureNames.map((name) => `${name}(${name}_arg)`).join(", ");
-            code += `\n${this.indent()}${funcName}_functor(${constructorParams}) : ${initializers} {}
-
-`;
+            const constructorParams = captureNames.map((name, i) =>
+                `T${i} ${name}_arg`
+            ).join(", ");
+            const initializers = captureNames.map((name) =>
+                `${name}(${name}_arg)`
+            ).join(", ");
+            code +=
+                `\n${this.indent()}${funcName}_functor(${constructorParams}) : ${initializers} {}\n\n`;
 
             code += `${this.indent()}${returnType} operator()(${params}) `;
             if (node.body) {
-                code += this.visit(node.body, { isMainContext: false, isInsideFunction: true });
+                code += this.visit(node.body, {
+                    isMainContext: false,
+                    isInsideFunction: true,
+                    isFunctionBody: true,
+                });
             } else {
-                code += "{}\n";
+                code += "{ return undefined; }\n";
             }
             this.indentationLevel--;
-            code += `};\n`;
+            code += `};
+`;
             return code;
         } else {
             let code = `${returnType} ${funcName}(${params}) `;
             if (node.body) {
-                code += this.visit(node.body, { isMainContext: false, isInsideFunction: true });
+                code += this.visit(node.body, {
+                    isMainContext: false,
+                    isInsideFunction: true,
+                    isFunctionBody: true,
+                });
             } else {
-                code += "{}\n";
+                code += "{ return undefined; }\n";
             }
             return code;
         }
@@ -149,19 +181,25 @@ export class CodeGenerator {
 
         let lambda = "";
         if (info?.isClosure && info.captures) {
-            const capturedArgs = [...info.captures.keys()].map(n => `&${n}`).join(', ');
+            const capturedArgs = [...info.captures.keys()].map((n) => `&${n}`)
+                .join(", ");
             lambda += `[${capturedArgs}]`;
         } else {
             lambda += `[]`;
         }
 
-        const params = node.parameters.map((p) => `auto ${p.name.getText()}`).join(", ");
+        const params = node.parameters.map((p) => `auto ${p.name.getText()}`)
+            .join(", ");
         lambda += `(${params}) `;
 
         if (node.body) {
-            lambda += this.visit(node.body, { isMainContext: false, isInsideFunction: true });
+            lambda += this.visit(node.body, {
+                isMainContext: false,
+                isInsideFunction: true,
+                isFunctionBody: true,
+            });
         } else {
-            lambda += "{}\n";
+            lambda += "{ return undefined; }\n";
         }
 
         if (funcName) {
@@ -173,7 +211,14 @@ export class CodeGenerator {
     /**
      * The core recursive visitor that translates a TypeScript AST node into a C++ code string.
      */
-    private visit(node: Node, context: { isMainContext: boolean; isInsideFunction: boolean }): string {
+    private visit(
+        node: Node,
+        context: {
+            isMainContext: boolean;
+            isInsideFunction: boolean;
+            isFunctionBody: boolean;
+        },
+    ): string {
         if (ts.isFunctionDeclaration(node)) {
             if (context.isInsideFunction) {
                 return this.generateLambda(node as ts.FunctionDeclaration);
@@ -191,8 +236,22 @@ export class CodeGenerator {
                 let code = "{\n";
                 this.indentationLevel++;
                 code += (node as ts.Block).statements.map((stmt) =>
-                    this.visit(stmt, context)
+                    this.visit(stmt, { ...context, isFunctionBody: false })
                 ).join("");
+
+                if (context.isFunctionBody) {
+                    const lastStatement =
+                        (node as ts.Block)
+                            .statements[
+                                (node as ts.Block).statements.length - 1
+                            ];
+                    if (
+                        !lastStatement || !ts.isReturnStatement(lastStatement)
+                    ) {
+                        code += `${this.indent()}return undefined;\n`;
+                    }
+                }
+
                 this.indentationLevel--;
                 code += `${this.indent()}}\n`;
                 return code;
@@ -256,8 +315,8 @@ export class CodeGenerator {
                 ) {
                     varName = forOf.initializer.declarations[0].name.getText();
                 }
-                let code = `${this.indent()}for (const auto& ${varName} : ${ 
-                    this.visit(forOf.expression, context) 
+                let code = `${this.indent()}for (const auto& ${varName} : ${
+                    this.visit(forOf.expression, context)
                 }) `;
                 code += this.visit(forOf.statement, context);
                 return code;
@@ -265,8 +324,8 @@ export class CodeGenerator {
 
             case ts.SyntaxKind.PropertyAccessExpression: {
                 const propAccess = node as ts.PropertyAccessExpression;
-                return `${ 
-                    this.visit(propAccess.expression, context) 
+                return `${
+                    this.visit(propAccess.expression, context)
                 }.${propAccess.name.getText()}`;
             }
 
@@ -283,8 +342,8 @@ export class CodeGenerator {
                         ts.SyntaxKind.EqualsEqualsEqualsToken
                     ? "=="
                     : binExpr.operatorToken.getText();
-                return `${this.visit(binExpr.left, context)} ${op} ${ 
-                    this.visit(binExpr.right, context) 
+                return `${this.visit(binExpr.left, context)} ${op} ${
+                    this.visit(binExpr.right, context)
                 }`;
             }
 
@@ -300,8 +359,8 @@ export class CodeGenerator {
                     callee.expression.getText() === "console" &&
                     callee.name.getText() === "log"
                 ) {
-                    return `std::cout << ${ 
-                        args.replace(/, /g, ' << " " << ') 
+                    return `std::cout << ${
+                        args.replace(/, /g, ' << " " << ')
                     } << std::endl`;
                 }
 
@@ -329,7 +388,7 @@ export class CodeGenerator {
                     }
                     return `${this.indent()}return ${exprText};\n`;
                 }
-                return `${this.indent()}return;\n`;
+                return `${this.indent()}return undefined;\n`;
             }
 
             case ts.SyntaxKind.Identifier:
@@ -342,6 +401,10 @@ export class CodeGenerator {
                 return "true";
             case ts.SyntaxKind.FalseKeyword:
                 return "false";
+            case ts.SyntaxKind.UndefinedKeyword:
+                return "undefined";
+            case ts.SyntaxKind.NullKeyword:
+                return "null";
 
             default:
                 return `/* Unhandled node: ${ts.SyntaxKind[node.kind]} */`;
