@@ -22,11 +22,41 @@ export class CodeGenerator {
 
         let declarations = this.generateStructs() + "\n"; // This now works
 
+        // Topological sort
+        const sortedFuncs: ts.FunctionDeclaration[] = [];
+        const visited = new Set<string>();
+        const visiting = new Set<string>(); // for cycle detection
+
+        const visitFunc = (funcNode: ts.FunctionDeclaration) => {
+            const funcName = funcNode.name!.getText();
+            if (visited.has(funcName)) return;
+            if (visiting.has(funcName)) {
+                console.error(`Cycle detected in function calls involving ${funcName}`);
+                return;
+            }
+
+            visiting.add(funcName);
+
+            const dependencies = this.typeAnalyzer.dependencyGraph.get(funcName) || [];
+            dependencies.forEach(depName => {
+                const depNode = regularFuncs.find(f => f.name?.getText() === depName);
+                if (depNode) {
+                    visitFunc(depNode);
+                }
+            });
+
+            visiting.delete(funcName);
+            visited.add(funcName);
+            sortedFuncs.push(funcNode);
+        };
+
+        regularFuncs.forEach(visitFunc);
+
         closures.forEach((funcNode) => {
             declarations += this.generateFunctionOrClosure(funcNode) + "\n";
         });
 
-        regularFuncs.forEach((funcNode) => {
+        sortedFuncs.forEach((funcNode) => {
             declarations += this.generateFunctionOrClosure(funcNode) + "\n";
         });
 
@@ -72,15 +102,16 @@ export class CodeGenerator {
     private generateFunctionOrClosure(node: ts.FunctionDeclaration): string {
         const info = this.typeAnalyzer.functionTypeInfo.get(node);
         const funcName = node.name?.getText() ?? "anonymous";
-        const returnType = "auto";
-        const params = node.parameters.map((p) => `auto ${p.name.getText()}`) 
+        const returnType = info?.returnsValue ? "auto" : "void";
+        const params = node.parameters.map((p) => `auto ${p.name.getText()}`)
             .join(", ");
 
         if (info?.isClosure && info.captures) {
             const captureNames = [...info.captures.keys()];
             const templateParams = captureNames.map((_, i) => `typename T${i}`).join(', ');
 
-            let code = `template<${templateParams}>\nstruct ${funcName}_functor {\n`;
+            let code = `template<${templateParams}>\nstruct ${funcName}_functor {
+`;
             this.indentationLevel++;
             captureNames.forEach((name, i) => {
                 code += `${this.indent()}T${i} ${name};\n`;

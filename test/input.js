@@ -33,11 +33,13 @@
 // }
 
 function hello() {
-  function world() {
-    console.log("world");
-  }
   console.log("hello");
-  world();
+  console.log(world());
+  return 0;
+}
+function world() {
+  console.log("world");
+  return 1;
 }
 
-hello();
+console.log(hello());

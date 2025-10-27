@@ -11,6 +11,7 @@ export interface TypeInfo {
     structName?: string;
     properties?: Map<string, string>;
     elementType?: string;
+    returnsValue?: boolean;
 }
 
 export class TypeAnalyzer {
@@ -20,6 +21,7 @@ export class TypeAnalyzer {
         ts.FunctionDeclaration,
         TypeInfo
     >();
+    public readonly dependencyGraph = new Map<string, string[]>();
     private functionStack: ts.FunctionDeclaration[] = [];
 
     public analyze(ast: Node) {
@@ -44,10 +46,33 @@ export class TypeAnalyzer {
                         const funcName = node.name?.getText();
                         // Pre-define the function in the parent scope
                         if (funcName) {
+                            let hasReturn = false;
+                            if (node.body) {
+                                ts.forEachChild(node.body, child => {
+                                    if (ts.isReturnStatement(child) && child.expression) {
+                                        hasReturn = true;
+                                    }
+                                });
+                            }
+
+                            const dependencies: string[] = [];
+                            if (node.body) {
+                                const findCalls = (n: ts.Node) => {
+                                    if (ts.isCallExpression(n)) {
+                                        const callee = n.expression.getText();
+                                        dependencies.push(callee);
+                                    }
+                                    ts.forEachChild(n, findCalls);
+                                };
+                                ts.forEachChild(node.body, findCalls);
+                            }
+                            this.dependencyGraph.set(funcName, dependencies);
+
                             const funcType: TypeInfo = {
                                 type: "function",
                                 isClosure: false,
                                 captures: new Map(),
+                                returnsValue: hasReturn,
                             };
                             this.scopeManager.define(funcName, funcType);
                             this.functionTypeInfo.set(node, funcType);
