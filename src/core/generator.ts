@@ -507,8 +507,37 @@ export class CodeGenerator {
                 return `${this.indent()}return undefined;\n`;
             }
 
-            case ts.SyntaxKind.Identifier:
-                return (node as ts.Identifier).text;
+            case ts.SyntaxKind.Identifier: {
+                const identifier = node as ts.Identifier;
+                const declaration = this.findDeclarationNode(identifier);
+
+                if (
+                    declaration &&
+                    ts.isFunctionDeclaration(declaration) &&
+                    declaration.parent.kind === ts.SyntaxKind.SourceFile
+                ) {
+                    // If the identifier is being called, don't wrap it in std::function.
+                    // The CallExpression handler will deal with it.
+                    if (
+                        identifier.parent &&
+                        ts.isCallExpression(identifier.parent) &&
+                        identifier.parent.expression === identifier
+                    ) {
+                        return identifier.text;
+                    }
+
+                    const funcInfo = this.findFunctionInfo(declaration);
+                    if (funcInfo) {
+                        const signature = `JsVariant(${
+                            declaration.parameters
+                                .map(() => "JsVariant")
+                                .join(", ")
+                        })`;
+                        return `std::function<${signature}>(${identifier.text}_functor())`;
+                    }
+                }
+                return identifier.text;
+            }
             case ts.SyntaxKind.NumericLiteral:
                 return (node as ts.NumericLiteral).text;
             case ts.SyntaxKind.StringLiteral:
