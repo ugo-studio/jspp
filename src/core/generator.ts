@@ -122,28 +122,33 @@ export class CodeGenerator {
         const params = node.parameters.map((p) => `auto ${p.name.getText()}`)
             .join(", ");
 
-        if (info?.isClosure && info.captures) {
-            const captureNames = [...info.captures.keys()];
-            const templateParams = captureNames.map((_, i) => `typename T${i}`)
-                .join(", ");
+        const isTopLevel = node.parent.kind === ts.SyntaxKind.SourceFile;
 
-            let code =
-                `template<${templateParams}>\nstruct ${funcName}_functor {\n`;
+        if (info?.isClosure || isTopLevel) {
+            const captures = info?.captures;
+            const captureNames = captures ? [...captures.keys()] : [];
+            const hasCaptures = captureNames.length > 0;
+
+            let code = "";
+            if (hasCaptures) {
+                const templateParams = captureNames.map((_, i) => `typename T${i}`).join(", ");
+                code += `template<${templateParams}>\n`;
+            }
+            code += `struct ${funcName}_functor {\n`;
+
             this.indentationLevel++;
-            captureNames.forEach((name, i) => {
-                code += `${this.indent()}T${i}& ${name};\n`;
-            });
 
-            const constructorParams = captureNames.map((name, i) =>
-                `T${i}& ${name}_arg`
-            ).join(", ");
-            const initializers = captureNames.map((name) =>
-                `${name}(${name}_arg)`
-            ).join(", ");
-            code +=
-                `\n${this.indent()}${funcName}_functor(${constructorParams}) : ${initializers} {}
+            if (hasCaptures) {
+                captureNames.forEach((name, i) => {
+                    code += `${this.indent()}T${i}& ${name};\n`;
+                });
 
-`;
+                const constructorParams = captureNames.map((name, i) => `T${i}& ${name}_arg`).join(", ");
+                const initializers = captureNames.map((name) => `${name}(${name}_arg)`).join(", ");
+                code += `\n${this.indent()}${funcName}_functor(${constructorParams}) : ${initializers} {}\n\n`;
+            } else {
+                code += `\n${this.indent()}${funcName}_functor() {}\n\n`;
+            }
 
             code += `${this.indent()}${returnType} operator()(${params}) `;
             if (node.body) {
@@ -399,7 +404,7 @@ export class CodeGenerator {
                             const instanceName = `${calleeName}_instance`;
                             return `auto ${instanceName} = ${calleeName}_functor(${capturedArgs});\n${this.indent()}${instanceName}(${args})`;
                         } else {
-                            return `${calleeName}(${args})`;
+                            return `${calleeName}_functor()(${args})`;
                         }
                     }
                 }

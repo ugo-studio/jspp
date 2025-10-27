@@ -4,11 +4,11 @@ function main() {
   hoisted();
 }
 
+main();
+
 function hoisted() {
   console.log("hoisted");
 }
-
-main();
 
 function counter() {
   let count = 0;
