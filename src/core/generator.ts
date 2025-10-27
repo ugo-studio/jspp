@@ -85,8 +85,21 @@ export class CodeGenerator {
             `#include <iostream>\n#include <string>\n#include <vector>\n#include <variant>\n#include <functional>\n\n` +
             `struct Undefined {};\nUndefined undefined;\n\n` +
             `struct Null {};\nNull null;\n\n` +
-            `std::ostream& operator<<(std::ostream& os, const Undefined&) { os << "undefined"; return os; }\n` +
-            `std::ostream& operator<<(std::ostream& os, const Null&) { os << "null"; return os; }\n\n`;
+            `using JsVariant = std::variant<Undefined, Null, bool, int, double, std::string>;\n\n` +
+            `template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };\n` +
+            `template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;\n\n` +
+            `std::ostream& operator<<(std::ostream& os, const JsVariant& v) {\n` +
+            `    std::visit(overloaded {\n` +
+            `        [&](const Undefined& arg) { os << "undefined"; },\n` +
+            `        [&](const Null& arg) { os << "null"; },\n` +
+            `        [&](bool arg) { os << std::boolalpha << arg; },\n` +
+            `        [&](int arg) { os << arg; },\n` +
+            `        [&](double arg) { os << arg; },\n` +
+            `        [&](const std::string& arg) { os << arg; },\n` +
+            `        [&](const auto& arg) { os << "Unprintable"; }\n` +
+            `    }, v);\n` +
+            `    return os;\n` +
+            `}\n\n`;
 
         return includes + declarations + mainCode;
     }
@@ -144,7 +157,8 @@ export class CodeGenerator {
                 `${name}(${name}_arg)`
             ).join(", ");
             code +=
-                `\n${this.indent()}${funcName}_functor(${constructorParams}) : ${initializers} {}\n\n`;
+                `\n${this.indent()}${funcName}_functor(${constructorParams}) : ${initializers} {}
+\n`;
 
             code += `${this.indent()}${returnType} operator()(${params}) `;
             if (node.body) {
@@ -157,8 +171,7 @@ export class CodeGenerator {
                 code += "{ return undefined; }\n";
             }
             this.indentationLevel--;
-            code += `};
-`;
+            code += `};\n`;
             return code;
         } else {
             let code = `${returnType} ${funcName}(${params}) `;
@@ -271,17 +284,14 @@ export class CodeGenerator {
             case ts.SyntaxKind.VariableDeclaration: {
                 const varDecl = node as ts.VariableDeclaration;
                 const name = varDecl.name.getText();
-                const info = this.typeAnalyzer.scopeManager.lookup(name);
-
-                let type = "auto";
-                if (info) {
-                    type = info.structName ?? info.type;
-                }
+                const type = "JsVariant";
 
                 let initializer = "";
                 if (varDecl.initializer) {
                     initializer = " = " +
                         this.visit(varDecl.initializer, context);
+                } else {
+                    initializer = " = undefined";
                 }
                 return `${type} ${name}${initializer}`;
             }
@@ -402,6 +412,11 @@ export class CodeGenerator {
                 return "true";
             case ts.SyntaxKind.FalseKeyword:
                 return "false";
+            case ts.SyntaxKind.VoidExpression: {
+                const voidExpr = node as ts.VoidExpression;
+                const exprText = this.visit(voidExpr.expression, context);
+                return `(${exprText}, undefined)`;
+            }
             case ts.SyntaxKind.UndefinedKeyword:
                 return "undefined";
             case ts.SyntaxKind.NullKeyword:

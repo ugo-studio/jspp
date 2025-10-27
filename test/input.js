@@ -1,3 +1,5 @@
-console.log(true);
-console.log(false);
-console.log(true, false, 1, "hello");
+let a = 2;
+console.log(a);
+
+a = "world";
+void console.log(a);
