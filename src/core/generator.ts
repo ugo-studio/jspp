@@ -19,7 +19,11 @@ export class CodeGenerator {
             }
             current = current.parent;
         }
-        return this.typeAnalyzer.scopeManager.getAllScopes()[0];
+        const rootScope = this.typeAnalyzer.scopeManager.getAllScopes()[0];
+        if (!rootScope) {
+            throw new Error("Compiler bug: Could not find a root scope.");
+        }
+        return rootScope;
     }
 
     /**
