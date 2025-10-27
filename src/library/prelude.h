@@ -4,6 +4,7 @@
 #include <variant>
 #include <functional>
 #include <any>
+#include <sstream>
 
 struct Undefined {};
 inline Undefined undefined;
@@ -11,22 +12,31 @@ inline Undefined undefined;
 struct Null {};
 inline Null null;
 
-using JsVariant = std::variant<Undefined, Null, bool, int, double, std::string, std::function<std::any()>>;
+using JsVariant = std::any;
 
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 inline std::ostream& operator<<(std::ostream& os, const JsVariant& v) {
-    std::visit(overloaded {
-        [&](const Undefined& arg) { os << "undefined"; },
-        [&](const Null& arg) { os << "null"; },
-        [&](bool arg) { os << std::boolalpha << arg; },
-        [&](int arg) { os << arg; },
-        [&](double arg) { os << arg; },
-        [&](const std::string& arg) { os << arg; },
-        [&](const std::function<std::any()>& arg) { os << "function"; },
-        [&](const auto& arg) { os << "Unprintable"; }
-    }, v);
+    if (!v.has_value()) {
+        os << "undefined";
+        return os;
+    }
+    if (v.type() == typeid(Undefined)) {
+        os << "undefined";
+    } else if (v.type() == typeid(Null)) {
+        os << "null";
+    } else if (v.type() == typeid(bool)) {
+        os << std::boolalpha << std::any_cast<bool>(v);
+    } else if (v.type() == typeid(int)) {
+        os << std::any_cast<int>(v);
+    } else if (v.type() == typeid(double)) {
+        os << std::any_cast<double>(v);
+    } else if (v.type() == typeid(std::string)) {
+        os << std::any_cast<std::string>(v);
+    } else {
+        os << "function";
+    }
     return os;
 }
 
@@ -56,3 +66,19 @@ struct Console {
 };
 
 inline Console console;
+
+inline JsVariant operator+(const JsVariant& lhs, const JsVariant& rhs) {
+    if (lhs.type() == typeid(int) && rhs.type() == typeid(int)) {
+        return std::any_cast<int>(lhs) + std::any_cast<int>(rhs);
+    }
+    if (lhs.type() == typeid(double) && rhs.type() == typeid(double)) {
+        return std::any_cast<double>(lhs) + std::any_cast<double>(rhs);
+    }
+    if (lhs.type() == typeid(int) && rhs.type() == typeid(double)) {
+        return std::any_cast<int>(lhs) + std::any_cast<double>(rhs);
+    }
+    if (lhs.type() == typeid(double) && rhs.type() == typeid(int)) {
+        return std::any_cast<double>(lhs) + std::any_cast<int>(rhs);
+    }
+    return undefined;
+}

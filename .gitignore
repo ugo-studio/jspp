@@ -5,7 +5,8 @@ node_modules
 out
 dist
 *.tgz
-test/output.*
+test/output/*.cpp
+test/output/*.exe
 
 # code coverage
 coverage

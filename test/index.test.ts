@@ -1,15 +1,35 @@
 import fs from "fs/promises";
 import path from "path";
-
 import { Interpreter } from "../src";
 
-const inputFile = path.join(process.cwd(), "test", "input.js");
-const outputFile = path.join(process.cwd(), "test", "output.cpp");
+const runTest = async (caseName: string) => {
+    const inputFile = path.join(process.cwd(), "test", "cases", `${caseName}.js`);
+    const outputFile = path.join(process.cwd(), "test", "output", `${caseName}.cpp`);
 
-// Example Usage with a closure
-const jsCode = await fs.readFile(inputFile, "utf-8");
-const interpreter = new Interpreter();
-const cppCode = interpreter.interpret(jsCode);
+    const jsCode = await fs.readFile(inputFile, "utf-8");
+    const interpreter = new Interpreter();
+    const cppCode = interpreter.interpret(jsCode);
 
-await fs.writeFile(outputFile, cppCode);
-console.log(`--- Generated C++ Code (${outputFile}) ---`);
+    await fs.mkdir(path.dirname(outputFile), { recursive: true });
+    await fs.writeFile(outputFile, cppCode);
+
+    console.log(`--- Generated C++ Code for ${caseName} (${outputFile}) ---`);
+};
+
+const main = async () => {
+    const cases = [
+        "dynamic",
+        "values",
+        "functions",
+        "arrow-functions",
+        "mutability",
+        "console",
+        "void",
+    ];
+
+    for (const caseName of cases) {
+        await runTest(caseName);
+    }
+};
+
+main();

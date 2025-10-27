@@ -8,11 +8,13 @@ import prelude from "../library/prelude.h" with { type: "text" };
 export class CodeGenerator {
     private indentationLevel: number = 0;
     private typeAnalyzer!: TypeAnalyzer;
+    private ast!: Node;
 
     /**
      * Main entry point for the code generation process.
      */
     public generate(ast: Node, analyzer: TypeAnalyzer): string {
+        this.ast = ast;
         this.typeAnalyzer = analyzer;
 
         const allFuncs = this.collectFunctions(ast);
@@ -372,33 +374,39 @@ export class CodeGenerator {
                 }
                 const calleeName = callee.getText();
                 const funcInfo = this.findFunctionInfo(calleeName);
-                if (funcInfo?.isClosure) {
-                    const capturedArgs = [...funcInfo.captures!.keys()].join(
-                        ", ",
-                    );
-                    const instanceName = `${calleeName}_instance`;
-                    let code =
-                        `auto ${instanceName} = ${calleeName}_functor(${capturedArgs});\n`;
-                    code += `${this.indent()}${instanceName}(${args});`;
-                    return code;
+
+                if (ts.isIdentifier(callee) && funcInfo) {
+                    const funcNode = this.findFunctionNode(calleeName);
+                    // Check if it's a top-level function declaration
+                    if (funcNode && funcNode.parent.kind === ts.SyntaxKind.SourceFile) {
+                        if (funcInfo.isClosure) {
+                            const capturedArgs = [...funcInfo.captures!.keys()].join(", ");
+                            const instanceName = `${calleeName}_instance`;
+                            return `auto ${instanceName} = ${calleeName}_functor(${capturedArgs});\n${this.indent()}${instanceName}(${args})`;
+                        } else {
+                            return `${calleeName}(${args})`;
+                        }
+                    }
                 }
 
-                return `std::visit([&](auto&& func) {
-                    if constexpr (std::is_invocable_v<decltype(func)>) {
-                        func();
-                    }
-                }, ${calleeName});`;
+                const calleeCode = this.visit(callee, context);
+                return `std::any_cast<std::function<JsVariant(${args ? 'JsVariant' : ''})>>(${calleeCode})(${args})`;
             }
 
             case ts.SyntaxKind.ReturnStatement: {
                 const returnStmt = node as ts.ReturnStatement;
                 if (returnStmt.expression) {
                     const exprText = this.visit(returnStmt.expression, context);
-                    const funcInfo = this.findFunctionInfo(exprText);
-                    if (funcInfo?.isClosure) {
-                        const capturedArgs = [...funcInfo.captures!.keys()]
-                            .join(", ");
-                        return `${this.indent()}return ${exprText}_functor(${capturedArgs});\n`;
+                    if (ts.isIdentifier(returnStmt.expression)) {
+                        const funcInfo = this.findFunctionInfo(exprText);
+                        if (funcInfo?.isClosure) {
+                            const funcNode = this.findFunctionNode(exprText);
+                            if (funcNode && funcNode.parent.kind === ts.SyntaxKind.SourceFile) {
+                                const capturedArgs = [...funcInfo.captures!.keys()]
+                                    .join(", ");
+                                return `${this.indent()}return ${exprText}_functor(${capturedArgs});\n`;
+                            }
+                        }
                     }
                     return `${this.indent()}return ${exprText};\n`;
                 }
@@ -444,6 +452,20 @@ export class CodeGenerator {
         };
         ts.forEachChild(node, visitor);
         return funcs;
+    }
+
+    private findFunctionNode(name: string): ts.FunctionDeclaration | undefined {
+        let found: ts.FunctionDeclaration | undefined;
+        const visitor = (child: Node) => {
+            if (ts.isFunctionDeclaration(child) && child.name?.getText() === name) {
+                found = child;
+            }
+            if (!found) {
+                ts.forEachChild(child, visitor);
+            }
+        };
+        ts.forEachChild(this.ast, visitor);
+        return found;
     }
 
     private findFunctionInfo(name: string): TypeInfo | undefined {
