@@ -92,6 +92,7 @@ This phase focuses on building a solid foundation that correctly models JavaScri
 - [x] Closures & Lexical Scoping (via `std::shared_ptr` capture)
 - [x] Basic `console` API
 - [x] if/else conditions
+- [x] Error Handling: `try`/`catch`/`finally` blocks and `throw`.
 
 ---
 
@@ -103,7 +104,6 @@ This phase will broaden the range of supported JavaScript syntax and features.
 - [ ] **Arrays:** Literals, indexing, and core methods (`.push`, `.pop`, `.length`, etc.).
 - [ ] **Control Flow:** tenary operators, `for` loops, `while` loops, `switch`.
 - [ ] **Operators:** Full suite of arithmetic, logical, and comparison operators.
-- [x] **Error Handling:** `try`/`catch`/`finally` blocks and `throw`.
 
 ### **Phase 3: Interoperability & Standard Library**
 

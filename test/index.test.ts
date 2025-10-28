@@ -44,6 +44,7 @@ const main = async () => {
         "declarations",
         "try-catch",
         "global-return",
+        "iife",
     ];
 
     for (const caseName of cases) {
