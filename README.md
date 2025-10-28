@@ -23,7 +23,7 @@ JSPP currently supports a foundational set of JavaScript features:
   - Function declarations and arrow functions.
   - Correct hoisting for both variables and functions.
   - Closures with proper lexical scoping and lifetime management.
-- **Operators:** Basic arithmetic (`+`) and assignment (`=`).
+- **Operators:** Basic arithmetic (`+`, `-`, `*`) and assignment (`=`).
 - **Control Flow:** `void` operator.
 - **Built-in APIs:** A `console` object with `log()`, `warn()`, and `error()` methods.
 
@@ -67,14 +67,14 @@ To get a local copy up and running, follow these simple steps.
 The primary way to use JSPP is to run the test suite. This will transpile all the JavaScript test cases in `test/cases/`, build the resulting C++ files, and run them.
 
 ```sh
-bun run test
+bun run tests
 ```
 
 This command chains the following scripts (defined in `package.json`):
 
-- `bun run test:compile`: Transpiles the JS test files to C++ output files in `test/output/`.
-- `bun run test:build`: Compiles the generated C++ files into executables.
-- `bun run test:run`: Runs the compiled C++ executables to verify their output.
+- `bun run tests:compile`: Transpiles the JS test files to C++ output files in `test/output/`.
+- `bun run tests:build`: Compiles the generated C++ files into executables.
+- `bun run tests:run`: Runs the compiled C++ executables to verify their output.
 
 ## Roadmap
 
