@@ -42,6 +42,7 @@ const main = async () => {
         "default-params",
         "declarations",
         "try-catch",
+        "global-return",
     ];
 
     for (const caseName of cases) {

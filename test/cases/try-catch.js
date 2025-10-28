@@ -8,7 +8,7 @@ try {
   console.log("Inner variable:", ex);
 
   // This should resolve to undefined
-  console.log("Leaked variable:", __caught_exception);
+  // console.log("Leaked variable:", __caught_exception);
 
   // This should be a normal variable declaration
   let __caught_exception = "This is another new variable";

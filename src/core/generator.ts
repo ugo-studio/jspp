@@ -672,11 +672,35 @@ export class CodeGenerator {
             }
 
             case ts.SyntaxKind.ReturnStatement: {
-                const returnStmt = node as ts.ReturnStatement;
-                let code = "";
-                if (context.isInsideTryCatchLambda && context.hasReturnedFlag) {
-                    code += `${this.indent()}${context.hasReturnedFlag} = true;\n`;
+                if (context.isMainContext) {
+                    return `${this.indent()}throw std::runtime_error("SyntaxError: Return statements are only valid inside functions.");\n`;
                 }
+
+                const returnStmt = node as ts.ReturnStatement;
+
+                if (context.isInsideTryCatchLambda && context.hasReturnedFlag) {
+                    let returnCode = `${this.indent()}${context.hasReturnedFlag} = true;\n`;
+                    if (returnStmt.expression) {
+                        const expr = returnStmt.expression;
+                        const exprText = this.visit(expr, context);
+                        if (ts.isIdentifier(expr)) {
+                            const scope = this.getScopeForNode(expr);
+                            const typeInfo = this.typeAnalyzer.scopeManager
+                                .lookupFromScope(exprText, scope);
+                            if (typeInfo && !typeInfo.isParameter) {
+                                returnCode += `${this.indent()}return *${exprText};\n`;
+                            } else {
+                                returnCode += `${this.indent()}return ${exprText};\n`;
+                            }                            
+                        } else {
+                            returnCode += `${this.indent()}return ${exprText};\n`;
+                        }
+                    } else {
+                        returnCode += `${this.indent()}return undefined;\n`;
+                    }
+                    return returnCode;
+                }
+
                 if (returnStmt.expression) {
                     const expr = returnStmt.expression;
                     const exprText = this.visit(expr, context);
@@ -685,14 +709,12 @@ export class CodeGenerator {
                         const typeInfo = this.typeAnalyzer.scopeManager
                             .lookupFromScope(exprText, scope);
                         if (typeInfo && !typeInfo.isParameter) {
-                            code += `${this.indent()}return *${exprText};\n`;
+                            return `${this.indent()}return *${exprText};\n`;
                         }
                     }
-                    code += `${this.indent()}return ${exprText};\n`;
-                } else {
-                    code += `${this.indent()}return undefined;\n`;
+                    return `${this.indent()}return ${exprText};\n`;
                 }
-                return code;
+                return `${this.indent()}return undefined;\n`;
             }
 
             case ts.SyntaxKind.Identifier: {
