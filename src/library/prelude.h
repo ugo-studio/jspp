@@ -17,6 +17,9 @@ struct Null
 };
 inline Null null;
 
+struct TdzUninitialized {};
+inline TdzUninitialized tdz_uninitialized;
+
 using JsVariant = std::any;
 
 template <class... Ts>
@@ -48,7 +51,12 @@ inline std::ostream &operator<<(std::ostream &os, const JsVariant &v)
         os << "undefined";
         return os;
     }
-    if (v.type() == typeid(Undefined))
+    if (v.type() == typeid(TdzUninitialized))
+    {
+        // This should ideally not be printed if the TDZ logic is correct
+        os << "<uninitialized>";
+    }
+    else if (v.type() == typeid(Undefined))
     {
         os << "undefined";
     }
@@ -263,4 +271,15 @@ inline bool operator==(const JsVariant &lhs, const JsVariant &rhs)
         return std::any_cast<bool>(lhs) == std::any_cast<bool>(rhs);
     }
     return false;
+}
+
+inline JsVariant checkAndDeref(const std::shared_ptr<JsVariant>& var, const std::string& varName) {
+    if (!var) {
+        // This case should ideally not be hit in normal operation
+        throw std::runtime_error("Internal compiler error: null variable pointer for " + varName);
+    }
+    if ((*var).type() == typeid(TdzUninitialized)) {
+        throw std::runtime_error("ReferenceError: Cannot access '" + varName + "' before initialization");
+    }
+    return *var;
 }

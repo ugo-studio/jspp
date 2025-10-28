@@ -201,7 +201,6 @@ export class CodeGenerator {
                 return this.generateLambda(node as ts.ArrowFunction);
 
             case ts.SyntaxKind.SourceFile: {
-                // Treat the source file as the top-level block
                 const sourceFile = node as ts.SourceFile;
                 let code = "";
                 const varDecls = sourceFile.statements
@@ -215,8 +214,10 @@ export class CodeGenerator {
                 // 1. Hoist all variable and function declarations
                 varDecls.forEach((decl) => {
                     const name = decl.name.getText();
+                    const isLetOrConst = (decl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                    const initializer = isLetOrConst ? "tdz_uninitialized" : "undefined";
                     code +=
-                        `${this.indent()}auto ${name} = std::make_shared<JsVariant>(undefined);\n`;
+                        `${this.indent()}auto ${name} = std::make_shared<JsVariant>(${initializer});\n`;
                 });
                 funcDecls.forEach((func) => {
                     const funcName = func.name?.getText();
@@ -240,13 +241,14 @@ export class CodeGenerator {
                     if (ts.isFunctionDeclaration(stmt)) {
                         // Already handled
                     } else if (ts.isVariableStatement(stmt)) {
-                        const assignmentContext = {
+                        const isLetOrConst = (stmt.declarationList.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                        const contextForVisit = {
                             ...context,
-                            isAssignmentOnly: true,
+                            isAssignmentOnly: !isLetOrConst,
                         };
                         const assignments = this.visit(
                             stmt.declarationList,
-                            assignmentContext,
+                            contextForVisit,
                         );
                         if (assignments) {
                             code += `${this.indent()}${assignments};\n`;
@@ -274,8 +276,10 @@ export class CodeGenerator {
                 // 1. Hoist all variable and function declarations
                 varDecls.forEach((decl) => {
                     const name = decl.name.getText();
+                    const isLetOrConst = (decl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                    const initializer = isLetOrConst ? "tdz_uninitialized" : "undefined";
                     code +=
-                        `${this.indent()}auto ${name} = std::make_shared<JsVariant>(undefined);\n`;
+                        `${this.indent()}auto ${name} = std::make_shared<JsVariant>(${initializer});\n`;
                 });
                 funcDecls.forEach((func) => {
                     const funcName = func.name?.getText();
@@ -299,13 +303,14 @@ export class CodeGenerator {
                     if (ts.isFunctionDeclaration(stmt)) {
                         // Do nothing, already handled
                     } else if (ts.isVariableStatement(stmt)) {
-                        const assignmentContext = {
+                        const isLetOrConst = (stmt.declarationList.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                        const contextForVisit = {
                             ...context,
-                            isAssignmentOnly: true,
+                            isAssignmentOnly: !isLetOrConst,
                         };
                         const assignments = this.visit(
                             stmt.declarationList,
-                            assignmentContext,
+                            contextForVisit,
                         );
                         if (assignments) {
                             code += `${this.indent()}${assignments};\n`;
@@ -352,11 +357,23 @@ export class CodeGenerator {
                         this.visit(varDecl.initializer, context);
                 }
 
+                const isLetOrConst = (varDecl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+
+                if (isLetOrConst) {
+                    // If there's no initializer, assign undefined. Otherwise, use the initializer.
+                    return `*${name}${initializer || " = undefined"}`;
+                }
+
+                // For 'var', it's a bit more complex.
+                // If we are in a non-function-body block, 'var' is hoisted, so it's an assignment.
+                // If we are at the top level or in a function body, it's a declaration if not already hoisted.
+                // The current logic hoists at the function level, so we need to decide if this is the *hoisting* declaration or a later assignment.
+                // The `isAssignmentOnly` flag helps here.
                 if (context.isAssignmentOnly) {
-                    if (!initializer) return "";
-                    return `*${name}${initializer}`;
+                     if (!initializer) return "";
+                     return `*${name}${initializer}`;
                 } else {
-                    const initValue = initializer
+                     const initValue = initializer
                         ? initializer.substring(3)
                         : "undefined";
                     return `auto ${name} = std::make_shared<JsVariant>(${initValue})`;
@@ -431,9 +448,8 @@ export class CodeGenerator {
 
             case ts.SyntaxKind.PropertyAccessExpression: {
                 const propAccess = node as ts.PropertyAccessExpression;
-                return `(*${
-                    this.visit(propAccess.expression, context)
-                }).${propAccess.name.getText()}`;
+                const exprText = this.visit(propAccess.expression, context);
+                return `checkAndDeref(${exprText}, "${exprText}").${propAccess.name.getText()}`;
             }
 
             case ts.SyntaxKind.ExpressionStatement:
@@ -488,11 +504,11 @@ export class CodeGenerator {
 
                 const finalLeft = leftIsIdentifier && leftTypeInfo &&
                         !leftTypeInfo.isParameter
-                    ? `(*${leftText})`
+                    ? `checkAndDeref(${leftText}, "${leftText}")`
                     : leftText;
                 const finalRight = rightIsIdentifier && rightTypeInfo &&
                         !rightTypeInfo.isParameter
-                    ? `(*${rightText})`
+                    ? `checkAndDeref(${rightText}, "${rightText}")`
                     : rightText;
 
                 if (op === "+" || op === "-" || op === "*") {
@@ -652,7 +668,7 @@ export class CodeGenerator {
                         const typeInfo = this.typeAnalyzer.scopeManager
                             .lookupFromScope(arg.text, scope);
                         if (typeInfo && !typeInfo.isParameter) {
-                            return `*${argText}`;
+                            return `checkAndDeref(${argText}, "${argText}")`;
                         }
                     }
                     return argText;
@@ -667,8 +683,10 @@ export class CodeGenerator {
                 }
 
                 const calleeCode = this.visit(callee, context);
-                const deref = ts.isIdentifier(callee) ? "*" : "";
-                return `std::any_cast<std::function<JsVariant(const std::vector<JsVariant>&)>>(${deref}${calleeCode})({${args}})`;
+                const derefCallee = ts.isIdentifier(callee) 
+                    ? `checkAndDeref(${calleeCode}, "${calleeCode}")` 
+                    : calleeCode;
+                return `std::any_cast<std::function<JsVariant(const std::vector<JsVariant>&)>>(${derefCallee})({${args}})`;
             }
 
             case ts.SyntaxKind.ReturnStatement: {
@@ -688,7 +706,7 @@ export class CodeGenerator {
                             const typeInfo = this.typeAnalyzer.scopeManager
                                 .lookupFromScope(exprText, scope);
                             if (typeInfo && !typeInfo.isParameter) {
-                                returnCode += `${this.indent()}return *${exprText};\n`;
+                                returnCode += `${this.indent()}return checkAndDeref(${exprText}, "${exprText}");\n`;
                             } else {
                                 returnCode += `${this.indent()}return ${exprText};\n`;
                             }                            
@@ -709,7 +727,7 @@ export class CodeGenerator {
                         const typeInfo = this.typeAnalyzer.scopeManager
                             .lookupFromScope(exprText, scope);
                         if (typeInfo && !typeInfo.isParameter) {
-                            return `${this.indent()}return *${exprText};\n`;
+                            return `${this.indent()}return checkAndDeref(${exprText}, "${exprText}");\n`;
                         }
                     }
                     return `${this.indent()}return ${exprText};\n`;

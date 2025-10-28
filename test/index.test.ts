@@ -33,6 +33,7 @@ const main = async () => {
         "values",
         "functions",
         "arrow-functions",
+        "hoisting",
         "mutability",
         "console",
         "void",
