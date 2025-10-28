@@ -471,13 +471,51 @@ export class CodeGenerator {
                     isFunctionBody: false,
                     exceptionName: exceptionName,
                 };
-                let code = `${this.indent()}try `;
-                code += this.visit(tryStmt.tryBlock, newContext);
-                if (tryStmt.catchClause) {
-                    code += ` catch (const std::exception& ${exceptionName}) `;
-                    code += this.visit(tryStmt.catchClause, newContext);
+
+                if (tryStmt.finallyBlock) {
+                    let code = "";
+                    const finallyBlockCode = this.visit(tryStmt.finallyBlock, { ...newContext, isFunctionBody: false });
+
+                    const finallyLambdaName = `__finally_${this.exceptionCounter++}`;
+
+                    code += `${this.indent()}{\n`;
+                    this.indentationLevel++;
+
+                    code += `${this.indent()}auto ${finallyLambdaName} = [&]() ${finallyBlockCode.trim()};\n`;
+
+                    code += `${this.indent()}try {\n`;
+                    this.indentationLevel++;
+
+                    code += `${this.indent()}try\n`;
+                    code += this.visit(tryStmt.tryBlock, newContext);
+                    if (tryStmt.catchClause) {
+                        code += `${this.indent()}catch (const std::exception& ${exceptionName}) \n`;
+                        code += this.visit(tryStmt.catchClause, newContext);
+                    } else {
+                        code += `${this.indent()}catch (...) { throw; }\n`;
+                    }
+
+                    this.indentationLevel--;
+                    code += `${this.indent()}} catch (...) {\n`;
+                    this.indentationLevel++;
+                    code += `${this.indent()}${finallyLambdaName}();\n`;
+                    code += `${this.indent()}throw;\n`;
+                    this.indentationLevel--;
+                    code += `${this.indent()}}\n`;
+                    code += `${this.indent()}${finallyLambdaName}();\n`;
+
+                    this.indentationLevel--;
+                    code += `${this.indent()}}\n`;
+                    return code;
+                } else {
+                    let code = `${this.indent()}try `;
+                    code += this.visit(tryStmt.tryBlock, newContext);
+                    if (tryStmt.catchClause) {
+                        code += ` catch (const std::exception& ${exceptionName}) `;
+                        code += this.visit(tryStmt.catchClause, newContext);
+                    }
+                    return code;
                 }
-                return code;
             }
 
             case ts.SyntaxKind.CatchClause: {

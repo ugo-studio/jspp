@@ -32,5 +32,17 @@ try {
 try {
   throw "This is an error";
 } catch {
-  console.log("Caught error without exception variable");
+  console.log("Caught error before finally");
+} finally {
+  console.log("This is the finally block");
+}
+
+try {
+  try {
+    throw "This is an error";
+  } finally {
+    console.log("This is the finally block");
+  }
+} catch (e) {
+  console.log("Caught propagated error:", e);
 }
