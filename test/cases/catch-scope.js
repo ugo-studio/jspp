@@ -46,3 +46,11 @@ try {
 } catch (e) {
   console.log("Caught propagated error:", e);
 }
+
+(() => {
+  try {
+    return "This is a return value";
+  } finally {
+    console.log("This is the finally block after a return statement");
+  }
+})();

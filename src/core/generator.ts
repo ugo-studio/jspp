@@ -422,6 +422,11 @@ export class CodeGenerator {
                 return `${operator}${operand}`;
             }
 
+            case ts.SyntaxKind.ParenthesizedExpression: {
+                const parenExpr = node as ts.ParenthesizedExpression;
+                return `(${this.visit(parenExpr.expression, context)})`;
+            }
+
             case ts.SyntaxKind.PropertyAccessExpression: {
                 const propAccess = node as ts.PropertyAccessExpression;
                 return `(*${
@@ -649,7 +654,8 @@ export class CodeGenerator {
                 }
 
                 const calleeCode = this.visit(callee, context);
-                return `std::any_cast<std::function<JsVariant(const std::vector<JsVariant>&)>>(*${calleeCode})({${args}})`;
+                const deref = ts.isIdentifier(callee) ? "*" : "";
+                return `std::any_cast<std::function<JsVariant(const std::vector<JsVariant>&)>>(${deref}${calleeCode})({${args}})`;
             }
 
             case ts.SyntaxKind.ReturnStatement: {
