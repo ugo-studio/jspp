@@ -211,20 +211,29 @@ export class CodeGenerator {
                     ts.isFunctionDeclaration,
                 );
 
-                // 1. Hoist all variable and function declarations
+                const hoistedSymbols = new Set<string>();
+
+                // 1. Hoist function declarations
+                funcDecls.forEach((func) => {
+                    const funcName = func.name?.getText();
+                    if (funcName && !hoistedSymbols.has(funcName)) {
+                        hoistedSymbols.add(funcName);
+                        code +=
+                            `${this.indent()}auto ${funcName} = std::make_shared<JsVariant>(undefined);\n`;
+                    }
+                });
+
+                // Hoist variable declarations
                 varDecls.forEach((decl) => {
                     const name = decl.name.getText();
+                    if (hoistedSymbols.has(name)) {
+                        return;
+                    }
+                    hoistedSymbols.add(name);
                     const isLetOrConst = (decl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
                     const initializer = isLetOrConst ? "tdz_uninitialized" : "undefined";
                     code +=
                         `${this.indent()}auto ${name} = std::make_shared<JsVariant>(${initializer});\n`;
-                });
-                funcDecls.forEach((func) => {
-                    const funcName = func.name?.getText();
-                    if (funcName) {
-                        code +=
-                            `${this.indent()}auto ${funcName} = std::make_shared<JsVariant>(undefined);\n`;
-                    }
                 });
 
                 // 2. Assign all hoisted functions first
@@ -273,20 +282,29 @@ export class CodeGenerator {
                     ts.isFunctionDeclaration,
                 );
 
-                // 1. Hoist all variable and function declarations
+                const hoistedSymbols = new Set<string>();
+
+                // 1. Hoist all function declarations
+                funcDecls.forEach((func) => {
+                    const funcName = func.name?.getText();
+                    if (funcName && !hoistedSymbols.has(funcName)) {
+                        hoistedSymbols.add(funcName);
+                        code +=
+                            `${this.indent()}auto ${funcName} = std::make_shared<JsVariant>(undefined);\n`;
+                    }
+                });
+
+                // Hoist variable declarations
                 varDecls.forEach((decl) => {
                     const name = decl.name.getText();
+                    if (hoistedSymbols.has(name)) {
+                        return;
+                    }
+                    hoistedSymbols.add(name);
                     const isLetOrConst = (decl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
                     const initializer = isLetOrConst ? "tdz_uninitialized" : "undefined";
                     code +=
                         `${this.indent()}auto ${name} = std::make_shared<JsVariant>(${initializer});\n`;
-                });
-                funcDecls.forEach((func) => {
-                    const funcName = func.name?.getText();
-                    if (funcName) {
-                        code +=
-                            `${this.indent()}auto ${funcName} = std::make_shared<JsVariant>(undefined);\n`;
-                    }
                 });
 
                 // 2. Assign all hoisted functions first
