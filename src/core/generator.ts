@@ -101,11 +101,12 @@ export class CodeGenerator {
     }
 
     private generateLambda(
-        node: ts.ArrowFunction | ts.FunctionDeclaration,
+        node: ts.ArrowFunction | ts.FunctionDeclaration | ts.FunctionExpression,
         isAssignment: boolean = false,
+        capture: string = "[=]",
     ): string {
-        let lambda = "[=]";
-        lambda += `(const std::vector<JsVariant>& args) mutable -> JsVariant `;
+        let lambda =
+            `${capture}(const std::vector<JsVariant>& args) mutable -> JsVariant `;
 
         const visitContext = {
             isMainContext: false,
@@ -200,6 +201,28 @@ export class CodeGenerator {
             case ts.SyntaxKind.ArrowFunction:
                 return this.generateLambda(node as ts.ArrowFunction);
 
+            case ts.SyntaxKind.FunctionExpression: {
+                const funcExpr = node as ts.FunctionExpression;
+                if (funcExpr.name) {
+                    const funcName = funcExpr.name.getText();
+                    let code = "([&]() -> JsVariant {\n";
+                    this.indentationLevel++;
+                    code +=
+                        `${this.indent()}auto ${funcName} = std::make_shared<JsVariant>();\n`;
+                    const lambda = this.generateLambda(
+                        funcExpr,
+                        false,
+                        "[=]",
+                    );
+                    code += `${this.indent()}*${funcName} = ${lambda};\n`;
+                    code += `${this.indent()}return *${funcName};\n`;
+                    this.indentationLevel--;
+                    code += `${this.indent()}})()`;
+                    return code;
+                }
+                return this.generateLambda(node as ts.FunctionExpression);
+            }
+
             case ts.SyntaxKind.SourceFile: {
                 const sourceFile = node as ts.SourceFile;
                 let code = "";
@@ -230,8 +253,12 @@ export class CodeGenerator {
                         return;
                     }
                     hoistedSymbols.add(name);
-                    const isLetOrConst = (decl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
-                    const initializer = isLetOrConst ? "tdz_uninitialized" : "undefined";
+                    const isLetOrConst =
+                        (decl.parent.flags &
+                            (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                    const initializer = isLetOrConst
+                        ? "tdz_uninitialized"
+                        : "undefined";
                     code +=
                         `${this.indent()}auto ${name} = std::make_shared<JsVariant>(${initializer});\n`;
                 });
@@ -250,7 +277,9 @@ export class CodeGenerator {
                     if (ts.isFunctionDeclaration(stmt)) {
                         // Already handled
                     } else if (ts.isVariableStatement(stmt)) {
-                        const isLetOrConst = (stmt.declarationList.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                        const isLetOrConst =
+                            (stmt.declarationList.flags &
+                                (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
                         const contextForVisit = {
                             ...context,
                             isAssignmentOnly: !isLetOrConst,
@@ -301,8 +330,12 @@ export class CodeGenerator {
                         return;
                     }
                     hoistedSymbols.add(name);
-                    const isLetOrConst = (decl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
-                    const initializer = isLetOrConst ? "tdz_uninitialized" : "undefined";
+                    const isLetOrConst =
+                        (decl.parent.flags &
+                            (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                    const initializer = isLetOrConst
+                        ? "tdz_uninitialized"
+                        : "undefined";
                     code +=
                         `${this.indent()}auto ${name} = std::make_shared<JsVariant>(${initializer});\n`;
                 });
@@ -321,7 +354,9 @@ export class CodeGenerator {
                     if (ts.isFunctionDeclaration(stmt)) {
                         // Do nothing, already handled
                     } else if (ts.isVariableStatement(stmt)) {
-                        const isLetOrConst = (stmt.declarationList.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                        const isLetOrConst =
+                            (stmt.declarationList.flags &
+                                (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
                         const contextForVisit = {
                             ...context,
                             isAssignmentOnly: !isLetOrConst,
@@ -375,7 +410,9 @@ export class CodeGenerator {
                         this.visit(varDecl.initializer, context);
                 }
 
-                const isLetOrConst = (varDecl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                const isLetOrConst =
+                    (varDecl.parent.flags &
+                        (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
 
                 if (isLetOrConst) {
                     // If there's no initializer, assign undefined. Otherwise, use the initializer.
@@ -388,10 +425,10 @@ export class CodeGenerator {
                 // The current logic hoists at the function level, so we need to decide if this is the *hoisting* declaration or a later assignment.
                 // The `isAssignmentOnly` flag helps here.
                 if (context.isAssignmentOnly) {
-                     if (!initializer) return "";
-                     return `*${name}${initializer}`;
+                    if (!initializer) return "";
+                    return `*${name}${initializer}`;
                 } else {
-                     const initValue = initializer
+                    const initValue = initializer
                         ? initializer.substring(3)
                         : "undefined";
                     return `auto ${name} = std::make_shared<JsVariant>(${initValue})`;
@@ -497,6 +534,9 @@ export class CodeGenerator {
                             leftText,
                             scope,
                         );
+                    if (!typeInfo) {
+                        return `([&]() -> JsVariant { throw std::runtime_error("ReferenceError: ${leftText} is not defined"); })()`;
+                    }
                     if (typeInfo?.isConst) {
                         return `throw std::runtime_error("TypeError: Assignment to constant variable.")`;
                     }
@@ -521,13 +561,20 @@ export class CodeGenerator {
                     : null;
 
                 const finalLeft = leftIsIdentifier && leftTypeInfo &&
-                        !leftTypeInfo.isParameter
+                        !leftTypeInfo.isParameter && !leftTypeInfo.isBuiltin
                     ? `checkAndDeref(${leftText}, "${leftText}")`
                     : leftText;
                 const finalRight = rightIsIdentifier && rightTypeInfo &&
-                        !rightTypeInfo.isParameter
+                        !rightTypeInfo.isParameter && !rightTypeInfo.isBuiltin
                     ? `checkAndDeref(${rightText}, "${rightText}")`
                     : rightText;
+
+                if (leftIsIdentifier && !leftTypeInfo) {
+                    return `([&]() -> JsVariant { throw std::runtime_error("ReferenceError: ${leftText} is not defined"); })()`;
+                }
+                if (rightIsIdentifier && !rightTypeInfo) {
+                    return `([&]() -> JsVariant { throw std::runtime_error("ReferenceError: ${rightText} is not defined"); })()`;
+                }
 
                 if (op === "+" || op === "-" || op === "*") {
                     return `(${finalLeft} ${op} ${finalRight})`;
@@ -546,36 +593,57 @@ export class CodeGenerator {
 
                 if (tryStmt.finallyBlock) {
                     const declaredSymbols = new Set<string>();
-                    this.getDeclaredSymbols(tryStmt.tryBlock).forEach(s => declaredSymbols.add(s));
+                    this.getDeclaredSymbols(tryStmt.tryBlock).forEach((s) =>
+                        declaredSymbols.add(s)
+                    );
                     if (tryStmt.catchClause) {
-                        this.getDeclaredSymbols(tryStmt.catchClause).forEach(s => declaredSymbols.add(s));
+                        this.getDeclaredSymbols(tryStmt.catchClause).forEach(
+                            (s) => declaredSymbols.add(s)
+                        );
                     }
-                    this.getDeclaredSymbols(tryStmt.finallyBlock).forEach(s => declaredSymbols.add(s));
+                    this.getDeclaredSymbols(tryStmt.finallyBlock).forEach((s) =>
+                        declaredSymbols.add(s)
+                    );
 
-                    const finallyLambdaName = this.generateUniqueName('__finally_', declaredSymbols);
-                    const resultVarName = this.generateUniqueName('__try_result_', declaredSymbols);
-                    const hasReturnedFlagName = this.generateUniqueName('__try_has_returned_', declaredSymbols);
+                    const finallyLambdaName = this.generateUniqueName(
+                        "__finally_",
+                        declaredSymbols,
+                    );
+                    const resultVarName = this.generateUniqueName(
+                        "__try_result_",
+                        declaredSymbols,
+                    );
+                    const hasReturnedFlagName = this.generateUniqueName(
+                        "__try_has_returned_",
+                        declaredSymbols,
+                    );
 
                     let code = `${this.indent()}{\n`;
                     this.indentationLevel++;
 
                     code += `${this.indent()}JsVariant ${resultVarName};\n`;
-                    code += `${this.indent()}bool ${hasReturnedFlagName} = false;\n`;
+                    code +=
+                        `${this.indent()}bool ${hasReturnedFlagName} = false;\n`;
 
-                    const finallyBlockCode = this.visit(tryStmt.finallyBlock, { ...context, isFunctionBody: false });
-                    code += `${this.indent()}auto ${finallyLambdaName} = [&]() ${finallyBlockCode.trim()};\n`;
+                    const finallyBlockCode = this.visit(tryStmt.finallyBlock, {
+                        ...context,
+                        isFunctionBody: false,
+                    });
+                    code +=
+                        `${this.indent()}auto ${finallyLambdaName} = [&]() ${finallyBlockCode.trim()};\n`;
 
                     code += `${this.indent()}try {\n`;
                     this.indentationLevel++;
 
-                    code += `${this.indent()}${resultVarName} = ([&]() -> JsVariant {\n`;
+                    code +=
+                        `${this.indent()}${resultVarName} = ([&]() -> JsVariant {\n`;
                     this.indentationLevel++;
 
                     const innerContext = {
                         ...context,
                         isFunctionBody: false,
                         isInsideTryCatchLambda: true,
-                        hasReturnedFlag: hasReturnedFlagName
+                        hasReturnedFlag: hasReturnedFlagName,
                     };
 
                     code += `${this.indent()}try {\n`;
@@ -585,11 +653,18 @@ export class CodeGenerator {
                     code += `${this.indent()}}\n`;
 
                     if (tryStmt.catchClause) {
-                        const exceptionName = this.generateUniqueExceptionName(tryStmt.catchClause.variableDeclaration?.name.getText());
+                        const exceptionName = this.generateUniqueExceptionName(
+                            tryStmt.catchClause.variableDeclaration?.name
+                                .getText(),
+                        );
                         const catchContext = { ...innerContext, exceptionName };
-                        code += `${this.indent()}catch (const std::exception& ${exceptionName}) {\n`;
+                        code +=
+                            `${this.indent()}catch (const std::exception& ${exceptionName}) {\n`;
                         this.indentationLevel++;
-                        code += this.visit(tryStmt.catchClause.block, catchContext);
+                        code += this.visit(
+                            tryStmt.catchClause.block,
+                            catchContext,
+                        );
                         this.indentationLevel--;
                         code += `${this.indent()}}\n`;
                     } else {
@@ -621,12 +696,20 @@ export class CodeGenerator {
                     code += `${this.indent()}}\n`;
                     return code;
                 } else {
-                    const exceptionName = this.generateUniqueExceptionName(tryStmt.catchClause?.variableDeclaration?.name.getText());
-                    const newContext = { ...context, isFunctionBody: false, exceptionName };
+                    const exceptionName = this.generateUniqueExceptionName(
+                        tryStmt.catchClause?.variableDeclaration?.name
+                            .getText(),
+                    );
+                    const newContext = {
+                        ...context,
+                        isFunctionBody: false,
+                        exceptionName,
+                    };
                     let code = `${this.indent()}try `;
                     code += this.visit(tryStmt.tryBlock, newContext);
                     if (tryStmt.catchClause) {
-                        code += ` catch (const std::exception& ${exceptionName}) `;
+                        code +=
+                            ` catch (const std::exception& ${exceptionName}) `;
                         code += this.visit(tryStmt.catchClause, newContext);
                     }
                     return code;
@@ -684,8 +767,17 @@ export class CodeGenerator {
                     if (ts.isIdentifier(arg)) {
                         const scope = this.getScopeForNode(arg);
                         const typeInfo = this.typeAnalyzer.scopeManager
-                            .lookupFromScope(arg.text, scope);
-                        if (typeInfo && !typeInfo.isParameter) {
+                            .lookupFromScope(
+                                arg.text,
+                                scope,
+                            );
+                        if (!typeInfo) {
+                            return `([&]() -> JsVariant { throw std::runtime_error("ReferenceError: ${arg.text} is not defined"); })()`;
+                        }
+                        if (
+                            typeInfo && !typeInfo.isParameter &&
+                            !typeInfo.isBuiltin
+                        ) {
                             return `checkAndDeref(${argText}, "${argText}")`;
                         }
                     }
@@ -701,9 +793,26 @@ export class CodeGenerator {
                 }
 
                 const calleeCode = this.visit(callee, context);
-                const derefCallee = ts.isIdentifier(callee) 
-                    ? `checkAndDeref(${calleeCode}, "${calleeCode}")` 
-                    : calleeCode;
+                let derefCallee;
+                if (ts.isIdentifier(callee)) {
+                    const scope = this.getScopeForNode(callee);
+                    const typeInfo = this.typeAnalyzer.scopeManager
+                        .lookupFromScope(
+                            callee.text,
+                            scope,
+                        );
+                    if (!typeInfo) {
+                        return `([&]() -> JsVariant { throw std::runtime_error("ReferenceError: ${callee.text} is not defined"); })()`;
+                    }
+                    if (typeInfo.isBuiltin) {
+                        derefCallee = calleeCode;
+                    } else {
+                        derefCallee =
+                            `checkAndDeref(${calleeCode}, "${calleeCode}")`;
+                    }
+                } else {
+                    derefCallee = calleeCode;
+                }
                 return `std::any_cast<std::function<JsVariant(const std::vector<JsVariant>&)>>(${derefCallee})({${args}})`;
             }
 
@@ -715,7 +824,8 @@ export class CodeGenerator {
                 const returnStmt = node as ts.ReturnStatement;
 
                 if (context.isInsideTryCatchLambda && context.hasReturnedFlag) {
-                    let returnCode = `${this.indent()}${context.hasReturnedFlag} = true;\n`;
+                    let returnCode =
+                        `${this.indent()}${context.hasReturnedFlag} = true;\n`;
                     if (returnStmt.expression) {
                         const expr = returnStmt.expression;
                         const exprText = this.visit(expr, context);
@@ -723,13 +833,22 @@ export class CodeGenerator {
                             const scope = this.getScopeForNode(expr);
                             const typeInfo = this.typeAnalyzer.scopeManager
                                 .lookupFromScope(exprText, scope);
-                            if (typeInfo && !typeInfo.isParameter) {
-                                returnCode += `${this.indent()}return checkAndDeref(${exprText}, "${exprText}");\n`;
+                            if (!typeInfo) {
+                                return `${this.indent()}return ([&]() -> JsVariant { throw std::runtime_error("ReferenceError: ${exprText} is not defined"); })();\n`;
+                            }
+                            if (
+                                typeInfo && !typeInfo.isParameter &&
+                                !typeInfo.isBuiltin
+                            ) {
+                                returnCode +=
+                                    `${this.indent()}return checkAndDeref(${exprText}, "${exprText}");\n`;
                             } else {
-                                returnCode += `${this.indent()}return ${exprText};\n`;
-                            }                            
+                                returnCode +=
+                                    `${this.indent()}return ${exprText};\n`;
+                            }
                         } else {
-                            returnCode += `${this.indent()}return ${exprText};\n`;
+                            returnCode +=
+                                `${this.indent()}return ${exprText};\n`;
                         }
                     } else {
                         returnCode += `${this.indent()}return undefined;\n`;
@@ -744,7 +863,13 @@ export class CodeGenerator {
                         const scope = this.getScopeForNode(expr);
                         const typeInfo = this.typeAnalyzer.scopeManager
                             .lookupFromScope(exprText, scope);
-                        if (typeInfo && !typeInfo.isParameter) {
+                        if (!typeInfo) {
+                            return `${this.indent()}return ([&]() -> JsVariant { throw std::runtime_error("ReferenceError: ${exprText} is not defined"); })();\n`;
+                        }
+                        if (
+                            typeInfo && !typeInfo.isParameter &&
+                            !typeInfo.isBuiltin
+                        ) {
                             return `${this.indent()}return checkAndDeref(${exprText}, "${exprText}");\n`;
                         }
                     }

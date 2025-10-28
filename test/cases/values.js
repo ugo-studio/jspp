@@ -6,4 +6,4 @@ console.log(true);
 console.log(false);
 console.log(1);
 console.log(3.14);
-console.log("hello");
+console.log("string");

@@ -1,6 +1,6 @@
 console.log("--- Functions ---");
 
-function main() {
+function first() {
   local0();
   local1();
   function local0() {
@@ -13,7 +13,7 @@ function main() {
   hoisted();
 }
 
-main();
+first();
 
 function hoisted() {
   console.log("hoisted");

@@ -9,6 +9,7 @@ export interface TypeInfo {
     isClosure?: boolean;
     isParameter?: boolean;
     isConst?: boolean;
+    isBuiltin?: boolean;
     captures?: Map<string, TypeInfo>; // <name, typeInfo>
     structName?: string;
     properties?: Map<string, string>;
@@ -20,10 +21,14 @@ export class TypeAnalyzer {
     private traverser = new Traverser();
     public readonly scopeManager = new ScopeManager();
     public readonly functionTypeInfo = new Map<
-        ts.FunctionDeclaration | ts.ArrowFunction,
+        ts.FunctionDeclaration | ts.ArrowFunction | ts.FunctionExpression,
         TypeInfo
     >();
-    private functionStack: (ts.FunctionDeclaration | ts.ArrowFunction)[] = [];
+    private functionStack: (
+        | ts.FunctionDeclaration
+        | ts.ArrowFunction
+        | ts.FunctionExpression
+    )[] = [];
     public readonly nodeToScope = new Map<ts.Node, Scope>();
 
     public analyze(ast: Node) {
@@ -92,15 +97,52 @@ export class TypeAnalyzer {
                 },
             },
 
+            FunctionExpression: {
+                enter: (node) => {
+                    if (ts.isFunctionExpression(node)) {
+                        const funcType: TypeInfo = {
+                            type: "function",
+                            isClosure: false,
+                            captures: new Map(),
+                            declaration: node,
+                        };
+                        this.functionTypeInfo.set(node, funcType);
+
+                        this.scopeManager.enterScope();
+                        this.nodeToScope.set(
+                            node,
+                            this.scopeManager.currentScope,
+                        );
+
+                        // If the function expression is named, define the name within its own scope for recursion.
+                        if (node.name) {
+                            this.scopeManager.define(node.name.getText(), funcType);
+                        }
+
+                        // Define parameters in the new scope
+                        node.parameters.forEach((p) =>
+                            this.scopeManager.define(p.name.getText(), {
+                                type: "auto",
+                                isParameter: true,
+                                declaration: p,
+                            }),
+                        );
+                        this.functionStack.push(node);
+                    }
+                },
+                exit: (node) => {
+                    if (ts.isFunctionExpression(node)) {
+                        this.functionStack.pop();
+                    }
+                    this.scopeManager.exitScope();
+                },
+            },
+
             FunctionDeclaration: {
                 enter: (node) => {
                     if (ts.isFunctionDeclaration(node)) {
-                        // If it's a nested function, define it in the current scope.
-                        // Top-level functions are already hoisted.
-                        if (
-                            node.parent.kind !== ts.SyntaxKind.SourceFile &&
-                            node.name
-                        ) {
+                        // Define the function in the current scope.
+                        if (node.name) {
                             const funcName = node.name.getText();
                             const funcType: TypeInfo = {
                                 type: "function",
@@ -160,7 +202,8 @@ export class TypeAnalyzer {
                             this.functionStack[this.functionStack.length - 1];
                         if (
                             currentFuncNode &&
-                            ts.isFunctionDeclaration(currentFuncNode) &&
+                            (ts.isFunctionDeclaration(currentFuncNode) ||
+                                ts.isFunctionExpression(currentFuncNode)) &&
                             node.text === currentFuncNode.name?.getText()
                         ) {
                             return; // Don't treat recursive call as capture
