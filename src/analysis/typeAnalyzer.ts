@@ -31,9 +31,18 @@ export class TypeAnalyzer {
         const visitor: Visitor = {
             // Enter new scope for any block-like structure
             Block: {
-                enter: (node) => {
+                enter: (node, parent) => {
                     this.scopeManager.enterScope();
                     this.nodeToScope.set(node, this.scopeManager.currentScope);
+                    if (parent && ts.isCatchClause(parent) && parent.variableDeclaration) {
+                        if (ts.isIdentifier(parent.variableDeclaration.name)) {
+                            const name = parent.variableDeclaration.name.getText();
+                            // The type is basically 'any' or 'string' from the .what()
+                            const typeInfo: TypeInfo = { type: "string", declaration: parent.variableDeclaration };
+                            this.scopeManager.define(name, typeInfo);
+                        }
+                        // TODO: handle binding patterns in catch clause
+                    }
                 },
                 exit: () => this.scopeManager.exitScope(),
             },

@@ -6,11 +6,14 @@ import type { Node } from "../ast/types";
 // @ts-ignore
 import prelude from "../library/prelude.h" with { type: "text" };
 
-const TRY_CATCH_EXCEPTION_NAME = "__caught_exception";
-
 export class CodeGenerator {
     private indentationLevel: number = 0;
     private typeAnalyzer!: TypeAnalyzer;
+    private exceptionCounter = 0;
+
+    private generateUniqueExceptionName(): string {
+        return `__caught_exception_${this.exceptionCounter++}`;
+    }
 
     private getScopeForNode(node: ts.Node): Scope {
         let current: ts.Node | undefined = node;
@@ -131,6 +134,7 @@ export class CodeGenerator {
             isInsideFunction: boolean;
             isFunctionBody: boolean;
             isAssignmentOnly?: boolean;
+            exceptionName?: string;
         },
     ): string {
         if (ts.isFunctionDeclaration(node)) {
@@ -451,12 +455,13 @@ export class CodeGenerator {
 
             case ts.SyntaxKind.TryStatement: {
                 const tryStmt = node as ts.TryStatement;
-                const newContext = { ...context, isFunctionBody: false };
+                const exceptionName = this.generateUniqueExceptionName();
+                const newContext = { ...context, isFunctionBody: false, exceptionName: exceptionName };
                 let code = `${this.indent()}try `;
                 code += this.visit(tryStmt.tryBlock, newContext);
                 if (tryStmt.catchClause) {
                     code +=
-                        ` catch (const std::exception& ${TRY_CATCH_EXCEPTION_NAME}) `;
+                        ` catch (const std::exception& ${exceptionName}) `;
                     code += this.visit(tryStmt.catchClause, newContext);
                 }
                 return code;
@@ -464,19 +469,32 @@ export class CodeGenerator {
 
             case ts.SyntaxKind.CatchClause: {
                 const catchClause = node as ts.CatchClause;
+                const exceptionName = context.exceptionName;
+                if (!exceptionName) {
+                    // This should not happen if it's coming from a TryStatement
+                    throw new Error("Compiler bug: exceptionName not found in context for CatchClause");
+                }
+
                 if (catchClause.variableDeclaration) {
                     const varName = catchClause.variableDeclaration.name
                         .getText();
-                    let code = `{\n{\n`;
+                    let code = `{\n`;
+                    this.indentationLevel++;
+                    code += `${this.indent()}{\n`;
                     this.indentationLevel++;
                     code +=
-                        `${this.indent()}auto ${varName} = std::make_shared<JsVariant>(std::string(${TRY_CATCH_EXCEPTION_NAME}.what()));\n`;
-                    // Create a decoy TRY_CATCH_EXCEPTION_NAME varaible set to undefined to avoid the real TRY_CATCH_EXCEPTION_NAME leaking into catch scope.
-                    code +=
-                        `${this.indent()}auto ${TRY_CATCH_EXCEPTION_NAME} = std::make_shared<JsVariant>(undefined);\n`;
+                        `${this.indent()}auto ${varName} = std::make_shared<JsVariant>(std::string(${exceptionName}.what()));\n`;
+
+                    // Shadow the C++ exception variable to prevent access from user code.
+                    if (varName !== exceptionName) {
+                        code += `${this.indent()}auto ${exceptionName} = std::make_shared<JsVariant>(undefined);\n`;
+                    }
+
                     code += this.visit(catchClause.block, context);
                     this.indentationLevel--;
-                    code += `${this.indent()}}\n}\n`;
+                    code += `${this.indent()}}\n`;
+                    this.indentationLevel--;
+                    code += `${this.indent()}}\n`;
                     return code;
                 }
                 return this.visit(catchClause.block, context);
