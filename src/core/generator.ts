@@ -6,6 +6,8 @@ import type { Node } from "../ast/types";
 // @ts-ignore
 import prelude from "../library/prelude.h" with { type: "text" };
 
+const CONTAINER_FUNCTION_NAME = "__jspp_code_container__";
+
 export class CodeGenerator {
     private indentationLevel: number = 0;
     private typeAnalyzer!: TypeAnalyzer;
@@ -33,7 +35,10 @@ export class CodeGenerator {
         return symbols;
     }
 
-    private generateUniqueName(prefix: string, namesToAvoid: Set<string>): string {
+    private generateUniqueName(
+        prefix: string,
+        namesToAvoid: Set<string>,
+    ): string {
         let name = `${prefix}${this.exceptionCounter}`;
         while (namesToAvoid.has(name)) {
             this.exceptionCounter++;
@@ -77,18 +82,22 @@ export class CodeGenerator {
 
         const declarations = "\n";
 
-        let mainCode = "int main() {\n";
+        let containerCode = `JsVariant ${CONTAINER_FUNCTION_NAME}() {\n`;
         this.indentationLevel++;
-        // The entire script is treated as a single function body now.
-        mainCode += this.visit(ast, {
+        containerCode += this.visit(ast, {
             isMainContext: true,
             isInsideFunction: true,
             isFunctionBody: true,
         });
         this.indentationLevel--;
+        containerCode += "  return undefined;\n";
+        containerCode += "}\n";
+
+        let mainCode = "int main() {\n";
+        mainCode += `  ${CONTAINER_FUNCTION_NAME}();\n`;
         mainCode += "  return 0;\n}\n";
 
-        return prelude + declarations + mainCode;
+        return prelude + declarations + containerCode + mainCode;
     }
 
     private generateLambda(
@@ -506,21 +515,34 @@ export class CodeGenerator {
 
                 if (tryStmt.finallyBlock) {
                     const declaredSymbols = new Set<string>();
-                    this.getDeclaredSymbols(tryStmt.tryBlock).forEach(s => declaredSymbols.add(s));
+                    this.getDeclaredSymbols(tryStmt.tryBlock).forEach((s) =>
+                        declaredSymbols.add(s)
+                    );
                     if (tryStmt.catchClause) {
-                        this.getDeclaredSymbols(tryStmt.catchClause).forEach(s => declaredSymbols.add(s));
+                        this.getDeclaredSymbols(tryStmt.catchClause).forEach(
+                            (s) => declaredSymbols.add(s),
+                        );
                     }
-                    this.getDeclaredSymbols(tryStmt.finallyBlock).forEach(s => declaredSymbols.add(s));
+                    this.getDeclaredSymbols(tryStmt.finallyBlock).forEach((s) =>
+                        declaredSymbols.add(s)
+                    );
 
-                    const finallyLambdaName = this.generateUniqueName('__finally_', declaredSymbols);
+                    const finallyLambdaName = this.generateUniqueName(
+                        "__finally_",
+                        declaredSymbols,
+                    );
 
                     let code = "";
-                    const finallyBlockCode = this.visit(tryStmt.finallyBlock, { ...newContext, isFunctionBody: false });
+                    const finallyBlockCode = this.visit(tryStmt.finallyBlock, {
+                        ...newContext,
+                        isFunctionBody: false,
+                    });
 
                     code += `${this.indent()}{\n`;
                     this.indentationLevel++;
 
-                    code += `${this.indent()}auto ${finallyLambdaName} = [&]() ${finallyBlockCode.trim()};\n`;
+                    code +=
+                        `${this.indent()}auto ${finallyLambdaName} = [&]() ${finallyBlockCode.trim()};\n`;
 
                     code += `${this.indent()}try {\n`;
                     this.indentationLevel++;
@@ -528,7 +550,8 @@ export class CodeGenerator {
                     code += `${this.indent()}try\n`;
                     code += this.visit(tryStmt.tryBlock, newContext);
                     if (tryStmt.catchClause) {
-                        code += `${this.indent()}catch (const std::exception& ${exceptionName}) \n`;
+                        code +=
+                            `${this.indent()}catch (const std::exception& ${exceptionName}) \n`;
                         code += this.visit(tryStmt.catchClause, newContext);
                     } else {
                         code += `${this.indent()}catch (...) { throw; }\n`;
@@ -550,7 +573,8 @@ export class CodeGenerator {
                     let code = `${this.indent()}try `;
                     code += this.visit(tryStmt.tryBlock, newContext);
                     if (tryStmt.catchClause) {
-                        code += ` catch (const std::exception& ${exceptionName}) `;
+                        code +=
+                            ` catch (const std::exception& ${exceptionName}) `;
                         code += this.visit(tryStmt.catchClause, newContext);
                     }
                     return code;
