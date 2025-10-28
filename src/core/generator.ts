@@ -461,14 +461,20 @@ export class CodeGenerator {
 
             case ts.SyntaxKind.TryStatement: {
                 const tryStmt = node as ts.TryStatement;
-                const userVarName = tryStmt.catchClause?.variableDeclaration?.name.getText();
-                const exceptionName = this.generateUniqueExceptionName(userVarName);
-                const newContext = { ...context, isFunctionBody: false, exceptionName: exceptionName };
+                const userVarName = tryStmt.catchClause?.variableDeclaration
+                    ?.name.getText();
+                const exceptionName = this.generateUniqueExceptionName(
+                    userVarName,
+                );
+                const newContext = {
+                    ...context,
+                    isFunctionBody: false,
+                    exceptionName: exceptionName,
+                };
                 let code = `${this.indent()}try `;
                 code += this.visit(tryStmt.tryBlock, newContext);
                 if (tryStmt.catchClause) {
-                    code +=
-                        ` catch (const std::exception& ${exceptionName}) `;
+                    code += ` catch (const std::exception& ${exceptionName}) `;
                     code += this.visit(tryStmt.catchClause, newContext);
                 }
                 return code;
@@ -479,7 +485,9 @@ export class CodeGenerator {
                 const exceptionName = context.exceptionName;
                 if (!exceptionName) {
                     // This should not happen if it's coming from a TryStatement
-                    throw new Error("Compiler bug: exceptionName not found in context for CatchClause");
+                    throw new Error(
+                        "Compiler bug: exceptionName not found in context for CatchClause",
+                    );
                 }
 
                 if (catchClause.variableDeclaration) {
@@ -489,12 +497,15 @@ export class CodeGenerator {
                     this.indentationLevel++;
                     code += `${this.indent()}{\n`;
                     this.indentationLevel++;
+
+                    // Always create the JS exception variable.
                     code +=
                         `${this.indent()}auto ${varName} = std::make_shared<JsVariant>(std::string(${exceptionName}.what()));\n`;
 
-                    // Shadow the C++ exception variable to prevent access from user code.
+                    // Shadow the C++ exception variable *only if* the names don't clash.
                     if (varName !== exceptionName) {
-                        code += `${this.indent()}auto ${exceptionName} = std::make_shared<JsVariant>(undefined);\n`;
+                        code +=
+                            `${this.indent()}auto ${exceptionName} = std::make_shared<JsVariant>(undefined);\n`;
                     }
 
                     code += this.visit(catchClause.block, context);
@@ -503,8 +514,13 @@ export class CodeGenerator {
                     this.indentationLevel--;
                     code += `${this.indent()}}\n`;
                     return code;
+                } else {
+                    // No variable in the catch clause, e.g., `catch { ... }`
+                    let code = `{\n`; // Alway create block scope
+                    code += this.visit(catchClause.block, context);
+                    code += `${this.indent()}}\n`;
+                    return code;
                 }
-                return this.visit(catchClause.block, context);
             }
 
             case ts.SyntaxKind.CallExpression: {

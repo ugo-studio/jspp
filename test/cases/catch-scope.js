@@ -22,3 +22,15 @@ try {
   let ex = "This is a new variable";
   console.log("Inner variable:", ex);
 }
+
+try {
+  throw "This is an error";
+} catch {
+  console.log("Caught error without exception variable");
+}
+
+try {
+  throw "This is an error";
+} catch {
+  console.log("Caught error without exception variable");
+}

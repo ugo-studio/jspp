@@ -86,7 +86,7 @@ This project is ambitious, and there is a long and exciting road ahead. Here is 
 
 This phase focuses on building a solid foundation that correctly models JavaScript's core runtime behavior.
 
-- [x] Dynamic Variables & Primitives (`let`, `string`, `number`, `boolean`, etc.)
+- [x] Dynamic Variables & Primitives (`let`, `const`, `var`, `undefined`, `null`, `string`, `number`, `boolean`, etc.)
 - [x] Function Declarations & Arrow Functions
 - [x] Correct Hoisting for Variables and Functions
 - [x] Closures & Lexical Scoping (via `std::shared_ptr` capture)
@@ -103,7 +103,7 @@ This phase will broaden the range of supported JavaScript syntax and features.
 - [ ] **Arrays:** Literals, indexing, and core methods (`.push`, `.pop`, `.length`, etc.).
 - [ ] **Control Flow:** tenary operators, `for` loops, `while` loops, `switch`.
 - [ ] **Operators:** Full suite of arithmetic, logical, and comparison operators.
-- [ ] **Error Handling:** `try`/`catch`/`finally` blocks and `throw`.
+- [x] **Error Handling:** `try`/`catch`/`finally` blocks and `throw`.
 
 ### **Phase 3: Interoperability & Standard Library**
 
