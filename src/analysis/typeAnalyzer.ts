@@ -8,6 +8,7 @@ export interface TypeInfo {
     type: string;
     isClosure?: boolean;
     isParameter?: boolean;
+    isConst?: boolean;
     captures?: Map<string, TypeInfo>; // <name, typeInfo>
     structName?: string;
     properties?: Map<string, string>;
@@ -127,10 +128,12 @@ export class TypeAnalyzer {
                 enter: (node) => {
                     if (ts.isVariableDeclaration(node)) {
                         const name = node.name.getText();
+                        const isConst = (node.parent.flags & ts.NodeFlags.Const) !== 0;
                         // We can add more detailed inference here if needed
                         const typeInfo: TypeInfo = {
                             type: "auto",
                             declaration: node,
+                            isConst,
                         };
                         this.scopeManager.define(name, typeInfo);
                     }

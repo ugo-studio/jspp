@@ -29,6 +29,7 @@ const main = async () => {
         "recursion",
         "if-else",
         "default-params",
+        "declarations",
     ];
 
     for (const caseName of cases) {

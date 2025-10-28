@@ -395,6 +395,14 @@ export class CodeGenerator {
                 const rightText = this.visit(binExpr.right, context);
 
                 if (binExpr.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+                    const scope = this.getScopeForNode(binExpr.left);
+                    const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                        leftText,
+                        scope,
+                    );
+                    if (typeInfo?.isConst) {
+                        return `throw std::runtime_error("TypeError: Assignment to constant variable.")`;
+                    }
                     return `*${leftText} ${op} ${rightText}`;
                 }
 
