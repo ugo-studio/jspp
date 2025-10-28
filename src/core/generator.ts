@@ -182,6 +182,8 @@ export class CodeGenerator {
             isFunctionBody: boolean;
             isAssignmentOnly?: boolean;
             exceptionName?: string;
+            isInsideTryCatchLambda?: boolean;
+            hasReturnedFlag?: string;
         },
     ): string {
         if (ts.isFunctionDeclaration(node)) {
@@ -507,60 +509,63 @@ export class CodeGenerator {
 
             case ts.SyntaxKind.TryStatement: {
                 const tryStmt = node as ts.TryStatement;
-                const userVarName = tryStmt.catchClause?.variableDeclaration
-                    ?.name.getText();
-                const exceptionName = this.generateUniqueExceptionName(
-                    userVarName,
-                );
-                const newContext = {
-                    ...context,
-                    isFunctionBody: false,
-                    exceptionName: exceptionName,
-                };
 
                 if (tryStmt.finallyBlock) {
                     const declaredSymbols = new Set<string>();
-                    this.getDeclaredSymbols(tryStmt.tryBlock).forEach((s) =>
-                        declaredSymbols.add(s)
-                    );
+                    this.getDeclaredSymbols(tryStmt.tryBlock).forEach(s => declaredSymbols.add(s));
                     if (tryStmt.catchClause) {
-                        this.getDeclaredSymbols(tryStmt.catchClause).forEach(
-                            (s) => declaredSymbols.add(s),
-                        );
+                        this.getDeclaredSymbols(tryStmt.catchClause).forEach(s => declaredSymbols.add(s));
                     }
-                    this.getDeclaredSymbols(tryStmt.finallyBlock).forEach((s) =>
-                        declaredSymbols.add(s)
-                    );
+                    this.getDeclaredSymbols(tryStmt.finallyBlock).forEach(s => declaredSymbols.add(s));
 
-                    const finallyLambdaName = this.generateUniqueName(
-                        "__finally_",
-                        declaredSymbols,
-                    );
+                    const finallyLambdaName = this.generateUniqueName('__finally_', declaredSymbols);
+                    const resultVarName = this.generateUniqueName('__try_result_', declaredSymbols);
+                    const hasReturnedFlagName = this.generateUniqueName('__try_has_returned_', declaredSymbols);
 
-                    let code = "";
-                    const finallyBlockCode = this.visit(tryStmt.finallyBlock, {
-                        ...newContext,
-                        isFunctionBody: false,
-                    });
-
-                    code += `${this.indent()}{\n`;
+                    let code = `${this.indent()}{\n`;
                     this.indentationLevel++;
 
-                    code +=
-                        `${this.indent()}auto ${finallyLambdaName} = [&]() ${finallyBlockCode.trim()};\n`;
+                    code += `${this.indent()}JsVariant ${resultVarName};\n`;
+                    code += `${this.indent()}bool ${hasReturnedFlagName} = false;\n`;
+
+                    const finallyBlockCode = this.visit(tryStmt.finallyBlock, { ...context, isFunctionBody: false });
+                    code += `${this.indent()}auto ${finallyLambdaName} = [&]() ${finallyBlockCode.trim()};\n`;
 
                     code += `${this.indent()}try {\n`;
                     this.indentationLevel++;
 
-                    code += `${this.indent()}try\n`;
-                    code += this.visit(tryStmt.tryBlock, newContext);
+                    code += `${this.indent()}${resultVarName} = ([&]() -> JsVariant {\n`;
+                    this.indentationLevel++;
+
+                    const innerContext = {
+                        ...context,
+                        isFunctionBody: false,
+                        isInsideTryCatchLambda: true,
+                        hasReturnedFlag: hasReturnedFlagName
+                    };
+
+                    code += `${this.indent()}try {\n`;
+                    this.indentationLevel++;
+                    code += this.visit(tryStmt.tryBlock, innerContext);
+                    this.indentationLevel--;
+                    code += `${this.indent()}}\n`;
+
                     if (tryStmt.catchClause) {
-                        code +=
-                            `${this.indent()}catch (const std::exception& ${exceptionName}) \n`;
-                        code += this.visit(tryStmt.catchClause, newContext);
+                        const exceptionName = this.generateUniqueExceptionName(tryStmt.catchClause.variableDeclaration?.name.getText());
+                        const catchContext = { ...innerContext, exceptionName };
+                        code += `${this.indent()}catch (const std::exception& ${exceptionName}) {\n`;
+                        this.indentationLevel++;
+                        code += this.visit(tryStmt.catchClause.block, catchContext);
+                        this.indentationLevel--;
+                        code += `${this.indent()}}\n`;
                     } else {
                         code += `${this.indent()}catch (...) { throw; }\n`;
                     }
+
+                    code += `${this.indent()}return undefined;\n`;
+
+                    this.indentationLevel--;
+                    code += `${this.indent()}})();\n`;
 
                     this.indentationLevel--;
                     code += `${this.indent()}} catch (...) {\n`;
@@ -569,17 +574,25 @@ export class CodeGenerator {
                     code += `${this.indent()}throw;\n`;
                     this.indentationLevel--;
                     code += `${this.indent()}}\n`;
+
                     code += `${this.indent()}${finallyLambdaName}();\n`;
+
+                    code += `${this.indent()}if (${hasReturnedFlagName}) {\n`;
+                    this.indentationLevel++;
+                    code += `${this.indent()}return ${resultVarName};\n`;
+                    this.indentationLevel--;
+                    code += `${this.indent()}}\n`;
 
                     this.indentationLevel--;
                     code += `${this.indent()}}\n`;
                     return code;
                 } else {
+                    const exceptionName = this.generateUniqueExceptionName(tryStmt.catchClause?.variableDeclaration?.name.getText());
+                    const newContext = { ...context, isFunctionBody: false, exceptionName };
                     let code = `${this.indent()}try `;
                     code += this.visit(tryStmt.tryBlock, newContext);
                     if (tryStmt.catchClause) {
-                        code +=
-                            ` catch (const std::exception& ${exceptionName}) `;
+                        code += ` catch (const std::exception& ${exceptionName}) `;
                         code += this.visit(tryStmt.catchClause, newContext);
                     }
                     return code;
@@ -660,6 +673,10 @@ export class CodeGenerator {
 
             case ts.SyntaxKind.ReturnStatement: {
                 const returnStmt = node as ts.ReturnStatement;
+                let code = "";
+                if (context.isInsideTryCatchLambda && context.hasReturnedFlag) {
+                    code += `${this.indent()}${context.hasReturnedFlag} = true;\n`;
+                }
                 if (returnStmt.expression) {
                     const expr = returnStmt.expression;
                     const exprText = this.visit(expr, context);
@@ -668,12 +685,14 @@ export class CodeGenerator {
                         const typeInfo = this.typeAnalyzer.scopeManager
                             .lookupFromScope(exprText, scope);
                         if (typeInfo && !typeInfo.isParameter) {
-                            return `${this.indent()}return *${exprText};\n`;
+                            code += `${this.indent()}return *${exprText};\n`;
                         }
                     }
-                    return `${this.indent()}return ${exprText};\n`;
+                    code += `${this.indent()}return ${exprText};\n`;
+                } else {
+                    code += `${this.indent()}return undefined;\n`;
                 }
-                return `${this.indent()}return undefined;\n`;
+                return code;
             }
 
             case ts.SyntaxKind.Identifier: {

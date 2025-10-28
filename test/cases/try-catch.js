@@ -1,4 +1,4 @@
-console.log("--- Catch Scope ---");
+console.log("--- Try-Catch-Finally ---");
 
 try {
   throw "This is an error";
@@ -47,10 +47,11 @@ try {
   console.log("Caught propagated error:", e);
 }
 
-(() => {
+const funcWithReturn = () => {
   try {
     return "This is a return value";
   } finally {
     console.log("This is the finally block after a return statement");
   }
-})();
+};
+console.log(funcWithReturn());

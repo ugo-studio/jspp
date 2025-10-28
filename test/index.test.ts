@@ -1,10 +1,21 @@
 import fs from "fs/promises";
 import path from "path";
+
 import { Interpreter } from "../src";
 
 const runTest = async (caseName: string) => {
-    const inputFile = path.join(process.cwd(), "test", "cases", `${caseName}.js`);
-    const outputFile = path.join(process.cwd(), "test", "output", `${caseName}.cpp`);
+    const inputFile = path.join(
+        process.cwd(),
+        "test",
+        "cases",
+        `${caseName}.js`,
+    );
+    const outputFile = path.join(
+        process.cwd(),
+        "test",
+        "output",
+        `${caseName}.cpp`,
+    );
 
     const jsCode = await fs.readFile(inputFile, "utf-8");
     const interpreter = new Interpreter();
@@ -30,7 +41,7 @@ const main = async () => {
         "if-else",
         "default-params",
         "declarations",
-        "catch-scope",
+        "try-catch",
     ];
 
     for (const caseName of cases) {
