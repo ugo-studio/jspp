@@ -440,6 +440,39 @@ export class CodeGenerator {
                 return `${finalLeft} ${op} ${finalRight}`;
             }
 
+            case ts.SyntaxKind.ThrowStatement: {
+                const throwStmt = node as ts.ThrowStatement;
+                const expr = this.visit(throwStmt.expression, context);
+                return `${this.indent()}throw std::runtime_error(${expr});\n`;
+            }
+
+            case ts.SyntaxKind.TryStatement: {
+                const tryStmt = node as ts.TryStatement;
+                const newContext = { ...context, isFunctionBody: false };
+                let code = `${this.indent()}try `;
+                code += this.visit(tryStmt.tryBlock, newContext);
+                if (tryStmt.catchClause) {
+                    code += ` catch (const std::exception& ex) `;
+                    code += this.visit(tryStmt.catchClause, newContext);
+                }
+                return code;
+            }
+
+            case ts.SyntaxKind.CatchClause: {
+                const catchClause = node as ts.CatchClause;
+                if (catchClause.variableDeclaration) {
+                    const varName = catchClause.variableDeclaration.name.getText();
+                    let code = `{\n`;
+                    this.indentationLevel++;
+                    code += `${this.indent()}auto ${varName} = std::make_shared<JsVariant>(std::string(ex.what()));\n`;
+                    code += this.visit(catchClause.block, context);
+                    this.indentationLevel--;
+                    code += `${this.indent()}}\n`;
+                    return code;
+                }
+                return this.visit(catchClause.block, context);
+            }
+
             case ts.SyntaxKind.CallExpression: {
                 const callExpr = node as ts.CallExpression;
                 const callee = callExpr.expression;
