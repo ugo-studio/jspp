@@ -30,6 +30,7 @@ const main = async () => {
         "if-else",
         "default-params",
         "declarations",
+        "catch-scope",
     ];
 
     for (const caseName of cases) {

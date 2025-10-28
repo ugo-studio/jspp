@@ -1,10 +1,12 @@
 import * as ts from "typescript";
 
 import { Scope } from "../analysis/scope";
-import { TypeAnalyzer, type TypeInfo } from "../analysis/typeAnalyzer";
+import { TypeAnalyzer } from "../analysis/typeAnalyzer";
 import type { Node } from "../ast/types";
 // @ts-ignore
 import prelude from "../library/prelude.h" with { type: "text" };
+
+const TRY_CATCH_EXCEPTION_NAME = "__caught_exception";
 
 export class CodeGenerator {
     private indentationLevel: number = 0;
@@ -70,7 +72,8 @@ export class CodeGenerator {
                     const defaultValue = p.initializer
                         ? this.visit(p.initializer, visitContext)
                         : "undefined";
-                    paramExtraction += `${this.indent()}auto ${name} = args.size() > ${i} ? args[${i}] : ${defaultValue};\n`;
+                    paramExtraction +=
+                        `${this.indent()}auto ${name} = args.size() > ${i} ? args[${i}] : ${defaultValue};\n`;
                 });
                 this.indentationLevel--;
 
@@ -89,7 +92,8 @@ export class CodeGenerator {
                     const defaultValue = p.initializer
                         ? this.visit(p.initializer, visitContext)
                         : "undefined";
-                    lambda += `${this.indent()}auto ${name} = args.size() > ${i} ? args[${i}] : ${defaultValue};\n`;
+                    lambda +=
+                        `${this.indent()}auto ${name} = args.size() > ${i} ? args[${i}] : ${defaultValue};\n`;
                 });
                 lambda += `${this.indent()}return ${
                     this.visit(node.body, {
@@ -396,10 +400,11 @@ export class CodeGenerator {
 
                 if (binExpr.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
                     const scope = this.getScopeForNode(binExpr.left);
-                    const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
-                        leftText,
-                        scope,
-                    );
+                    const typeInfo = this.typeAnalyzer.scopeManager
+                        .lookupFromScope(
+                            leftText,
+                            scope,
+                        );
                     if (typeInfo?.isConst) {
                         return `throw std::runtime_error("TypeError: Assignment to constant variable.")`;
                     }
@@ -423,16 +428,14 @@ export class CodeGenerator {
                     )
                     : null;
 
-                const finalLeft =
-                    leftIsIdentifier && leftTypeInfo &&
+                const finalLeft = leftIsIdentifier && leftTypeInfo &&
                         !leftTypeInfo.isParameter
-                        ? `(*${leftText})`
-                        : leftText;
-                const finalRight =
-                    rightIsIdentifier && rightTypeInfo &&
+                    ? `(*${leftText})`
+                    : leftText;
+                const finalRight = rightIsIdentifier && rightTypeInfo &&
                         !rightTypeInfo.isParameter
-                        ? `(*${rightText})`
-                        : rightText;
+                    ? `(*${rightText})`
+                    : rightText;
 
                 if (op === "+" || op === "-" || op === "*") {
                     return `(${finalLeft} ${op} ${finalRight})`;
@@ -452,7 +455,8 @@ export class CodeGenerator {
                 let code = `${this.indent()}try `;
                 code += this.visit(tryStmt.tryBlock, newContext);
                 if (tryStmt.catchClause) {
-                    code += ` catch (const std::exception& ex) `;
+                    code +=
+                        ` catch (const std::exception& ${TRY_CATCH_EXCEPTION_NAME}) `;
                     code += this.visit(tryStmt.catchClause, newContext);
                 }
                 return code;
@@ -461,13 +465,18 @@ export class CodeGenerator {
             case ts.SyntaxKind.CatchClause: {
                 const catchClause = node as ts.CatchClause;
                 if (catchClause.variableDeclaration) {
-                    const varName = catchClause.variableDeclaration.name.getText();
-                    let code = `{\n`;
+                    const varName = catchClause.variableDeclaration.name
+                        .getText();
+                    let code = `{\n{\n`;
                     this.indentationLevel++;
-                    code += `${this.indent()}auto ${varName} = std::make_shared<JsVariant>(std::string(ex.what()));\n`;
+                    code +=
+                        `${this.indent()}auto ${varName} = std::make_shared<JsVariant>(std::string(${TRY_CATCH_EXCEPTION_NAME}.what()));\n`;
+                    // Create a decoy TRY_CATCH_EXCEPTION_NAME varaible set to undefined to avoid the real TRY_CATCH_EXCEPTION_NAME leaking into catch scope.
+                    code +=
+                        `${this.indent()}auto ${TRY_CATCH_EXCEPTION_NAME} = std::make_shared<JsVariant>(undefined);\n`;
                     code += this.visit(catchClause.block, context);
                     this.indentationLevel--;
-                    code += `${this.indent()}}\n`;
+                    code += `${this.indent()}}\n}\n`;
                     return code;
                 }
                 return this.visit(catchClause.block, context);
