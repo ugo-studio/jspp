@@ -11,8 +11,14 @@ export class CodeGenerator {
     private typeAnalyzer!: TypeAnalyzer;
     private exceptionCounter = 0;
 
-    private generateUniqueExceptionName(): string {
-        return `__caught_exception_${this.exceptionCounter++}`;
+    private generateUniqueExceptionName(nameToAvoid?: string): string {
+        let exceptionName = `__caught_exception_${this.exceptionCounter}`;
+        while (exceptionName === nameToAvoid) {
+            this.exceptionCounter++;
+            exceptionName = `__caught_exception_${this.exceptionCounter}`;
+        }
+        this.exceptionCounter++;
+        return exceptionName;
     }
 
     private getScopeForNode(node: ts.Node): Scope {
@@ -455,7 +461,8 @@ export class CodeGenerator {
 
             case ts.SyntaxKind.TryStatement: {
                 const tryStmt = node as ts.TryStatement;
-                const exceptionName = this.generateUniqueExceptionName();
+                const userVarName = tryStmt.catchClause?.variableDeclaration?.name.getText();
+                const exceptionName = this.generateUniqueExceptionName(userVarName);
                 const newContext = { ...context, isFunctionBody: false, exceptionName: exceptionName };
                 let code = `${this.indent()}try `;
                 code += this.visit(tryStmt.tryBlock, newContext);
