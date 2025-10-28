@@ -11,6 +11,38 @@ export class CodeGenerator {
     private typeAnalyzer!: TypeAnalyzer;
     private exceptionCounter = 0;
 
+    private getDeclaredSymbols(node: ts.Node): Set<string> {
+        const symbols = new Set<string>();
+        const visitor = (child: ts.Node) => {
+            if (ts.isVariableDeclaration(child)) {
+                // Handles let, const, var
+                symbols.add(child.name.getText());
+            } else if (ts.isFunctionDeclaration(child) && child.name) {
+                // Handles function declarations
+                symbols.add(child.name.getText());
+            } else if (ts.isParameter(child)) {
+                // Handles function parameters
+                symbols.add(child.name.getText());
+            } else if (ts.isCatchClause(child) && child.variableDeclaration) {
+                // Handles catch clause variable
+                symbols.add(child.variableDeclaration.name.getText());
+            }
+            ts.forEachChild(child, visitor);
+        };
+        visitor(node);
+        return symbols;
+    }
+
+    private generateUniqueName(prefix: string, namesToAvoid: Set<string>): string {
+        let name = `${prefix}${this.exceptionCounter}`;
+        while (namesToAvoid.has(name)) {
+            this.exceptionCounter++;
+            name = `${prefix}${this.exceptionCounter}`;
+        }
+        this.exceptionCounter++;
+        return name;
+    }
+
     private generateUniqueExceptionName(nameToAvoid?: string): string {
         let exceptionName = `__caught_exception_${this.exceptionCounter}`;
         while (exceptionName === nameToAvoid) {
@@ -473,10 +505,17 @@ export class CodeGenerator {
                 };
 
                 if (tryStmt.finallyBlock) {
+                    const declaredSymbols = new Set<string>();
+                    this.getDeclaredSymbols(tryStmt.tryBlock).forEach(s => declaredSymbols.add(s));
+                    if (tryStmt.catchClause) {
+                        this.getDeclaredSymbols(tryStmt.catchClause).forEach(s => declaredSymbols.add(s));
+                    }
+                    this.getDeclaredSymbols(tryStmt.finallyBlock).forEach(s => declaredSymbols.add(s));
+
+                    const finallyLambdaName = this.generateUniqueName('__finally_', declaredSymbols);
+
                     let code = "";
                     const finallyBlockCode = this.visit(tryStmt.finallyBlock, { ...newContext, isFunctionBody: false });
-
-                    const finallyLambdaName = `__finally_${this.exceptionCounter++}`;
 
                     code += `${this.indent()}{\n`;
                     this.indentationLevel++;
