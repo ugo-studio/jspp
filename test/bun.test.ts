@@ -181,6 +181,19 @@ const cases: { name: string; expected: string[] }[] = [
             "1",
         ],
     },
+    {
+        name: "array-length",
+        expected: [
+            "--- Array Length ---",
+            "3",
+            "5",
+            "undefined",
+            "undefined",
+            "2",
+            "undefined",
+            "Caught expected error: RangeError: Invalid array length",
+        ],
+    },
 ];
 
 describe("Interpreter tests", () => {

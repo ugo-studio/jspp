@@ -133,6 +133,32 @@ namespace jspp
                 if (!ptr)
                     throw std::runtime_error("TypeError: Cannot set properties of null");
 
+                if (js_value_to_string(key) == "length")
+                {
+                    size_t new_length = 0;
+                    if (val.type() == typeid(int))
+                    {
+                        int v = std::any_cast<int>(val);
+                        if (v < 0)
+                            throw std::runtime_error("RangeError: Invalid array length");
+                        new_length = static_cast<size_t>(v);
+                    }
+                    else if (val.type() == typeid(double))
+                    {
+                        double v = std::any_cast<double>(val);
+                        if (v < 0 || v != static_cast<uint32_t>(v))
+                            throw std::runtime_error("RangeError: Invalid array length");
+                        new_length = static_cast<size_t>(v);
+                    }
+                    else
+                    {
+                        // Other types could be converted to number in a more complete implementation
+                        return val;
+                    }
+                    ptr->elements.resize(new_length, undefined);
+                    return val;
+                }
+
                 size_t index = -1;
                 if (key.type() == typeid(int))
                 {
