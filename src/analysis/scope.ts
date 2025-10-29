@@ -1,5 +1,7 @@
 import type { TypeInfo } from "./typeAnalyzer";
 
+const RESERVED_KEYWORDS = ["_uninit", "_deref"];
+
 // Represents a single scope (e.g., a function body or a block statement)
 export class Scope {
     public readonly symbols = new Map<string, TypeInfo>();
@@ -26,12 +28,13 @@ export class Scope {
 // Manages the hierarchy of scopes during analysis.
 export class ScopeManager {
     public currentScope: Scope;
-    private readonly allScopes: Scope[] = []; // *** NEW: Array to store all created scopes
+    private readonly allScopes: Scope[] = []; // Array to store all created scopes
+    private readonly reservedKeywords = new Set(RESERVED_KEYWORDS);
 
     constructor() {
         const rootScope = new Scope(null); // The global scope
         this.currentScope = rootScope;
-        this.allScopes.push(rootScope); // *** NEW: Add the root scope to our list
+        this.allScopes.push(rootScope); // Add the root scope to our list
         this.define("undefined", {
             type: "undefined",
             isConst: true,
@@ -43,7 +46,7 @@ export class ScopeManager {
     enterScope() {
         const newScope = new Scope(this.currentScope);
         this.currentScope = newScope;
-        this.allScopes.push(newScope); // *** NEW: Add every new scope to the list
+        this.allScopes.push(newScope); // Add every new scope to the list
     }
 
     // Exits the current scope, returning to the parent.
@@ -55,6 +58,9 @@ export class ScopeManager {
 
     // Defines a variable in the current scope.
     define(name: string, type: TypeInfo) {
+        if (this.reservedKeywords.has(name) && !type.isBuiltin) {
+            throw new Error(`SyntaxError: Unexpected reserved word "${name}"`);
+        }
         this.currentScope.define(name, type);
     }
 
@@ -69,7 +75,7 @@ export class ScopeManager {
         return definingScope ? definingScope.symbols.get(name) ?? null : null;
     }
 
-    // *** NEW: The missing method to retrieve all scopes for the generator.
+    // The missing method to retrieve all scopes for the generator.
     public getAllScopes(): Scope[] {
         return this.allScopes;
     }

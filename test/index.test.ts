@@ -3,7 +3,7 @@ import path from "path";
 
 import { Interpreter } from "../src";
 
-const runTest = async (caseName: string) => {
+const runTest = async (caseName: string, expectFail = false) => {
     const inputFile = path.join(
         process.cwd(),
         "test",
@@ -19,6 +19,22 @@ const runTest = async (caseName: string) => {
 
     const jsCode = await fs.readFile(inputFile, "utf-8");
     const interpreter = new Interpreter();
+
+    if (expectFail) {
+        try {
+            interpreter.interpret(jsCode);
+            console.error(
+                `ERROR: Test case ${caseName} was expected to fail but succeeded.`,
+            );
+            process.exit(1);
+        } catch (e: any) {
+            console.log(
+                `--- Caught expected error for ${caseName}: ${e.message} ---`,
+            );
+        }
+        return;
+    }
+
     const cppCode = interpreter.interpret(jsCode);
 
     await fs.mkdir(path.dirname(outputFile), { recursive: true });
@@ -50,6 +66,8 @@ const main = async () => {
     for (const caseName of cases) {
         await runTest(caseName);
     }
+
+    await runTest("reserved-keyword", true);
 };
 
 main();

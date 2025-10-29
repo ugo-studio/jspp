@@ -257,7 +257,7 @@ export class CodeGenerator {
                         (decl.parent.flags &
                             (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
                     const initializer = isLetOrConst
-                        ? "tdz_uninitialized"
+                        ? "_uninit"
                         : "undefined";
                     code +=
                         `${this.indent()}auto ${name} = std::make_shared<JsValue>(${initializer});\n`;
@@ -334,7 +334,7 @@ export class CodeGenerator {
                         (decl.parent.flags &
                             (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
                     const initializer = isLetOrConst
-                        ? "tdz_uninitialized"
+                        ? "_uninit"
                         : "undefined";
                     code +=
                         `${this.indent()}auto ${name} = std::make_shared<JsValue>(${initializer});\n`;
@@ -504,7 +504,7 @@ export class CodeGenerator {
             case ts.SyntaxKind.PropertyAccessExpression: {
                 const propAccess = node as ts.PropertyAccessExpression;
                 const exprText = this.visit(propAccess.expression, context);
-                return `checkAndDeref(${exprText}, "${exprText}").${propAccess.name.getText()}`;
+                return `_deref(${exprText}, "${exprText}").${propAccess.name.getText()}`;
             }
 
             case ts.SyntaxKind.ExpressionStatement:
@@ -562,11 +562,11 @@ export class CodeGenerator {
 
                 const finalLeft = leftIsIdentifier && leftTypeInfo &&
                         !leftTypeInfo.isParameter && !leftTypeInfo.isBuiltin
-                    ? `checkAndDeref(${leftText}, "${leftText}")`
+                    ? `_deref(${leftText}, "${leftText}")`
                     : leftText;
                 const finalRight = rightIsIdentifier && rightTypeInfo &&
                         !rightTypeInfo.isParameter && !rightTypeInfo.isBuiltin
-                    ? `checkAndDeref(${rightText}, "${rightText}")`
+                    ? `_deref(${rightText}, "${rightText}")`
                     : rightText;
 
                 if (leftIsIdentifier && !leftTypeInfo) {
@@ -778,7 +778,7 @@ export class CodeGenerator {
                             typeInfo && !typeInfo.isParameter &&
                             !typeInfo.isBuiltin
                         ) {
-                            return `checkAndDeref(${argText}, "${argText}")`;
+                            return `_deref(${argText}, "${argText}")`;
                         }
                     }
                     return argText;
@@ -808,7 +808,7 @@ export class CodeGenerator {
                         derefCallee = calleeCode;
                     } else {
                         derefCallee =
-                            `checkAndDeref(${calleeCode}, "${calleeCode}")`;
+                            `_deref(${calleeCode}, "${calleeCode}")`;
                     }
                 } else {
                     derefCallee = calleeCode;
@@ -841,7 +841,7 @@ export class CodeGenerator {
                                 !typeInfo.isBuiltin
                             ) {
                                 returnCode +=
-                                    `${this.indent()}return checkAndDeref(${exprText}, "${exprText}");\n`;
+                                    `${this.indent()}return _deref(${exprText}, "${exprText}");\n`;
                             } else {
                                 returnCode +=
                                     `${this.indent()}return ${exprText};\n`;
@@ -870,7 +870,7 @@ export class CodeGenerator {
                             typeInfo && !typeInfo.isParameter &&
                             !typeInfo.isBuiltin
                         ) {
-                            return `${this.indent()}return checkAndDeref(${exprText}, "${exprText}");\n`;
+                            return `${this.indent()}return _deref(${exprText}, "${exprText}");\n`;
                         }
                     }
                     return `${this.indent()}return ${exprText};\n`;

@@ -7,26 +7,18 @@
 #include <sstream>
 #include <memory>
 
-struct Undefined
-{
-};
-inline Undefined undefined;
-
-struct Null
-{
-};
-inline Null null;
-
-struct TdzUninitialized {};
-inline TdzUninitialized tdz_uninitialized;
-
 using JsValue = std::any;
+
+struct Undefined{};
+inline Undefined undefined;
+struct Null{};
+inline Null null;
+struct TdzUninitialized {};
+inline TdzUninitialized _uninit;
 
 template <class... Ts>
 struct overloaded : Ts...
-{
-    using Ts::operator()...;
-};
+{ using Ts::operator()...; };
 template <class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
@@ -273,7 +265,7 @@ inline bool operator==(const JsValue &lhs, const JsValue &rhs)
     return false;
 }
 
-inline JsValue checkAndDeref(const std::shared_ptr<JsValue>& var, const std::string& varName) {
+inline JsValue _deref(const std::shared_ptr<JsValue>& var, const std::string& varName) {
     if (!var) {
         // This case should ideally not be hit in normal operation
         throw std::runtime_error("Internal compiler error: null variable pointer for " + varName);

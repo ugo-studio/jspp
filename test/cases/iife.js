@@ -16,7 +16,7 @@ const result = (function (a, b) {
   return a + b;
 })(1, 2);
 
-console.log("IIFE with args and return:", result, checkAndDeref);
+console.log("IIFE with args and return:", result);
 
 (function countdown(n) {
   if (n > 0) {
