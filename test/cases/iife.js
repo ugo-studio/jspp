@@ -4,7 +4,7 @@ console.log("--- IIFE ---");
   console.log("Arrow IIFE");
 })();
 
-(function() {
+(function () {
   console.log("Anon function IIFE");
 })();
 
@@ -12,10 +12,11 @@ console.log("--- IIFE ---");
   console.log("Named function IIFE");
 })();
 
-const result = (function(a, b) {
+const result = (function (a, b) {
   return a + b;
 })(1, 2);
-console.log("IIFE with args and return:", result);
+
+console.log("IIFE with args and return:", result, checkAndDeref);
 
 (function countdown(n) {
   if (n > 0) {
@@ -28,7 +29,7 @@ console.log("IIFE with args and return:", result);
 
 // Test that named IIFE doesn't leak its name
 try {
-    named();
+  named();
 } catch (e) {
-    console.log("Caught expected error for named IIFE leak");
+  console.log("Caught expected error for named IIFE leak");
 }

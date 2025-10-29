@@ -39,11 +39,18 @@ export class TypeAnalyzer {
                 enter: (node, parent) => {
                     this.scopeManager.enterScope();
                     this.nodeToScope.set(node, this.scopeManager.currentScope);
-                    if (parent && ts.isCatchClause(parent) && parent.variableDeclaration) {
+                    if (
+                        parent && ts.isCatchClause(parent) &&
+                        parent.variableDeclaration
+                    ) {
                         if (ts.isIdentifier(parent.variableDeclaration.name)) {
-                            const name = parent.variableDeclaration.name.getText();
+                            const name = parent.variableDeclaration.name
+                                .getText();
                             // The type is basically 'any' or 'string' from the .what()
-                            const typeInfo: TypeInfo = { type: "string", declaration: parent.variableDeclaration };
+                            const typeInfo: TypeInfo = {
+                                type: "string",
+                                declaration: parent.variableDeclaration,
+                            };
                             this.scopeManager.define(name, typeInfo);
                         }
                         // TODO: handle binding patterns in catch clause
@@ -77,14 +84,17 @@ export class TypeAnalyzer {
                         this.functionTypeInfo.set(node, funcType);
 
                         this.scopeManager.enterScope();
-                        this.nodeToScope.set(node, this.scopeManager.currentScope);
+                        this.nodeToScope.set(
+                            node,
+                            this.scopeManager.currentScope,
+                        );
                         // Define parameters in the new scope
                         node.parameters.forEach((p) =>
                             this.scopeManager.define(p.name.getText(), {
                                 type: "auto",
                                 isParameter: true,
                                 declaration: p,
-                            }),
+                            })
                         );
                         this.functionStack.push(node);
                     }
@@ -116,7 +126,10 @@ export class TypeAnalyzer {
 
                         // If the function expression is named, define the name within its own scope for recursion.
                         if (node.name) {
-                            this.scopeManager.define(node.name.getText(), funcType);
+                            this.scopeManager.define(
+                                node.name.getText(),
+                                funcType,
+                            );
                         }
 
                         // Define parameters in the new scope
@@ -125,7 +138,7 @@ export class TypeAnalyzer {
                                 type: "auto",
                                 isParameter: true,
                                 declaration: p,
-                            }),
+                            })
                         );
                         this.functionStack.push(node);
                     }
@@ -155,14 +168,17 @@ export class TypeAnalyzer {
                         }
 
                         this.scopeManager.enterScope();
-                        this.nodeToScope.set(node, this.scopeManager.currentScope);
+                        this.nodeToScope.set(
+                            node,
+                            this.scopeManager.currentScope,
+                        );
                         // Define parameters in the new scope
                         node.parameters.forEach((p) =>
                             this.scopeManager.define(p.name.getText(), {
                                 type: "auto",
                                 isParameter: true,
                                 declaration: p,
-                            }),
+                            })
                         );
                         this.functionStack.push(node);
                     }
@@ -179,7 +195,8 @@ export class TypeAnalyzer {
                 enter: (node) => {
                     if (ts.isVariableDeclaration(node)) {
                         const name = node.name.getText();
-                        const isConst = (node.parent.flags & ts.NodeFlags.Const) !== 0;
+                        const isConst =
+                            (node.parent.flags & ts.NodeFlags.Const) !== 0;
                         // We can add more detailed inference here if needed
                         const typeInfo: TypeInfo = {
                             type: "auto",
@@ -217,7 +234,6 @@ export class TypeAnalyzer {
                             definingScope &&
                             definingScope !== this.scopeManager.currentScope
                         ) {
-
                             // This is a potential capture!
                             // Find which function we are currently in and mark the capture.
                             if (currentFuncNode) {

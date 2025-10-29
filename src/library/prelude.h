@@ -20,7 +20,7 @@ inline Null null;
 struct TdzUninitialized {};
 inline TdzUninitialized tdz_uninitialized;
 
-using JsVariant = std::any;
+using JsValue = std::any;
 
 template <class... Ts>
 struct overloaded : Ts...
@@ -30,11 +30,11 @@ struct overloaded : Ts...
 template <class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
-inline std::ostream &operator<<(std::ostream &os, const JsVariant &v)
+inline std::ostream &operator<<(std::ostream &os, const JsValue &v)
 {
-    if (v.type() == typeid(std::shared_ptr<JsVariant>))
+    if (v.type() == typeid(std::shared_ptr<JsValue>))
     {
-        const auto &ptr = std::any_cast<std::shared_ptr<JsVariant>>(v);
+        const auto &ptr = std::any_cast<std::shared_ptr<JsValue>>(v);
         if (ptr)
         {
             return os << *ptr;
@@ -96,7 +96,7 @@ struct Console
     template <typename... Args>
     Undefined log(Args... args)
     {
-        ((std::cout << JsVariant(args) << " "), ...);
+        ((std::cout << JsValue(args) << " "), ...);
         std::cout << std::endl;
         return undefined;
     }
@@ -105,7 +105,7 @@ struct Console
     Undefined warn(Args... args)
     {
         std::cerr << "\033[33m"; // Yellow
-        ((std::cerr << JsVariant(args) << " "), ...);
+        ((std::cerr << JsValue(args) << " "), ...);
         std::cerr << "\033[0m" << std::endl; // Reset
         return undefined;
     }
@@ -114,7 +114,7 @@ struct Console
     Undefined error(Args... args)
     {
         std::cerr << "\033[31m"; // Red
-        ((std::cerr << JsVariant(args) << " "), ...);
+        ((std::cerr << JsValue(args) << " "), ...);
         std::cerr << "\033[0m" << std::endl; // Reset
         return undefined;
     }
@@ -122,7 +122,7 @@ struct Console
 
 inline Console console;
 
-inline JsVariant operator+(const JsVariant &lhs, const JsVariant &rhs)
+inline JsValue operator+(const JsValue &lhs, const JsValue &rhs)
 {
     if (lhs.type() == typeid(int) && rhs.type() == typeid(int))
     {
@@ -143,7 +143,7 @@ inline JsVariant operator+(const JsVariant &lhs, const JsVariant &rhs)
     return undefined;
 }
 
-inline JsVariant operator*(const JsVariant &lhs, const JsVariant &rhs)
+inline JsValue operator*(const JsValue &lhs, const JsValue &rhs)
 {
     if (lhs.type() == typeid(int) && rhs.type() == typeid(int))
     {
@@ -164,7 +164,7 @@ inline JsVariant operator*(const JsVariant &lhs, const JsVariant &rhs)
     return undefined;
 }
 
-inline JsVariant operator-(const JsVariant &lhs, const JsVariant &rhs)
+inline JsValue operator-(const JsValue &lhs, const JsValue &rhs)
 {
     if (lhs.type() == typeid(int) && rhs.type() == typeid(int))
     {
@@ -185,7 +185,7 @@ inline JsVariant operator-(const JsVariant &lhs, const JsVariant &rhs)
     return undefined;
 }
 
-inline bool operator<=(const JsVariant &lhs, const JsVariant &rhs)
+inline bool operator<=(const JsValue &lhs, const JsValue &rhs)
 {
     if (lhs.type() == typeid(int) && rhs.type() == typeid(int))
     {
@@ -206,7 +206,7 @@ inline bool operator<=(const JsVariant &lhs, const JsVariant &rhs)
     return false;
 }
 
-inline bool operator>(const JsVariant &lhs, const JsVariant &rhs)
+inline bool operator>(const JsValue &lhs, const JsValue &rhs)
 {
     if (lhs.type() == typeid(int) && rhs.type() == typeid(int))
     {
@@ -227,7 +227,7 @@ inline bool operator>(const JsVariant &lhs, const JsVariant &rhs)
     return false;
 }
 
-inline bool operator<(const JsVariant &lhs, const JsVariant &rhs)
+inline bool operator<(const JsValue &lhs, const JsValue &rhs)
 {
     if (lhs.type() == typeid(int) && rhs.type() == typeid(int))
     {
@@ -248,7 +248,7 @@ inline bool operator<(const JsVariant &lhs, const JsVariant &rhs)
     return false;
 }
 
-inline bool operator==(const JsVariant &lhs, const JsVariant &rhs)
+inline bool operator==(const JsValue &lhs, const JsValue &rhs)
 {
     if (lhs.type() == typeid(int) && rhs.type() == typeid(int))
     {
@@ -273,7 +273,7 @@ inline bool operator==(const JsVariant &lhs, const JsVariant &rhs)
     return false;
 }
 
-inline JsVariant checkAndDeref(const std::shared_ptr<JsVariant>& var, const std::string& varName) {
+inline JsValue checkAndDeref(const std::shared_ptr<JsValue>& var, const std::string& varName) {
     if (!var) {
         // This case should ideally not be hit in normal operation
         throw std::runtime_error("Internal compiler error: null variable pointer for " + varName);
