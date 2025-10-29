@@ -443,14 +443,14 @@ export class CodeGenerator {
                         props += `{"${key}", ${value}},`;
                     }
                 }
-                return `std::make_shared<jspp::JsObject>(jspp::Access::make_object({${props}}))`;
+                return `jspp::Access::make_object({${props}})`;
             }
 
             case ts.SyntaxKind.ArrayLiteralExpression: {
                 const elements = (node as ts.ArrayLiteralExpression).elements
                     .map((elem) => this.visit(elem, context))
                     .join(", ");
-                return `std::make_shared<jspp::JsArray>(jspp::Access::make_array({${elements}}))`;
+                return `jspp::Access::make_array({${elements}})`;
             }
 
             case ts.SyntaxKind.ForOfStatement: {
@@ -484,8 +484,7 @@ export class CodeGenerator {
                             isFunctionBody: false,
                         });
                 }
-                // return `${this.indent()}if (${condition}) ${thenStmt}${elseStmt}`;
-                return `${this.indent()}if (std::any_cast<bool>(${condition})) ${thenStmt}${elseStmt}`;
+                return `${this.indent()}if (jspp::Access::is_truthy(${condition})) ${thenStmt}${elseStmt}`;
             }
 
             case ts.SyntaxKind.PrefixUnaryExpression: {

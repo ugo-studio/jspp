@@ -45,19 +45,31 @@ namespace jspp
             error->properties["toString"] = std::function<JsValue()>([=]() mutable -> JsValue
                                                                      {
                         std::string name_str = "Error";
-                        if (error->properties.count("name") > 0 && (error->properties["name"].type() == typeid(std::string) || error->properties["name"].type() == typeid(const char *))) {
-                            name_str = std::any_cast<std::string>(error->properties["name"]);
+                        if (error->properties.count("name") > 0) {
+                            if (error->properties["name"].type() == typeid(std::string)) {
+                                name_str = std::any_cast<std::string>(error->properties["name"]);
+                            } else if (error->properties["name"].type() == typeid(const char *)) {
+                                name_str = std::any_cast<const char *>(error->properties["name"]);
+                            }
                         }
                         std::string message_str = "";
-                        if (error->properties.count("message") > 0 && (error->properties["message"].type() == typeid(std::string) || error->properties["message"].type() == typeid(const char *))) {
-                            message_str = std::any_cast<std::string>(error->properties["message"]);
+                        if (error->properties.count("message") > 0) {
+                            if (error->properties["message"].type() == typeid(std::string)) {
+                                message_str = std::any_cast<std::string>(error->properties["message"]);
+                            } else if (error->properties["message"].type() == typeid(const char *)) {
+                                message_str = std::any_cast<const char *>(error->properties["message"]);
+                            }
                         }
                         std::string stack_str = ""; // Default to an empty string if not present
-                        if (error->properties.count("stack") > 0 && (error->properties["stack"].type() == typeid(std::string) || error->properties["stack"].type() == typeid(const char *))) {
-                            stack_str = std::any_cast<std::string>(error->properties["stack"]);
+                        if (error->properties.count("stack") > 0) {
+                             if (error->properties["stack"].type() == typeid(std::string)) {
+                                stack_str = std::any_cast<std::string>(error->properties["stack"]);
+                            } else if (error->properties["stack"].type() == typeid(const char *)) {
+                                stack_str = std::any_cast<const char *>(error->properties["stack"]);
+                            }
                         }
                         return name_str + ": " + message_str + "\n    at " + stack_str; });
-            return *error;
+            return error;
         }
         static JsValue make_default_error(const JsValue &message)
         {
@@ -106,6 +118,42 @@ namespace jspp
 
     namespace Access
     {
+
+        inline bool is_truthy(const JsValue &val)
+        {
+            if (!val.has_value())
+                return false; // undefined
+            if (val.type() == typeid(Undefined))
+                return false;
+            if (val.type() == typeid(Null))
+                return false;
+            if (val.type() == typeid(bool))
+                return std::any_cast<bool>(val);
+            if (val.type() == typeid(int))
+                return std::any_cast<int>(val) != 0;
+            if (val.type() == typeid(double))
+                return std::any_cast<double>(val) != 0.0;
+            if (val.type() == typeid(std::string))
+                return !std::any_cast<std::string>(val).empty();
+            if (val.type() == typeid(const char *))
+                return std::any_cast<const char *>(val)[0] != '\0';
+            if (val.type() == typeid(Tdz::Uninitialized))
+                return false;
+            if (val.type() == typeid(std::shared_ptr<JsObject>))
+            {
+                return std::any_cast<std::shared_ptr<JsObject>>(val) != nullptr;
+            }
+            if (val.type() == typeid(std::shared_ptr<JsArray>))
+            {
+                return std::any_cast<std::shared_ptr<JsArray>>(val) != nullptr;
+            }
+            if (val.type() == typeid(std::function<JsValue(const std::vector<JsValue> &)>))
+            {
+                return true;
+            }
+            return true;
+        }
+
         inline std::string js_value_to_string(const JsValue &val)
         {
             if (!val.has_value())
@@ -126,11 +174,12 @@ namespace jspp
                 return "null";
             if (val.type() == typeid(Undefined))
                 return "undefined";
-            if (val.type() == typeid(jspp::JsObject))
+            if (val.type() == typeid(std::shared_ptr<jspp::JsObject>))
             {
-                if (std::any_cast<jspp::JsObject>(val).properties.count("toString") > 0 && std::any_cast<jspp::JsObject>(val).properties["toString"].type() == typeid(std::function<JsValue()>))
+                auto ptr = std::any_cast<std::shared_ptr<jspp::JsObject>>(val);
+                if (ptr->properties.count("toString") > 0 && ptr->properties["toString"].type() == typeid(std::function<JsValue()>))
                 {
-                    auto val_str = std::any_cast<std::function<jspp::JsValue()>>(std::any_cast<jspp::JsObject>(val).properties["toString"])();
+                    auto val_str = std::any_cast<std::function<jspp::JsValue()>>(ptr->properties["toString"])();
                     if (val_str.type() == typeid(std::string))
                     {
                         return std::any_cast<std::string>(val_str);
@@ -138,11 +187,12 @@ namespace jspp
                 }
                 return "[Object Object]";
             }
-            if (val.type() == typeid(jspp::JsArray))
+            if (val.type() == typeid(std::shared_ptr<jspp::JsArray>))
             {
-                if (std::any_cast<jspp::JsArray>(val).properties.count("toString") > 0 && std::any_cast<jspp::JsArray>(val).properties["toString"].type() == typeid(std::function<JsValue()>))
+                auto ptr = std::any_cast<std::shared_ptr<jspp::JsArray>>(val);
+                if (ptr->properties.count("toString") > 0 && ptr->properties["toString"].type() == typeid(std::function<JsValue()>))
                 {
-                    auto val_str = std::any_cast<std::function<jspp::JsValue()>>(std::any_cast<jspp::JsArray>(val).properties["toString"])();
+                    auto val_str = std::any_cast<std::function<jspp::JsValue()>>(ptr->properties["toString"])();
                     if (val_str.type() == typeid(std::string))
                     {
                         return std::any_cast<std::string>(val_str);
@@ -153,7 +203,7 @@ namespace jspp
             return "function(){}";
         }
 
-        inline jspp::JsObject make_object(const std::map<std::string, JsValue> &properties)
+        inline std::shared_ptr<jspp::JsObject> make_object(const std::map<std::string, JsValue> &properties)
         {
             auto object = std::make_shared<jspp::JsObject>(jspp::JsObject{properties});
             if (object->properties.count("toString") == 0)
@@ -161,10 +211,10 @@ namespace jspp
                 object->properties["toString"] = std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
                                                                                 { return "[object Object]"; });
             }
-            return *object;
+            return object;
         }
 
-        inline jspp::JsArray make_array(const std::vector<JsValue> &elements)
+        inline std::shared_ptr<jspp::JsArray> make_array(const std::vector<JsValue> &elements)
         {
             auto array = std::make_shared<jspp::JsArray>(jspp::JsArray{elements, {}});
             array->properties["toString"] = std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
@@ -178,7 +228,7 @@ namespace jspp
                 }
                 str += "]";
                 return str; });
-            return *array;
+            return array;
         }
 
         inline JsValue get_property(const JsValue &obj, const JsValue &key)
