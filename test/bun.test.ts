@@ -152,6 +152,20 @@ const cases: { name: string; expected: string[] }[] = [
             "Caught expected error for named IIFE leak",
         ],
     },
+    {
+        name: "objects",
+        expected: [
+            "--- Objects ---",
+            "1",
+            "hello",
+            "true",
+            "2",
+            "nested",
+            "nested",
+            "new",
+            "new",
+        ],
+    },
 ];
 
 describe("Interpreter tests", () => {

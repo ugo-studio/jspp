@@ -259,7 +259,7 @@ export class CodeGenerator {
                     const isLetOrConst = (decl.parent.flags &
                         (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
                     const initializer = isLetOrConst
-                        ? "jspp::uninitialized"
+                        ? "jspp::Tdz::uninitialized"
                         : "undefined";
                     code +=
                         `${this.indent()}auto ${name} = std::make_shared<jspp::JsValue>(${initializer});\n`;
@@ -334,7 +334,7 @@ export class CodeGenerator {
                     const isLetOrConst = (decl.parent.flags &
                         (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
                     const initializer = isLetOrConst
-                        ? "jspp::uninitialized"
+                        ? "jspp::Tdz::uninitialized"
                         : "undefined";
                     code +=
                         `${this.indent()}auto ${name} = std::make_shared<jspp::JsValue>(${initializer});\n`;
@@ -434,15 +434,16 @@ export class CodeGenerator {
             }
 
             case ts.SyntaxKind.ObjectLiteralExpression: {
-                const props = (node as ts.ObjectLiteralExpression).properties
-                    .map((prop) => {
-                        if (ts.isPropertyAssignment(prop)) {
-                            return this.visit(prop.initializer, context);
-                        }
-                        return "";
-                    })
-                    .join(", ");
-                return `{${props}}`;
+                const obj = node as ts.ObjectLiteralExpression;
+                let props = "";
+                for (const prop of obj.properties) {
+                    if (ts.isPropertyAssignment(prop)) {
+                        const key = prop.name.getText();
+                        const value = this.visit(prop.initializer, context);
+                        props += `{"${key}", ${value}},`;
+                    }
+                }
+                return `std::make_shared<jspp::JsObject>(jspp::JsObject{{${props}}})`;
             }
 
             case ts.SyntaxKind.ArrayLiteralExpression: {
@@ -502,7 +503,50 @@ export class CodeGenerator {
             case ts.SyntaxKind.PropertyAccessExpression: {
                 const propAccess = node as ts.PropertyAccessExpression;
                 const exprText = this.visit(propAccess.expression, context);
-                return `jspp::deref(${exprText}, "${exprText}").${propAccess.name.getText()}`;
+                const propName = propAccess.name.getText();
+
+                if (exprText === "console") {
+                    return `console.${propName}`;
+                }
+
+                const scope = this.getScopeForNode(propAccess.expression);
+                const typeInfo = ts.isIdentifier(propAccess.expression)
+                    ? this.typeAnalyzer.scopeManager.lookupFromScope(
+                        propAccess.expression.getText(),
+                        scope,
+                    )
+                    : null;
+
+                const finalExpr = typeInfo &&
+                        !typeInfo.isParameter && !typeInfo.isBuiltin
+                    ? `jspp::Tdz::deref(${exprText}, "${exprText}")`
+                    : exprText;
+
+                return `jspp::JsObject::getProperty(${finalExpr}, "${propName}")`;
+            }
+
+            case ts.SyntaxKind.ElementAccessExpression: {
+                const elemAccess = node as ts.ElementAccessExpression;
+                const exprText = this.visit(elemAccess.expression, context);
+                const argText = this.visit(
+                    elemAccess.argumentExpression,
+                    context,
+                );
+
+                const scope = this.getScopeForNode(elemAccess.expression);
+                const typeInfo = ts.isIdentifier(elemAccess.expression)
+                    ? this.typeAnalyzer.scopeManager.lookupFromScope(
+                        elemAccess.expression.getText(),
+                        scope,
+                    )
+                    : null;
+
+                const finalExpr = typeInfo &&
+                        !typeInfo.isParameter && !typeInfo.isBuiltin
+                    ? `jspp::Tdz::deref(${exprText}, "${exprText}")`
+                    : exprText;
+
+                return `jspp::JsObject::getProperty(${finalExpr}, ${argText})`;
             }
 
             case ts.SyntaxKind.ExpressionStatement:
@@ -522,10 +566,63 @@ export class CodeGenerator {
                     op = "==";
                 }
 
-                const leftText = this.visit(binExpr.left, context);
-                const rightText = this.visit(binExpr.right, context);
-
                 if (binExpr.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+                    const rightText = this.visit(binExpr.right, context);
+
+                    if (ts.isPropertyAccessExpression(binExpr.left)) {
+                        const propAccess = binExpr.left;
+                        const objExprText = this.visit(
+                            propAccess.expression,
+                            context,
+                        );
+                        const propName = propAccess.name.getText();
+
+                        const scope = this.getScopeForNode(
+                            propAccess.expression,
+                        );
+                        const typeInfo = ts.isIdentifier(propAccess.expression)
+                            ? this.typeAnalyzer.scopeManager.lookupFromScope(
+                                propAccess.expression.getText(),
+                                scope,
+                            )
+                            : null;
+
+                        const finalObjExpr = typeInfo &&
+                                !typeInfo.isParameter && !typeInfo.isBuiltin
+                            ? `jspp::Tdz::deref(${objExprText}, "${objExprText}")`
+                            : objExprText;
+
+                        return `jspp::JsObject::setProperty(${finalObjExpr}, "${propName}", ${rightText})`;
+                    } else if (ts.isElementAccessExpression(binExpr.left)) {
+                        const elemAccess = binExpr.left;
+                        const objExprText = this.visit(
+                            elemAccess.expression,
+                            context,
+                        );
+                        const argText = this.visit(
+                            elemAccess.argumentExpression,
+                            context,
+                        );
+
+                        const scope = this.getScopeForNode(
+                            elemAccess.expression,
+                        );
+                        const typeInfo = ts.isIdentifier(elemAccess.expression)
+                            ? this.typeAnalyzer.scopeManager.lookupFromScope(
+                                elemAccess.expression.getText(),
+                                scope,
+                            )
+                            : null;
+
+                        const finalObjExpr = typeInfo &&
+                                !typeInfo.isParameter && !typeInfo.isBuiltin
+                            ? `jspp::Tdz::deref(${objExprText}, "${objExprText}")`
+                            : objExprText;
+
+                        return `jspp::JsObject::setProperty(${finalObjExpr}, ${argText}, ${rightText})`;
+                    }
+
+                    const leftText = this.visit(binExpr.left, context);
                     const scope = this.getScopeForNode(binExpr.left);
                     const typeInfo = this.typeAnalyzer.scopeManager
                         .lookupFromScope(
@@ -533,13 +630,16 @@ export class CodeGenerator {
                             scope,
                         );
                     if (!typeInfo) {
-                        return `jspp::unresolved("${leftText}")`;
+                        return `jspp::JsError::unresolved_reference("${leftText}")`;
                     }
                     if (typeInfo?.isConst) {
-                        return `throw std::runtime_error("TypeError: Assignment to constant variable.")`;
+                        return `jspp::JsError::immutable_assignment()`;
                     }
                     return `*${leftText} ${op} ${rightText}`;
                 }
+
+                const leftText = this.visit(binExpr.left, context);
+                const rightText = this.visit(binExpr.right, context);
 
                 const leftIsIdentifier = ts.isIdentifier(binExpr.left);
                 const rightIsIdentifier = ts.isIdentifier(binExpr.right);
@@ -560,18 +660,18 @@ export class CodeGenerator {
 
                 const finalLeft = leftIsIdentifier && leftTypeInfo &&
                         !leftTypeInfo.isParameter && !leftTypeInfo.isBuiltin
-                    ? `jspp::deref(${leftText}, "${leftText}")`
+                    ? `jspp::Tdz::deref(${leftText}, "${leftText}")`
                     : leftText;
                 const finalRight = rightIsIdentifier && rightTypeInfo &&
                         !rightTypeInfo.isParameter && !rightTypeInfo.isBuiltin
-                    ? `jspp::deref(${rightText}, "${rightText}")`
+                    ? `jspp::Tdz::deref(${rightText}, "${rightText}")`
                     : rightText;
 
                 if (leftIsIdentifier && !leftTypeInfo) {
-                    return `jspp::unresolved("${leftText}")`;
+                    return `jspp::JsError::unresolved_reference("${leftText}")`;
                 }
                 if (rightIsIdentifier && !rightTypeInfo) {
-                    return `jspp::unresolved("${rightText}")`;
+                    return `jspp::JsError::unresolved_reference("${rightText}")`;
                 }
 
                 if (op === "+" || op === "-" || op === "*") {
@@ -770,13 +870,13 @@ export class CodeGenerator {
                                 scope,
                             );
                         if (!typeInfo) {
-                            return `jspp::unresolved("${arg.text}")`;
+                            return `jspp::JsError::unresolved_reference("${arg.text}")`;
                         }
                         if (
                             typeInfo && !typeInfo.isParameter &&
                             !typeInfo.isBuiltin
                         ) {
-                            return `jspp::deref(${argText}, "${argText}")`;
+                            return `jspp::Tdz::deref(${argText}, "${argText}")`;
                         }
                     }
                     return argText;
@@ -800,13 +900,13 @@ export class CodeGenerator {
                             scope,
                         );
                     if (!typeInfo) {
-                        return `jspp::unresolved("${callee.text}")`;
+                        return `jspp::JsError::unresolved_reference("${callee.text}")`;
                     }
                     if (typeInfo.isBuiltin) {
                         derefCallee = calleeCode;
                     } else {
                         derefCallee =
-                            `jspp::deref(${calleeCode}, "${calleeCode}")`;
+                            `jspp::Tdz::deref(${calleeCode}, "${calleeCode}")`;
                     }
                 } else {
                     derefCallee = calleeCode;
@@ -816,7 +916,7 @@ export class CodeGenerator {
 
             case ts.SyntaxKind.ReturnStatement: {
                 if (context.isMainContext) {
-                    return `${this.indent()}throw std::runtime_error("SyntaxError: Return statements are only valid inside functions.");\n`;
+                    return `${this.indent()}jspp::JsError::invalid_return_statement();\n`;
                 }
 
                 const returnStmt = node as ts.ReturnStatement;
@@ -832,14 +932,14 @@ export class CodeGenerator {
                             const typeInfo = this.typeAnalyzer.scopeManager
                                 .lookupFromScope(exprText, scope);
                             if (!typeInfo) {
-                                return `${this.indent()}return jspp::unresolved("${exprText}");\n`;
+                                return `${this.indent()}return jspp::JsError::unresolved_reference("${exprText}");\n`;
                             }
                             if (
                                 typeInfo && !typeInfo.isParameter &&
                                 !typeInfo.isBuiltin
                             ) {
                                 returnCode +=
-                                    `${this.indent()}return jspp::deref(${exprText}, "${exprText}");\n`;
+                                    `${this.indent()}return jspp::Tdz::deref(${exprText}, "${exprText}");\n`;
                             } else {
                                 returnCode +=
                                     `${this.indent()}return ${exprText};\n`;
@@ -862,13 +962,13 @@ export class CodeGenerator {
                         const typeInfo = this.typeAnalyzer.scopeManager
                             .lookupFromScope(exprText, scope);
                         if (!typeInfo) {
-                            return `${this.indent()}return jspp::unresolved("${exprText}");\n`;
+                            return `${this.indent()}return jspp::JsError::unresolved_reference("${exprText}");\n`;
                         }
                         if (
                             typeInfo && !typeInfo.isParameter &&
                             !typeInfo.isBuiltin
                         ) {
-                            return `${this.indent()}return jspp::deref(${exprText}, "${exprText}");\n`;
+                            return `${this.indent()}return jspp::Tdz::deref(${exprText}, "${exprText}");\n`;
                         }
                     }
                     return `${this.indent()}return ${exprText};\n`;

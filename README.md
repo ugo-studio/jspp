@@ -111,9 +111,8 @@ This phase focuses on building a solid foundation that correctly models JavaScri
 - [x] Function Declarations & Arrow Functions
 - [x] Correct Hoisting for Variables and Functions
 - [x] Closures & Lexical Scoping (via `std::shared_ptr` capture)
-- [x] Basic `console` API
 - [x] `if-elseif-else` conditions
-- [x] Error Handling: `try`/`catch`/`finally` blocks and `throw`.
+- [x] Basic `console` API
 
 ---
 
@@ -121,7 +120,8 @@ This phase focuses on building a solid foundation that correctly models JavaScri
 
 This phase will broaden the range of supported JavaScript syntax and features.
 
-- [ ] **Objects:** Literals, property access (dot and bracket notation), methods.
+- [x] **Error Handling**: `try`/`catch`/`finally` blocks and `throw`.
+- [x] **Objects:** Literals, property access (dot and bracket notation), methods.
 - [ ] **Arrays:** Literals, indexing, and core methods (`.push`, `.pop`, `.length`, etc.).
 - [ ] **Control Flow:** tenary operators, `for` loops, `while` loops, `switch`.
 - [ ] **Operators:** Full suite of arithmetic, logical, and comparison operators.
