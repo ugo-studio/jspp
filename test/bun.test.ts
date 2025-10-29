@@ -14,6 +14,7 @@ const cases: { name: string; expected: string[] }[] = [
             "1",
             "true",
             "null",
+            "undefined",
         ],
     },
     {
