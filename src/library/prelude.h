@@ -7,6 +7,8 @@
 #include <sstream>
 #include <memory>
 #include <map>
+#include <algorithm>
+#include <cctype>
 #include <cstring>
 
 struct Undefined
@@ -423,9 +425,18 @@ namespace jspp
             if ((lhs.type() == typeid(int) || lhs.type() == typeid(double)) && (rhs.type() == typeid(std::string) || rhs.type() == typeid(const char *)))
             {
                 double l = lhs.type() == typeid(int) ? std::any_cast<int>(lhs) : std::any_cast<double>(lhs);
+                std::string s_rhs = js_value_to_string(rhs);
+
+                s_rhs.erase(s_rhs.begin(), std::find_if(s_rhs.begin(), s_rhs.end(), [](int ch) { return !std::isspace(ch); }));
+                s_rhs.erase(std::find_if(s_rhs.rbegin(), s_rhs.rend(), [](int ch) { return !std::isspace(ch); }).base(), s_rhs.end());
+
+                if (s_rhs.empty()) {
+                    return l == 0;
+                }
+
                 try
                 {
-                    double r = std::stod(js_value_to_string(rhs));
+                    double r = std::stod(s_rhs);
                     return l == r;
                 }
                 catch (...)

@@ -405,8 +405,19 @@ export class CodeGenerator {
 
                 let initializer = "";
                 if (varDecl.initializer) {
-                    initializer = " = " +
-                        this.visit(varDecl.initializer, context);
+                    const initExpr = varDecl.initializer;
+                    let initText = this.visit(initExpr, context);
+                    if (ts.isIdentifier(initExpr)) {
+                        const scope = this.getScopeForNode(initExpr);
+                        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                            initText,
+                            scope,
+                        );
+                        if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
+                            initText = `jspp::Tdz::deref(${initText}, "${initText}")`;
+                        }
+                    }
+                    initializer = " = " + initText;
                 }
 
                 const isLetOrConst = (varDecl.parent.flags &
