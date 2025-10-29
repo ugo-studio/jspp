@@ -1,6 +1,6 @@
 import type { TypeInfo } from "./typeAnalyzer";
 
-const RESERVED_KEYWORDS = ["_uninit", "_deref"];
+const RESERVED_KEYWORDS = ["std", "jspp"];
 
 // Represents a single scope (e.g., a function body or a block statement)
 export class Scope {
@@ -37,6 +37,11 @@ export class ScopeManager {
         this.allScopes.push(rootScope); // Add the root scope to our list
         this.define("undefined", {
             type: "undefined",
+            isConst: true,
+            isBuiltin: true,
+        });
+        this.define("null", {
+            type: "null",
             isConst: true,
             isBuiltin: true,
         });

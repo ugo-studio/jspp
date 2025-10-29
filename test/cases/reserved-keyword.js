@@ -1,2 +1,2 @@
-let _deref = 5;
-let _uninit = 5;
+let std = 5;
+let jspp = 5;

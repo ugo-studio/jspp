@@ -6,7 +6,7 @@ import type { Node } from "../ast/types";
 // @ts-ignore
 import prelude from "../library/prelude.h" with { type: "text" };
 
-const CONTAINER_FUNCTION_NAME = "__jspp_code_container__";
+const CONTAINER_FUNCTION_NAME = "__container__";
 
 export class CodeGenerator {
     private indentationLevel: number = 0;
@@ -82,7 +82,7 @@ export class CodeGenerator {
 
         const declarations = "\n";
 
-        let containerCode = `JsValue ${CONTAINER_FUNCTION_NAME}() {\n`;
+        let containerCode = `jspp::JsValue ${CONTAINER_FUNCTION_NAME}() {\n`;
         this.indentationLevel++;
         containerCode += this.visit(ast, {
             isMainContext: true,
@@ -106,7 +106,7 @@ export class CodeGenerator {
         capture: string = "[=]",
     ): string {
         let lambda =
-            `${capture}(const std::vector<JsValue>& args) mutable -> JsValue `;
+            `${capture}(const std::vector<jspp::JsValue>& args) mutable -> jspp::JsValue `;
 
         const visitContext = {
             isMainContext: false,
@@ -160,7 +160,7 @@ export class CodeGenerator {
             lambda += "{ return undefined; }\n";
         }
 
-        const signature = `JsValue(const std::vector<JsValue>&)`;
+        const signature = `jspp::JsValue(const std::vector<jspp::JsValue>&)`;
         const fullExpression = `std::function<${signature}>(${lambda})`;
 
         if (ts.isFunctionDeclaration(node) && !isAssignment) {
@@ -205,10 +205,10 @@ export class CodeGenerator {
                 const funcExpr = node as ts.FunctionExpression;
                 if (funcExpr.name) {
                     const funcName = funcExpr.name.getText();
-                    let code = "([&]() -> JsValue {\n";
+                    let code = "([&]() -> jspp::JsValue {\n";
                     this.indentationLevel++;
                     code +=
-                        `${this.indent()}auto ${funcName} = std::make_shared<JsValue>();\n`;
+                        `${this.indent()}auto ${funcName} = std::make_shared<jspp::JsValue>();\n`;
                     const lambda = this.generateLambda(
                         funcExpr,
                         false,
@@ -242,7 +242,7 @@ export class CodeGenerator {
                     if (funcName && !hoistedSymbols.has(funcName)) {
                         hoistedSymbols.add(funcName);
                         code +=
-                            `${this.indent()}auto ${funcName} = std::make_shared<JsValue>(undefined);\n`;
+                            `${this.indent()}auto ${funcName} = std::make_shared<jspp::JsValue>(undefined);\n`;
                     }
                 });
 
@@ -253,14 +253,13 @@ export class CodeGenerator {
                         return;
                     }
                     hoistedSymbols.add(name);
-                    const isLetOrConst =
-                        (decl.parent.flags &
-                            (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                    const isLetOrConst = (decl.parent.flags &
+                        (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
                     const initializer = isLetOrConst
-                        ? "_uninit"
+                        ? "jspp::uninitialized"
                         : "undefined";
                     code +=
-                        `${this.indent()}auto ${name} = std::make_shared<JsValue>(${initializer});\n`;
+                        `${this.indent()}auto ${name} = std::make_shared<jspp::JsValue>(${initializer});\n`;
                 });
 
                 // 2. Assign all hoisted functions first
@@ -277,9 +276,8 @@ export class CodeGenerator {
                     if (ts.isFunctionDeclaration(stmt)) {
                         // Already handled
                     } else if (ts.isVariableStatement(stmt)) {
-                        const isLetOrConst =
-                            (stmt.declarationList.flags &
-                                (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                        const isLetOrConst = (stmt.declarationList.flags &
+                            (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
                         const contextForVisit = {
                             ...context,
                             isAssignmentOnly: !isLetOrConst,
@@ -319,7 +317,7 @@ export class CodeGenerator {
                     if (funcName && !hoistedSymbols.has(funcName)) {
                         hoistedSymbols.add(funcName);
                         code +=
-                            `${this.indent()}auto ${funcName} = std::make_shared<JsValue>(undefined);\n`;
+                            `${this.indent()}auto ${funcName} = std::make_shared<jspp::JsValue>(undefined);\n`;
                     }
                 });
 
@@ -330,14 +328,13 @@ export class CodeGenerator {
                         return;
                     }
                     hoistedSymbols.add(name);
-                    const isLetOrConst =
-                        (decl.parent.flags &
-                            (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                    const isLetOrConst = (decl.parent.flags &
+                        (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
                     const initializer = isLetOrConst
-                        ? "_uninit"
+                        ? "jspp::uninitialized"
                         : "undefined";
                     code +=
-                        `${this.indent()}auto ${name} = std::make_shared<JsValue>(${initializer});\n`;
+                        `${this.indent()}auto ${name} = std::make_shared<jspp::JsValue>(${initializer});\n`;
                 });
 
                 // 2. Assign all hoisted functions first
@@ -354,9 +351,8 @@ export class CodeGenerator {
                     if (ts.isFunctionDeclaration(stmt)) {
                         // Do nothing, already handled
                     } else if (ts.isVariableStatement(stmt)) {
-                        const isLetOrConst =
-                            (stmt.declarationList.flags &
-                                (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                        const isLetOrConst = (stmt.declarationList.flags &
+                            (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
                         const contextForVisit = {
                             ...context,
                             isAssignmentOnly: !isLetOrConst,
@@ -410,9 +406,8 @@ export class CodeGenerator {
                         this.visit(varDecl.initializer, context);
                 }
 
-                const isLetOrConst =
-                    (varDecl.parent.flags &
-                        (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                const isLetOrConst = (varDecl.parent.flags &
+                    (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
 
                 if (isLetOrConst) {
                     // If there's no initializer, assign undefined. Otherwise, use the initializer.
@@ -431,7 +426,7 @@ export class CodeGenerator {
                     const initValue = initializer
                         ? initializer.substring(3)
                         : "undefined";
-                    return `auto ${name} = std::make_shared<JsValue>(${initValue})`;
+                    return `auto ${name} = std::make_shared<jspp::JsValue>(${initValue})`;
                 }
             }
 
@@ -504,7 +499,7 @@ export class CodeGenerator {
             case ts.SyntaxKind.PropertyAccessExpression: {
                 const propAccess = node as ts.PropertyAccessExpression;
                 const exprText = this.visit(propAccess.expression, context);
-                return `_deref(${exprText}, "${exprText}").${propAccess.name.getText()}`;
+                return `jspp::deref(${exprText}, "${exprText}").${propAccess.name.getText()}`;
             }
 
             case ts.SyntaxKind.ExpressionStatement:
@@ -535,7 +530,7 @@ export class CodeGenerator {
                             scope,
                         );
                     if (!typeInfo) {
-                        return `([&]() -> JsValue { throw std::runtime_error("ReferenceError: ${leftText} is not defined"); })()`;
+                        return `([&]() -> jspp::JsValue { throw std::runtime_error("ReferenceError: ${leftText} is not defined"); })()`;
                     }
                     if (typeInfo?.isConst) {
                         return `throw std::runtime_error("TypeError: Assignment to constant variable.")`;
@@ -562,18 +557,18 @@ export class CodeGenerator {
 
                 const finalLeft = leftIsIdentifier && leftTypeInfo &&
                         !leftTypeInfo.isParameter && !leftTypeInfo.isBuiltin
-                    ? `_deref(${leftText}, "${leftText}")`
+                    ? `jspp::deref(${leftText}, "${leftText}")`
                     : leftText;
                 const finalRight = rightIsIdentifier && rightTypeInfo &&
                         !rightTypeInfo.isParameter && !rightTypeInfo.isBuiltin
-                    ? `_deref(${rightText}, "${rightText}")`
+                    ? `jspp::deref(${rightText}, "${rightText}")`
                     : rightText;
 
                 if (leftIsIdentifier && !leftTypeInfo) {
-                    return `([&]() -> JsValue { throw std::runtime_error("ReferenceError: ${leftText} is not defined"); })()`;
+                    return `([&]() -> jspp::JsValue { throw std::runtime_error("ReferenceError: ${leftText} is not defined"); })()`;
                 }
                 if (rightIsIdentifier && !rightTypeInfo) {
-                    return `([&]() -> JsValue { throw std::runtime_error("ReferenceError: ${rightText} is not defined"); })()`;
+                    return `([&]() -> jspp::JsValue { throw std::runtime_error("ReferenceError: ${rightText} is not defined"); })()`;
                 }
 
                 if (op === "+" || op === "-" || op === "*") {
@@ -598,7 +593,7 @@ export class CodeGenerator {
                     );
                     if (tryStmt.catchClause) {
                         this.getDeclaredSymbols(tryStmt.catchClause).forEach(
-                            (s) => declaredSymbols.add(s)
+                            (s) => declaredSymbols.add(s),
                         );
                     }
                     this.getDeclaredSymbols(tryStmt.finallyBlock).forEach((s) =>
@@ -621,7 +616,7 @@ export class CodeGenerator {
                     let code = `${this.indent()}{\n`;
                     this.indentationLevel++;
 
-                    code += `${this.indent()}JsValue ${resultVarName};\n`;
+                    code += `${this.indent()}jspp::JsValue ${resultVarName};\n`;
                     code +=
                         `${this.indent()}bool ${hasReturnedFlagName} = false;\n`;
 
@@ -636,7 +631,7 @@ export class CodeGenerator {
                     this.indentationLevel++;
 
                     code +=
-                        `${this.indent()}${resultVarName} = ([&]() -> JsValue {\n`;
+                        `${this.indent()}${resultVarName} = ([&]() -> jspp::JsValue {\n`;
                     this.indentationLevel++;
 
                     const innerContext = {
@@ -736,12 +731,12 @@ export class CodeGenerator {
 
                     // Always create the JS exception variable.
                     code +=
-                        `${this.indent()}auto ${varName} = std::make_shared<JsValue>(std::string(${exceptionName}.what()));\n`;
+                        `${this.indent()}auto ${varName} = std::make_shared<jspp::JsValue>(std::string(${exceptionName}.what()));\n`;
 
                     // Shadow the C++ exception variable *only if* the names don't clash.
                     if (varName !== exceptionName) {
                         code +=
-                            `${this.indent()}auto ${exceptionName} = std::make_shared<JsValue>(undefined);\n`;
+                            `${this.indent()}auto ${exceptionName} = std::make_shared<jspp::JsValue>(undefined);\n`;
                     }
 
                     code += this.visit(catchClause.block, context);
@@ -772,13 +767,13 @@ export class CodeGenerator {
                                 scope,
                             );
                         if (!typeInfo) {
-                            return `([&]() -> JsValue { throw std::runtime_error("ReferenceError: ${arg.text} is not defined"); })()`;
+                            return `([&]() -> jspp::JsValue { throw std::runtime_error("ReferenceError: ${arg.text} is not defined"); })()`;
                         }
                         if (
                             typeInfo && !typeInfo.isParameter &&
                             !typeInfo.isBuiltin
                         ) {
-                            return `_deref(${argText}, "${argText}")`;
+                            return `jspp::deref(${argText}, "${argText}")`;
                         }
                     }
                     return argText;
@@ -802,18 +797,17 @@ export class CodeGenerator {
                             scope,
                         );
                     if (!typeInfo) {
-                        return `([&]() -> JsValue { throw std::runtime_error("ReferenceError: ${callee.text} is not defined"); })()`;
+                        return `([&]() -> jspp::JsValue { throw std::runtime_error("ReferenceError: ${callee.text} is not defined"); })()`;
                     }
                     if (typeInfo.isBuiltin) {
                         derefCallee = calleeCode;
                     } else {
-                        derefCallee =
-                            `_deref(${calleeCode}, "${calleeCode}")`;
+                        derefCallee = `jspp::deref(${calleeCode}, "${calleeCode}")`;
                     }
                 } else {
                     derefCallee = calleeCode;
                 }
-                return `std::any_cast<std::function<JsValue(const std::vector<JsValue>&)>>(${derefCallee})({${args}})`;
+                return `std::any_cast<std::function<jspp::JsValue(const std::vector<jspp::JsValue>&)>>(${derefCallee})({${args}})`;
             }
 
             case ts.SyntaxKind.ReturnStatement: {
@@ -834,14 +828,14 @@ export class CodeGenerator {
                             const typeInfo = this.typeAnalyzer.scopeManager
                                 .lookupFromScope(exprText, scope);
                             if (!typeInfo) {
-                                return `${this.indent()}return ([&]() -> JsValue { throw std::runtime_error("ReferenceError: ${exprText} is not defined"); })();\n`;
+                                return `${this.indent()}return ([&]() -> jspp::JsValue { throw std::runtime_error("ReferenceError: ${exprText} is not defined"); })();\n`;
                             }
                             if (
                                 typeInfo && !typeInfo.isParameter &&
                                 !typeInfo.isBuiltin
                             ) {
                                 returnCode +=
-                                    `${this.indent()}return _deref(${exprText}, "${exprText}");\n`;
+                                    `${this.indent()}return jspp::deref(${exprText}, "${exprText}");\n`;
                             } else {
                                 returnCode +=
                                     `${this.indent()}return ${exprText};\n`;
@@ -864,13 +858,13 @@ export class CodeGenerator {
                         const typeInfo = this.typeAnalyzer.scopeManager
                             .lookupFromScope(exprText, scope);
                         if (!typeInfo) {
-                            return `${this.indent()}return ([&]() -> JsValue { throw std::runtime_error("ReferenceError: ${exprText} is not defined"); })();\n`;
+                            return `${this.indent()}return ([&]() -> jspp::JsValue { throw std::runtime_error("ReferenceError: ${exprText} is not defined"); })();\n`;
                         }
                         if (
                             typeInfo && !typeInfo.isParameter &&
                             !typeInfo.isBuiltin
                         ) {
-                            return `${this.indent()}return _deref(${exprText}, "${exprText}");\n`;
+                            return `${this.indent()}return jspp::deref(${exprText}, "${exprText}");\n`;
                         }
                     }
                     return `${this.indent()}return ${exprText};\n`;

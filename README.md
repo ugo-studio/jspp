@@ -27,6 +27,15 @@ JSPP currently supports a foundational set of JavaScript features:
 - **Control Flow:** `void` operator.
 - **Built-in APIs:** A `console` object with `log()`, `warn()`, and `error()` methods.
 
+## Reserved Keywords
+
+JSPP reserves certain keywords to avoid conflicts with the generated C++ code and internal mechanisms. The following keywords are reserved and cannot be used as variable names:
+
+- `std`: Reserved to prevent conflicts with the C++ standard library namespace.
+- `jspp`: Reserved for internal use by the JSPP transpiler.
+
+Using these keywords as variable names will result in a `SyntaxError`.
+
 ## How It Works
 
 The transpilation process is a classic three-stage pipeline:
