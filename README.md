@@ -17,7 +17,7 @@ This project serves as a deep dive into compiler design, language semantics, and
 
 JSPP currently supports a foundational set of JavaScript features:
 
-- **Dynamic Variables:** Declaration (`let`), assignment, and type changes at runtime.
+- **Dynamic Variables:** Declaration (`let`, `const` and `var`), assignment, and type changes at runtime.
 - **Primitive Types:** `undefined`, `null`, `boolean`, `number`, and `string`.
 - **Functions:**
   - Function declarations and arrow functions.
@@ -91,7 +91,7 @@ This phase focuses on building a solid foundation that correctly models JavaScri
 - [x] Correct Hoisting for Variables and Functions
 - [x] Closures & Lexical Scoping (via `std::shared_ptr` capture)
 - [x] Basic `console` API
-- [x] if/else conditions
+- [x] `if-elseif-else` conditions
 - [x] Error Handling: `try`/`catch`/`finally` blocks and `throw`.
 
 ---
