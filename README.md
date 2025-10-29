@@ -122,7 +122,7 @@ This phase will broaden the range of supported JavaScript syntax and features.
 
 - [x] **Error Handling**: `try`/`catch`/`finally` blocks and `throw`.
 - [x] **Objects:** Literals, property access (dot and bracket notation), methods.
-- [ ] **Arrays:** Literals, indexing, and core methods (`.push`, `.pop`, `.length`, etc.).
+- [x] **Arrays:** Literals, indexing, and core methods (`.push`, `.pop`, `.length`, etc.).
 - [ ] **Control Flow:** tenary operators, `for` loops, `while` loops, `switch`.
 - [ ] **Operators:** Full suite of arithmetic, logical, and comparison operators.
 

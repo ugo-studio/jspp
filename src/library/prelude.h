@@ -46,37 +46,125 @@ namespace jspp
     struct JsObject
     {
         std::map<std::string, JsValue> properties;
+    };
 
-        static JsValue getProperty(const JsValue &obj, const std::string &key)
+    struct JsArray
+    {
+        std::vector<JsValue> elements;
+    };
+
+    namespace Access
+    {
+        inline std::string js_value_to_string(const JsValue &val)
+        {
+            if (val.type() == typeid(std::string))
+                return std::any_cast<std::string>(val);
+            if (val.type() == typeid(const char *))
+                return std::any_cast<const char *>(val);
+            if (val.type() == typeid(int))
+                return std::to_string(std::any_cast<int>(val));
+            if (val.type() == typeid(double))
+                return std::to_string(std::any_cast<double>(val));
+            if (val.type() == typeid(bool))
+                return std::any_cast<bool>(val) ? "true" : "false";
+            if (val.type() == typeid(Null))
+                return "null";
+            return "undefined";
+        }
+
+        inline JsValue getProperty(const JsValue &obj, const JsValue &key)
         {
             if (obj.type() == typeid(std::shared_ptr<JsObject>))
             {
                 auto &ptr = std::any_cast<const std::shared_ptr<JsObject> &>(obj);
                 if (!ptr)
                     throw std::runtime_error("TypeError: Cannot read properties of null");
-                const auto it = ptr->properties.find(key);
+                const auto it = ptr->properties.find(js_value_to_string(key));
                 if (it != ptr->properties.end())
                 {
                     return it->second;
                 }
                 return undefined;
             }
+            if (obj.type() == typeid(std::shared_ptr<JsArray>))
+            {
+                auto &ptr = std::any_cast<const std::shared_ptr<JsArray> &>(obj);
+                if (!ptr)
+                    throw std::runtime_error("TypeError: Cannot read properties of null");
+
+                std::string key_str = js_value_to_string(key);
+                if (key_str == "length")
+                {
+                    return (int)ptr->elements.size();
+                }
+
+                size_t index = -1;
+                try
+                {
+                    index = std::stoul(key_str);
+                }
+                catch (...)
+                {
+                    // Not a numeric index, fall through
+                }
+
+                if (index != -1 && index < ptr->elements.size())
+                {
+                    return ptr->elements[index];
+                }
+                return undefined;
+            }
             throw std::runtime_error("TypeError: Cannot read properties of non-object type");
         }
 
-        static JsValue setProperty(const JsValue &obj, const std::string &key, const JsValue &val)
+        inline JsValue setProperty(const JsValue &obj, const JsValue &key, const JsValue &val)
         {
             if (obj.type() == typeid(std::shared_ptr<JsObject>))
             {
                 auto &ptr = std::any_cast<const std::shared_ptr<JsObject> &>(obj);
                 if (!ptr)
                     throw std::runtime_error("TypeError: Cannot set properties of null");
-                ptr->properties[key] = val;
+                ptr->properties[js_value_to_string(key)] = val;
+                return val;
+            }
+            if (obj.type() == typeid(std::shared_ptr<JsArray>))
+            {
+                auto &ptr = std::any_cast<const std::shared_ptr<JsArray> &>(obj);
+                if (!ptr)
+                    throw std::runtime_error("TypeError: Cannot set properties of null");
+
+                size_t index = -1;
+                if (key.type() == typeid(int))
+                {
+                    index = std::any_cast<int>(key);
+                }
+                else if (key.type() == typeid(std::string))
+                {
+                    try
+                    {
+                        index = std::stoul(std::any_cast<std::string>(key));
+                    }
+                    catch (...)
+                    {
+                        // Not a numeric index, fall through to object-like property setting
+                    }
+                }
+
+                if (index != -1)
+                {
+                    if (index >= ptr->elements.size())
+                    {
+                        ptr->elements.resize(index + 1, undefined);
+                    }
+                    ptr->elements[index] = val;
+                    return val;
+                }
+                // TODO: handle non-numeric properties on arrays if needed
                 return val;
             }
             throw std::runtime_error("TypeError: Cannot set properties of non-object type");
         }
-    };
+    }
 
     struct JsError
     {
@@ -230,6 +318,20 @@ inline std::ostream &operator<<(std::ostream &os, const jspp::JsValue &v)
         os << std::any_cast<std::string>(v);
     else if (v.type() == typeid(std::shared_ptr<jspp::JsObject>))
         os << "[object Object]";
+    else if (v.type() == typeid(std::shared_ptr<jspp::JsArray>))
+    {
+        os << "[";
+        auto &ptr = std::any_cast<const std::shared_ptr<jspp::JsArray> &>(v);
+        for (size_t i = 0; i < ptr->elements.size(); ++i)
+        {
+            os << ptr->elements[i];
+            if (i < ptr->elements.size() - 1)
+            {
+                os << ", ";
+            }
+        }
+        os << "]";
+    }
     else
         os << "function(){}";
     return os;

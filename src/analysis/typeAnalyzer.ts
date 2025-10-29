@@ -197,9 +197,18 @@ export class TypeAnalyzer {
                         const name = node.name.getText();
                         const isConst =
                             (node.parent.flags & ts.NodeFlags.Const) !== 0;
-                        // We can add more detailed inference here if needed
+
+                        let type = "auto";
+                        if (node.initializer) {
+                            if (
+                                ts.isArrayLiteralExpression(node.initializer)
+                            ) {
+                                type = "array";
+                            }
+                        }
+
                         const typeInfo: TypeInfo = {
-                            type: "auto",
+                            type,
                             declaration: node,
                             isConst,
                         };

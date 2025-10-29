@@ -450,7 +450,7 @@ export class CodeGenerator {
                 const elements = (node as ts.ArrayLiteralExpression).elements
                     .map((elem) => this.visit(elem, context))
                     .join(", ");
-                return `{${elements}}`;
+                return `std::make_shared<jspp::JsArray>(jspp::JsArray{{${elements}}})`;
             }
 
             case ts.SyntaxKind.ForOfStatement: {
@@ -522,7 +522,7 @@ export class CodeGenerator {
                     ? `jspp::Tdz::deref(${exprText}, "${exprText}")`
                     : exprText;
 
-                return `jspp::JsObject::getProperty(${finalExpr}, "${propName}")`;
+                return `jspp::Access::getProperty(${finalExpr}, "${propName}")`;
             }
 
             case ts.SyntaxKind.ElementAccessExpression: {
@@ -546,7 +546,7 @@ export class CodeGenerator {
                     ? `jspp::Tdz::deref(${exprText}, "${exprText}")`
                     : exprText;
 
-                return `jspp::JsObject::getProperty(${finalExpr}, ${argText})`;
+                return `jspp::Access::getProperty(${finalExpr}, ${argText})`;
             }
 
             case ts.SyntaxKind.ExpressionStatement:
@@ -592,7 +592,7 @@ export class CodeGenerator {
                             ? `jspp::Tdz::deref(${objExprText}, "${objExprText}")`
                             : objExprText;
 
-                        return `jspp::JsObject::setProperty(${finalObjExpr}, "${propName}", ${rightText})`;
+                        return `jspp::Access::setProperty(${finalObjExpr}, "${propName}", ${rightText})`;
                     } else if (ts.isElementAccessExpression(binExpr.left)) {
                         const elemAccess = binExpr.left;
                         const objExprText = this.visit(
@@ -619,7 +619,7 @@ export class CodeGenerator {
                             ? `jspp::Tdz::deref(${objExprText}, "${objExprText}")`
                             : objExprText;
 
-                        return `jspp::JsObject::setProperty(${finalObjExpr}, ${argText}, ${rightText})`;
+                        return `jspp::Access::setProperty(${finalObjExpr}, ${argText}, ${rightText})`;
                     }
 
                     const leftText = this.visit(binExpr.left, context);

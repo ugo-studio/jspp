@@ -166,6 +166,21 @@ const cases: { name: string; expected: string[] }[] = [
             "new",
         ],
     },
+    {
+        name: "arrays",
+        expected: [
+            "--- Arrays ---",
+            "1",
+            "hello",
+            "true",
+            "3",
+            "world",
+            "2",
+            "0",
+            "first",
+            "1",
+        ],
+    },
 ];
 
 describe("Interpreter tests", () => {
