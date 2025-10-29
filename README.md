@@ -79,12 +79,6 @@ The primary way to use JSPP is to run the test suite. This will transpile all th
 bun run tests
 ```
 
-This command chains the following scripts (defined in `package.json`):
-
-- `bun run tests:compile`: Transpiles the JS test files to C++ output files in `test/output/`.
-- `bun run tests:build`: Compiles the generated C++ files into executables.
-- `bun run tests:run`: Runs the compiled C++ executables to verify their output.
-
 ## Roadmap
 
 This project is ambitious, and there is a long and exciting road ahead. Here is a high-level overview of the planned features and the project's current standing.
