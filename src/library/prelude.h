@@ -7,6 +7,7 @@
 #include <sstream>
 #include <memory>
 #include <map>
+#include <cstring>
 
 struct Undefined
 {
@@ -362,6 +363,105 @@ namespace jspp
             }
             throw jspp::JsError::make_error("Cannot set properties of non-object type", "TypeError");
         }
+
+        inline bool strict_equals(const JsValue &lhs, const JsValue &rhs)
+        {
+            // Strict equality (===)
+            if (lhs.type() == typeid(int) && rhs.type() == typeid(double))
+                return std::any_cast<int>(lhs) == std::any_cast<double>(rhs);
+            if (lhs.type() == typeid(double) && rhs.type() == typeid(int))
+                return std::any_cast<double>(lhs) == std::any_cast<int>(rhs);
+
+            if (lhs.type() != rhs.type())
+                return false;
+
+            if (!lhs.has_value() || lhs.type() == typeid(Undefined))
+                return true; // both undefined
+            if (lhs.type() == typeid(Null))
+                return true; // both null
+
+            if (lhs.type() == typeid(int))
+                return std::any_cast<int>(lhs) == std::any_cast<int>(rhs);
+            if (lhs.type() == typeid(double))
+                return std::any_cast<double>(lhs) == std::any_cast<double>(rhs);
+            if (lhs.type() == typeid(bool))
+                return std::any_cast<bool>(lhs) == std::any_cast<bool>(rhs);
+            if (lhs.type() == typeid(std::string))
+                return std::any_cast<std::string>(lhs) == std::any_cast<std::string>(rhs);
+            if (lhs.type() == typeid(const char *))
+                return strcmp(std::any_cast<const char *>(lhs), std::any_cast<const char *>(rhs)) == 0;
+
+            if (lhs.type() == typeid(std::shared_ptr<jspp::JsObject>))
+            {
+                return std::any_cast<std::shared_ptr<jspp::JsObject>>(lhs) == std::any_cast<std::shared_ptr<jspp::JsObject>>(rhs);
+            }
+            if (lhs.type() == typeid(std::shared_ptr<jspp::JsArray>))
+            {
+                return std::any_cast<std::shared_ptr<jspp::JsArray>>(lhs) == std::any_cast<std::shared_ptr<jspp::JsArray>>(rhs);
+            }
+
+            // Cannot compare functions for equality in C++.
+            return false;
+        }
+
+        inline bool equals(const JsValue &lhs, const JsValue &rhs)
+        {
+            // Abstract/Loose Equality (==)
+            if (lhs.type() == rhs.type())
+            {
+                return strict_equals(lhs, rhs); // Use strict equality if types are same
+            }
+
+            // null == undefined
+            if ((lhs.type() == typeid(Null) && (!rhs.has_value() || rhs.type() == typeid(Undefined))) ||
+                ((!lhs.has_value() || lhs.type() == typeid(Undefined)) && rhs.type() == typeid(Null)))
+            {
+                return true;
+            }
+
+            // number == string
+            if ((lhs.type() == typeid(int) || lhs.type() == typeid(double)) && (rhs.type() == typeid(std::string) || rhs.type() == typeid(const char *)))
+            {
+                double l = lhs.type() == typeid(int) ? std::any_cast<int>(lhs) : std::any_cast<double>(lhs);
+                try
+                {
+                    double r = std::stod(js_value_to_string(rhs));
+                    return l == r;
+                }
+                catch (...)
+                {
+                    return false;
+                }
+            }
+            if ((rhs.type() == typeid(int) || rhs.type() == typeid(double)) && (lhs.type() == typeid(std::string) || lhs.type() == typeid(const char *)))
+            {
+                return equals(rhs, lhs); // reuse logic
+            }
+
+            // boolean == any
+            if (lhs.type() == typeid(bool))
+            {
+                return equals(jspp::JsValue(std::any_cast<bool>(lhs) ? 1 : 0), rhs);
+            }
+            if (rhs.type() == typeid(bool))
+            {
+                return equals(lhs, jspp::JsValue(std::any_cast<bool>(rhs) ? 1 : 0));
+            }
+
+            // object == primitive
+            if ((lhs.type() == typeid(std::shared_ptr<JsObject>) || lhs.type() == typeid(std::shared_ptr<JsArray>)) &&
+                (rhs.type() != typeid(std::shared_ptr<JsObject>) && rhs.type() != typeid(std::shared_ptr<JsArray>)))
+            {
+                return equals(jspp::JsValue(js_value_to_string(lhs)), rhs);
+            }
+            if ((rhs.type() == typeid(std::shared_ptr<JsObject>) || rhs.type() == typeid(std::shared_ptr<JsArray>)) &&
+                (lhs.type() != typeid(std::shared_ptr<JsObject>) && lhs.type() != typeid(std::shared_ptr<JsArray>)))
+            {
+                return equals(lhs, jspp::JsValue(js_value_to_string(rhs)));
+            }
+
+            return false;
+        }
     }
 
 }
@@ -437,20 +537,6 @@ inline bool operator<(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
         return std::any_cast<int>(lhs) < std::any_cast<double>(rhs);
     if (lhs.type() == typeid(double) && rhs.type() == typeid(int))
         return std::any_cast<double>(lhs) < std::any_cast<int>(rhs);
-    return false;
-}
-inline bool operator==(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
-{
-    if (lhs.type() == typeid(int) && rhs.type() == typeid(int))
-        return std::any_cast<int>(lhs) == std::any_cast<int>(rhs);
-    if (lhs.type() == typeid(double) && rhs.type() == typeid(double))
-        return std::any_cast<double>(lhs) == std::any_cast<double>(rhs);
-    if (lhs.type() == typeid(int) && rhs.type() == typeid(double))
-        return std::any_cast<int>(lhs) == std::any_cast<double>(rhs);
-    if (lhs.type() == typeid(double) && rhs.type() == typeid(int))
-        return std::any_cast<double>(lhs) == std::any_cast<int>(rhs);
-    if (lhs.type() == typeid(bool) && rhs.type() == typeid(bool))
-        return std::any_cast<bool>(lhs) == std::any_cast<bool>(rhs);
     return false;
 }
 

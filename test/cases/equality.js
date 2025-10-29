@@ -1,0 +1,18 @@
+console.log("--- Equality ---");
+console.log("5 == '5'", 5 == '5');
+console.log("5 === '5'", 5 === '5');
+console.log("5 == 5", 5 == 5);
+console.log("5 === 5", 5 === 5);
+console.log("null == undefined", null == undefined);
+console.log("null === undefined", null === undefined);
+console.log("0 == false", 0 == false);
+console.log("0 === false", 0 === false);
+console.log("'' == false", '' == false);
+console.log("'' === false", '' === false);
+const obj1 = {};
+const obj2 = {};
+console.log("{} == {}", obj1 == obj2);
+console.log("{} === {}", obj1 === obj2);
+const obj3 = obj1;
+console.log("obj1 == obj3", obj1 == obj3);
+console.log("obj1 === obj3", obj1 === obj3);

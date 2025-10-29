@@ -195,6 +195,26 @@ const cases: { name: string; expected: string[] }[] = [
             "Caught expected error: RangeError: Invalid array length",
         ],
     },
+    {
+        name: "equality",
+        expected: [
+            "--- Equality ---",
+            "5 == '5' true",
+            "5 === '5' false",
+            "5 == 5 true",
+            "5 === 5 true",
+            "null == undefined true",
+            "null === undefined false",
+            "0 == false true",
+            "0 === false false",
+            "'' == false true",
+            "'' === false false",
+            "{} == {} false",
+            "{} === {} false",
+            "obj1 == obj3 true",
+            "obj1 === obj3 true",
+        ]
+    }
 ];
 
 describe("Interpreter tests", () => {

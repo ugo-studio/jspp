@@ -557,15 +557,10 @@ export class CodeGenerator {
 
             case ts.SyntaxKind.BinaryExpression: {
                 const binExpr = node as ts.BinaryExpression;
-                let op = binExpr.operatorToken.getText();
-                if (
-                    binExpr.operatorToken.kind ===
-                        ts.SyntaxKind.EqualsEqualsEqualsToken
-                ) {
-                    op = "==";
-                }
+                const opToken = binExpr.operatorToken;
+                let op = opToken.getText();
 
-                if (binExpr.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+                if (opToken.kind === ts.SyntaxKind.EqualsToken) {
                     const rightText = this.visit(binExpr.right, context);
 
                     if (ts.isPropertyAccessExpression(binExpr.left)) {
@@ -671,6 +666,13 @@ export class CodeGenerator {
                 }
                 if (rightIsIdentifier && !rightTypeInfo) {
                     return `jspp::JsError::throw_unresolved_reference("${rightText}")`;
+                }
+
+                if (opToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken) {
+                    return `jspp::Access::strict_equals(${finalLeft}, ${finalRight})`;
+                }
+                if (opToken.kind === ts.SyntaxKind.EqualsEqualsToken) {
+                    return `jspp::Access::equals(${finalLeft}, ${finalRight})`;
                 }
 
                 if (op === "+" || op === "-" || op === "*") {
