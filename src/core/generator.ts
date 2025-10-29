@@ -105,8 +105,11 @@ export class CodeGenerator {
         isAssignment: boolean = false,
         capture: string = "[=]",
     ): string {
+        const declaredSymbols = this.getDeclaredSymbols(node);
+        const argsName = this.generateUniqueName("__args_", declaredSymbols);
+
         let lambda =
-            `${capture}(const std::vector<jspp::JsValue>& args) mutable -> jspp::JsValue `;
+            `${capture}(const std::vector<jspp::JsValue>& ${argsName}) mutable -> jspp::JsValue `;
 
         const visitContext = {
             isMainContext: false,
@@ -124,7 +127,7 @@ export class CodeGenerator {
                         ? this.visit(p.initializer, visitContext)
                         : "undefined";
                     paramExtraction +=
-                        `${this.indent()}auto ${name} = args.size() > ${i} ? args[${i}] : ${defaultValue};\n`;
+                        `${this.indent()}auto ${name} = ${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue};\n`;
                 });
                 this.indentationLevel--;
 
@@ -144,7 +147,7 @@ export class CodeGenerator {
                         ? this.visit(p.initializer, visitContext)
                         : "undefined";
                     lambda +=
-                        `${this.indent()}auto ${name} = args.size() > ${i} ? args[${i}] : ${defaultValue};\n`;
+                        `${this.indent()}auto ${name} = ${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue};\n`;
                 });
                 lambda += `${this.indent()}return ${
                     this.visit(node.body, {
