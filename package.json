@@ -3,7 +3,8 @@
   "module": "src/index.ts",
   "type": "module",
   "scripts": {
-    "test": "bun test"
+    "test": "bun test",
+    "dev": "bun run scripts/run-js.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"

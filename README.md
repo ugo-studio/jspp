@@ -76,8 +76,26 @@ To get a local copy up and running, follow these simple steps.
 The primary way to use JSPP is to run the test suite. This will transpile all the JavaScript test cases in `test/cases/`, build the resulting C++ files, and run them.
 
 ```sh
-bun run tests
+bun test
 ```
+
+### Running Your Own JavaScript Code
+
+You can also use the `dev` script to interpret and run your own JavaScript files. This will transpile your `.js` file to C++, compile it, and execute the resulting binary.
+
+```sh
+bun run dev <path-to-your-js-file>
+```
+
+**Example:**
+
+To run a sample JavaScript file located at `my-code/hello.js`:
+
+```sh
+bun run dev my-code/hello.js
+```
+
+The transpiled C++ file and executable will be generated in a temporary `temp_run` directory and cleaned up after execution.
 
 ## Roadmap
 
