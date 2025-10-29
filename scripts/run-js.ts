@@ -12,7 +12,7 @@ async function main() {
 
     const jsFilePath = path.resolve(process.cwd(), args[0]!);
     const jsFileName = path.basename(jsFilePath, ".js");
-    const outputDir = path.join(process.cwd(), "temp-run");
+    const outputDir = path.dirname(jsFilePath);
     const cppFilePath = path.join(outputDir, `${jsFileName}.cpp`);
     const exeFilePath = path.join(outputDir, `${jsFileName}.exe`);
 
@@ -54,15 +54,6 @@ async function main() {
     } catch (error: any) {
         console.error(`Error: ${error.message}`);
         process.exit(1);
-    } finally {
-        // Clean up generated files
-        try {
-            // await fs.unlink(cppFilePath);
-            await fs.unlink(exeFilePath);
-            // await fs.rmdir(outputDir);
-        } catch (cleanupError: any) {
-            console.warn(`Cleanup warning: ${cleanupError.message}`);
-        }
     }
 }
 

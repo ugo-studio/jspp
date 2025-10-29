@@ -8,7 +8,6 @@ dist
 test/output/*.cpp
 test/output/*.exe
 my-code/*
-temp-run/*
 
 # code coverage
 coverage
