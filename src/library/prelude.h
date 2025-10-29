@@ -39,6 +39,11 @@ namespace jspp
         return *var;
     }
 
+    inline JsValue unresolved(const std::string &varName)
+    {
+        throw std::runtime_error("ReferenceError: " + varName + " is not defined");
+    }
+
 }
 
 // Define operators for JsValue

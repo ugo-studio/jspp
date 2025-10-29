@@ -530,7 +530,7 @@ export class CodeGenerator {
                             scope,
                         );
                     if (!typeInfo) {
-                        return `([&]() -> jspp::JsValue { throw std::runtime_error("ReferenceError: ${leftText} is not defined"); })()`;
+                        return `jspp::unresolved("${leftText}")`;
                     }
                     if (typeInfo?.isConst) {
                         return `throw std::runtime_error("TypeError: Assignment to constant variable.")`;
@@ -565,10 +565,10 @@ export class CodeGenerator {
                     : rightText;
 
                 if (leftIsIdentifier && !leftTypeInfo) {
-                    return `([&]() -> jspp::JsValue { throw std::runtime_error("ReferenceError: ${leftText} is not defined"); })()`;
+                    return `jspp::unresolved("${leftText}")`;
                 }
                 if (rightIsIdentifier && !rightTypeInfo) {
-                    return `([&]() -> jspp::JsValue { throw std::runtime_error("ReferenceError: ${rightText} is not defined"); })()`;
+                    return `jspp::unresolved("${rightText}")`;
                 }
 
                 if (op === "+" || op === "-" || op === "*") {
@@ -767,7 +767,7 @@ export class CodeGenerator {
                                 scope,
                             );
                         if (!typeInfo) {
-                            return `([&]() -> jspp::JsValue { throw std::runtime_error("ReferenceError: ${arg.text} is not defined"); })()`;
+                            return `jspp::unresolved("${arg.text}")`;
                         }
                         if (
                             typeInfo && !typeInfo.isParameter &&
@@ -797,12 +797,13 @@ export class CodeGenerator {
                             scope,
                         );
                     if (!typeInfo) {
-                        return `([&]() -> jspp::JsValue { throw std::runtime_error("ReferenceError: ${callee.text} is not defined"); })()`;
+                        return `jspp::unresolved("${callee.text}")`;
                     }
                     if (typeInfo.isBuiltin) {
                         derefCallee = calleeCode;
                     } else {
-                        derefCallee = `jspp::deref(${calleeCode}, "${calleeCode}")`;
+                        derefCallee =
+                            `jspp::deref(${calleeCode}, "${calleeCode}")`;
                     }
                 } else {
                     derefCallee = calleeCode;
@@ -828,7 +829,7 @@ export class CodeGenerator {
                             const typeInfo = this.typeAnalyzer.scopeManager
                                 .lookupFromScope(exprText, scope);
                             if (!typeInfo) {
-                                return `${this.indent()}return ([&]() -> jspp::JsValue { throw std::runtime_error("ReferenceError: ${exprText} is not defined"); })();\n`;
+                                return `${this.indent()}return jspp::unresolved("${exprText}");\n`;
                             }
                             if (
                                 typeInfo && !typeInfo.isParameter &&
@@ -858,7 +859,7 @@ export class CodeGenerator {
                         const typeInfo = this.typeAnalyzer.scopeManager
                             .lookupFromScope(exprText, scope);
                         if (!typeInfo) {
-                            return `${this.indent()}return ([&]() -> jspp::JsValue { throw std::runtime_error("ReferenceError: ${exprText} is not defined"); })();\n`;
+                            return `${this.indent()}return jspp::unresolved("${exprText}");\n`;
                         }
                         if (
                             typeInfo && !typeInfo.isParameter &&
