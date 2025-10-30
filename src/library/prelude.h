@@ -155,28 +155,50 @@ namespace jspp
             if (val.type() == typeid(std::shared_ptr<jspp::JsObject>))
             {
                 auto ptr = std::any_cast<std::shared_ptr<jspp::JsObject>>(val);
-                if (ptr->properties.count("toString") > 0 && ptr->properties["toString"].type() == typeid(std::function<JsValue()>))
+                const auto it = ptr->properties.find("toString");
+                if (it != ptr->properties.end())
                 {
-                    auto val_str = std::any_cast<std::function<jspp::JsValue()>>(ptr->properties["toString"])();
-                    if (val_str.type() == typeid(std::string))
+                    const auto &prop = it->second;
+                    if (prop.type() == typeid(std::function<JsValue()>))
                     {
-                        return std::any_cast<std::string>(val_str);
+                        auto val = std::any_cast<std::function<JsValue()>>(prop)();
+                        if (val.type() == typeid(std::string))
+                        {
+                            return std::any_cast<std::string>(val);
+                        }
                     }
                 }
-                return "[Object Object]";
+                // Fallback to array prototype handler
             }
             if (val.type() == typeid(std::shared_ptr<jspp::JsArray>))
             {
-                // auto ptr = std::any_cast<std::shared_ptr<jspp::JsArray>>(val);
-                // if (ptr->properties.count("toString") > 0 && ptr->properties["toString"].type() == typeid(std::function<JsValue()>))
-                // {
-                //     auto val_str = std::any_cast<std::function<jspp::JsValue()>>(ptr->properties["toString"])();
-                //     if (val_str.type() == typeid(std::string))
-                //     {
-                //         return std::any_cast<std::string>(val_str);
-                //     }
-                // }
-                return "[Array Array]";
+                auto ptr = std::any_cast<std::shared_ptr<jspp::JsArray>>(val);
+                const auto proto_it = ptr->prototype.find("toString");
+                if (proto_it != ptr->prototype.end())
+                {
+                    const auto &prop = proto_it->second;
+                    if (std::holds_alternative<DataDescriptor>(prop))
+                    {
+                        auto val = std::get<DataDescriptor>(prop).value;
+                        if (val.type() == typeid(std::string))
+                        {
+                            return std::any_cast<std::string>(val);
+                        }
+                    }
+                    else if (std::holds_alternative<AccessorDescriptor>(prop))
+                    {
+                        const auto &accessor = std::get<AccessorDescriptor>(prop);
+                        if (std::holds_alternative<std::function<JsValue()>>(accessor.get))
+                        {
+                            auto val = std::get<std::function<JsValue()>>(accessor.get)();
+                            if (val.type() == typeid(std::string))
+                            {
+                                return std::any_cast<std::string>(val);
+                            }
+                        }
+                    }
+                }
+                return "[Object Object]";
             }
             if (val.type() == typeid(std::shared_ptr<jspp::JsString>))
             {
