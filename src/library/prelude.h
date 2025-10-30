@@ -250,6 +250,33 @@ namespace jspp
         }
     }
 
+    namespace Prototype
+    {
+        using PrototypeMap = std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>>;
+
+        inline void set_data_property(
+            PrototypeMap &prototype,
+            const std::string &name,
+            const JsValue &value,
+            bool writable = true,
+            bool enumerable = false,
+            bool configurable = true)
+        {
+            prototype[name] = DataDescriptor{value, writable, enumerable, configurable};
+        }
+
+        inline void set_accessor_property(
+            PrototypeMap &prototype,
+            const std::string &name,
+            const std::variant<std::function<JsValue()>, Undefined> &getter,
+            const std::variant<std::function<JsValue(JsValue)>, Undefined> &setter,
+            bool enumerable = false,
+            bool configurable = true)
+        {
+            prototype[name] = AccessorDescriptor{getter, setter, enumerable, configurable};
+        }
+    }
+
     namespace Object
     {
         inline std::shared_ptr<jspp::JsObject> make_object(const std::map<std::string, JsValue> &properties)
@@ -257,8 +284,11 @@ namespace jspp
 
             auto object = std::make_shared<jspp::JsObject>(jspp::JsObject{properties, {}});
             // Define and set prototype methods
-            object->prototype["toString"] = DataDescriptor{std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
-                                                                                          { return "[object Object]"; })};
+            Prototype::set_data_property(
+                object->prototype,
+                "toString",
+                std::function<jspp::JsValue()>([]() -> jspp::JsValue
+                                               { return "[object Object]"; }));
             // return object shared pointer
             return object;
         }
@@ -267,8 +297,12 @@ namespace jspp
         {
             auto array = std::make_shared<jspp::JsArray>(jspp::JsArray{properties, {}});
             // Define and set prototype methods
-            array->prototype["toString"] = DataDescriptor{std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
-                                                                                         {     std::string str = "[";
+            Prototype::set_data_property(
+                array->prototype,
+                "toString",
+                std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
+                                               {
+                std::string str = "[";
                 for (size_t i = 0; i < array->properties.size(); ++i)
                 {
                     str += jspp::Convert::to_string(array->properties[i]);
@@ -276,37 +310,40 @@ namespace jspp
                         str += ", ";
                 }
                 str += "]";
-                return str; })};
-            array->prototype["length"] = AccessorDescriptor{std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
-                                                                                           { return (int)array->properties.size(); }),
-                                                            std::function<jspp::JsValue(jspp::JsValue)>([=](auto val) mutable -> jspp::JsValue
-                                                                                                        {  
-                                                                                            size_t new_length = 0;
-                                                                                            if (val.type() == typeid(int))
-                                                                                            {
-                                                                                                int v = std::any_cast<int>(val);
-                                                                                                if (v < 0)
-                                                                                                {
-                                                                                                    throw JsError::make_error("Invalid array length", "RangeError");
-                                                                                                }
-                                                                                                new_length = static_cast<size_t>(v);
-                                                                                            }
-                                                                                            else if (val.type() == typeid(double))
-                                                                                            {
-                                                                                                double v = std::any_cast<double>(val);
-                                                                                                if (v < 0 || v != static_cast<uint32_t>(v))
-                                                                                                {
-                                                                                                    throw JsError::make_error("Invalid array length", "RangeError");
-                                                                                                }
-                                                                                                new_length = static_cast<size_t>(v);
-                                                                                            }
-                                                                                            else
-                                                                                            {
-                                                                                                // Other types could be converted to number in a more complete implementation
-                                                                                                return val;
-                                                                                            }
-                                                                                            array->properties.resize(new_length, undefined);
-                                                                                            return val; })};
+                return str; }));
+            Prototype::set_accessor_property(
+                array->prototype,
+                "length",
+                std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
+                                               { return (int)array->properties.size(); }),
+                std::function<jspp::JsValue(jspp::JsValue)>([=](auto val) mutable -> jspp::JsValue
+                                                            {
+                                                                size_t new_length = 0;
+                                                                if (val.type() == typeid(int))
+                                                                {
+                                                                    int v = std::any_cast<int>(val);
+                                                                    if (v < 0)
+                                                                    {
+                                                                        throw JsError::make_error("Invalid array length", "RangeError");
+                                                                    }
+                                                                    new_length = static_cast<size_t>(v);
+                                                                }
+                                                                else if (val.type() == typeid(double))
+                                                                {
+                                                                    double v = std::any_cast<double>(val);
+                                                                    if (v < 0 || v != static_cast<uint32_t>(v))
+                                                                    {
+                                                                        throw JsError::make_error("Invalid array length", "RangeError");
+                                                                    }
+                                                                    new_length = static_cast<size_t>(v);
+                                                                }
+                                                                else
+                                                                {
+                                                                    // Other types could be converted to number in a more complete implementation
+                                                                    return val;
+                                                                }
+                                                                array->properties.resize(new_length, undefined);
+                                                                return val; }));
             // return object shared pointer
             return array;
         }
@@ -314,22 +351,29 @@ namespace jspp
         inline std::shared_ptr<jspp::JsString> make_string(const std::string &value)
         {
             auto str_obj = std::make_shared<jspp::JsString>(jspp::JsString{value, {}});
-            str_obj->prototype["length"] = AccessorDescriptor{
+            Prototype::set_accessor_property(
+                str_obj->prototype,
+                "length",
                 std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
                                                { return (int)str_obj->value.length(); }),
                 undefined // length is read-only for now
-            };
-            str_obj->prototype["toString"] = DataDescriptor{
+            );
+            Prototype::set_data_property(
+                str_obj->prototype,
+                "toString",
                 std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
-                                               { return str_obj->value; })};
+                                               { return str_obj->value; }));
             return str_obj;
         }
 
         inline std::shared_ptr<jspp::JsFunction> make_function(const std::function<JsValue(const std::vector<JsValue> &)> &callable)
         {
             auto func = std::make_shared<jspp::JsFunction>(jspp::JsFunction{callable, {}});
-            func->prototype["toString"] = DataDescriptor{std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
-                                                                                        { return "function(){}"; })};
+            Prototype::set_data_property(
+                func->prototype,
+                "toString",
+                std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
+                                               { return "function(){}"; }));
             return func;
         }
     }

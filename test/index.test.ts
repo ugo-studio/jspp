@@ -247,7 +247,13 @@ describe("Interpreter tests", () => {
             await fs.writeFile(outputFile, cppCode);
 
             const compile = Bun.spawnSync({
-                cmd: ["g++", outputFile, "-o", exeFile, "-std=c++23"],
+                cmd: [
+                    "g++",
+                    outputFile,
+                    "-o",
+                    exeFile,
+                    "-std=c++23",
+                ],
                 stdout: "pipe",
                 stderr: "pipe",
             });
