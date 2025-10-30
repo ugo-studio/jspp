@@ -41,8 +41,8 @@ namespace jspp
     };
     struct AccessorDescriptor
     {
-        std::variant<std::function<JsValue()>, Undefined> get = undefined;        // getter
-        std::variant<std::function<JsValue(JsValue)>, Undefined> set = undefined; // setter
+        std::variant<std::function<JsValue(const std::vector<JsValue> &)>, Undefined> get = undefined; // getter
+        std::variant<std::function<JsValue(const std::vector<JsValue> &)>, Undefined> set = undefined; // setter
         bool enumerable = false;
         bool configurable = true;
     };
@@ -187,9 +187,9 @@ namespace jspp
                     else if (std::holds_alternative<AccessorDescriptor>(prop))
                     {
                         const auto &accessor = std::get<AccessorDescriptor>(prop);
-                        if (std::holds_alternative<std::function<JsValue()>>(accessor.get))
+                        if (std::holds_alternative<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.get))
                         {
-                            auto result = std::get<std::function<JsValue()>>(accessor.get)();
+                            auto result = std::get<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.get)({});
                             return jspp::Convert::to_string(result);
                         }
                     }
@@ -214,9 +214,9 @@ namespace jspp
                     else if (std::holds_alternative<AccessorDescriptor>(prop))
                     {
                         const auto &accessor = std::get<AccessorDescriptor>(prop);
-                        if (std::holds_alternative<std::function<JsValue()>>(accessor.get))
+                        if (std::holds_alternative<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.get))
                         {
-                            auto result = std::get<std::function<JsValue()>>(accessor.get)();
+                            auto result = std::get<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.get)({});
                             return jspp::Convert::to_string(result);
                         }
                     }
@@ -253,6 +253,23 @@ namespace jspp
     {
         using PrototypeMap = std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>>;
 
+        inline std::function<JsValue(const std::vector<JsValue> &)> to_handler(std::function<JsValue()> fn)
+        {
+            return [fn = std::move(fn)](const std::vector<JsValue> &)
+            {
+                return fn();
+            };
+        }
+
+        inline std::function<JsValue(const std::vector<JsValue> &)> to_handler(std::function<JsValue(JsValue)> fn)
+        {
+            return [fn = std::move(fn)](const std::vector<JsValue> &args)
+            {
+                return fn(args.empty() ? undefined : args[0]);
+            };
+        }
+
+
         inline void set_data_property(
             PrototypeMap &prototype,
             const std::string &name,
@@ -267,8 +284,8 @@ namespace jspp
         inline void set_accessor_property(
             PrototypeMap &prototype,
             const std::string &name,
-            const std::variant<std::function<JsValue()>, Undefined> &getter,
-            const std::variant<std::function<JsValue(JsValue)>, Undefined> &setter,
+            const std::variant<std::function<JsValue(const std::vector<JsValue> &)>, Undefined> &getter,
+            const std::variant<std::function<JsValue(const std::vector<JsValue> &)>, Undefined> &setter,
             bool enumerable = false,
             bool configurable = true)
         {
@@ -313,9 +330,9 @@ namespace jspp
             Prototype::set_accessor_property(
                 array->prototype,
                 "length",
-                std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
-                                               { return (int)array->properties.size(); }),
-                std::function<jspp::JsValue(jspp::JsValue)>([=](auto val) mutable -> jspp::JsValue
+                Prototype::to_handler(std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
+                                               { return (int)array->properties.size(); })),
+                Prototype::to_handler(std::function<jspp::JsValue(jspp::JsValue)>([=](auto val) mutable -> jspp::JsValue
                                                             {
                                                                 size_t new_length = 0;
                                                                 if (val.type() == typeid(int))
@@ -342,7 +359,7 @@ namespace jspp
                                                                     return val;
                                                                 }
                                                                 array->properties.resize(new_length, undefined);
-                                                                return val; }));
+                                                                return val; })));
             // return object shared pointer
             return array;
         }
@@ -353,8 +370,8 @@ namespace jspp
             Prototype::set_accessor_property(
                 str_obj->prototype,
                 "length",
-                std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
-                                               { return (int)str_obj->value.length(); }),
+                Prototype::to_handler(std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
+                                               { return (int)str_obj->value.length(); })),
                 undefined // length is read-only for now
             );
             Prototype::set_data_property(
@@ -461,9 +478,9 @@ namespace jspp
                     else if (std::holds_alternative<AccessorDescriptor>(prop))
                     {
                         const auto &accessor = std::get<AccessorDescriptor>(prop);
-                        if (std::holds_alternative<std::function<JsValue()>>(accessor.get))
+                        if (std::holds_alternative<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.get))
                         {
-                            return std::get<std::function<JsValue()>>(accessor.get)();
+                            return std::get<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.get)({});
                         }
                     }
                 }
@@ -505,9 +522,9 @@ namespace jspp
                         else if (std::holds_alternative<AccessorDescriptor>(prop))
                         {
                             const auto &accessor = std::get<AccessorDescriptor>(prop);
-                            if (std::holds_alternative<std::function<JsValue()>>(accessor.get))
+                            if (std::holds_alternative<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.get))
                             {
-                                return std::get<std::function<JsValue()>>(accessor.get)();
+                                return std::get<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.get)({});
                             }
                         }
                     }
@@ -532,9 +549,9 @@ namespace jspp
                     else if (std::holds_alternative<AccessorDescriptor>(prop))
                     {
                         const auto &accessor = std::get<AccessorDescriptor>(prop);
-                        if (std::holds_alternative<std::function<JsValue()>>(accessor.get))
+                        if (std::holds_alternative<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.get))
                         {
-                            return std::get<std::function<JsValue()>>(accessor.get)();
+                            return std::get<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.get)({});
                         }
                     }
                 }
@@ -570,9 +587,9 @@ namespace jspp
                     else if (std::holds_alternative<AccessorDescriptor>(prop))
                     {
                         const auto &accessor = std::get<AccessorDescriptor>(prop);
-                        if (std::holds_alternative<std::function<JsValue()>>(accessor.get))
+                        if (std::holds_alternative<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.get))
                         {
-                            return std::get<std::function<JsValue()>>(accessor.get)();
+                            return std::get<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.get)({});
                         }
                     }
                 }
@@ -606,9 +623,9 @@ namespace jspp
                     else if (std::holds_alternative<AccessorDescriptor>(prop))
                     {
                         const auto &accessor = std::get<AccessorDescriptor>(prop);
-                        if (std::holds_alternative<std::function<JsValue(JsValue)>>(accessor.set))
+                        if (std::holds_alternative<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.set))
                         {
-                            std::get<std::function<JsValue(JsValue)>>(accessor.set)(val);
+                            std::get<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.set)({val});
                         }
                     }
                 }
@@ -662,9 +679,9 @@ namespace jspp
                         else if (std::holds_alternative<AccessorDescriptor>(prop))
                         {
                             const auto &accessor = std::get<AccessorDescriptor>(prop);
-                            if (std::holds_alternative<std::function<JsValue(JsValue)>>(accessor.set))
+                            if (std::holds_alternative<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.set))
                             {
-                                std::get<std::function<JsValue(JsValue)>>(accessor.set)(val);
+                                std::get<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.set)({val});
                             }
                         }
                     }
