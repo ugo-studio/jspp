@@ -168,7 +168,32 @@ namespace jspp
                         }
                     }
                 }
-                // Fallback to array prototype handler
+                const auto proto_it = ptr->prototype.find("toString");
+                if (proto_it != ptr->prototype.end())
+                {
+                    const auto &prop = proto_it->second;
+                    if (std::holds_alternative<DataDescriptor>(prop))
+                    {
+                        auto val = std::get<DataDescriptor>(prop).value;
+                        if (val.type() == typeid(std::string))
+                        {
+                            return std::any_cast<std::string>(val);
+                        }
+                    }
+                    else if (std::holds_alternative<AccessorDescriptor>(prop))
+                    {
+                        const auto &accessor = std::get<AccessorDescriptor>(prop);
+                        if (std::holds_alternative<std::function<JsValue()>>(accessor.get))
+                        {
+                            auto val = std::get<std::function<JsValue()>>(accessor.get)();
+                            if (val.type() == typeid(std::string))
+                            {
+                                return std::any_cast<std::string>(val);
+                            }
+                        }
+                    }
+                }
+                return "[Object Object]";
             }
             if (val.type() == typeid(std::shared_ptr<jspp::JsArray>))
             {
