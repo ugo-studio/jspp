@@ -656,7 +656,20 @@ export class CodeGenerator {
                 const prefixUnaryExpr = node as ts.PrefixUnaryExpression;
                 const operand = this.visit(prefixUnaryExpr.operand, context);
                 const operator = ts.tokenToString(prefixUnaryExpr.operator);
+                if (operator === "++" || operator === "--") {
+                    return `${operator}(*${operand})`;
+                }
+                if (operator === "~") {
+                    return `${operator}(*${operand})`;
+                }
                 return `${operator}${operand}`;
+            }
+
+            case ts.SyntaxKind.PostfixUnaryExpression: {
+                const postfixUnaryExpr = node as ts.PostfixUnaryExpression;
+                const operand = this.visit(postfixUnaryExpr.operand, context);
+                const operator = ts.tokenToString(postfixUnaryExpr.operator);
+                return `(*${operand})${operator}`;
             }
 
             case ts.SyntaxKind.ParenthesizedExpression: {
@@ -765,6 +778,18 @@ export class CodeGenerator {
                 const binExpr = node as ts.BinaryExpression;
                 const opToken = binExpr.operatorToken;
                 let op = opToken.getText();
+
+                if (
+                    opToken.kind === ts.SyntaxKind.PlusEqualsToken ||
+                    opToken.kind === ts.SyntaxKind.MinusEqualsToken ||
+                    opToken.kind === ts.SyntaxKind.AsteriskEqualsToken ||
+                    opToken.kind === ts.SyntaxKind.SlashEqualsToken ||
+                    opToken.kind === ts.SyntaxKind.PercentEqualsToken
+                ) {
+                    const leftText = this.visit(binExpr.left, context);
+                    const rightText = this.visit(binExpr.right, context);
+                    return `*${leftText} ${op} ${rightText}`;
+                }
 
                 if (opToken.kind === ts.SyntaxKind.EqualsToken) {
                     const rightText = this.visit(binExpr.right, context);
@@ -898,8 +923,22 @@ export class CodeGenerator {
                 if (opToken.kind === ts.SyntaxKind.EqualsEqualsToken) {
                     return `jspp::Access::equals(${finalLeft}, ${finalRight})`;
                 }
+                if (
+                    opToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken
+                ) {
+                    return `!jspp::Access::strict_equals(${finalLeft}, ${finalRight})`;
+                }
+                if (opToken.kind === ts.SyntaxKind.ExclamationEqualsToken) {
+                    return `!jspp::Access::equals(${finalLeft}, ${finalRight})`;
+                }
+                if (opToken.kind === ts.SyntaxKind.AsteriskAsteriskToken) {
+                    return `jspp::pow(${finalLeft}, ${finalRight})`;
+                }
 
-                if (op === "+" || op === "-" || op === "*") {
+                if (
+                    op === "+" || op === "-" || op === "*" || op === "/" ||
+                    op === "%" || op === "^" || op === "&" || op === "|"
+                ) {
                     return `(${finalLeft} ${op} ${finalRight})`;
                 }
                 return `${finalLeft} ${op} ${finalRight}`;
