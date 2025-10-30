@@ -249,6 +249,8 @@ namespace jspp
                                 name_str = std::any_cast<std::string>(error->properties["name"]);
                             } else if (error->properties["name"].type() == typeid(const char *)) {
                                 name_str = std::any_cast<const char *>(error->properties["name"]);
+                            } else if (error->properties["name"].type() == typeid(jspp::JsString)) {
+                                name_str = std::any_cast<std::string>(std::any_cast<jspp::JsString>(error->properties["name"]).value);
                             }
                         }
                         std::string message_str = "";
@@ -257,14 +259,18 @@ namespace jspp
                                 message_str = std::any_cast<std::string>(error->properties["message"]);
                             } else if (error->properties["message"].type() == typeid(const char *)) {
                                 message_str = std::any_cast<const char *>(error->properties["message"]);
+                            } else if (error->properties["message"].type() == typeid(jspp::JsString)) {
+                                message_str = std::any_cast<std::string>(std::any_cast<jspp::JsString>(error->properties["message"]).value);
                             }
                         }
-                        std::string stack_str = ""; // Default to an empty string if not present
+                        std::string stack_str = "";
                         if (error->properties.count("stack") > 0) {
-                             if (error->properties["stack"].type() == typeid(std::string)) {
+                            if (error->properties["stack"].type() == typeid(std::string)) {
                                 stack_str = std::any_cast<std::string>(error->properties["stack"]);
                             } else if (error->properties["stack"].type() == typeid(const char *)) {
                                 stack_str = std::any_cast<const char *>(error->properties["stack"]);
+                            } else if (error->properties["stack"].type() == typeid(jspp::JsString)) {
+                                stack_str = std::any_cast<std::string>(std::any_cast<jspp::JsString>(error->properties["stack"]).value);
                             }
                         }
                         return name_str + ": " + message_str + "\n    at " + stack_str; }));
