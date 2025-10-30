@@ -164,7 +164,8 @@ export class CodeGenerator {
         }
 
         const signature = `jspp::JsValue(const std::vector<jspp::JsValue>&)`;
-        const fullExpression = `std::function<${signature}>(${lambda})`;
+        const callable = `std::function<${signature}>(${lambda})`;
+        const fullExpression = `jspp::Object::make_function(${callable})`;
 
         if (ts.isFunctionDeclaration(node) && !isAssignment) {
             const funcName = node.name?.getText();
@@ -923,7 +924,7 @@ export class CodeGenerator {
                 } else {
                     derefCallee = calleeCode;
                 }
-                return `std::any_cast<std::function<jspp::JsValue(const std::vector<jspp::JsValue>&)>>(${derefCallee})({${args}})`;
+                return `std::any_cast<std::shared_ptr<jspp::JsFunction>>(${derefCallee})->call({${args}})`;
             }
 
             case ts.SyntaxKind.ReturnStatement: {

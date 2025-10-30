@@ -69,6 +69,13 @@ namespace jspp
         std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
     };
 
+    // Functions
+    struct JsFunction
+    {
+        std::function<JsValue(const std::vector<JsValue> &)> call;
+        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
+    };
+
     // Errors
     struct JsError
     {
@@ -193,7 +200,6 @@ namespace jspp
                         }
                     }
                 }
-                return "[Object Object]";
             }
             if (val.type() == typeid(std::shared_ptr<jspp::JsArray>))
             {
@@ -223,14 +229,34 @@ namespace jspp
                         }
                     }
                 }
-                return "[Object Object]";
             }
             if (val.type() == typeid(std::shared_ptr<jspp::JsString>))
             {
                 auto ptr = std::any_cast<std::shared_ptr<jspp::JsString>>(val);
                 return ptr->value;
             }
-            return "function(){}";
+            if (val.type() == typeid(std::shared_ptr<jspp::JsFunction>))
+            {
+                auto ptr = std::any_cast<std::shared_ptr<jspp::JsFunction>>(val);
+                const auto proto_it = ptr->prototype.find("toString");
+                if (proto_it != ptr->prototype.end())
+                {
+                    const auto &prop = proto_it->second;
+                    if (std::holds_alternative<DataDescriptor>(prop))
+                    {
+                        auto d = std::get<DataDescriptor>(prop);
+                        if (d.value.type() == typeid(std::function<JsValue()>))
+                        {
+                            auto s = std::any_cast<std::function<JsValue()>>(d.value)();
+                            if (s.type() == typeid(std::string))
+                            {
+                                return std::any_cast<std::string>(s);
+                            }
+                        }
+                    }
+                }
+            }
+            return "[Object Object]";
         }
     }
 
@@ -308,6 +334,14 @@ namespace jspp
                                                { return str_obj->value; })};
             return str_obj;
         }
+
+        inline std::shared_ptr<jspp::JsFunction> make_function(const std::function<JsValue(const std::vector<JsValue> &)> &callable)
+        {
+            auto func = std::make_shared<jspp::JsFunction>(jspp::JsFunction{callable, {}});
+            func->prototype["toString"] = DataDescriptor{std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
+                                                                                        { return "function(){}"; })};
+            return func;
+        }
     }
 
     namespace Access
@@ -355,6 +389,10 @@ namespace jspp
             {
                 auto s = std::any_cast<std::shared_ptr<JsString>>(val);
                 return s && !s->value.empty();
+            }
+            if (val.type() == typeid(std::shared_ptr<JsFunction>))
+            {
+                return std::any_cast<std::shared_ptr<JsFunction>>(val) != nullptr;
             }
             if (val.type() == typeid(std::function<JsValue(const std::vector<JsValue> &)>))
             {
@@ -482,6 +520,31 @@ namespace jspp
                 }
                 return undefined;
             }
+            if (obj.type() == typeid(std::shared_ptr<JsFunction>))
+            {
+                auto &ptr = std::any_cast<const std::shared_ptr<JsFunction> &>(obj);
+                if (!ptr)
+                    throw JsError::make_error("Cannot read properties of null", "TypeError");
+                const auto key_str = Convert::to_string(key);
+                const auto proto_it = ptr->prototype.find(key_str);
+                if (proto_it != ptr->prototype.end())
+                {
+                    const auto &prop = proto_it->second;
+                    if (std::holds_alternative<DataDescriptor>(prop))
+                    {
+                        return std::get<DataDescriptor>(prop).value;
+                    }
+                    else if (std::holds_alternative<AccessorDescriptor>(prop))
+                    {
+                        const auto &accessor = std::get<AccessorDescriptor>(prop);
+                        if (std::holds_alternative<std::function<JsValue()>>(accessor.get))
+                        {
+                            return std::get<std::function<JsValue()>>(accessor.get)();
+                        }
+                    }
+                }
+                return undefined;
+            }
             throw JsError::make_error("Cannot read properties of non-object type", "TypeError");
         }
 
@@ -579,6 +642,15 @@ namespace jspp
                     return val;
                 }
             }
+            if (obj.type() == typeid(std::shared_ptr<JsFunction>))
+            {
+                auto &ptr = std::any_cast<const std::shared_ptr<JsFunction> &>(obj);
+                if (!ptr)
+                    throw JsError::make_error("Cannot set properties of null", "TypeError");
+                const auto key_str = Convert::to_string(key);
+                ptr->prototype[key_str] = val;
+                return val;
+            }
             throw jspp::JsError::make_error("Cannot set properties of non-object type", "TypeError");
         }
 
@@ -620,6 +692,10 @@ namespace jspp
             if (lhs.type() == typeid(std::shared_ptr<jspp::JsString>))
             {
                 return std::any_cast<std::shared_ptr<jspp::JsString>>(lhs) == std::any_cast<std::shared_ptr<jspp::JsString>>(rhs);
+            }
+            if (lhs.type() == typeid(std::shared_ptr<jspp::JsFunction>))
+            {
+                return std::any_cast<std::shared_ptr<jspp::JsFunction>>(lhs) == std::any_cast<std::shared_ptr<jspp::JsFunction>>(rhs);
             }
 
             // Cannot compare functions for equality in C++.
@@ -685,13 +761,13 @@ namespace jspp
             }
 
             // object == primitive
-            if ((lhs.type() == typeid(std::shared_ptr<JsObject>) || lhs.type() == typeid(std::shared_ptr<JsArray>) || lhs.type() == typeid(std::shared_ptr<JsString>)) &&
-                (rhs.type() != typeid(std::shared_ptr<JsObject>) && rhs.type() != typeid(std::shared_ptr<JsArray>) && rhs.type() != typeid(std::shared_ptr<JsString>)))
+            if ((lhs.type() == typeid(std::shared_ptr<JsObject>) || lhs.type() == typeid(std::shared_ptr<JsArray>) || lhs.type() == typeid(std::shared_ptr<JsString>) || lhs.type() == typeid(std::shared_ptr<JsFunction>)) &&
+                (rhs.type() != typeid(std::shared_ptr<JsObject>) && rhs.type() != typeid(std::shared_ptr<JsArray>) && rhs.type() != typeid(std::shared_ptr<JsString>) && rhs.type() != typeid(std::shared_ptr<JsFunction>)))
             {
                 return equals(jspp::JsValue(Convert::to_string(lhs)), rhs);
             }
-            if ((rhs.type() == typeid(std::shared_ptr<JsObject>) || rhs.type() == typeid(std::shared_ptr<JsArray>) || rhs.type() == typeid(std::shared_ptr<JsString>)) &&
-                (lhs.type() != typeid(std::shared_ptr<JsObject>) && lhs.type() != typeid(std::shared_ptr<JsArray>) && lhs.type() != typeid(std::shared_ptr<JsString>)))
+            if ((rhs.type() == typeid(std::shared_ptr<JsObject>) || rhs.type() == typeid(std::shared_ptr<JsArray>) || rhs.type() == typeid(std::shared_ptr<JsString>) || rhs.type() == typeid(std::shared_ptr<JsFunction>)) &&
+                (lhs.type() != typeid(std::shared_ptr<JsObject>) && lhs.type() != typeid(std::shared_ptr<JsArray>) && lhs.type() != typeid(std::shared_ptr<JsString>) && lhs.type() != typeid(std::shared_ptr<JsFunction>)))
             {
                 return equals(lhs, jspp::JsValue(Convert::to_string(rhs)));
             }
