@@ -349,7 +349,7 @@ describe("Interpreter tests", () => {
                     outputFile,
                     "-o",
                     exeFile,
-                    "-std=c++23",
+                    // "-std=c++23",
                 ],
                 stdout: "pipe",
                 stderr: "pipe",

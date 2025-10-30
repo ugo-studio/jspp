@@ -1,4 +1,4 @@
-import * as ts from "typescript";
+import ts from "typescript";
 
 import { Scope } from "../analysis/scope";
 import { TypeAnalyzer } from "../analysis/typeAnalyzer";

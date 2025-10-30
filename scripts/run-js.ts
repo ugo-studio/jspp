@@ -26,7 +26,13 @@ async function main() {
 
         console.log(`Compiling ${cppFilePath}...`);
         const compile = Bun.spawnSync({
-            cmd: ["g++", cppFilePath, "-o", exeFilePath, "-std=c++23"],
+            cmd: [
+                "g++",
+                cppFilePath,
+                "-o",
+                exeFilePath,
+                // "-std=c++23",
+            ],
             stdout: "inherit",
             stderr: "inherit",
         });
