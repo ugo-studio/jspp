@@ -338,7 +338,7 @@ describe("Interpreter tests", () => {
 
             const jsCode = await fs.readFile(inputFile, "utf-8");
             const interpreter = new Interpreter();
-            const cppCode = interpreter.interpret(jsCode);
+            const { cppCode, preludePath } = interpreter.interpret(jsCode);
 
             await fs.mkdir(path.dirname(outputFile), { recursive: true });
             await fs.writeFile(outputFile, cppCode);
@@ -349,6 +349,8 @@ describe("Interpreter tests", () => {
                     outputFile,
                     "-o",
                     exeFile,
+                    "-I",
+                    preludePath,
                     // "-std=c++23",
                 ],
                 stdout: "pipe",

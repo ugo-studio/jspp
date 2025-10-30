@@ -19,7 +19,7 @@ async function main() {
     try {
         const jsCode = await fs.readFile(jsFilePath, "utf-8");
         const interpreter = new Interpreter();
-        const cppCode = interpreter.interpret(jsCode);
+        const { cppCode, preludePath } = interpreter.interpret(jsCode);
 
         await fs.mkdir(outputDir, { recursive: true });
         await fs.writeFile(cppFilePath, cppCode);
@@ -31,6 +31,8 @@ async function main() {
                 cppFilePath,
                 "-o",
                 exeFilePath,
+                "-I",
+                preludePath,
                 // "-std=c++23",
             ],
             stdout: "inherit",

@@ -1,3 +1,4 @@
+import path from "path";
 import { TypeAnalyzer } from "./analysis/typeAnalyzer";
 import { CodeGenerator } from "./core/generator";
 import { Parser } from "./core/parser";
@@ -7,9 +8,18 @@ export class Interpreter {
     private analyzer = new TypeAnalyzer();
     private generator = new CodeGenerator();
 
-    public interpret(jsCode: string): string {
+    public interpret(
+        jsCode: string,
+    ): { cppCode: string; preludePath: string } {
         const ast = this.parser.parse(jsCode);
         this.analyzer.analyze(ast);
-        return this.generator.generate(ast, this.analyzer);
+        const cppCode = this.generator.generate(ast, this.analyzer);
+        const preludePath = path.resolve(
+            process.cwd(),
+            "src",
+            "library",
+            "prelude",
+        );
+        return { cppCode, preludePath };
     }
 }

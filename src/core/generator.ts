@@ -3,8 +3,6 @@ import ts from "typescript";
 import { Scope } from "../analysis/scope";
 import { TypeAnalyzer } from "../analysis/typeAnalyzer";
 import type { Node } from "../ast/types";
-// @ts-ignore
-import prelude from "../library/prelude.h" with { type: "text" };
 
 const CONTAINER_FUNCTION_NAME = "__container__";
 
@@ -80,7 +78,7 @@ export class CodeGenerator {
     public generate(ast: Node, analyzer: TypeAnalyzer): string {
         this.typeAnalyzer = analyzer;
 
-        const declarations = "\n";
+        const declarations = `#include "index.h"\n\n`;
 
         let containerCode = `jspp::JsValue ${CONTAINER_FUNCTION_NAME}() {\n`;
         this.indentationLevel++;
@@ -104,7 +102,7 @@ export class CodeGenerator {
         mainCode += `  }\n`;
         mainCode += "  return 0;\n}\n";
 
-        return prelude + declarations + containerCode + mainCode;
+        return declarations + containerCode + mainCode;
     }
 
     private generateLambda(
