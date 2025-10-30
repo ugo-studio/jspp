@@ -265,10 +265,20 @@ namespace jspp
                     throw JsError::make_error("Cannot read properties of null", "TypeError");
 
                 std::string key_str = to_string(key);
-                size_t index = -1;
                 try
                 {
-                    index = std::stoul(key_str);
+                    size_t pos;
+                    unsigned long index = std::stoul(key_str, &pos);
+                    if (pos != key_str.length())
+                    {
+                        throw std::invalid_argument("not a valid integer index");
+                    }
+
+                    if (index < ptr->properties.size())
+                    {
+                        return ptr->properties[index];
+                    }
+                    return undefined;
                 }
                 catch (...)
                 {
@@ -292,12 +302,6 @@ namespace jspp
                     }
                     return undefined;
                 }
-
-                if (index != -1 && index < ptr->properties.size())
-                {
-                    return ptr->properties[index];
-                }
-                return undefined;
             }
             throw JsError::make_error("Cannot read properties of non-object type", "TypeError");
         }
@@ -346,23 +350,27 @@ namespace jspp
                 if (!ptr)
                     throw JsError::make_error("Cannot set properties of null", "TypeError");
 
-                size_t index = -1;
+                std::string key_str = to_string(key);
                 try
                 {
-                    if (key.type() == typeid(int))
+                    size_t pos;
+                    unsigned long index = std::stoul(key_str, &pos);
+                    if (pos != key_str.length())
                     {
-                        index = std::any_cast<int>(key);
+                        throw std::invalid_argument("not a valid integer index");
                     }
-                    else if (key.type() == typeid(std::string))
+
+                    if (index >= ptr->properties.size())
                     {
-                        index = std::stoul(std::any_cast<std::string>(key));
+                        ptr->properties.resize(index + 1, undefined);
                     }
+                    ptr->properties[index] = val;
+                    return val;
                 }
                 catch (...)
                 {
                     // Not a numeric index, but a string
                     // handle string properties on arrays
-                    const auto key_str = to_string(key);
                     const auto proto_it = ptr->prototype.find(key_str);
 
                     if (proto_it != ptr->prototype.end())
@@ -391,18 +399,6 @@ namespace jspp
                     }
                     return val;
                 }
-
-                if (index != -1)
-                {
-                    if (index >= ptr->properties.size())
-                    {
-                        ptr->properties.resize(index + 1, undefined);
-                    }
-                    ptr->properties[index] = val;
-                    return val;
-                }
-
-                return val;
             }
             throw jspp::JsError::make_error("Cannot set properties of non-object type", "TypeError");
         }

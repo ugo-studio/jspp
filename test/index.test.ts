@@ -213,8 +213,8 @@ const cases: { name: string; expected: string[] }[] = [
             "{} === {} false",
             "obj1 == obj3 true",
             "obj1 === obj3 true",
-        ]
-    }
+        ],
+    },
 ];
 
 describe("Interpreter tests", () => {
@@ -283,6 +283,7 @@ describe("Interpreter tests", () => {
                     `Execution failed for ${caseName}: ${e.message}`,
                 );
             } finally {
+                // await fs.unlink(outputFile);
                 await fs.unlink(exeFile);
             }
         }, 10000);
