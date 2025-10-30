@@ -230,10 +230,31 @@ namespace jspp
                 auto &ptr = std::any_cast<const std::shared_ptr<JsObject> &>(obj);
                 if (!ptr)
                     throw JsError::make_error("Cannot read properties of null", "TypeError");
-                const auto it = ptr->properties.find(to_string(key));
+
+                const auto key_str = to_string(key);
+                const auto it = ptr->properties.find(key_str);
                 if (it != ptr->properties.end())
                 {
                     return it->second;
+                }
+
+                const auto proto_it = ptr->prototype.find(key_str);
+                if (proto_it != ptr->prototype.end())
+                {
+                    // Handle prototype property
+                    const auto &prop = proto_it->second;
+                    if (std::holds_alternative<DataDescriptor>(prop))
+                    {
+                        return std::get<DataDescriptor>(prop).value;
+                    }
+                    else if (std::holds_alternative<AccessorDescriptor>(prop))
+                    {
+                        const auto &accessor = std::get<AccessorDescriptor>(prop);
+                        if (std::holds_alternative<std::function<JsValue()>>(accessor.get))
+                        {
+                            return std::get<std::function<JsValue()>>(accessor.get)();
+                        }
+                    }
                 }
                 return undefined;
             }
@@ -244,16 +265,6 @@ namespace jspp
                     throw JsError::make_error("Cannot read properties of null", "TypeError");
 
                 std::string key_str = to_string(key);
-                if (key_str == "length")
-                {
-                    return (int)ptr->properties.size();
-                }
-
-                if (ptr->prototype.count(key_str) > 0)
-                {
-                    return ptr->prototype[key_str];
-                }
-
                 size_t index = -1;
                 try
                 {
@@ -261,7 +272,25 @@ namespace jspp
                 }
                 catch (...)
                 {
-                    // Not a numeric index, fall through
+                    // Not a numeric index, check prototype
+                    const auto proto_it = ptr->prototype.find(key_str);
+                    if (proto_it != ptr->prototype.end())
+                    {
+                        const auto &prop = proto_it->second;
+                        if (std::holds_alternative<DataDescriptor>(prop))
+                        {
+                            return std::get<DataDescriptor>(prop).value;
+                        }
+                        else if (std::holds_alternative<AccessorDescriptor>(prop))
+                        {
+                            const auto &accessor = std::get<AccessorDescriptor>(prop);
+                            if (std::holds_alternative<std::function<JsValue()>>(accessor.get))
+                            {
+                                return std::get<std::function<JsValue()>>(accessor.get)();
+                            }
+                        }
+                    }
+                    return undefined;
                 }
 
                 if (index != -1 && index < ptr->properties.size())
@@ -280,7 +309,35 @@ namespace jspp
                 auto &ptr = std::any_cast<const std::shared_ptr<JsObject> &>(obj);
                 if (!ptr)
                     throw JsError::make_error("Cannot set properties of null", "TypeError");
-                ptr->properties[to_string(key)] = val;
+
+                const auto key_str = to_string(key);
+                const auto proto_it = ptr->prototype.find(key_str);
+                if (proto_it != ptr->prototype.end())
+                {
+                    // Handle prototype property
+                    const auto &prop = proto_it->second;
+                    if (std::holds_alternative<DataDescriptor>(prop))
+                    {
+                        auto &data_desc = std::get<DataDescriptor>(const_cast<std::variant<DataDescriptor, AccessorDescriptor, JsValue> &>(prop));
+                        if (data_desc.writable)
+                        {
+                            data_desc.value = val;
+                        }
+                    }
+                    else if (std::holds_alternative<AccessorDescriptor>(prop))
+                    {
+                        const auto &accessor = std::get<AccessorDescriptor>(prop);
+                        if (std::holds_alternative<std::function<JsValue(JsValue)>>(accessor.set))
+                        {
+                            std::get<std::function<JsValue(JsValue)>>(accessor.set)(val);
+                        }
+                    }
+                }
+                else
+                {
+                    ptr->properties[key_str] = val;
+                }
+
                 return val;
             }
             if (obj.type() == typeid(std::shared_ptr<JsArray>))
@@ -289,54 +346,50 @@ namespace jspp
                 if (!ptr)
                     throw JsError::make_error("Cannot set properties of null", "TypeError");
 
-                if (to_string(key) == "length")
-                {
-                    size_t new_length = 0;
-                    if (val.type() == typeid(int))
-                    {
-                        int v = std::any_cast<int>(val);
-                        if (v < 0)
-                        {
-                            throw JsError::make_error("Invalid array length", "RangeError");
-                        }
-                        new_length = static_cast<size_t>(v);
-                    }
-                    else if (val.type() == typeid(double))
-                    {
-                        double v = std::any_cast<double>(val);
-                        if (v < 0 || v != static_cast<uint32_t>(v))
-                        {
-                            throw JsError::make_error("Invalid array length", "RangeError");
-                        }
-                        new_length = static_cast<size_t>(v);
-                    }
-                    else
-                    {
-                        // Other types could be converted to number in a more complete implementation
-                        return val;
-                    }
-                    ptr->properties.resize(new_length, undefined);
-                    return val;
-                }
-
                 size_t index = -1;
-                if (key.type() == typeid(int))
+                try
                 {
-                    index = std::any_cast<int>(key);
-                }
-                else if (key.type() == typeid(std::string))
-                {
-                    try
+                    if (key.type() == typeid(int))
+                    {
+                        index = std::any_cast<int>(key);
+                    }
+                    else if (key.type() == typeid(std::string))
                     {
                         index = std::stoul(std::any_cast<std::string>(key));
                     }
-                    catch (...)
+                }
+                catch (...)
+                {
+                    // Not a numeric index, but a string
+                    // handle string properties on arrays
+                    const auto key_str = to_string(key);
+                    const auto proto_it = ptr->prototype.find(key_str);
+
+                    if (proto_it != ptr->prototype.end())
                     {
-                        // Not a numeric index, but a string
-                        // handle string properties on arrays
-                        ptr->prototype[std::any_cast<std::string>(key)] = val;
-                        return val;
+                        const auto &prop = proto_it->second;
+                        if (std::holds_alternative<DataDescriptor>(prop))
+                        {
+                            auto &data_desc = std::get<DataDescriptor>(const_cast<std::variant<DataDescriptor, AccessorDescriptor, JsValue> &>(prop));
+                            if (data_desc.writable)
+                            {
+                                data_desc.value = val;
+                            }
+                        }
+                        else if (std::holds_alternative<AccessorDescriptor>(prop))
+                        {
+                            const auto &accessor = std::get<AccessorDescriptor>(prop);
+                            if (std::holds_alternative<std::function<JsValue(JsValue)>>(accessor.set))
+                            {
+                                std::get<std::function<JsValue(JsValue)>>(accessor.set)(val);
+                            }
+                        }
                     }
+                    else
+                    {
+                        ptr->prototype[key_str] = val;
+                    }
+                    return val;
                 }
 
                 if (index != -1)
@@ -349,7 +402,6 @@ namespace jspp
                     return val;
                 }
 
-                // TODO: handle non-alpha-numeric index
                 return val;
             }
             throw jspp::JsError::make_error("Cannot set properties of non-object type", "TypeError");
