@@ -252,6 +252,33 @@ const cases: { name: string; expected: string[] }[] = [
             "Caught expected error: ReferenceError: a is not defined",
         ],
     },
+    {
+        name: "string-methods",
+        expected: [
+            "--- String Methods ---",
+            "Original: '  Hello, World!  '",
+            "charAt: l",
+            "concat:   Hello, World!   How are you?",
+            "endsWith: true",
+            "includes: true",
+            "indexOf: 6",
+            "lastIndexOf: 10",
+            "padEnd:   Hello, World!  ........",
+            "padStart: ........  Hello, World!  ",
+            "repeat: abcabcabc",
+            "replace:   Hello, JSPP!  ",
+            "replaceAll: b b b",
+            "slice: Hello",
+            "split: [  Hello,  World!  ]",
+            "startsWith: true",
+            "substring: Hello",
+            "toLowerCase:   hello, world!  ",
+            "toUpperCase:   HELLO, WORLD!  ",
+            "trim: 'Hello, World!'",
+            "trimEnd: '  Hello, World!'",
+            "trimStart: 'Hello, World!  '",
+        ],
+    }
 ];
 
 describe("Interpreter tests", () => {

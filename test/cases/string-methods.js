@@ -1,0 +1,24 @@
+console.log("--- String Methods ---");
+const str = "  Hello, World!  ";
+console.log("Original:", `'${str}'`);
+
+console.log("charAt:", str.charAt(4));
+console.log("concat:", str.concat(" How are you?"));
+console.log("endsWith:", str.endsWith("!  "));
+console.log("includes:", str.includes("World"));
+console.log("indexOf:", str.indexOf("o"));
+console.log("lastIndexOf:", str.lastIndexOf("o"));
+console.log("padEnd:", str.padEnd(25, "."));
+console.log("padStart:", str.padStart(25, "."));
+console.log("repeat:", "abc".repeat(3));
+console.log("replace:", str.replace("World", "JSPP"));
+console.log("replaceAll:", "a a a".replaceAll("a", "b"));
+console.log("slice:", str.slice(2, 7));
+console.log("split:", str.split(","));
+console.log("startsWith:", str.startsWith("  H"));
+console.log("substring:", str.substring(2, 7));
+console.log("toLowerCase:", str.toLowerCase());
+console.log("toUpperCase:", str.toUpperCase());
+console.log("trim:", `'${str.trim()}'`);
+console.log("trimEnd:", `'${str.trimEnd()}'`);
+console.log("trimStart:", `'${str.trimStart()}'`);
