@@ -259,7 +259,7 @@ export class CodeGenerator {
                     const isLetOrConst = (decl.parent.flags &
                         (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
                     const initializer = isLetOrConst
-                        ? "jspp::Tdz::uninitialized"
+                        ? "jspp::uninitialized"
                         : "undefined";
                     code +=
                         `${this.indent()}auto ${name} = std::make_shared<jspp::JsValue>(${initializer});\n`;
@@ -334,7 +334,7 @@ export class CodeGenerator {
                     const isLetOrConst = (decl.parent.flags &
                         (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
                     const initializer = isLetOrConst
-                        ? "jspp::Tdz::uninitialized"
+                        ? "jspp::uninitialized"
                         : "undefined";
                     code +=
                         `${this.indent()}auto ${name} = std::make_shared<jspp::JsValue>(${initializer});\n`;
@@ -414,7 +414,7 @@ export class CodeGenerator {
                             scope,
                         );
                         if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
-                            initText = `jspp::Tdz::deref(${initText}, "${initText}")`;
+                            initText = `jspp::Access::deref(${initText}, "${initText}")`;
                         }
                     }
                     initializer = " = " + initText;
@@ -529,7 +529,7 @@ export class CodeGenerator {
 
                 const finalExpr = typeInfo &&
                         !typeInfo.isParameter && !typeInfo.isBuiltin
-                    ? `jspp::Tdz::deref(${exprText}, "${exprText}")`
+                    ? `jspp::Access::deref(${exprText}, "${exprText}")`
                     : exprText;
 
                 return `jspp::Access::get_property(${finalExpr}, "${propName}")`;
@@ -553,7 +553,7 @@ export class CodeGenerator {
 
                 const finalExpr = typeInfo &&
                         !typeInfo.isParameter && !typeInfo.isBuiltin
-                    ? `jspp::Tdz::deref(${exprText}, "${exprText}")`
+                    ? `jspp::Access::deref(${exprText}, "${exprText}")`
                     : exprText;
 
                 return `jspp::Access::get_property(${finalExpr}, ${argText})`;
@@ -594,7 +594,7 @@ export class CodeGenerator {
 
                         const finalObjExpr = typeInfo &&
                                 !typeInfo.isParameter && !typeInfo.isBuiltin
-                            ? `jspp::Tdz::deref(${objExprText}, "${objExprText}")`
+                            ? `jspp::Access::deref(${objExprText}, "${objExprText}")`
                             : objExprText;
 
                         return `jspp::Access::set_property(${finalObjExpr}, "${propName}", ${rightText})`;
@@ -621,7 +621,7 @@ export class CodeGenerator {
 
                         const finalObjExpr = typeInfo &&
                                 !typeInfo.isParameter && !typeInfo.isBuiltin
-                            ? `jspp::Tdz::deref(${objExprText}, "${objExprText}")`
+                            ? `jspp::Access::deref(${objExprText}, "${objExprText}")`
                             : objExprText;
 
                         return `jspp::Access::set_property(${finalObjExpr}, ${argText}, ${rightText})`;
@@ -665,11 +665,11 @@ export class CodeGenerator {
 
                 const finalLeft = leftIsIdentifier && leftTypeInfo &&
                         !leftTypeInfo.isParameter && !leftTypeInfo.isBuiltin
-                    ? `jspp::Tdz::deref(${leftText}, "${leftText}")`
+                    ? `jspp::Access::deref(${leftText}, "${leftText}")`
                     : leftText;
                 const finalRight = rightIsIdentifier && rightTypeInfo &&
                         !rightTypeInfo.isParameter && !rightTypeInfo.isBuiltin
-                    ? `jspp::Tdz::deref(${rightText}, "${rightText}")`
+                    ? `jspp::Access::deref(${rightText}, "${rightText}")`
                     : rightText;
 
                 if (leftIsIdentifier && !leftTypeInfo) {
@@ -888,7 +888,7 @@ export class CodeGenerator {
                             typeInfo && !typeInfo.isParameter &&
                             !typeInfo.isBuiltin
                         ) {
-                            return `jspp::Tdz::deref(${argText}, "${argText}")`;
+                            return `jspp::Access::deref(${argText}, "${argText}")`;
                         }
                     }
                     return argText;
@@ -918,7 +918,7 @@ export class CodeGenerator {
                         derefCallee = calleeCode;
                     } else {
                         derefCallee =
-                            `jspp::Tdz::deref(${calleeCode}, "${calleeCode}")`;
+                            `jspp::Access::deref(${calleeCode}, "${calleeCode}")`;
                     }
                 } else {
                     derefCallee = calleeCode;
@@ -951,7 +951,7 @@ export class CodeGenerator {
                                 !typeInfo.isBuiltin
                             ) {
                                 returnCode +=
-                                    `${this.indent()}return jspp::Tdz::deref(${exprText}, "${exprText}");\n`;
+                                    `${this.indent()}return jspp::Access::deref(${exprText}, "${exprText}");\n`;
                             } else {
                                 returnCode +=
                                     `${this.indent()}return ${exprText};\n`;
@@ -980,7 +980,7 @@ export class CodeGenerator {
                             typeInfo && !typeInfo.isParameter &&
                             !typeInfo.isBuiltin
                         ) {
-                            return `${this.indent()}return jspp::Tdz::deref(${exprText}, "${exprText}");\n`;
+                            return `${this.indent()}return jspp::Access::deref(${exprText}, "${exprText}");\n`;
                         }
                     }
                     return `${this.indent()}return ${exprText};\n`;
@@ -995,7 +995,7 @@ export class CodeGenerator {
             case ts.SyntaxKind.NumericLiteral:
                 return (node as ts.NumericLiteral).text;
             case ts.SyntaxKind.StringLiteral:
-                return `"${(node as ts.StringLiteral).text}"`;
+                return `jspp::Object::make_string("${this.escapeString((node as ts.StringLiteral).text)}")`;
             case ts.SyntaxKind.TrueKeyword:
                 return "true";
             case ts.SyntaxKind.FalseKeyword:
@@ -1017,5 +1017,9 @@ export class CodeGenerator {
 
     private indent() {
         return "  ".repeat(this.indentationLevel);
+    }
+
+    private escapeString(str: string): string {
+        return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\t/g, "\\t");
     }
 }
