@@ -997,6 +997,54 @@ export class CodeGenerator {
                 return (node as ts.NumericLiteral).text;
             case ts.SyntaxKind.StringLiteral:
                 return `jspp::Object::make_string("${this.escapeString((node as ts.StringLiteral).text)}")`;
+            case ts.SyntaxKind.NoSubstitutionTemplateLiteral: {
+                const templateLiteral = node as ts.NoSubstitutionTemplateLiteral;
+                return `jspp::Object::make_string("${
+                    this.escapeString(templateLiteral.text)
+                }")`;
+            }
+            case ts.SyntaxKind.TemplateExpression: {
+                const templateExpr = node as ts.TemplateExpression;
+
+                let result = `jspp::Object::make_string("${
+                    this.escapeString(templateExpr.head.text)
+                }")`;
+
+                for (const span of templateExpr.templateSpans) {
+                    const expr = span.expression;
+                    const exprText = this.visit(expr, context);
+                    let finalExpr = exprText;
+
+                    if (ts.isIdentifier(expr)) {
+                        const scope = this.getScopeForNode(expr);
+                        const typeInfo =
+                            this.typeAnalyzer.scopeManager.lookupFromScope(
+                                exprText,
+                                scope,
+                            );
+                        if (!typeInfo) {
+                            finalExpr =
+                                `jspp::JsError::throw_unresolved_reference("${exprText}")`;
+                        } else if (
+                            typeInfo &&
+                            !typeInfo.isParameter &&
+                            !typeInfo.isBuiltin
+                        ) {
+                            finalExpr =
+                                `jspp::Access::deref(${exprText}, "${exprText}")`;
+                        }
+                    }
+
+                    result += ` + (${finalExpr})`;
+
+                    if (span.literal.text) {
+                        result += ` + jspp::Object::make_string("${
+                            this.escapeString(span.literal.text)
+                        }")`;
+                    }
+                }
+                return result;
+            }
             case ts.SyntaxKind.TrueKeyword:
                 return "true";
             case ts.SyntaxKind.FalseKeyword:

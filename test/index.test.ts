@@ -196,6 +196,17 @@ const cases: { name: string; expected: string[] }[] = [
         ],
     },
     {
+        name: "template-strings",
+        expected: [
+            "--- Template Strings ---",
+            "hello world",
+            "a + b = 3",
+            "this is a multi-line\ntemplate string.",
+            "obj.val = nested",
+            "12",
+        ],
+    },
+    {
         name: "equality",
         expected: [
             "--- Equality ---",
