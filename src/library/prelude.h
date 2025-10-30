@@ -26,17 +26,34 @@ namespace jspp
     // Dynamic JsValue
     using JsValue = std::any;
 
+    // Object and array prototypes
+    struct DataDescriptor
+    {
+        JsValue value = undefined;
+        bool writable = true;
+        bool enumerable = false;
+        bool configurable = true;
+    };
+    struct AccessorDescriptor
+    {
+        std::variant<std::function<JsValue()>, Undefined> get = undefined;        // getter
+        std::variant<std::function<JsValue(JsValue)>, Undefined> set = undefined; // setter
+        bool enumerable = false;
+        bool configurable = true;
+    };
+
     // Objects
     struct JsObject
     {
         std::map<std::string, JsValue> properties;
+        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
     };
 
     // Arrays
     struct JsArray
     {
-        std::vector<JsValue> elements;
-        std::map<std::string, JsValue> properties;
+        std::vector<JsValue> properties;
+        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
     };
 
     // Errors
@@ -157,7 +174,7 @@ namespace jspp
             return true;
         }
 
-        inline std::string js_value_to_string(const JsValue &val)
+        inline std::string to_string(const JsValue &val)
         {
             if (!val.has_value())
                 return "undefined";
@@ -192,46 +209,18 @@ namespace jspp
             }
             if (val.type() == typeid(std::shared_ptr<jspp::JsArray>))
             {
-                auto ptr = std::any_cast<std::shared_ptr<jspp::JsArray>>(val);
-                if (ptr->properties.count("toString") > 0 && ptr->properties["toString"].type() == typeid(std::function<JsValue()>))
-                {
-                    auto val_str = std::any_cast<std::function<jspp::JsValue()>>(ptr->properties["toString"])();
-                    if (val_str.type() == typeid(std::string))
-                    {
-                        return std::any_cast<std::string>(val_str);
-                    }
-                }
+                // auto ptr = std::any_cast<std::shared_ptr<jspp::JsArray>>(val);
+                // if (ptr->properties.count("toString") > 0 && ptr->properties["toString"].type() == typeid(std::function<JsValue()>))
+                // {
+                //     auto val_str = std::any_cast<std::function<jspp::JsValue()>>(ptr->properties["toString"])();
+                //     if (val_str.type() == typeid(std::string))
+                //     {
+                //         return std::any_cast<std::string>(val_str);
+                //     }
+                // }
                 return "[Array Array]";
             }
             return "function(){}";
-        }
-
-        inline std::shared_ptr<jspp::JsObject> make_object(const std::map<std::string, JsValue> &properties)
-        {
-            auto object = std::make_shared<jspp::JsObject>(jspp::JsObject{properties});
-            if (object->properties.count("toString") == 0)
-            {
-                object->properties["toString"] = std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
-                                                                                { return "[object Object]"; });
-            }
-            return object;
-        }
-
-        inline std::shared_ptr<jspp::JsArray> make_array(const std::vector<JsValue> &elements)
-        {
-            auto array = std::make_shared<jspp::JsArray>(jspp::JsArray{elements, {}});
-            array->properties["toString"] = std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
-                                                                           {
-                std::string str = "[";
-                for (size_t i = 0; i < array->elements.size(); ++i)
-                {
-                    str += js_value_to_string(array->elements[i]);
-                    if (i < array->elements.size() - 1)
-                        str += ", ";
-                }
-                str += "]";
-                return str; });
-            return array;
         }
 
         inline JsValue get_property(const JsValue &obj, const JsValue &key)
@@ -241,7 +230,7 @@ namespace jspp
                 auto &ptr = std::any_cast<const std::shared_ptr<JsObject> &>(obj);
                 if (!ptr)
                     throw JsError::make_error("Cannot read properties of null", "TypeError");
-                const auto it = ptr->properties.find(js_value_to_string(key));
+                const auto it = ptr->properties.find(to_string(key));
                 if (it != ptr->properties.end())
                 {
                     return it->second;
@@ -254,15 +243,15 @@ namespace jspp
                 if (!ptr)
                     throw JsError::make_error("Cannot read properties of null", "TypeError");
 
-                std::string key_str = js_value_to_string(key);
+                std::string key_str = to_string(key);
                 if (key_str == "length")
                 {
-                    return (int)ptr->elements.size();
+                    return (int)ptr->properties.size();
                 }
 
-                if (ptr->properties.count(key_str) > 0)
+                if (ptr->prototype.count(key_str) > 0)
                 {
-                    return ptr->properties[key_str];
+                    return ptr->prototype[key_str];
                 }
 
                 size_t index = -1;
@@ -275,9 +264,9 @@ namespace jspp
                     // Not a numeric index, fall through
                 }
 
-                if (index != -1 && index < ptr->elements.size())
+                if (index != -1 && index < ptr->properties.size())
                 {
-                    return ptr->elements[index];
+                    return ptr->properties[index];
                 }
                 return undefined;
             }
@@ -291,7 +280,7 @@ namespace jspp
                 auto &ptr = std::any_cast<const std::shared_ptr<JsObject> &>(obj);
                 if (!ptr)
                     throw JsError::make_error("Cannot set properties of null", "TypeError");
-                ptr->properties[js_value_to_string(key)] = val;
+                ptr->properties[to_string(key)] = val;
                 return val;
             }
             if (obj.type() == typeid(std::shared_ptr<JsArray>))
@@ -300,7 +289,7 @@ namespace jspp
                 if (!ptr)
                     throw JsError::make_error("Cannot set properties of null", "TypeError");
 
-                if (js_value_to_string(key) == "length")
+                if (to_string(key) == "length")
                 {
                     size_t new_length = 0;
                     if (val.type() == typeid(int))
@@ -326,7 +315,7 @@ namespace jspp
                         // Other types could be converted to number in a more complete implementation
                         return val;
                     }
-                    ptr->elements.resize(new_length, undefined);
+                    ptr->properties.resize(new_length, undefined);
                     return val;
                 }
 
@@ -345,18 +334,18 @@ namespace jspp
                     {
                         // Not a numeric index, but a string
                         // handle string properties on arrays
-                        ptr->properties[std::any_cast<std::string>(key)] = val;
+                        ptr->prototype[std::any_cast<std::string>(key)] = val;
                         return val;
                     }
                 }
 
                 if (index != -1)
                 {
-                    if (index >= ptr->elements.size())
+                    if (index >= ptr->properties.size())
                     {
-                        ptr->elements.resize(index + 1, undefined);
+                        ptr->properties.resize(index + 1, undefined);
                     }
-                    ptr->elements[index] = val;
+                    ptr->properties[index] = val;
                     return val;
                 }
 
@@ -425,12 +414,17 @@ namespace jspp
             if ((lhs.type() == typeid(int) || lhs.type() == typeid(double)) && (rhs.type() == typeid(std::string) || rhs.type() == typeid(const char *)))
             {
                 double l = lhs.type() == typeid(int) ? std::any_cast<int>(lhs) : std::any_cast<double>(lhs);
-                std::string s_rhs = js_value_to_string(rhs);
+                std::string s_rhs = to_string(rhs);
 
-                s_rhs.erase(s_rhs.begin(), std::find_if(s_rhs.begin(), s_rhs.end(), [](int ch) { return !std::isspace(ch); }));
-                s_rhs.erase(std::find_if(s_rhs.rbegin(), s_rhs.rend(), [](int ch) { return !std::isspace(ch); }).base(), s_rhs.end());
+                s_rhs.erase(s_rhs.begin(), std::find_if(s_rhs.begin(), s_rhs.end(), [](int ch)
+                                                        { return !std::isspace(ch); }));
+                s_rhs.erase(std::find_if(s_rhs.rbegin(), s_rhs.rend(), [](int ch)
+                                         { return !std::isspace(ch); })
+                                .base(),
+                            s_rhs.end());
 
-                if (s_rhs.empty()) {
+                if (s_rhs.empty())
+                {
                     return l == 0;
                 }
 
@@ -463,18 +457,79 @@ namespace jspp
             if ((lhs.type() == typeid(std::shared_ptr<JsObject>) || lhs.type() == typeid(std::shared_ptr<JsArray>)) &&
                 (rhs.type() != typeid(std::shared_ptr<JsObject>) && rhs.type() != typeid(std::shared_ptr<JsArray>)))
             {
-                return equals(jspp::JsValue(js_value_to_string(lhs)), rhs);
+                return equals(jspp::JsValue(to_string(lhs)), rhs);
             }
             if ((rhs.type() == typeid(std::shared_ptr<JsObject>) || rhs.type() == typeid(std::shared_ptr<JsArray>)) &&
                 (lhs.type() != typeid(std::shared_ptr<JsObject>) && lhs.type() != typeid(std::shared_ptr<JsArray>)))
             {
-                return equals(lhs, jspp::JsValue(js_value_to_string(rhs)));
+                return equals(lhs, jspp::JsValue(to_string(rhs)));
             }
 
             return false;
         }
     }
 
+    namespace Object
+    {
+        inline std::shared_ptr<jspp::JsObject> make_object(const std::map<std::string, JsValue> &properties)
+        {
+
+            auto object = std::make_shared<jspp::JsObject>(jspp::JsObject{properties, {}});
+            // Define and set prototype methods
+            object->prototype["toString"] = DataDescriptor{std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
+                                                                                          { return "[object Object]"; })};
+            // return object shared pointer
+            return object;
+        }
+
+        inline std::shared_ptr<jspp::JsArray> make_array(const std::vector<JsValue> &properties)
+        {
+            auto array = std::make_shared<jspp::JsArray>(jspp::JsArray{properties, {}});
+            // Define and set prototype methods
+            array->prototype["toString"] = DataDescriptor{std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
+                                                                                         {     std::string str = "[";
+                for (size_t i = 0; i < array->properties.size(); ++i)
+                {
+                    str += jspp::Access::to_string(array->properties[i]);
+                    if (i < array->properties.size() - 1)
+                        str += ", ";
+                }
+                str += "]";
+                return str; })};
+            array->prototype["length"] = AccessorDescriptor{std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
+                                                                                           { return (int)array->properties.size(); }),
+                                                            std::function<jspp::JsValue(jspp::JsValue)>([=](auto val) mutable -> jspp::JsValue
+                                                                                                        {  
+                                                                                            size_t new_length = 0;
+                                                                                            if (val.type() == typeid(int))
+                                                                                            {
+                                                                                                int v = std::any_cast<int>(val);
+                                                                                                if (v < 0)
+                                                                                                {
+                                                                                                    throw JsError::make_error("Invalid array length", "RangeError");
+                                                                                                }
+                                                                                                new_length = static_cast<size_t>(v);
+                                                                                            }
+                                                                                            else if (val.type() == typeid(double))
+                                                                                            {
+                                                                                                double v = std::any_cast<double>(val);
+                                                                                                if (v < 0 || v != static_cast<uint32_t>(v))
+                                                                                                {
+                                                                                                    throw JsError::make_error("Invalid array length", "RangeError");
+                                                                                                }
+                                                                                                new_length = static_cast<size_t>(v);
+                                                                                            }
+                                                                                            else
+                                                                                            {
+                                                                                                // Other types could be converted to number in a more complete implementation
+                                                                                                return val;
+                                                                                            }
+                                                                                            array->properties.resize(new_length, undefined);
+                                                                                            return val; })};
+            // return object shared pointer
+            return array;
+        }
+    }
 }
 
 // Define operators for JsValue
@@ -573,7 +628,7 @@ inline std::ostream &operator<<(std::ostream &os, const jspp::JsValue &v)
             return os;
         }
     }
-    os << jspp::Access::js_value_to_string(v);
+    os << jspp::Access::to_string(v);
     return os;
 }
 

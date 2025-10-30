@@ -454,14 +454,14 @@ export class CodeGenerator {
                         props += `{"${key}", ${value}},`;
                     }
                 }
-                return `jspp::Access::make_object({${props}})`;
+                return `jspp::Object::make_object({${props}})`;
             }
 
             case ts.SyntaxKind.ArrayLiteralExpression: {
                 const elements = (node as ts.ArrayLiteralExpression).elements
                     .map((elem) => this.visit(elem, context))
                     .join(", ");
-                return `jspp::Access::make_array({${elements}})`;
+                return `jspp::Object::make_array({${elements}})`;
             }
 
             case ts.SyntaxKind.ForOfStatement: {
