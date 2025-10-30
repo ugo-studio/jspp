@@ -168,11 +168,8 @@ namespace jspp
                     const auto &prop = it->second;
                     if (prop.type() == typeid(std::function<JsValue()>))
                     {
-                        auto val = std::any_cast<std::function<JsValue()>>(prop)();
-                        if (val.type() == typeid(std::string))
-                        {
-                            return std::any_cast<std::string>(val);
-                        }
+                        auto result = std::any_cast<std::function<JsValue()>>(prop)();
+                        return jspp::Convert::to_string(result);
                     }
                 }
                 const auto proto_it = ptr->prototype.find("toString");
@@ -181,10 +178,11 @@ namespace jspp
                     const auto &prop = proto_it->second;
                     if (std::holds_alternative<DataDescriptor>(prop))
                     {
-                        auto val = std::get<DataDescriptor>(prop).value;
-                        if (val.type() == typeid(std::string))
+                        auto d = std::get<DataDescriptor>(prop);
+                        if (d.value.type() == typeid(std::function<JsValue()>))
                         {
-                            return std::any_cast<std::string>(val);
+                            auto s = std::any_cast<std::function<JsValue()>>(d.value)();
+                            return jspp::Convert::to_string(s);
                         }
                     }
                     else if (std::holds_alternative<AccessorDescriptor>(prop))
@@ -192,11 +190,8 @@ namespace jspp
                         const auto &accessor = std::get<AccessorDescriptor>(prop);
                         if (std::holds_alternative<std::function<JsValue()>>(accessor.get))
                         {
-                            auto val = std::get<std::function<JsValue()>>(accessor.get)();
-                            if (val.type() == typeid(std::string))
-                            {
-                                return std::any_cast<std::string>(val);
-                            }
+                            auto result = std::get<std::function<JsValue()>>(accessor.get)();
+                            return jspp::Convert::to_string(result);
                         }
                     }
                 }
@@ -210,10 +205,11 @@ namespace jspp
                     const auto &prop = proto_it->second;
                     if (std::holds_alternative<DataDescriptor>(prop))
                     {
-                        auto val = std::get<DataDescriptor>(prop).value;
-                        if (val.type() == typeid(std::string))
+                        auto d = std::get<DataDescriptor>(prop);
+                        if (d.value.type() == typeid(std::function<JsValue()>))
                         {
-                            return std::any_cast<std::string>(val);
+                            auto s = std::any_cast<std::function<JsValue()>>(d.value)();
+                            return jspp::Convert::to_string(s);
                         }
                     }
                     else if (std::holds_alternative<AccessorDescriptor>(prop))
@@ -221,11 +217,8 @@ namespace jspp
                         const auto &accessor = std::get<AccessorDescriptor>(prop);
                         if (std::holds_alternative<std::function<JsValue()>>(accessor.get))
                         {
-                            auto val = std::get<std::function<JsValue()>>(accessor.get)();
-                            if (val.type() == typeid(std::string))
-                            {
-                                return std::any_cast<std::string>(val);
-                            }
+                            auto result = std::get<std::function<JsValue()>>(accessor.get)();
+                            return jspp::Convert::to_string(result);
                         }
                     }
                 }
@@ -248,10 +241,7 @@ namespace jspp
                         if (d.value.type() == typeid(std::function<JsValue()>))
                         {
                             auto s = std::any_cast<std::function<JsValue()>>(d.value)();
-                            if (s.type() == typeid(std::string))
-                            {
-                                return std::any_cast<std::string>(s);
-                            }
+                            return jspp::Convert::to_string(s);
                         }
                     }
                 }
