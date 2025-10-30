@@ -584,6 +584,10 @@ namespace jspp
             if (lhs.type() == typeid(const char *))
                 return strcmp(std::any_cast<const char *>(lhs), std::any_cast<const char *>(rhs)) == 0;
 
+            if (lhs.type() == typeid(std::shared_ptr<jspp::JsObject>))
+            {
+                return std::any_cast<std::shared_ptr<jspp::JsObject>>(lhs) == std::any_cast<std::shared_ptr<jspp::JsObject>>(rhs);
+            }
             if (lhs.type() == typeid(std::shared_ptr<jspp::JsArray>))
             {
                 return std::any_cast<std::shared_ptr<jspp::JsArray>>(lhs) == std::any_cast<std::shared_ptr<jspp::JsArray>>(rhs);
