@@ -91,10 +91,17 @@ export class CodeGenerator {
         });
         this.indentationLevel--;
         containerCode += "  return undefined;\n";
-        containerCode += "}\n";
+        containerCode += "}\n\n";
 
         let mainCode = "int main() {\n";
-        mainCode += `  ${CONTAINER_FUNCTION_NAME}();\n`;
+        mainCode += `  try {\n`;
+        mainCode += `    ${CONTAINER_FUNCTION_NAME}();\n`;
+        mainCode += `  } catch (const jspp::JsValue& e) {\n`;
+        mainCode +=
+            `    auto error = std::make_shared<jspp::JsValue>(jspp::Exception::parse_error_from_value(e));\n`;
+        mainCode += `    console.error(error);\n`;
+        mainCode += `    return 1;\n`;
+        mainCode += `  }\n`;
         mainCode += "  return 0;\n}\n";
 
         return prelude + declarations + containerCode + mainCode;
@@ -820,12 +827,12 @@ export class CodeGenerator {
                             scope,
                         );
                     if (!typeInfo) {
-                        return `jspp::JsError::throw_unresolved_reference(${
+                        return `jspp::Exception::throw_unresolved_reference(${
                             this.getJsVarName(binExpr.left as ts.Identifier)
                         })`;
                     }
                     if (typeInfo?.isConst) {
-                        return `jspp::JsError::throw_immutable_assignment()`;
+                        return `jspp::Exception::throw_immutable_assignment()`;
                     }
                     return `*${leftText} ${op} ${rightText}`;
                 }
@@ -864,12 +871,12 @@ export class CodeGenerator {
                     : rightText;
 
                 if (leftIsIdentifier && !leftTypeInfo) {
-                    return `jspp::JsError::throw_unresolved_reference(${
+                    return `jspp::Exception::throw_unresolved_reference(${
                         this.getJsVarName(binExpr.left as ts.Identifier)
                     })`;
                 }
                 if (rightIsIdentifier && !rightTypeInfo) {
-                    return `jspp::JsError::throw_unresolved_reference(${
+                    return `jspp::Exception::throw_unresolved_reference(${
                         this.getJsVarName(binExpr.right as ts.Identifier)
                     })`;
                 }
@@ -1041,7 +1048,7 @@ export class CodeGenerator {
 
                     // Always create the JS exception variable.
                     code +=
-                        `${this.indent()}auto ${varName} = std::make_shared<jspp::JsValue>(jspp::JsError::parse_error_from_value(${exceptionName}));\n`;
+                        `${this.indent()}auto ${varName} = std::make_shared<jspp::JsValue>(jspp::Exception::parse_error_from_value(${exceptionName}));\n`;
 
                     // Shadow the C++ exception variable *only if* the names don't clash.
                     if (varName !== exceptionName) {
@@ -1077,7 +1084,7 @@ export class CodeGenerator {
                                 scope,
                             );
                         if (!typeInfo) {
-                            return `jspp::JsError::throw_unresolved_reference(${
+                            return `jspp::Exception::throw_unresolved_reference(${
                                 this.getJsVarName(arg)
                             })`;
                         }
@@ -1111,7 +1118,7 @@ export class CodeGenerator {
                             scope,
                         );
                     if (!typeInfo) {
-                        return `jspp::JsError::throw_unresolved_reference(${
+                        return `jspp::Exception::throw_unresolved_reference(${
                             this.getJsVarName(callee)
                         })`;
                     }
@@ -1130,7 +1137,7 @@ export class CodeGenerator {
 
             case ts.SyntaxKind.ReturnStatement: {
                 if (context.isMainContext) {
-                    return `${this.indent()}jspp::JsError::throw_invalid_return_statement();\n`;
+                    return `${this.indent()}jspp::Exception::throw_invalid_return_statement();\n`;
                 }
 
                 const returnStmt = node as ts.ReturnStatement;
@@ -1147,7 +1154,7 @@ export class CodeGenerator {
                                 .lookupFromScope(expr.text, scope);
                             if (!typeInfo) {
                                 returnCode +=
-                                    `${this.indent()}jspp::JsError::throw_unresolved_reference(${
+                                    `${this.indent()}jspp::Exception::throw_unresolved_reference(${
                                         this.getJsVarName(expr)
                                     });\n`; // THROWS, not returns
                             }
@@ -1181,7 +1188,7 @@ export class CodeGenerator {
                         const typeInfo = this.typeAnalyzer.scopeManager
                             .lookupFromScope(expr.text, scope);
                         if (!typeInfo) {
-                            return `${this.indent()}jspp::JsError::throw_unresolved_reference(${
+                            return `${this.indent()}jspp::Exception::throw_unresolved_reference(${
                                 this.getJsVarName(expr)
                             });\n`; // THROWS, not returns
                         }
@@ -1237,7 +1244,7 @@ export class CodeGenerator {
                             );
                         if (!typeInfo) {
                             finalExpr =
-                                `jspp::JsError::throw_unresolved_reference(${
+                                `jspp::Exception::throw_unresolved_reference(${
                                     this.getJsVarName(expr as ts.Identifier)
                                 })`;
                         } else if (

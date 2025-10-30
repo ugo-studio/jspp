@@ -76,67 +76,6 @@ namespace jspp
         std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
     };
 
-    // Errors
-    struct JsError
-    {
-        static JsValue make_error(const JsValue &message, const JsValue &name)
-        {
-            auto error = std::make_shared<JsObject>(JsObject{{{"message", message}, {"name", name}}});
-            error->properties["toString"] = std::function<JsValue()>([=]() mutable -> JsValue
-                                                                     {
-                        std::string name_str = "Error";
-                        if (error->properties.count("name") > 0) {
-                            if (error->properties["name"].type() == typeid(std::string)) {
-                                name_str = std::any_cast<std::string>(error->properties["name"]);
-                            } else if (error->properties["name"].type() == typeid(const char *)) {
-                                name_str = std::any_cast<const char *>(error->properties["name"]);
-                            }
-                        }
-                        std::string message_str = "";
-                        if (error->properties.count("message") > 0) {
-                            if (error->properties["message"].type() == typeid(std::string)) {
-                                message_str = std::any_cast<std::string>(error->properties["message"]);
-                            } else if (error->properties["message"].type() == typeid(const char *)) {
-                                message_str = std::any_cast<const char *>(error->properties["message"]);
-                            }
-                        }
-                        std::string stack_str = ""; // Default to an empty string if not present
-                        if (error->properties.count("stack") > 0) {
-                             if (error->properties["stack"].type() == typeid(std::string)) {
-                                stack_str = std::any_cast<std::string>(error->properties["stack"]);
-                            } else if (error->properties["stack"].type() == typeid(const char *)) {
-                                stack_str = std::any_cast<const char *>(error->properties["stack"]);
-                            }
-                        }
-                        return name_str + ": " + message_str + "\n    at " + stack_str; });
-            return error;
-        }
-        static JsValue make_default_error(const JsValue &message)
-        {
-            return JsError::make_error(message, "Error");
-        }
-        static JsValue parse_error_from_value(const JsValue &val)
-        {
-            if (val.type() == typeid(std::shared_ptr<std::exception>))
-            {
-                return JsError::make_error(std::string(std::any_cast<std::exception>(val).what()), "Error");
-            }
-            return val;
-        }
-        static JsValue throw_unresolved_reference(const std::string &varName)
-        {
-            throw JsError::make_error(varName + " is not defined", "ReferenceError");
-        }
-        static JsValue throw_immutable_assignment()
-        {
-            throw JsError::make_error("Assignment to constant variable.", "TypeError");
-        }
-        static JsValue throw_invalid_return_statement()
-        {
-            throw JsError::make_error("Return statements are only valid inside functions.", "SyntaxError");
-        }
-    };
-
     namespace Convert
     {
         inline std::string to_string(const JsValue &val)
@@ -270,7 +209,6 @@ namespace jspp
             };
         }
 
-
         inline void set_data_property(
             PrototypeMap &prototype,
             const std::string &name,
@@ -293,6 +231,71 @@ namespace jspp
             prototype[name] = AccessorDescriptor{getter, setter, enumerable, configurable};
         }
     }
+
+    namespace Exception
+    {
+        inline jspp::JsValue make_error_with_name(const JsValue &message, const JsValue &name)
+        {
+            auto error = std::make_shared<JsObject>(JsObject{{{"message", message}, {"name", name}}});
+            // Define and set prototype methods
+            Prototype::set_data_property(
+                error->prototype,
+                "toString",
+                std::function<jspp::JsValue()>([=]() -> jspp::JsValue
+                                               {  
+                        std::string name_str = "Error";
+                        if (error->properties.count("name") > 0) {
+                            if (error->properties["name"].type() == typeid(std::string)) {
+                                name_str = std::any_cast<std::string>(error->properties["name"]);
+                            } else if (error->properties["name"].type() == typeid(const char *)) {
+                                name_str = std::any_cast<const char *>(error->properties["name"]);
+                            }
+                        }
+                        std::string message_str = "";
+                        if (error->properties.count("message") > 0) {
+                            if (error->properties["message"].type() == typeid(std::string)) {
+                                message_str = std::any_cast<std::string>(error->properties["message"]);
+                            } else if (error->properties["message"].type() == typeid(const char *)) {
+                                message_str = std::any_cast<const char *>(error->properties["message"]);
+                            }
+                        }
+                        std::string stack_str = ""; // Default to an empty string if not present
+                        if (error->properties.count("stack") > 0) {
+                             if (error->properties["stack"].type() == typeid(std::string)) {
+                                stack_str = std::any_cast<std::string>(error->properties["stack"]);
+                            } else if (error->properties["stack"].type() == typeid(const char *)) {
+                                stack_str = std::any_cast<const char *>(error->properties["stack"]);
+                            }
+                        }
+                        return name_str + ": " + message_str + "\n    at " + stack_str; }));
+            // return object
+            return jspp::JsValue(error);
+        }
+        inline jspp::JsValue make_default_error(const JsValue &message)
+        {
+            return Exception::make_error_with_name(message, "Error");
+        }
+        inline jspp::JsValue parse_error_from_value(const JsValue &val)
+        {
+            if (val.type() == typeid(std::shared_ptr<std::exception>))
+            {
+                return Exception::make_error_with_name(std::string(std::any_cast<std::exception>(val).what()), "Error");
+            }
+            return val;
+        }
+        inline jspp::JsValue throw_unresolved_reference(const std::string &varName)
+        {
+            throw Exception::make_error_with_name(varName + " is not defined", "ReferenceError");
+        }
+        inline jspp::JsValue throw_immutable_assignment()
+        {
+            throw Exception::make_error_with_name("Assignment to constant variable.", "TypeError");
+        }
+        inline jspp::JsValue throw_invalid_return_statement()
+        {
+            throw Exception::make_error_with_name("Return statements are only valid inside functions.", "SyntaxError");
+        }
+    };
 
     namespace Object
     {
@@ -332,16 +335,16 @@ namespace jspp
                 array->prototype,
                 "length",
                 Prototype::to_handler(std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
-                                               { return (int)array->properties.size(); })),
+                                                                     { return (int)array->properties.size(); })),
                 Prototype::to_handler(std::function<jspp::JsValue(jspp::JsValue)>([=](auto val) mutable -> jspp::JsValue
-                                                            {
+                                                                                  {
                                                                 size_t new_length = 0;
                                                                 if (val.type() == typeid(int))
                                                                 {
                                                                     int v = std::any_cast<int>(val);
                                                                     if (v < 0)
                                                                     {
-                                                                        throw JsError::make_error("Invalid array length", "RangeError");
+                                                                        throw Exception::make_error_with_name("Invalid array length", "RangeError");
                                                                     }
                                                                     new_length = static_cast<size_t>(v);
                                                                 }
@@ -350,7 +353,7 @@ namespace jspp
                                                                     double v = std::any_cast<double>(val);
                                                                     if (v < 0 || v != static_cast<uint32_t>(v))
                                                                     {
-                                                                        throw JsError::make_error("Invalid array length", "RangeError");
+                                                                        throw Exception::make_error_with_name("Invalid array length", "RangeError");
                                                                     }
                                                                     new_length = static_cast<size_t>(v);
                                                                 }
@@ -372,7 +375,7 @@ namespace jspp
                 str_obj->prototype,
                 "length",
                 Prototype::to_handler(std::function<jspp::JsValue()>([=]() mutable -> jspp::JsValue
-                                               { return (int)str_obj->value.length(); })),
+                                                                     { return (int)str_obj->value.length(); })),
                 undefined // length is read-only for now
             );
             Prototype::set_data_property(
@@ -402,9 +405,9 @@ namespace jspp
         {
             if (!var)
                 // This case should ideally not be hit in normal operation
-                throw JsError::make_error("null variable pointer for " + name, "Internal compiler error");
+                throw Exception::make_error_with_name("null variable pointer for " + name, "Internal compiler error");
             if ((*var).type() == typeid(Uninitialized))
-                throw JsError::make_error("Cannot access '" + name + "' before initialization", "ReferenceError");
+                throw Exception::make_error_with_name("Cannot access '" + name + "' before initialization", "ReferenceError");
             return *var;
         }
 
@@ -465,7 +468,8 @@ namespace jspp
                     // Add own properties first
                     for (const auto &pair : ptr->properties)
                     {
-                        if (seen_keys.find(pair.first) == seen_keys.end()) {
+                        if (seen_keys.find(pair.first) == seen_keys.end())
+                        {
                             keys.push_back(pair.first);
                             seen_keys.insert(pair.first);
                         }
@@ -475,13 +479,17 @@ namespace jspp
                     for (const auto &pair : ptr->prototype)
                     {
                         bool is_enumerable = false;
-                        if (std::holds_alternative<DataDescriptor>(pair.second)) {
+                        if (std::holds_alternative<DataDescriptor>(pair.second))
+                        {
                             is_enumerable = std::get<DataDescriptor>(pair.second).enumerable;
-                        } else if (std::holds_alternative<AccessorDescriptor>(pair.second)) {
+                        }
+                        else if (std::holds_alternative<AccessorDescriptor>(pair.second))
+                        {
                             is_enumerable = std::get<AccessorDescriptor>(pair.second).enumerable;
                         }
                         // If it's enumerable and not already seen (shadowed by own property)
-                        if (is_enumerable && seen_keys.find(pair.first) == seen_keys.end()) {
+                        if (is_enumerable && seen_keys.find(pair.first) == seen_keys.end())
+                        {
                             keys.push_back(pair.first);
                             seen_keys.insert(pair.first);
                         }
@@ -497,7 +505,7 @@ namespace jspp
             {
                 auto &ptr = std::any_cast<const std::shared_ptr<JsObject> &>(obj);
                 if (!ptr)
-                    throw JsError::make_error("Cannot read properties of null", "TypeError");
+                    throw Exception::make_error_with_name("Cannot read properties of null", "TypeError");
 
                 const auto key_str = Convert::to_string(key);
                 const auto it = ptr->properties.find(key_str);
@@ -530,7 +538,7 @@ namespace jspp
             {
                 auto &ptr = std::any_cast<const std::shared_ptr<JsArray> &>(obj);
                 if (!ptr)
-                    throw JsError::make_error("Cannot read properties of null", "TypeError");
+                    throw Exception::make_error_with_name("Cannot read properties of null", "TypeError");
 
                 std::string key_str = Convert::to_string(key);
                 try
@@ -575,7 +583,7 @@ namespace jspp
             {
                 auto &ptr = std::any_cast<const std::shared_ptr<JsString> &>(obj);
                 if (!ptr)
-                    throw JsError::make_error("Cannot read properties of null", "TypeError");
+                    throw Exception::make_error_with_name("Cannot read properties of null", "TypeError");
                 const auto key_str = Convert::to_string(key);
                 // Check prototype for properties like 'length'
                 const auto proto_it = ptr->prototype.find(key_str);
@@ -614,7 +622,7 @@ namespace jspp
             {
                 auto &ptr = std::any_cast<const std::shared_ptr<JsFunction> &>(obj);
                 if (!ptr)
-                    throw JsError::make_error("Cannot read properties of null", "TypeError");
+                    throw Exception::make_error_with_name("Cannot read properties of null", "TypeError");
                 const auto key_str = Convert::to_string(key);
                 const auto proto_it = ptr->prototype.find(key_str);
                 if (proto_it != ptr->prototype.end())
@@ -635,7 +643,7 @@ namespace jspp
                 }
                 return undefined;
             }
-            throw JsError::make_error("Cannot read properties of non-object type", "TypeError");
+            throw Exception::make_error_with_name("Cannot read properties of non-object type", "TypeError");
         }
 
         inline JsValue set_property(const JsValue &obj, const JsValue &key, const JsValue &val)
@@ -644,7 +652,7 @@ namespace jspp
             {
                 auto &ptr = std::any_cast<const std::shared_ptr<JsObject> &>(obj);
                 if (!ptr)
-                    throw JsError::make_error("Cannot set properties of null", "TypeError");
+                    throw Exception::make_error_with_name("Cannot set properties of null", "TypeError");
 
                 const auto key_str = Convert::to_string(key);
                 const auto proto_it = ptr->prototype.find(key_str);
@@ -680,7 +688,7 @@ namespace jspp
             {
                 auto &ptr = std::any_cast<const std::shared_ptr<JsArray> &>(obj);
                 if (!ptr)
-                    throw JsError::make_error("Cannot set properties of null", "TypeError");
+                    throw Exception::make_error_with_name("Cannot set properties of null", "TypeError");
 
                 std::string key_str = Convert::to_string(key);
                 try
@@ -736,12 +744,12 @@ namespace jspp
             {
                 auto &ptr = std::any_cast<const std::shared_ptr<JsFunction> &>(obj);
                 if (!ptr)
-                    throw JsError::make_error("Cannot set properties of null", "TypeError");
+                    throw Exception::make_error_with_name("Cannot set properties of null", "TypeError");
                 const auto key_str = Convert::to_string(key);
                 ptr->prototype[key_str] = val;
                 return val;
             }
-            throw jspp::JsError::make_error("Cannot set properties of non-object type", "TypeError");
+            throw jspp::Exception::make_error_with_name("Cannot set properties of non-object type", "TypeError");
         }
 
         inline bool strict_equals(const JsValue &lhs, const JsValue &rhs)
