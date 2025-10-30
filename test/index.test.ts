@@ -245,6 +245,13 @@ const cases: { name: string; expected: string[] }[] = [
             "30",
         ],
     },
+    {
+        name: "unresolved-property-access",
+        expected: [
+            "--- Unresolved Property Access ---",
+            "Caught expected error: ReferenceError: a is not defined",
+        ],
+    },
 ];
 
 describe("Interpreter tests", () => {

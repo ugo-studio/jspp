@@ -680,15 +680,26 @@ export class CodeGenerator {
                         scope,
                     )
                     : null;
+                let finalExpr = "";
 
-                const finalExpr = typeInfo &&
-                        !typeInfo.isParameter && !typeInfo.isBuiltin
-                    ? `jspp::Access::deref(${exprText}, ${
+                if (ts.isIdentifier(propAccess.expression) && !typeInfo) {
+                    finalExpr = `jspp::Exception::throw_unresolved_reference(${
+                        this.getJsVarName(
+                            propAccess.expression,
+                        )
+                    })`;
+                } else if (
+                    typeInfo &&
+                    !typeInfo.isParameter && !typeInfo.isBuiltin
+                ) {
+                    finalExpr = `jspp::Access::deref(${exprText}, ${
                         this.getJsVarName(
                             propAccess.expression as ts.Identifier,
                         )
-                    })`
-                    : exprText;
+                    })`;
+                } else {
+                    finalExpr = exprText;
+                }
 
                 return `jspp::Access::get_property(${finalExpr}, "${propName}")`;
             }
