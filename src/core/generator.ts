@@ -410,12 +410,18 @@ export class CodeGenerator {
                     let initText = this.visit(initExpr, context);
                     if (ts.isIdentifier(initExpr)) {
                         const scope = this.getScopeForNode(initExpr);
-                        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
-                            initText,
-                            scope,
-                        );
-                        if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
-                            initText = `jspp::Access::deref(${initText}, "${initText}")`;
+                        const typeInfo = this.typeAnalyzer.scopeManager
+                            .lookupFromScope(
+                                initExpr.text,
+                                scope,
+                            );
+                        if (
+                            typeInfo && !typeInfo.isParameter &&
+                            !typeInfo.isBuiltin
+                        ) {
+                            initText = `jspp::Access::deref(${initText}, ${
+                                this.getJsVarName(initExpr)
+                            })`;
                         }
                     }
                     initializer = " = " + initText;
@@ -465,19 +471,159 @@ export class CodeGenerator {
                 return `jspp::Object::make_array({${elements}})`;
             }
 
+            case ts.SyntaxKind.ForStatement: {
+                const forStmt = node as ts.ForStatement;
+                let code = "";
+                this.indentationLevel++; // Enter a new scope for the for loop
+
+                // Handle initializer
+                let initializerCode = "";
+                if (forStmt.initializer) {
+                    if (ts.isVariableDeclarationList(forStmt.initializer)) {
+                        const varDeclList = forStmt.initializer;
+                        const isLetOrConst = (varDeclList.flags &
+                            (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                        if (isLetOrConst) {
+                            // For `let` or `const` in for loop, they are block-scoped to the loop.
+                            // Declare the variable within the loop's scope.
+                            // The C++ for loop initializer can contain a declaration.
+                            const decl = varDeclList.declarations[0]; // Assuming single declaration for simplicity
+                            if (decl) {
+                                const name = decl.name.getText();
+                                const initValue = decl.initializer
+                                    ? this.visit(decl.initializer, context)
+                                    : "undefined";
+                                initializerCode =
+                                    `auto ${name} = std::make_shared<jspp::JsValue>(${initValue})`;
+                            }
+                        } else {
+                            // For 'var', it's already hoisted, so this is an assignment.
+                            initializerCode = this.visit(forStmt.initializer, {
+                                ...context,
+                                isAssignmentOnly: true,
+                            });
+                        }
+                    } else {
+                        // If it's an expression (e.g., `i = 0`)
+                        initializerCode = this.visit(
+                            forStmt.initializer,
+                            context,
+                        );
+                    }
+                }
+
+                code += `${this.indent()}for (${initializerCode}; `;
+                if (forStmt.condition) {
+                    code += `jspp::Access::is_truthy(${
+                        this.visit(forStmt.condition, context)
+                    })`;
+                }
+                code += "; ";
+                if (forStmt.incrementor) {
+                    code += this.visit(forStmt.incrementor, context);
+                }
+                code += ") ";
+                code += this.visit(forStmt.statement, {
+                    ...context,
+                    isFunctionBody: false,
+                });
+                this.indentationLevel--; // Exit the scope for the for loop
+                return code;
+            }
+
+            case ts.SyntaxKind.ForInStatement: {
+                const forIn = node as ts.ForInStatement;
+
+                let code = "";
+                this.indentationLevel++; // Enter a new scope for the for-in loop
+                let varName = "";
+
+                if (ts.isVariableDeclarationList(forIn.initializer)) {
+                    const decl = forIn.initializer.declarations[0];
+                    if (decl) {
+                        varName = decl.name.getText();
+                        // Declare the shared_ptr before the loop
+                        code +=
+                            `${this.indent()}auto ${varName} = std::make_shared<jspp::JsValue>(undefined);\n`;
+                    }
+                } else if (ts.isIdentifier(forIn.initializer)) {
+                    varName = forIn.initializer.getText();
+                    // Assume it's already declared in an outer scope, just assign to it.
+                    // No explicit declaration here.
+                }
+
+                const expr = forIn.expression;
+                const exprText = this.visit(expr, context);
+
+                let derefExpr = exprText;
+                if (ts.isIdentifier(expr)) {
+                    derefExpr = `jspp::Access::deref(${exprText}, ${
+                        this.getJsVarName(expr)
+                    })`;
+                }
+
+                const keysVar = this.generateUniqueName("__keys_", new Set());
+                code +=
+                    `${this.indent()}{ std::vector<std::string> ${keysVar} = jspp::Access::get_object_keys(${derefExpr});\n`;
+                code +=
+                    `${this.indent()}for (const auto& ${varName}_str : ${keysVar}) {\n`;
+                this.indentationLevel++;
+                code +=
+                    `${this.indent()}*${varName} = jspp::Object::make_string(${varName}_str);\n`;
+                code += this.visit(forIn.statement, {
+                    ...context,
+                    isFunctionBody: false,
+                });
+                this.indentationLevel--;
+                code += `${this.indent()}}}\n`;
+                this.indentationLevel--; // Exit the scope for the for-in loop
+                return code;
+            }
+
             case ts.SyntaxKind.ForOfStatement: {
                 const forOf = node as ts.ForOfStatement;
+
+                let code = "";
+                this.indentationLevel++; // Enter a new scope for the for-of loop
                 let varName = "";
-                if (
-                    ts.isVariableDeclarationList(forOf.initializer) &&
-                    forOf.initializer.declarations[0]
-                ) {
-                    varName = forOf.initializer.declarations[0].name.getText();
+
+                if (ts.isVariableDeclarationList(forOf.initializer)) {
+                    const decl = forOf.initializer.declarations[0];
+                    if (decl) {
+                        varName = decl.name.getText();
+                        // Declare the shared_ptr before the loop
+                        code +=
+                            `${this.indent()}auto ${varName} = std::make_shared<jspp::JsValue>(undefined);\n`;
+                    }
+                } else if (ts.isIdentifier(forOf.initializer)) {
+                    varName = forOf.initializer.getText();
+                    // Assume it's already declared in an outer scope, just assign to it.
+                    // No explicit declaration here.
                 }
-                let code = `${this.indent()}for (const auto& ${varName} : ${
-                    this.visit(forOf.expression, context)
-                }) `;
-                code += this.visit(forOf.statement, context);
+
+                const iterableExpr = this.visit(forOf.expression, context);
+                const derefIterable = `jspp::Access::deref(${iterableExpr}, ${
+                    this.getJsVarName(forOf.expression as ts.Identifier)
+                })`;
+                const arrayPtr = this.generateUniqueName(
+                    "__array_ptr_",
+                    new Set(),
+                );
+
+                code +=
+                    `${this.indent()}{ auto ${arrayPtr} = std::any_cast<std::shared_ptr<jspp::JsArray>>(${derefIterable});\n`;
+                code +=
+                    `${this.indent()}for (const auto& ${varName}_val : ${arrayPtr}->properties) {\n`;
+                this.indentationLevel++;
+                code += `${this.indent()}*${varName} = ${varName}_val;\n`;
+                code += this.visit(forOf.statement, {
+                    ...context,
+                    isFunctionBody: false,
+                });
+                this.indentationLevel--;
+                code += `${this.indent()}}}\n`;
+                this.indentationLevel--; // Exit the scope for the for-of loop
+
                 return code;
             }
 
@@ -530,7 +676,11 @@ export class CodeGenerator {
 
                 const finalExpr = typeInfo &&
                         !typeInfo.isParameter && !typeInfo.isBuiltin
-                    ? `jspp::Access::deref(${exprText}, "${exprText}")`
+                    ? `jspp::Access::deref(${exprText}, ${
+                        this.getJsVarName(
+                            propAccess.expression as ts.Identifier,
+                        )
+                    })`
                     : exprText;
 
                 return `jspp::Access::get_property(${finalExpr}, "${propName}")`;
@@ -539,23 +689,49 @@ export class CodeGenerator {
             case ts.SyntaxKind.ElementAccessExpression: {
                 const elemAccess = node as ts.ElementAccessExpression;
                 const exprText = this.visit(elemAccess.expression, context);
-                const argText = this.visit(
+                let argText = this.visit(
                     elemAccess.argumentExpression,
                     context,
                 );
 
-                const scope = this.getScopeForNode(elemAccess.expression);
-                const typeInfo = ts.isIdentifier(elemAccess.expression)
+                // Dereference the expression being accessed
+                const exprScope = this.getScopeForNode(elemAccess.expression);
+                const exprTypeInfo = ts.isIdentifier(elemAccess.expression)
                     ? this.typeAnalyzer.scopeManager.lookupFromScope(
                         elemAccess.expression.getText(),
-                        scope,
+                        exprScope,
                     )
                     : null;
-
-                const finalExpr = typeInfo &&
-                        !typeInfo.isParameter && !typeInfo.isBuiltin
-                    ? `jspp::Access::deref(${exprText}, "${exprText}")`
+                const finalExpr = exprTypeInfo &&
+                        !exprTypeInfo.isParameter && !exprTypeInfo.isBuiltin
+                    ? `jspp::Access::deref(${exprText}, ${
+                        this.getJsVarName(
+                            elemAccess.expression as ts.Identifier,
+                        )
+                    })`
                     : exprText;
+
+                // Dereference the argument expression if it's an identifier
+                if (ts.isIdentifier(elemAccess.argumentExpression)) {
+                    const argScope = this.getScopeForNode(
+                        elemAccess.argumentExpression,
+                    );
+                    const argTypeInfo = this.typeAnalyzer.scopeManager
+                        .lookupFromScope(
+                            elemAccess.argumentExpression.getText(),
+                            argScope,
+                        );
+                    if (
+                        argTypeInfo && !argTypeInfo.isParameter &&
+                        !argTypeInfo.isBuiltin
+                    ) {
+                        argText = `jspp::Access::deref(${argText}, ${
+                            this.getJsVarName(
+                                elemAccess.argumentExpression as ts.Identifier,
+                            )
+                        })`;
+                    }
+                }
 
                 return `jspp::Access::get_property(${finalExpr}, ${argText})`;
             }
@@ -595,7 +771,11 @@ export class CodeGenerator {
 
                         const finalObjExpr = typeInfo &&
                                 !typeInfo.isParameter && !typeInfo.isBuiltin
-                            ? `jspp::Access::deref(${objExprText}, "${objExprText}")`
+                            ? `jspp::Access::deref(${objExprText}, ${
+                                this.getJsVarName(
+                                    propAccess.expression as ts.Identifier,
+                                )
+                            })`
                             : objExprText;
 
                         return `jspp::Access::set_property(${finalObjExpr}, "${propName}", ${rightText})`;
@@ -622,7 +802,11 @@ export class CodeGenerator {
 
                         const finalObjExpr = typeInfo &&
                                 !typeInfo.isParameter && !typeInfo.isBuiltin
-                            ? `jspp::Access::deref(${objExprText}, "${objExprText}")`
+                            ? `jspp::Access::deref(${objExprText}, ${
+                                this.getJsVarName(
+                                    elemAccess.expression as ts.Identifier,
+                                )
+                            })`
                             : objExprText;
 
                         return `jspp::Access::set_property(${finalObjExpr}, ${argText}, ${rightText})`;
@@ -632,11 +816,13 @@ export class CodeGenerator {
                     const scope = this.getScopeForNode(binExpr.left);
                     const typeInfo = this.typeAnalyzer.scopeManager
                         .lookupFromScope(
-                            leftText,
+                            (binExpr.left as ts.Identifier).text,
                             scope,
                         );
                     if (!typeInfo) {
-                        return `jspp::JsError::throw_unresolved_reference("${leftText}")`;
+                        return `jspp::JsError::throw_unresolved_reference(${
+                            this.getJsVarName(binExpr.left as ts.Identifier)
+                        })`;
                     }
                     if (typeInfo?.isConst) {
                         return `jspp::JsError::throw_immutable_assignment()`;
@@ -653,31 +839,39 @@ export class CodeGenerator {
                 const scope = this.getScopeForNode(node);
                 const leftTypeInfo = leftIsIdentifier
                     ? this.typeAnalyzer.scopeManager.lookupFromScope(
-                        leftText,
+                        binExpr.left.getText(),
                         scope,
                     )
                     : null;
                 const rightTypeInfo = rightIsIdentifier
                     ? this.typeAnalyzer.scopeManager.lookupFromScope(
-                        rightText,
+                        binExpr.right.getText(),
                         scope,
                     )
                     : null;
 
                 const finalLeft = leftIsIdentifier && leftTypeInfo &&
                         !leftTypeInfo.isParameter && !leftTypeInfo.isBuiltin
-                    ? `jspp::Access::deref(${leftText}, "${leftText}")`
+                    ? `jspp::Access::deref(${leftText}, ${
+                        this.getJsVarName(binExpr.left as ts.Identifier)
+                    })`
                     : leftText;
                 const finalRight = rightIsIdentifier && rightTypeInfo &&
                         !rightTypeInfo.isParameter && !rightTypeInfo.isBuiltin
-                    ? `jspp::Access::deref(${rightText}, "${rightText}")`
+                    ? `jspp::Access::deref(${rightText}, ${
+                        this.getJsVarName(binExpr.right as ts.Identifier)
+                    })`
                     : rightText;
 
                 if (leftIsIdentifier && !leftTypeInfo) {
-                    return `jspp::JsError::throw_unresolved_reference("${leftText}")`;
+                    return `jspp::JsError::throw_unresolved_reference(${
+                        this.getJsVarName(binExpr.left as ts.Identifier)
+                    })`;
                 }
                 if (rightIsIdentifier && !rightTypeInfo) {
-                    return `jspp::JsError::throw_unresolved_reference("${rightText}")`;
+                    return `jspp::JsError::throw_unresolved_reference(${
+                        this.getJsVarName(binExpr.right as ts.Identifier)
+                    })`;
                 }
 
                 if (opToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken) {
@@ -883,13 +1077,17 @@ export class CodeGenerator {
                                 scope,
                             );
                         if (!typeInfo) {
-                            return `jspp::JsError::throw_unresolved_reference("${arg.text}")`;
+                            return `jspp::JsError::throw_unresolved_reference(${
+                                this.getJsVarName(arg)
+                            })`;
                         }
                         if (
                             typeInfo && !typeInfo.isParameter &&
                             !typeInfo.isBuiltin
                         ) {
-                            return `jspp::Access::deref(${argText}, "${argText}")`;
+                            return `jspp::Access::deref(${argText}, ${
+                                this.getJsVarName(arg)
+                            })`;
                         }
                     }
                     return argText;
@@ -913,13 +1111,16 @@ export class CodeGenerator {
                             scope,
                         );
                     if (!typeInfo) {
-                        return `jspp::JsError::throw_unresolved_reference("${callee.text}")`;
+                        return `jspp::JsError::throw_unresolved_reference(${
+                            this.getJsVarName(callee)
+                        })`;
                     }
                     if (typeInfo.isBuiltin) {
                         derefCallee = calleeCode;
                     } else {
-                        derefCallee =
-                            `jspp::Access::deref(${calleeCode}, "${calleeCode}")`;
+                        derefCallee = `jspp::Access::deref(${calleeCode}, ${
+                            this.getJsVarName(callee)
+                        })`;
                     }
                 } else {
                     derefCallee = calleeCode;
@@ -943,16 +1144,21 @@ export class CodeGenerator {
                         if (ts.isIdentifier(expr)) {
                             const scope = this.getScopeForNode(expr);
                             const typeInfo = this.typeAnalyzer.scopeManager
-                                .lookupFromScope(exprText, scope);
+                                .lookupFromScope(expr.text, scope);
                             if (!typeInfo) {
-                                return `${this.indent()}return jspp::JsError::throw_unresolved_reference("${exprText}");\n`;
+                                returnCode +=
+                                    `${this.indent()}jspp::JsError::throw_unresolved_reference(${
+                                        this.getJsVarName(expr)
+                                    });\n`; // THROWS, not returns
                             }
                             if (
                                 typeInfo && !typeInfo.isParameter &&
                                 !typeInfo.isBuiltin
                             ) {
                                 returnCode +=
-                                    `${this.indent()}return jspp::Access::deref(${exprText}, "${exprText}");\n`;
+                                    `${this.indent()}return jspp::Access::deref(${exprText}, ${
+                                        this.getJsVarName(expr)
+                                    });\n`;
                             } else {
                                 returnCode +=
                                     `${this.indent()}return ${exprText};\n`;
@@ -973,15 +1179,19 @@ export class CodeGenerator {
                     if (ts.isIdentifier(expr)) {
                         const scope = this.getScopeForNode(expr);
                         const typeInfo = this.typeAnalyzer.scopeManager
-                            .lookupFromScope(exprText, scope);
+                            .lookupFromScope(expr.text, scope);
                         if (!typeInfo) {
-                            return `${this.indent()}return jspp::JsError::throw_unresolved_reference("${exprText}");\n`;
+                            return `${this.indent()}jspp::JsError::throw_unresolved_reference(${
+                                this.getJsVarName(expr)
+                            });\n`; // THROWS, not returns
                         }
                         if (
                             typeInfo && !typeInfo.isParameter &&
                             !typeInfo.isBuiltin
                         ) {
-                            return `${this.indent()}return jspp::Access::deref(${exprText}, "${exprText}");\n`;
+                            return `${this.indent()}return jspp::Access::deref(${exprText}, ${
+                                this.getJsVarName(expr)
+                            });\n`;
                         }
                     }
                     return `${this.indent()}return ${exprText};\n`;
@@ -996,9 +1206,12 @@ export class CodeGenerator {
             case ts.SyntaxKind.NumericLiteral:
                 return (node as ts.NumericLiteral).text;
             case ts.SyntaxKind.StringLiteral:
-                return `jspp::Object::make_string("${this.escapeString((node as ts.StringLiteral).text)}")`;
+                return `jspp::Object::make_string("${
+                    this.escapeString((node as ts.StringLiteral).text)
+                }")`;
             case ts.SyntaxKind.NoSubstitutionTemplateLiteral: {
-                const templateLiteral = node as ts.NoSubstitutionTemplateLiteral;
+                const templateLiteral =
+                    node as ts.NoSubstitutionTemplateLiteral;
                 return `jspp::Object::make_string("${
                     this.escapeString(templateLiteral.text)
                 }")`;
@@ -1017,21 +1230,24 @@ export class CodeGenerator {
 
                     if (ts.isIdentifier(expr)) {
                         const scope = this.getScopeForNode(expr);
-                        const typeInfo =
-                            this.typeAnalyzer.scopeManager.lookupFromScope(
-                                exprText,
+                        const typeInfo = this.typeAnalyzer.scopeManager
+                            .lookupFromScope(
+                                expr.text,
                                 scope,
                             );
                         if (!typeInfo) {
                             finalExpr =
-                                `jspp::JsError::throw_unresolved_reference("${exprText}")`;
+                                `jspp::JsError::throw_unresolved_reference(${
+                                    this.getJsVarName(expr as ts.Identifier)
+                                })`;
                         } else if (
                             typeInfo &&
                             !typeInfo.isParameter &&
                             !typeInfo.isBuiltin
                         ) {
-                            finalExpr =
-                                `jspp::Access::deref(${exprText}, "${exprText}")`;
+                            finalExpr = `jspp::Access::deref(${exprText}, ${
+                                this.getJsVarName(expr as ts.Identifier)
+                            })`;
                         }
                     }
 
@@ -1069,6 +1285,13 @@ export class CodeGenerator {
     }
 
     private escapeString(str: string): string {
-        return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\t/g, "\\t");
+        return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(
+            /\n/g,
+            "\\n",
+        ).replace(/\r/g, "\\r").replace(/\t/g, "\\t");
+    }
+
+    private getJsVarName(node: ts.Identifier): string {
+        return `"${node.text}"`;
     }
 }

@@ -72,6 +72,31 @@ export class TypeAnalyzer {
                 },
                 exit: () => this.scopeManager.exitScope(),
             },
+            ForInStatement: {
+                enter: (node) => {
+                    this.scopeManager.enterScope();
+                    this.nodeToScope.set(node, this.scopeManager.currentScope);
+                    const forIn = node as ts.ForInStatement;
+                    if (ts.isVariableDeclarationList(forIn.initializer)) {
+                        const varDecl = forIn.initializer.declarations[0];
+                        if (varDecl) {
+                            const name = varDecl.name.getText();
+                            const isConst =
+                                (varDecl.parent.flags & ts.NodeFlags.Const) !== 0;
+                            const typeInfo: TypeInfo = {
+                                type: "string", // Keys are always strings
+                                declaration: varDecl,
+                                isConst,
+                            };
+                            this.scopeManager.define(name, typeInfo);
+                        }
+                    } else if (ts.isIdentifier(forIn.initializer)) {
+                        // If it's an existing identifier, we don't redefine it, but ensure it's in scope.
+                        // The generator will handle assigning to it.
+                    }
+                },
+                exit: () => this.scopeManager.exitScope(),
+            },
 
             ArrowFunction: {
                 enter: (node) => {

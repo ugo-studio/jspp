@@ -226,6 +226,25 @@ const cases: { name: string; expected: string[] }[] = [
             "obj1 === obj3 true",
         ],
     },
+    {
+        name: "for-loops",
+        expected: [
+            "--- For Loops ---",
+            "- C-style for loop -",
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "- for...in loop -",
+            "a 1",
+            "b 2",
+            "- for...of loop -",
+            "10",
+            "20",
+            "30",
+        ],
+    },
 ];
 
 describe("Interpreter tests", () => {

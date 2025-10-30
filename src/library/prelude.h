@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstring>
+#include <set>
 
 struct Undefined
 {
@@ -449,6 +450,45 @@ namespace jspp
                 return true;
             }
             return true;
+        }
+
+        inline std::vector<std::string> get_object_keys(const JsValue &obj)
+        {
+            std::vector<std::string> keys;
+            std::set<std::string> seen_keys; // To handle duplicates and shadowing
+
+            if (obj.type() == typeid(std::shared_ptr<JsObject>))
+            {
+                auto &ptr = std::any_cast<const std::shared_ptr<JsObject> &>(obj);
+                if (ptr)
+                {
+                    // Add own properties first
+                    for (const auto &pair : ptr->properties)
+                    {
+                        if (seen_keys.find(pair.first) == seen_keys.end()) {
+                            keys.push_back(pair.first);
+                            seen_keys.insert(pair.first);
+                        }
+                    }
+
+                    // Add enumerable prototype properties
+                    for (const auto &pair : ptr->prototype)
+                    {
+                        bool is_enumerable = false;
+                        if (std::holds_alternative<DataDescriptor>(pair.second)) {
+                            is_enumerable = std::get<DataDescriptor>(pair.second).enumerable;
+                        } else if (std::holds_alternative<AccessorDescriptor>(pair.second)) {
+                            is_enumerable = std::get<AccessorDescriptor>(pair.second).enumerable;
+                        }
+                        // If it's enumerable and not already seen (shadowed by own property)
+                        if (is_enumerable && seen_keys.find(pair.first) == seen_keys.end()) {
+                            keys.push_back(pair.first);
+                            seen_keys.insert(pair.first);
+                        }
+                    }
+                }
+            }
+            return keys;
         }
 
         inline JsValue get_property(const JsValue &obj, const JsValue &key)

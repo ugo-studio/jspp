@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "test": "bun test",
-    "dev": "bun run scripts/run-js.ts"
+    "dev": "bun run scripts/run-js.ts",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/bun": "latest"
