@@ -1,7 +1,7 @@
 import path from "path";
 
 import { TypeAnalyzer } from "./analysis/typeAnalyzer";
-import { CodeGenerator } from "./core/generator";
+import { CodeGenerator } from "./core/codegen";
 import { Parser } from "./core/parser";
 
 export class Interpreter {
