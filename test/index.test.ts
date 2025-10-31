@@ -351,6 +351,8 @@ describe("Interpreter tests", () => {
                     exeFile,
                     "-I",
                     preludePath,
+                    "-include",
+                    path.join(process.cwd(), "prelude-build", "index.hpp"),
                     // "-std=c++23",
                 ],
                 stdout: "pipe",

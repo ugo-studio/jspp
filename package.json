@@ -5,7 +5,8 @@
   "scripts": {
     "test": "bun test",
     "dev": "bun run scripts/run-js.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "precompile": "bun run scripts/precompile-headers.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"
