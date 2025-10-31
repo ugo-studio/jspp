@@ -1,9 +1,9 @@
 #pragma once
 
-#include "types.h"
-#include "prototype.h"
-#include "convert.h"
-#include "exception.h"
+#include "types.hpp"
+#include "prototype.hpp"
+#include "convert.hpp"
+#include "exception.hpp"
 
 namespace jspp {
     namespace Object

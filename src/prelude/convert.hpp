@@ -1,6 +1,6 @@
 #pragma once
 
-#include "types.h"
+#include "types.hpp"
 
 namespace jspp {
     namespace Convert

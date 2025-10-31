@@ -78,7 +78,7 @@ export class CodeGenerator {
     public generate(ast: Node, analyzer: TypeAnalyzer): string {
         this.typeAnalyzer = analyzer;
 
-        const declarations = `#include "index.h"\n\n`;
+        const declarations = `#include "index.hpp"\n\n`;
 
         let containerCode = `jspp::JsValue ${CONTAINER_FUNCTION_NAME}() {\n`;
         this.indentationLevel++;

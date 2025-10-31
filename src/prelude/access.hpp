@@ -1,9 +1,9 @@
 #pragma once
 
-#include "types.h"
-#include "exception.h"
-#include "convert.h"
-#include "object.h"
+#include "types.hpp"
+#include "exception.hpp"
+#include "convert.hpp"
+#include "object.hpp"
 
 namespace jspp {
     namespace Access

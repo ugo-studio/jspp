@@ -1,9 +1,9 @@
 #pragma once
 
-#include "types.h"
-#include "access.h"
-#include "convert.h"
-#include "object.h"
+#include "types.hpp"
+#include "access.hpp"
+#include "convert.hpp"
+#include "object.hpp"
 
 // Define operators for JsValue
 inline jspp::JsValue operator+(const jspp::JsValue &lhs, const jspp::JsValue &rhs)

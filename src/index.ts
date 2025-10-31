@@ -1,4 +1,5 @@
 import path from "path";
+
 import { TypeAnalyzer } from "./analysis/typeAnalyzer";
 import { CodeGenerator } from "./core/generator";
 import { Parser } from "./core/parser";
@@ -17,7 +18,6 @@ export class Interpreter {
         const preludePath = path.resolve(
             process.cwd(),
             "src",
-            "library",
             "prelude",
         );
         return { cppCode, preludePath };

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "types.h"
-#include "prototype.h"
+#include "types.hpp"
+#include "prototype.hpp"
 
 namespace jspp {
     namespace Exception
