@@ -12,8 +12,8 @@ async function precompileHeaders() {
     try {
         console.log("Checking for existing precompiled header...");
         await fs.access(PRECOMPILED_HEADER_PATH);
-        console.log("Precompiled header already exists. Skipping.");
-        return;
+        console.log("Precompiled header already exists. Overwriting it.");
+        await fs.unlink(PRECOMPILED_HEADER_PATH);
     } catch (error) {
         // Precompiled header doesn't exist, so we'll create it.
     }
@@ -28,12 +28,12 @@ async function precompileHeaders() {
                 "g++",
                 "-x",
                 "c++-header",
+                "-std=c++20",
                 path.join(PRELUDE_DIR, "index.hpp"),
                 "-o",
                 PRECOMPILED_HEADER_PATH,
                 "-I",
                 PRELUDE_DIR,
-                // "-std=c++23",
             ],
             stdout: "inherit",
             stderr: "inherit",

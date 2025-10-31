@@ -346,6 +346,7 @@ describe("Interpreter tests", () => {
             const compile = Bun.spawnSync({
                 cmd: [
                     "g++",
+                    "-std=c++20",
                     outputFile,
                     "-o",
                     exeFile,
@@ -353,7 +354,6 @@ describe("Interpreter tests", () => {
                     preludePath,
                     "-include",
                     path.join(process.cwd(), "prelude-build", "index.hpp"),
-                    // "-std=c++23",
                 ],
                 stdout: "pipe",
                 stderr: "pipe",
