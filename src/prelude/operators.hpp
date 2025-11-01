@@ -195,7 +195,7 @@ inline jspp::JsValue operator*(const jspp::JsValue &lhs, const jspp::JsValue &rh
     auto actual_lhs = jspp::Convert::unwrap_number(lhs);
     auto actual_rhs = jspp::Convert::unwrap_number(rhs);
     if (actual_lhs.type() == typeid(int) && actual_rhs.type() == typeid(int))
-        return jspp::Object::make_number(std::any_cast<int>(actual_lhs) * std::any_cast<int>(actual_rhs));
+        return jspp::Object::make_number(static_cast<double>(std::any_cast<int>(actual_lhs)) * static_cast<double>(std::any_cast<int>(actual_rhs)));
     if (actual_lhs.type() == typeid(double) && actual_rhs.type() == typeid(double))
         return jspp::Object::make_number(std::any_cast<double>(actual_lhs) * std::any_cast<double>(actual_rhs));
     if (actual_lhs.type() == typeid(int) && actual_rhs.type() == typeid(double))
@@ -282,6 +282,12 @@ inline jspp::JsValue operator%(const jspp::JsValue &lhs, const jspp::JsValue &rh
     auto actual_rhs = jspp::Convert::unwrap_number(rhs);
     if (actual_lhs.type() == typeid(int) && actual_rhs.type() == typeid(int))
         return jspp::Object::make_number(std::any_cast<int>(actual_lhs) % std::any_cast<int>(actual_rhs));
+    if (actual_lhs.type() == typeid(double) && actual_rhs.type() == typeid(double))
+        return jspp::Object::make_number(std::fmod(std::any_cast<double>(actual_lhs), std::any_cast<double>(actual_rhs)));
+    if (actual_lhs.type() == typeid(int) && actual_rhs.type() == typeid(double))
+        return jspp::Object::make_number(std::fmod(static_cast<double>(std::any_cast<int>(actual_lhs)), std::any_cast<double>(actual_rhs)));
+    if (actual_lhs.type() == typeid(double) && actual_rhs.type() == typeid(int))
+        return jspp::Object::make_number(std::fmod(std::any_cast<double>(actual_lhs), static_cast<double>(std::any_cast<int>(actual_rhs))));
     return undefined;
 }
 

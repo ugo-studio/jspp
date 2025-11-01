@@ -7,7 +7,7 @@ function factorial(n) {
   return n * factorial(n - 1);
 }
 
-console.log("Factorial of 6:", factorial(6));
+console.log("Factorial of 50:", factorial(50)); // around/approx 3.0414
 
 function isEven(n) {
   if (n === 0) return true;

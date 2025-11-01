@@ -1,6 +1,8 @@
 #pragma once
 
 #include "types.hpp"
+#include <sstream>
+#include <iomanip>
 
 namespace jspp
 {
@@ -35,8 +37,23 @@ namespace jspp
                 return std::any_cast<const char *>(val);
             if (val.type() == typeid(int))
                 return std::to_string(std::any_cast<int>(val));
-            if (val.type() == typeid(double))
-                return std::to_string(std::any_cast<double>(val));
+            if (val.type() == typeid(double)) {
+                double d_val = std::any_cast<double>(val);
+                if (std::abs(d_val) >= 1e21 || (std::abs(d_val) > 0 && std::abs(d_val) < 1e-6)) {
+                    std::ostringstream oss;
+                    oss << std::scientific << std::setprecision(4) << d_val;
+                    return oss.str();
+                } else {
+                    std::ostringstream oss;
+                    oss << std::setprecision(6) << std::fixed << d_val;
+                    std::string s = oss.str();
+                    s.erase(s.find_last_not_of('0') + 1, std::string::npos);
+                    if (s.back() == '.') {
+                        s.pop_back();
+                    }
+                    return s;
+                }
+            }
             if (val.type() == typeid(bool))
                 return std::any_cast<bool>(val) ? "true" : "false";
             if (val.type() == typeid(Null))
