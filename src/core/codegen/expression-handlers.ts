@@ -339,7 +339,29 @@ export function visitCallExpression(
     const callee = callExpr.expression;
     const args = callExpr.arguments
         .map((arg) => {
-            return this.visit(arg, context);
+            const argText = this.visit(arg, context);
+            if (ts.isIdentifier(arg)) {
+                const scope = this.getScopeForNode(arg);
+                const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                    arg.text,
+                    scope,
+                );
+                if (!typeInfo) {
+                    return `jspp::Exception::throw_unresolved_reference(${
+                        this.getJsVarName(
+                            arg,
+                        )
+                    })`;
+                }
+                if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
+                    return `jspp::Access::deref(${argText}, ${
+                        this.getJsVarName(
+                            arg,
+                        )
+                    })`;
+                }
+            }
+            return argText;
         })
         .join(", ");
 

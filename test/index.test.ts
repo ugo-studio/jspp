@@ -74,7 +74,7 @@ const cases: { name: string; expected: string[] }[] = [
         name: "recursion",
         expected: [
             "--- Recursion ---",
-            "Factorial of 5: 120",
+            "Factorial of 6: 720",
             "Is 10 even? true",
             "Is 10 odd? false",
             "Is 7 even? false",

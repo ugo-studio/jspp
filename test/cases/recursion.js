@@ -7,16 +7,16 @@ function factorial(n) {
   return n * factorial(n - 1);
 }
 
-console.log("Factorial of 5:", factorial(5));
+console.log("Factorial of 6:", factorial(6));
 
 function isEven(n) {
-    if (n === 0) return true;
-    return isOdd(n - 1);
+  if (n === 0) return true;
+  return isOdd(n - 1);
 }
 
 function isOdd(n) {
-    if (n === 0) return false;
-    return isEven(n - 1);
+  if (n === 0) return false;
+  return isEven(n - 1);
 }
 
 console.log("Is 10 even?", isEven(10));
