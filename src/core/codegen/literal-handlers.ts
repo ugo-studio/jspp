@@ -1,5 +1,6 @@
 import ts from "typescript";
-import { CodeGenerator } from ".";
+
+import { CodeGenerator } from "./";
 
 export function visitIdentifier(
     this: CodeGenerator,
@@ -12,7 +13,7 @@ export function visitNumericLiteral(
     this: CodeGenerator,
     node: ts.NumericLiteral,
 ): string {
-    return node.text;
+    return `jspp::Object::make_number(${this.escapeString(node.text)})`;
 }
 
 export function visitStringLiteral(

@@ -28,8 +28,7 @@ namespace jspp
 {
     // Dynamic JsValue
     using JsValue = std::any;
-
-    inline JsValue pow(const JsValue &lhs, const JsValue &rhs);
+    using JsNumberValue = std::variant<int, double>;
 
     // Temporal Dead Zone
     struct Uninitialized
@@ -42,7 +41,7 @@ namespace jspp
     struct JsArray;
     struct JsString;
     struct JsFunction;
-    // struct JsNumber;
+    struct JsNumber;
     // struct JsBoolean;
 
     // Object and array prototypes
@@ -89,12 +88,12 @@ namespace jspp
         std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
     };
 
-    // // Numbers
-    // struct JsNumber
-    // {
-    //     std::variant<int, double> value;
-    //     std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
-    // };
+    // Numbers
+    struct JsNumber
+    {
+        JsNumberValue value;
+        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
+    };
 
     // // Booleans
     // struct JsBoolean
@@ -102,5 +101,8 @@ namespace jspp
     //     bool value;
     //     std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
     // };
+
+    // Pow Operator
+    inline JsValue pow(const JsValue &lhs, const JsValue &rhs);
 
 }

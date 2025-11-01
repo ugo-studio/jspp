@@ -2,7 +2,8 @@
 
 #include "types.hpp"
 
-namespace jspp {
+namespace jspp
+{
     namespace Convert
     {
         inline std::string to_string(const JsValue &val)
@@ -110,6 +111,18 @@ namespace jspp {
                             return jspp::Convert::to_string(s);
                         }
                     }
+                }
+            }
+            if (val.type() == typeid(std::shared_ptr<jspp::JsNumber>))
+            {
+                auto ptr = std::any_cast<std::shared_ptr<jspp::JsNumber>>(val);
+                if (std::holds_alternative<int>(ptr->value))
+                {
+                    return jspp::Convert::to_string(std::get<int>(ptr->value));
+                }
+                if (std::holds_alternative<double>(ptr->value))
+                {
+                    return jspp::Convert::to_string(std::get<double>(ptr->value));
                 }
             }
             return "[Object Object]";
