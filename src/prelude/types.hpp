@@ -102,7 +102,10 @@ namespace jspp
     //     std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
     // };
 
-    // Pow Operator
+    // Operators
+    inline bool is_truthy(const JsValue &val);
+    inline bool equals(const JsValue &lhs, const JsValue &rhs);
+    inline bool strict_equals(const JsValue &lhs, const JsValue &rhs);
     inline JsValue pow(const JsValue &lhs, const JsValue &rhs);
 
 }

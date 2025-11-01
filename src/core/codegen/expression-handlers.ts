@@ -300,16 +300,16 @@ export function visitBinaryExpression(
     }
 
     if (opToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken) {
-        return `jspp::Access::strict_equals(${finalLeft}, ${finalRight})`;
+        return `jspp::strict_equals(${finalLeft}, ${finalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.EqualsEqualsToken) {
-        return `jspp::Access::equals(${finalLeft}, ${finalRight})`;
+        return `jspp::equals(${finalLeft}, ${finalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken) {
-        return `!jspp::Access::strict_equals(${finalLeft}, ${finalRight})`;
+        return `!jspp::strict_equals(${finalLeft}, ${finalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.ExclamationEqualsToken) {
-        return `!jspp::Access::equals(${finalLeft}, ${finalRight})`;
+        return `!jspp::equals(${finalLeft}, ${finalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.AsteriskAsteriskToken) {
         return `jspp::pow(${finalLeft}, ${finalRight})`;
@@ -339,29 +339,7 @@ export function visitCallExpression(
     const callee = callExpr.expression;
     const args = callExpr.arguments
         .map((arg) => {
-            const argText = this.visit(arg, context);
-            if (ts.isIdentifier(arg)) {
-                const scope = this.getScopeForNode(arg);
-                const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
-                    arg.text,
-                    scope,
-                );
-                if (!typeInfo) {
-                    return `jspp::Exception::throw_unresolved_reference(${
-                        this.getJsVarName(
-                            arg,
-                        )
-                    })`;
-                }
-                if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
-                    return `jspp::Access::deref(${argText}, ${
-                        this.getJsVarName(
-                            arg,
-                        )
-                    })`;
-                }
-            }
-            return argText;
+            return this.visit(arg, context);
         })
         .join(", ");
 

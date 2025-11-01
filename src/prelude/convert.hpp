@@ -6,6 +6,23 @@ namespace jspp
 {
     namespace Convert
     {
+        inline JsValue unwrap_number(const JsValue &val)
+        {
+            if (val.type() == typeid(std::shared_ptr<jspp::JsNumber>))
+            {
+                auto ptr = std::any_cast<std::shared_ptr<jspp::JsNumber>>(val);
+                if (std::holds_alternative<int>(ptr->value))
+                {
+                    return std::get<int>(ptr->value);
+                }
+                else if (std::holds_alternative<double>(ptr->value))
+                {
+                    return std::get<double>(ptr->value);
+                }
+            }
+            return val;
+        }
+
         inline std::string to_string(const JsValue &val)
         {
             if (!val.has_value())

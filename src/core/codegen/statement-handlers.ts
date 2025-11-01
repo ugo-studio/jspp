@@ -222,9 +222,7 @@ export function visitForStatement(
 
     code += `${this.indent()}for (${initializerCode}; `;
     if (forStmt.condition) {
-        code += `jspp::Access::is_truthy(${
-            this.visit(forStmt.condition, context)
-        })`;
+        code += `jspp::is_truthy(${this.visit(forStmt.condition, context)})`;
     }
     code += "; ";
     if (forStmt.incrementor) {
@@ -358,7 +356,7 @@ export function visitIfStatement(
                 isFunctionBody: false,
             });
     }
-    return `${this.indent()}if (jspp::Access::is_truthy(${condition})) ${thenStmt}${elseStmt}`;
+    return `${this.indent()}if (jspp::is_truthy(${condition})) ${thenStmt}${elseStmt}`;
 }
 
 export function visitExpressionStatement(

@@ -53,19 +53,20 @@ namespace jspp
                                                                      { return (int)array->items.size(); })),
                 Prototype::to_handler(std::function<jspp::JsValue(jspp::JsValue)>([array](auto val) mutable -> jspp::JsValue
                                                                                   {
+                                                                auto unwrapped_val = jspp::Convert::unwrap_number(val);
                                                                 size_t new_length = 0;
-                                                                if (val.type() == typeid(int))
+                                                                if (unwrapped_val.type() == typeid(int))
                                                                 {
-                                                                    int v = std::any_cast<int>(val);
+                                                                    int v = std::any_cast<int>(unwrapped_val);
                                                                     if (v < 0)
                                                                     {
                                                                         throw Exception::make_error_with_name("Invalid array length", "RangeError");
                                                                     }
                                                                     new_length = static_cast<size_t>(v);
                                                                 }
-                                                                else if (val.type() == typeid(double))
+                                                                else if (unwrapped_val.type() == typeid(double))
                                                                 {
-                                                                    double v = std::any_cast<double>(val);
+                                                                    double v = std::any_cast<double>(unwrapped_val);
                                                                     if (v < 0 || v != static_cast<int>(v))
                                                                     {
                                                                         throw Exception::make_error_with_name("Invalid array length", "RangeError");
@@ -123,9 +124,10 @@ namespace jspp
                             return "";
                         }
                         int index = 0;
-                        if (args[0].type() == typeid(int))
+                        auto unwrapped_val = jspp::Convert::unwrap_number(args[0]);
+                        if (unwrapped_val.type() == typeid(int))
                         {
-                            index = std::any_cast<int>(args[0]);
+                            index = std::any_cast<int>(unwrapped_val);
                         }
                         if (index < 0 || index >= (int)str_obj->value.length())
                         {
@@ -236,9 +238,10 @@ namespace jspp
                             return str_obj->value;
                         }
                         int targetLength = 0;
-                        if (args[0].type() == typeid(int))
+                        auto unwrapped_val = jspp::Convert::unwrap_number(args[0]);
+                        if (unwrapped_val.type() == typeid(int))
                         {
-                            targetLength = std::any_cast<int>(args[0]);
+                            targetLength = std::any_cast<int>(unwrapped_val);
                         }
                         std::string padString = " ";
                         if (args.size() > 1)
@@ -250,10 +253,6 @@ namespace jspp
                             return str_obj->value;
                         }
                         std::string result = str_obj->value;
-                        if ((int)result.length() >= targetLength)
-                        {
-                            return result;
-                        }
                         size_t padLen = targetLength - result.length();
                         for (size_t i = 0; i < padLen; ++i)
                         {
@@ -272,9 +271,10 @@ namespace jspp
                             return str_obj->value;
                         }
                         int targetLength = 0;
-                        if (args[0].type() == typeid(int))
+                        auto unwrapped_val = jspp::Convert::unwrap_number(args[0]);
+                        if (unwrapped_val.type() == typeid(int))
                         {
-                            targetLength = std::any_cast<int>(args[0]);
+                            targetLength = std::any_cast<int>(unwrapped_val);
                         }
                         std::string padString = " ";
                         if (args.size() > 1)
@@ -286,10 +286,6 @@ namespace jspp
                             return str_obj->value;
                         }
                         std::string result = str_obj->value;
-                        if ((int)result.length() >= targetLength)
-                        {
-                            return result;
-                        }
                         size_t padLen = targetLength - result.length();
                         std::string padding = "";
                         for (size_t i = 0; i < padLen; ++i)
@@ -309,9 +305,10 @@ namespace jspp
                             return "";
                         }
                         int count = 0;
-                        if (args[0].type() == typeid(int))
+                        auto unwrapped_val = jspp::Convert::unwrap_number(args[0]);
+                        if (unwrapped_val.type() == typeid(int))
                         {
-                            count = std::any_cast<int>(args[0]);
+                            count = std::any_cast<int>(unwrapped_val);
                         }
                         if (count < 0)
                         {
@@ -372,14 +369,22 @@ namespace jspp
                     [str_obj](const std::vector<JsValue> &args) mutable -> jspp::JsValue
                     {
                         int start = 0;
-                        if (!args.empty() && args[0].type() == typeid(int))
+                        if (!args.empty())
                         {
-                            start = std::any_cast<int>(args[0]);
+                            auto unwrapped_val = jspp::Convert::unwrap_number(args[0]);
+                            if (unwrapped_val.type() == typeid(int))
+                            {
+                                start = std::any_cast<int>(unwrapped_val);
+                            }
                         }
                         int end = str_obj->value.length();
-                        if (args.size() > 1 && args[1].type() == typeid(int))
+                        if (args.size() > 1)
                         {
-                            end = std::any_cast<int>(args[1]);
+                            auto unwrapped_val = jspp::Convert::unwrap_number(args[1]);
+                            if (unwrapped_val.type() == typeid(int))
+                            {
+                                end = std::any_cast<int>(unwrapped_val);
+                            }
                         }
                         if (start < 0)
                         {
@@ -449,14 +454,22 @@ namespace jspp
                     [str_obj](const std::vector<JsValue> &args) mutable -> jspp::JsValue
                     {
                         int start = 0;
-                        if (!args.empty() && args[0].type() == typeid(int))
+                        if (!args.empty())
                         {
-                            start = std::any_cast<int>(args[0]);
+                            auto unwrapped_val = jspp::Convert::unwrap_number(args[0]);
+                            if (unwrapped_val.type() == typeid(int))
+                            {
+                                start = std::any_cast<int>(unwrapped_val);
+                            }
                         }
                         int end = str_obj->value.length();
-                        if (args.size() > 1 && args[1].type() == typeid(int))
+                        if (args.size() > 1)
                         {
-                            end = std::any_cast<int>(args[1]);
+                            auto unwrapped_val = jspp::Convert::unwrap_number(args[1]);
+                            if (unwrapped_val.type() == typeid(int))
+                            {
+                                end = std::any_cast<int>(unwrapped_val);
+                            }
                         }
                         if (start > end)
                         {
