@@ -2,7 +2,7 @@ import ts from "typescript";
 import { Scope } from "../../analysis/scope";
 import { CodeGenerator } from ".";
 
-const BUILTIN_OBJECTS = new Set(["console"]);
+const BUILTIN_OBJECTS = new Set(["console", "Symbol"]);
 
 export function isBuiltinObject(
     this: CodeGenerator,

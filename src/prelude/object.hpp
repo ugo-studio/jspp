@@ -4,6 +4,7 @@
 #include "prototype.hpp"
 #include "convert.hpp"
 #include "exception.hpp"
+#include "well_known_symbols.hpp"
 
 namespace jspp
 {
@@ -81,6 +82,31 @@ namespace jspp
                                                                 }
                                                                 array->items.resize(new_length, undefined);
                                                                 return val; })));
+
+            Prototype::set_data_property(
+                array->prototype,
+                jspp::WellKnownSymbols::iterator,
+                Object::make_function([array](const std::vector<JsValue>&) -> jspp::JsValue {
+                    auto index = std::make_shared<size_t>(0);
+                    return Object::make_object({
+                        {"next", Object::make_function([array, index](const std::vector<JsValue>&) -> jspp::JsValue {
+                            if (*index < array->items.size()) {
+                                auto result = Object::make_object({
+                                    {"value", array->items[*index]},
+                                    {"done", Object::make_boolean(false)}
+                                });
+                                (*index)++;
+                                return result;
+                            } else {
+                                return Object::make_object({
+                                    {"value", undefined},
+                                    {"done", Object::make_boolean(true)}
+                                });
+                            }
+                        })}
+                    });
+                })
+            );
             // return object shared pointer
             return array;
         }

@@ -8,3 +8,4 @@
 #include "access.hpp"
 #include "operators.hpp"
 #include "library/console.hpp"
+#include "library/symbol.hpp"
