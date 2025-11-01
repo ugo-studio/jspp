@@ -5,7 +5,8 @@
 #include "convert.hpp"
 #include "object.hpp"
 
-namespace jspp {
+namespace jspp
+{
     namespace Access
     {
         // Helper function to check for TDZ and deref variables
@@ -158,9 +159,9 @@ namespace jspp {
                         throw std::invalid_argument("not a valid integer index");
                     }
 
-                    if (index < ptr->properties.size())
+                    if (index < ptr->items.size())
                     {
-                        return ptr->properties[index];
+                        return ptr->items[index];
                     }
                     return undefined;
                 }
@@ -308,11 +309,11 @@ namespace jspp {
                         throw std::invalid_argument("not a valid integer index");
                     }
 
-                    if (index >= ptr->properties.size())
+                    if (index >= ptr->items.size())
                     {
-                        ptr->properties.resize(index + 1, undefined);
+                        ptr->items.resize(index + 1, undefined);
                     }
-                    ptr->properties[index] = val;
+                    ptr->items[index] = val;
                     return val;
                 }
                 catch (...)

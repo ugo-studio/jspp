@@ -5,7 +5,8 @@
 #include "convert.hpp"
 #include "exception.hpp"
 
-namespace jspp {
+namespace jspp
+{
     namespace Object
     {
         inline std::shared_ptr<jspp::JsObject> make_object(const std::map<std::string, JsValue> &properties);
@@ -37,10 +38,10 @@ namespace jspp {
                 std::function<jspp::JsValue()>([array]() mutable -> jspp::JsValue
                                                {
                 std::string str = "[";
-                for (size_t i = 0; i < array->properties.size(); ++i)
+                for (size_t i = 0; i < array->items.size(); ++i)
                 {
-                    str += jspp::Convert::to_string(array->properties[i]);
-                    if (i < array->properties.size() - 1)
+                    str += jspp::Convert::to_string(array->items[i]);
+                    if (i < array->items.size() - 1)
                         str += ", ";
                 }
                 str += "]";
@@ -49,7 +50,7 @@ namespace jspp {
                 array->prototype,
                 "length",
                 Prototype::to_handler(std::function<jspp::JsValue()>([array]() mutable -> jspp::JsValue
-                                                                     { return (int)array->properties.size(); })),
+                                                                     { return (int)array->items.size(); })),
                 Prototype::to_handler(std::function<jspp::JsValue(jspp::JsValue)>([array](auto val) mutable -> jspp::JsValue
                                                                                   {
                                                                 size_t new_length = 0;
@@ -76,7 +77,7 @@ namespace jspp {
                                                                     // Other types could be converted to number in a more complete implementation
                                                                     return val;
                                                                 }
-                                                                array->properties.resize(new_length, undefined);
+                                                                array->items.resize(new_length, undefined);
                                                                 return val; })));
             // return object shared pointer
             return array;

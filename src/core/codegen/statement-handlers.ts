@@ -24,8 +24,7 @@ export function visitSourceFile(
         if (funcName && !hoistedSymbols.has(funcName)) {
             hoistedSymbols.add(funcName);
             code +=
-                `${this.indent()}auto ${funcName} = std::make_shared<jspp::JsValue>(undefined);
-`;
+                `${this.indent()}auto ${funcName} = std::make_shared<jspp::JsValue>(undefined);\n`;
         }
     });
 
@@ -41,8 +40,7 @@ export function visitSourceFile(
                 0;
         const initializer = isLetOrConst ? "jspp::uninitialized" : "undefined";
         code +=
-            `${this.indent()}auto ${name} = std::make_shared<jspp::JsValue>(${initializer});
-`;
+            `${this.indent()}auto ${name} = std::make_shared<jspp::JsValue>(${initializer});\n`;
     });
 
     // 2. Assign all hoisted functions first
@@ -50,8 +48,7 @@ export function visitSourceFile(
         const funcName = stmt.name?.getText();
         if (funcName) {
             const lambda = this.generateLambda(stmt, true);
-            code += `${this.indent()}*${funcName} = ${lambda};
-`;
+            code += `${this.indent()}*${funcName} = ${lambda};\n`;
         }
     });
 
@@ -72,8 +69,7 @@ export function visitSourceFile(
                 contextForVisit,
             );
             if (assignments) {
-                code += `${this.indent()}${assignments};
-`;
+                code += `${this.indent()}${assignments};\n`;
             }
         } else {
             code += this.visit(stmt, context);
@@ -105,8 +101,7 @@ export function visitBlock(
         if (funcName && !hoistedSymbols.has(funcName)) {
             hoistedSymbols.add(funcName);
             code +=
-                `${this.indent()}auto ${funcName} = std::make_shared<jspp::JsValue>(undefined);
-`;
+                `${this.indent()}auto ${funcName} = std::make_shared<jspp::JsValue>(undefined);\n`;
         }
     });
 
@@ -122,8 +117,7 @@ export function visitBlock(
                 0;
         const initializer = isLetOrConst ? "jspp::uninitialized" : "undefined";
         code +=
-            `${this.indent()}auto ${name} = std::make_shared<jspp::JsValue>(${initializer});
-`;
+            `${this.indent()}auto ${name} = std::make_shared<jspp::JsValue>(${initializer});\n`;
     });
 
     // 2. Assign all hoisted functions first
@@ -131,8 +125,7 @@ export function visitBlock(
         const funcName = stmt.name?.getText();
         if (funcName) {
             const lambda = this.generateLambda(stmt, true);
-            code += `${this.indent()}*${funcName} = ${lambda};
-`;
+            code += `${this.indent()}*${funcName} = ${lambda};\n`;
         }
     });
 
@@ -153,8 +146,7 @@ export function visitBlock(
                 contextForVisit,
             );
             if (assignments) {
-                code += `${this.indent()}${assignments};
-`;
+                code += `${this.indent()}${assignments};\n`;
             }
         } else {
             code += this.visit(stmt, context);
@@ -164,14 +156,12 @@ export function visitBlock(
     if (context.isFunctionBody) {
         const lastStatement = block.statements[block.statements.length - 1];
         if (!lastStatement || !ts.isReturnStatement(lastStatement)) {
-            code += `${this.indent()}return undefined;
-`;
+            code += `${this.indent()}return undefined;\n`;
         }
     }
 
     this.indentationLevel--;
-    code += `${this.indent()}}
-`;
+    code += `${this.indent()}}\n`;
     return code;
 }
 
@@ -266,8 +256,7 @@ export function visitForInStatement(
             varName = decl.name.getText();
             // Declare the shared_ptr before the loop
             code +=
-                `${this.indent()}auto ${varName} = std::make_shared<jspp::JsValue>(undefined);
-`;
+                `${this.indent()}auto ${varName} = std::make_shared<jspp::JsValue>(undefined);\n`;
         }
     } else if (ts.isIdentifier(forIn.initializer)) {
         varName = forIn.initializer.getText();
@@ -287,21 +276,17 @@ export function visitForInStatement(
 
     const keysVar = this.generateUniqueName("__keys_", new Set());
     code +=
-        `${this.indent()}{ std::vector<std::string> ${keysVar} = jspp::Access::get_object_keys(${derefExpr});
-`;
-    code += `${this.indent()}for (const auto& ${varName}_str : ${keysVar}) {
-`;
+        `${this.indent()}{ std::vector<std::string> ${keysVar} = jspp::Access::get_object_keys(${derefExpr});\n`;
+    code += `${this.indent()}for (const auto& ${varName}_str : ${keysVar}) {\n`;
     this.indentationLevel++;
     code +=
-        `${this.indent()}*${varName} = jspp::Object::make_string(${varName}_str);
-`;
+        `${this.indent()}*${varName} = jspp::Object::make_string(${varName}_str);\n`;
     code += this.visit(forIn.statement, {
         ...context,
         isFunctionBody: false,
     });
     this.indentationLevel--;
-    code += `${this.indent()}}}
-`;
+    code += `${this.indent()}}}\n`;
     this.indentationLevel--; // Exit the scope for the for-in loop
     return code;
 }
@@ -323,8 +308,7 @@ export function visitForOfStatement(
             varName = decl.name.getText();
             // Declare the shared_ptr before the loop
             code +=
-                `${this.indent()}auto ${varName} = std::make_shared<jspp::JsValue>(undefined);
-`;
+                `${this.indent()}auto ${varName} = std::make_shared<jspp::JsValue>(undefined);\n`;
         }
     } else if (ts.isIdentifier(forOf.initializer)) {
         varName = forOf.initializer.getText();
@@ -339,21 +323,17 @@ export function visitForOfStatement(
     const arrayPtr = this.generateUniqueName("__array_ptr_", new Set());
 
     code +=
-        `${this.indent()}{ auto ${arrayPtr} = std::any_cast<std::shared_ptr<jspp::JsArray>>(${derefIterable});
-`;
+        `${this.indent()}{ auto ${arrayPtr} = std::any_cast<std::shared_ptr<jspp::JsArray>>(${derefIterable});\n`;
     code +=
-        `${this.indent()}for (const auto& ${varName}_val : ${arrayPtr}->properties) {
-`;
+        `${this.indent()}for (const auto& ${varName}_val : ${arrayPtr}->items) {\n`;
     this.indentationLevel++;
-    code += `${this.indent()}*${varName} = ${varName}_val;
-`;
+    code += `${this.indent()}*${varName} = ${varName}_val;\n`;
     code += this.visit(forOf.statement, {
         ...context,
         isFunctionBody: false,
     });
     this.indentationLevel--;
-    code += `${this.indent()}}}
-`;
+    code += `${this.indent()}}}\n`;
     this.indentationLevel--; // Exit the scope for the for-of loop
 
     return code;
@@ -438,29 +418,24 @@ export function visitTryStatement(
             declaredSymbols,
         );
 
-        let code = `${this.indent()}{
-`;
+        let code = `${this.indent()}{\n`;
         this.indentationLevel++;
 
-        code += `${this.indent()}jspp::JsValue ${resultVarName};
-`;
-        code += `${this.indent()}bool ${hasReturnedFlagName} = false;
-`;
+        code += `${this.indent()}jspp::JsValue ${resultVarName};\n`;
+        code += `${this.indent()}bool ${hasReturnedFlagName} = false;\n`;
 
         const finallyBlockCode = this.visit(tryStmt.finallyBlock, {
             ...context,
             isFunctionBody: false,
         });
         code +=
-            `${this.indent()}auto ${finallyLambdaName} = [&]() ${finallyBlockCode.trim()};
-`;
+            `${this.indent()}auto ${finallyLambdaName} = [&]() ${finallyBlockCode.trim()};\n`;
 
-        code += `${this.indent()}try {
-`;
+        code += `${this.indent()}try {\n`;
         this.indentationLevel++;
 
-        code += `${this.indent()}${resultVarName} = ([&]() -> jspp::JsValue {
-`;
+        code +=
+            `${this.indent()}${resultVarName} = ([&]() -> jspp::JsValue {\n`;
         this.indentationLevel++;
 
         const innerContext: VisitContext = {
@@ -470,13 +445,11 @@ export function visitTryStatement(
             hasReturnedFlag: hasReturnedFlagName,
         };
 
-        code += `${this.indent()}try {
-`;
+        code += `${this.indent()}try {\n`;
         this.indentationLevel++;
         code += this.visit(tryStmt.tryBlock, innerContext);
         this.indentationLevel--;
-        code += `${this.indent()}}
-`;
+        code += `${this.indent()}}\n`;
 
         if (tryStmt.catchClause) {
             const exceptionName = this.generateUniqueExceptionName(
@@ -484,52 +457,38 @@ export function visitTryStatement(
             );
             const catchContext = { ...innerContext, exceptionName };
             code +=
-                `${this.indent()}catch (const jspp::JsValue& ${exceptionName}) {
-`;
+                `${this.indent()}catch (const jspp::JsValue& ${exceptionName}) {\n`;
             this.indentationLevel++;
             code += this.visit(tryStmt.catchClause.block, catchContext);
             this.indentationLevel--;
-            code += `${this.indent()}}
-`;
+            code += `${this.indent()}}\n`;
         } else {
-            code += `${this.indent()}catch (...) { throw; }
-`;
+            code += `${this.indent()}catch (...) { throw; }\n`;
         }
 
-        code += `${this.indent()}return undefined;
-`;
+        code += `${this.indent()}return undefined;\n`;
 
         this.indentationLevel--;
-        code += `${this.indent()}})();
-`;
+        code += `${this.indent()}})();\n`;
 
         this.indentationLevel--;
-        code += `${this.indent()}} catch (...) {
-`;
+        code += `${this.indent()}} catch (...) {\n`;
         this.indentationLevel++;
-        code += `${this.indent()}${finallyLambdaName}();
-`;
-        code += `${this.indent()}throw;
-`;
+        code += `${this.indent()}${finallyLambdaName}();\n`;
+        code += `${this.indent()}throw;\n`;
         this.indentationLevel--;
-        code += `${this.indent()}}
-`;
+        code += `${this.indent()}}\n`;
 
-        code += `${this.indent()}${finallyLambdaName}();
-`;
+        code += `${this.indent()}${finallyLambdaName}();\n`;
 
-        code += `${this.indent()}if (${hasReturnedFlagName}) {
-`;
+        code += `${this.indent()}if (${hasReturnedFlagName}) {\n`;
         this.indentationLevel++;
-        code += `${this.indent()}return ${resultVarName};
-`;
+        code += `${this.indent()}return ${resultVarName};\n`;
         this.indentationLevel--;
-        code += `${this.indent()}}
-`;
+        code += `${this.indent()}}\n`;
 
         this.indentationLevel--;
-        code += `${this.indent()}}
-`;
+        code += `${this.indent()}}\n`;
         return code;
     } else {
         const exceptionName = this.generateUniqueExceptionName(
@@ -566,40 +525,32 @@ export function visitCatchClause(
 
     if (catchClause.variableDeclaration) {
         const varName = catchClause.variableDeclaration.name.getText();
-        let code = `{
-`;
+        let code = `{\n`;
         this.indentationLevel++;
-        code += `${this.indent()}{
-`;
+        code += `${this.indent()}{\n`;
         this.indentationLevel++;
 
         // Always create the JS exception variable.
         code +=
-            `${this.indent()}auto ${varName} = std::make_shared<jspp::JsValue>(jspp::Exception::parse_error_from_value(${exceptionName}));
-`;
+            `${this.indent()}auto ${varName} = std::make_shared<jspp::JsValue>(jspp::Exception::parse_error_from_value(${exceptionName}));\n`;
 
         // Shadow the C++ exception variable *only if* the names don't clash.
         if (varName !== exceptionName) {
             code +=
-                `${this.indent()}auto ${exceptionName} = std::make_shared<jspp::JsValue>(undefined);
-`;
+                `${this.indent()}auto ${exceptionName} = std::make_shared<jspp::JsValue>(undefined);\n`;
         }
 
         code += this.visit(catchClause.block, context);
         this.indentationLevel--;
-        code += `${this.indent()}}
-`;
+        code += `${this.indent()}}\n`;
         this.indentationLevel--;
-        code += `${this.indent()}}
-`;
+        code += `${this.indent()}}\n`;
         return code;
     } else {
         // No variable in the catch clause, e.g., `catch { ... }`
-        let code = `{
-`; // Alway create block scope
+        let code = `{\n`; // Alway create block scope
         code += this.visit(catchClause.block, context);
-        code += `${this.indent()}}
-`;
+        code += `${this.indent()}}\n`;
         return code;
     }
 }
@@ -610,15 +561,13 @@ export function visitReturnStatement(
     context: VisitContext,
 ): string {
     if (context.isMainContext) {
-        return `${this.indent()}jspp::Exception::throw_invalid_return_statement();
-`;
+        return `${this.indent()}jspp::Exception::throw_invalid_return_statement();\n`;
     }
 
     const returnStmt = node as ts.ReturnStatement;
 
     if (context.isInsideTryCatchLambda && context.hasReturnedFlag) {
-        let returnCode = `${this.indent()}${context.hasReturnedFlag} = true;
-`;
+        let returnCode = `${this.indent()}${context.hasReturnedFlag} = true;\n`;
         if (returnStmt.expression) {
             const expr = returnStmt.expression;
             const exprText = this.visit(expr, context);
@@ -632,8 +581,7 @@ export function visitReturnStatement(
                     returnCode +=
                         `${this.indent()}jspp::Exception::throw_unresolved_reference(${
                             this.getJsVarName(expr)
-                        });
-`; // THROWS, not returns
+                        });\n`; // THROWS, not returns
                 }
                 if (
                     typeInfo &&
@@ -643,19 +591,15 @@ export function visitReturnStatement(
                     returnCode +=
                         `${this.indent()}return jspp::Access::deref(${exprText}, ${
                             this.getJsVarName(expr)
-                        });
-`;
+                        });\n`;
                 } else {
-                    returnCode += `${this.indent()}return ${exprText};
-`;
+                    returnCode += `${this.indent()}return ${exprText};\n`;
                 }
             } else {
-                returnCode += `${this.indent()}return ${exprText};
-`;
+                returnCode += `${this.indent()}return ${exprText};\n`;
             }
         } else {
-            returnCode += `${this.indent()}return undefined;
-`;
+            returnCode += `${this.indent()}return undefined;\n`;
         }
         return returnCode;
     }
@@ -672,8 +616,7 @@ export function visitReturnStatement(
             if (!typeInfo) {
                 return `${this.indent()}jspp::Exception::throw_unresolved_reference(${
                     this.getJsVarName(expr)
-                });
-`; // THROWS, not returns
+                });\n`; // THROWS, not returns
             }
             if (
                 typeInfo &&
@@ -682,13 +625,10 @@ export function visitReturnStatement(
             ) {
                 return `${this.indent()}return jspp::Access::deref(${exprText}, ${
                     this.getJsVarName(expr)
-                });
-`;
+                });\n`;
             }
         }
-        return `${this.indent()}return ${exprText};
-`;
+        return `${this.indent()}return ${exprText};\n`;
     }
-    return `${this.indent()}return undefined;
-`;
+    return `${this.indent()}return undefined;\n`;
 }
