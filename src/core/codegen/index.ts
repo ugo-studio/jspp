@@ -9,6 +9,7 @@ import {
   getJsVarName,
   getScopeForNode,
   indent,
+  isBuiltinObject,
 } from "./helpers";
 import { visit } from "./visitor";
 
@@ -30,6 +31,7 @@ export class CodeGenerator {
     public indent = indent;
     public escapeString = escapeString;
     public getJsVarName = getJsVarName;
+    public isBuiltinObject = isBuiltinObject;
 
     // function handlers
     public generateLambda = generateLambda;
@@ -59,7 +61,7 @@ export class CodeGenerator {
         mainCode += `  } catch (const jspp::JsValue& e) {\n`;
         mainCode +=
             "    auto error = std::make_shared<jspp::JsValue>(jspp::Exception::parse_error_from_value(e));\n";
-        mainCode += `    console.error(error);\n`;
+        mainCode += `    std::any_cast<std::shared_ptr<jspp::JsFunction>>(jspp::Access::get_property(console, "error"))->call({error});\n`;
         mainCode += `    return 1;\n`;
         mainCode += `  }\n`;
         mainCode += "  return 0;\n}";

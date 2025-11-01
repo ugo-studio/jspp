@@ -77,10 +77,6 @@ export function visitPropertyAccessExpression(
     const exprText = this.visit(propAccess.expression, context);
     const propName = propAccess.name.getText();
 
-    if (exprText === "console") {
-        return `console.${propName}`;
-    }
-
     const scope = this.getScopeForNode(propAccess.expression);
     const typeInfo = ts.isIdentifier(propAccess.expression)
         ? this.typeAnalyzer.scopeManager.lookupFromScope(
@@ -90,7 +86,7 @@ export function visitPropertyAccessExpression(
         : null;
     let finalExpr = "";
 
-    if (ts.isIdentifier(propAccess.expression) && !typeInfo) {
+    if (ts.isIdentifier(propAccess.expression) && !typeInfo && !this.isBuiltinObject(propAccess.expression)) {
         finalExpr = `jspp::Exception::throw_unresolved_reference(${
             this.getJsVarName(
                 propAccess.expression,
@@ -232,7 +228,7 @@ export function visitBinaryExpression(
             (binExpr.left as ts.Identifier).text,
             scope,
         );
-        if (!typeInfo) {
+        if (!typeInfo && !this.isBuiltinObject(binExpr.left as ts.Identifier)) {
             return `jspp::Exception::throw_unresolved_reference(${
                 this.getJsVarName(
                     binExpr.left as ts.Identifier,
@@ -284,14 +280,14 @@ export function visitBinaryExpression(
             })`
             : rightText;
 
-    if (leftIsIdentifier && !leftTypeInfo) {
+    if (leftIsIdentifier && !leftTypeInfo && !this.isBuiltinObject(binExpr.left as ts.Identifier)) {
         return `jspp::Exception::throw_unresolved_reference(${
             this.getJsVarName(
                 binExpr.left as ts.Identifier,
             )
         })`;
     }
-    if (rightIsIdentifier && !rightTypeInfo) {
+    if (rightIsIdentifier && !rightTypeInfo && !this.isBuiltinObject(binExpr.right as ts.Identifier)) {
         return `jspp::Exception::throw_unresolved_reference(${
             this.getJsVarName(
                 binExpr.right as ts.Identifier,
@@ -365,14 +361,6 @@ export function visitCallExpression(
         })
         .join(", ");
 
-    if (
-        ts.isPropertyAccessExpression(callee) &&
-        this.visit(callee.expression, context) === "console"
-    ) {
-        const methodName = callee.name.getText();
-        return `console.${methodName}(${args})`;
-    }
-
     const calleeCode = this.visit(callee, context);
     let derefCallee;
     if (ts.isIdentifier(callee)) {
@@ -381,7 +369,7 @@ export function visitCallExpression(
             callee.text,
             scope,
         );
-        if (!typeInfo) {
+        if (!typeInfo && !this.isBuiltinObject(callee)) {
             return `jspp::Exception::throw_unresolved_reference(${
                 this.getJsVarName(
                     callee,
@@ -437,7 +425,7 @@ export function visitTemplateExpression(
                 expr.text,
                 scope,
             );
-            if (!typeInfo) {
+            if (!typeInfo && !this.isBuiltinObject(expr)) {
                 finalExpr = `jspp::Exception::throw_unresolved_reference(${
                     this.getJsVarName(
                         expr as ts.Identifier,

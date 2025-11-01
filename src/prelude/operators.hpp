@@ -471,34 +471,3 @@ inline std::ostream &operator<<(std::ostream &os, const jspp::JsValue &v)
     os << jspp::Convert::to_string(v);
     return os;
 }
-
-// Basic console API
-struct Console
-{
-    template <typename... Args>
-    Undefined log(Args... args)
-    {
-        ((std::cout << jspp::JsValue(args) << " "), ...);
-        std::cout << std::endl;
-        return undefined;
-    }
-
-    template <typename... Args>
-    Undefined warn(Args... args)
-    {
-        std::cerr << "\033[33m"; // Yellow
-        ((std::cerr << jspp::JsValue(args) << " "), ...);
-        std::cerr << "\033[0m" << std::endl; // Reset
-        return undefined;
-    }
-
-    template <typename... Args>
-    Undefined error(Args... args)
-    {
-        std::cerr << "\033[31m"; // Red
-        ((std::cerr << jspp::JsValue(args) << " "), ...);
-        std::cerr << "\033[0m" << std::endl; // Reset
-        return undefined;
-    }
-};
-inline Console console;

@@ -7,3 +7,4 @@
 #include "object.hpp"
 #include "access.hpp"
 #include "operators.hpp"
+#include "library/console.hpp"

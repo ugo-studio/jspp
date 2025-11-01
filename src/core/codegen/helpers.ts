@@ -2,6 +2,15 @@ import ts from "typescript";
 import { Scope } from "../../analysis/scope";
 import { CodeGenerator } from ".";
 
+const BUILTIN_OBJECTS = new Set(["console"]);
+
+export function isBuiltinObject(
+    this: CodeGenerator,
+    node: ts.Identifier,
+): boolean {
+    return BUILTIN_OBJECTS.has(node.text);
+}
+
 export function getDeclaredSymbols(
     this: CodeGenerator,
     node: ts.Node,
@@ -77,7 +86,7 @@ export function indent(this: CodeGenerator) {
 export function escapeString(this: CodeGenerator, str: string): string {
     return str
         .replace(/\\/g, "\\\\")
-        .replace(/"/g, '\"')
+        .replace(/"/g, '"')
         .replace(/\n/g, "\\n")
         .replace(/\r/g, "\\r")
         .replace(/\t/g, "\\t");
