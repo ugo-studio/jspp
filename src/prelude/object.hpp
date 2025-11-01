@@ -538,18 +538,18 @@ namespace jspp
             return num_obj;
         }
 
-        inline std::shared_ptr<jspp::JsBoolean> make_boolean(const bool &value)
-        {
-            auto bool_obj = std::make_shared<jspp::JsBoolean>(jspp::JsBoolean{value, {}});
-            // Define and set prototype methods
-            Prototype::set_data_property(
-                bool_obj->prototype,
-                "toString",
-                std::function<jspp::JsValue()>([bool_obj]() mutable -> jspp::JsValue
-                                               { return jspp::Convert::to_string(bool_obj->value); }));
-            // return object shared pointer
-            return bool_obj;
-        }
+        // inline std::shared_ptr<jspp::JsBoolean> make_boolean(const bool &value)
+        // {
+        //     auto bool_obj = std::make_shared<jspp::JsBoolean>(jspp::JsBoolean{value, {}});
+        //     // Define and set prototype methods
+        //     Prototype::set_data_property(
+        //         bool_obj->prototype,
+        //         "toString",
+        //         std::function<jspp::JsValue()>([bool_obj]() mutable -> jspp::JsValue
+        //                                        { return jspp::Convert::to_string(bool_obj->value); }));
+        //     // return object shared pointer
+        //     return bool_obj;
+        // }
 
     }
 }
