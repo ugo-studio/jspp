@@ -42,8 +42,8 @@ namespace jspp
     struct JsArray;
     struct JsString;
     struct JsFunction;
-    struct JsNumber;
-    struct JsBoolean;
+    // struct JsNumber;
+    // struct JsBoolean;
 
     // Object and array prototypes
     struct DataDescriptor
@@ -89,18 +89,18 @@ namespace jspp
         std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
     };
 
-    // Numbers
-    struct JsNumber
-    {
-        std::variant<int, double> value;
-        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
-    };
+    // // Numbers
+    // struct JsNumber
+    // {
+    //     std::variant<int, double> value;
+    //     std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
+    // };
 
-    // Booleans
-    struct JsBoolean
-    {
-        bool value;
-        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
-    };
+    // // Booleans
+    // struct JsBoolean
+    // {
+    //     bool value;
+    //     std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
+    // };
 
 }
