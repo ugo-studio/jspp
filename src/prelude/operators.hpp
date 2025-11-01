@@ -9,42 +9,43 @@
 // Define operators for JsValue
 inline bool jspp::is_truthy(const jspp::JsValue &val)
 {
-    if (!val.has_value())
+    auto actual_val = jspp::Convert::unwrap_boolean(val);
+    if (!actual_val.has_value())
         return false; // undefined
-    if (val.type() == typeid(Undefined))
+    if (actual_val.type() == typeid(Undefined))
         return false;
-    if (val.type() == typeid(Null))
+    if (actual_val.type() == typeid(Null))
         return false;
-    if (val.type() == typeid(bool))
-        return std::any_cast<bool>(val);
-    if (val.type() == typeid(int))
-        return std::any_cast<int>(val) != 0;
-    if (val.type() == typeid(double))
-        return std::any_cast<double>(val) != 0.0;
-    if (val.type() == typeid(std::string))
-        return !std::any_cast<std::string>(val).empty();
-    if (val.type() == typeid(const char *))
-        return std::any_cast<const char *>(val)[0] != '\0';
-    if (val.type() == typeid(jspp::Uninitialized))
+    if (actual_val.type() == typeid(bool))
+        return std::any_cast<bool>(actual_val);
+    if (actual_val.type() == typeid(int))
+        return std::any_cast<int>(actual_val) != 0;
+    if (actual_val.type() == typeid(double))
+        return std::any_cast<double>(actual_val) != 0.0;
+    if (actual_val.type() == typeid(std::string))
+        return !std::any_cast<std::string>(actual_val).empty();
+    if (actual_val.type() == typeid(const char *))
+        return std::any_cast<const char *>(actual_val)[0] != '\0';
+    if (actual_val.type() == typeid(jspp::Uninitialized))
         return false;
-    if (val.type() == typeid(std::shared_ptr<jspp::JsObject>))
+    if (actual_val.type() == typeid(std::shared_ptr<jspp::JsObject>))
     {
-        return std::any_cast<std::shared_ptr<jspp::JsObject>>(val) != nullptr;
+        return std::any_cast<std::shared_ptr<jspp::JsObject>>(actual_val) != nullptr;
     }
-    if (val.type() == typeid(std::shared_ptr<jspp::JsArray>))
+    if (actual_val.type() == typeid(std::shared_ptr<jspp::JsArray>))
     {
-        return std::any_cast<std::shared_ptr<jspp::JsArray>>(val) != nullptr;
+        return std::any_cast<std::shared_ptr<jspp::JsArray>>(actual_val) != nullptr;
     }
-    if (val.type() == typeid(std::shared_ptr<jspp::JsString>))
+    if (actual_val.type() == typeid(std::shared_ptr<jspp::JsString>))
     {
-        auto s = std::any_cast<std::shared_ptr<jspp::JsString>>(val);
+        auto s = std::any_cast<std::shared_ptr<jspp::JsString>>(actual_val);
         return s && !s->value.empty();
     }
-    if (val.type() == typeid(std::shared_ptr<jspp::JsFunction>))
+    if (actual_val.type() == typeid(std::shared_ptr<jspp::JsFunction>))
     {
-        return std::any_cast<std::shared_ptr<jspp::JsFunction>>(val) != nullptr;
+        return std::any_cast<std::shared_ptr<jspp::JsFunction>>(actual_val) != nullptr;
     }
-    if (val.type() == typeid(std::function<jspp::JsValue(const std::vector<jspp::JsValue> &)>))
+    if (actual_val.type() == typeid(std::function<jspp::JsValue(const std::vector<jspp::JsValue> &)>))
     {
         return true;
     }
@@ -54,8 +55,8 @@ inline bool jspp::is_truthy(const jspp::JsValue &val)
 inline bool jspp::strict_equals(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
 {
     // Strict equality (===)
-    auto actual_lhs = jspp::Convert::unwrap_number(lhs);
-    auto actual_rhs = jspp::Convert::unwrap_number(rhs);
+    auto actual_lhs = jspp::Convert::unwrap_number(jspp::Convert::unwrap_boolean(lhs));
+    auto actual_rhs = jspp::Convert::unwrap_number(jspp::Convert::unwrap_boolean(rhs));
 
     if (actual_lhs.type() == typeid(int) && actual_rhs.type() == typeid(double))
         return std::any_cast<int>(actual_lhs) == std::any_cast<double>(actual_rhs);
@@ -105,8 +106,8 @@ inline bool jspp::strict_equals(const jspp::JsValue &lhs, const jspp::JsValue &r
 inline bool jspp::equals(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
 {
     // Abstract/Loose Equality (==)
-    auto actual_lhs = jspp::Convert::unwrap_number(lhs);
-    auto actual_rhs = jspp::Convert::unwrap_number(rhs);
+    auto actual_lhs = jspp::Convert::unwrap_number(jspp::Convert::unwrap_boolean(lhs));
+    auto actual_rhs = jspp::Convert::unwrap_number(jspp::Convert::unwrap_boolean(rhs));
     if (actual_lhs.type() == actual_rhs.type())
     {
         return strict_equals(actual_lhs, actual_rhs); // Use strict equality if types are same

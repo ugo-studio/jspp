@@ -25,6 +25,16 @@ namespace jspp
             return val;
         }
 
+        inline JsValue unwrap_boolean(const JsValue &val)
+        {
+            if (val.type() == typeid(std::shared_ptr<jspp::JsBoolean>))
+            {
+                auto ptr = std::any_cast<std::shared_ptr<jspp::JsBoolean>>(val);
+                return ptr->value;
+            }
+            return val;
+        }
+
         inline std::string to_string(const JsValue &val)
         {
             if (!val.has_value())
@@ -158,6 +168,11 @@ namespace jspp
                 {
                     return jspp::Convert::to_string(std::get<double>(ptr->value));
                 }
+            }
+            if (val.type() == typeid(std::shared_ptr<jspp::JsBoolean>))
+            {
+                auto ptr = std::any_cast<std::shared_ptr<jspp::JsBoolean>>(val);
+                return jspp::Convert::to_string(ptr->value);
             }
             return "[Object Object]";
         }

@@ -42,7 +42,7 @@ namespace jspp
     struct JsString;
     struct JsFunction;
     struct JsNumber;
-    // struct JsBoolean;
+    struct JsBoolean;
 
     // Object and array prototypes
     struct DataDescriptor
@@ -95,12 +95,12 @@ namespace jspp
         std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
     };
 
-    // // Booleans
-    // struct JsBoolean
-    // {
-    //     bool value;
-    //     std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
-    // };
+    // Booleans
+    struct JsBoolean
+    {
+        bool value;
+        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
+    };
 
     // Operators
     inline bool is_truthy(const JsValue &val);

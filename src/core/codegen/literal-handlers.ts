@@ -31,11 +31,11 @@ export function visitNoSubstitutionTemplateLiteral(
 }
 
 export function visitTrueKeyword(): string {
-    return "true";
+    return "jspp::Object::make_boolean(true)";
 }
 
 export function visitFalseKeyword(): string {
-    return "false";
+    return "jspp::Object::make_boolean(false)";
 }
 
 export function visitUndefinedKeyword(): string {

@@ -208,6 +208,56 @@ namespace jspp
                 }
                 return undefined;
             }
+            if (obj.type() == typeid(std::shared_ptr<JsNumber>))
+            {
+                auto &ptr = std::any_cast<const std::shared_ptr<JsNumber> &>(obj);
+                if (!ptr)
+                    throw Exception::make_error_with_name("Cannot read properties of null", "TypeError");
+                const auto key_str = Convert::to_string(key);
+                const auto proto_it = ptr->prototype.find(key_str);
+                if (proto_it != ptr->prototype.end())
+                {
+                    const auto &prop = proto_it->second;
+                    if (std::holds_alternative<DataDescriptor>(prop))
+                    {
+                        return std::get<DataDescriptor>(prop).value;
+                    }
+                    else if (std::holds_alternative<AccessorDescriptor>(prop))
+                    {
+                        const auto &accessor = std::get<AccessorDescriptor>(prop);
+                        if (std::holds_alternative<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.get))
+                        {
+                            return std::get<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.get)({});
+                        }
+                    }
+                }
+                return undefined;
+            }
+            if (obj.type() == typeid(std::shared_ptr<JsBoolean>))
+            {
+                auto &ptr = std::any_cast<const std::shared_ptr<JsBoolean> &>(obj);
+                if (!ptr)
+                    throw Exception::make_error_with_name("Cannot read properties of null", "TypeError");
+                const auto key_str = Convert::to_string(key);
+                const auto proto_it = ptr->prototype.find(key_str);
+                if (proto_it != ptr->prototype.end())
+                {
+                    const auto &prop = proto_it->second;
+                    if (std::holds_alternative<DataDescriptor>(prop))
+                    {
+                        return std::get<DataDescriptor>(prop).value;
+                    }
+                    else if (std::holds_alternative<AccessorDescriptor>(prop))
+                    {
+                        const auto &accessor = std::get<AccessorDescriptor>(prop);
+                        if (std::holds_alternative<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.get))
+                        {
+                            return std::get<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.get)({});
+                        }
+                    }
+                }
+                return undefined;
+            }
             throw Exception::make_error_with_name("Cannot read properties of non-object type", "TypeError");
         }
 
@@ -314,8 +364,26 @@ namespace jspp
                 ptr->prototype[key_str] = val;
                 return val;
             }
+            if (obj.type() == typeid(std::shared_ptr<JsNumber>))
+            {
+                auto &ptr = std::any_cast<const std::shared_ptr<JsNumber> &>(obj);
+                if (!ptr)
+                    throw Exception::make_error_with_name("Cannot set properties of null", "TypeError");
+                const auto key_str = Convert::to_string(key);
+                ptr->prototype[key_str] = val;
+                return val;
+            }
+            if (obj.type() == typeid(std::shared_ptr<JsBoolean>))
+            {
+                auto &ptr = std::any_cast<const std::shared_ptr<JsBoolean> &>(obj);
+                if (!ptr)
+                    throw Exception::make_error_with_name("Cannot set properties of null", "TypeError");
+                const auto key_str = Convert::to_string(key);
+                ptr->prototype[key_str] = val;
+                return val;
+            }
             throw jspp::Exception::make_error_with_name("Cannot set properties of non-object type", "TypeError");
         }
 
-        }
+    }
 }
