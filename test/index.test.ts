@@ -68,7 +68,7 @@ const cases: { name: string; expected: string[] }[] = [
     { name: "void", expected: ["--- Void ---", "hello", "undefined"] },
     {
         name: "log-function",
-        expected: ["--- Log function ---", "function(){}", "function(){}"],
+        expected: ["--- Log function ---", "function () { [native code] }", "function () { [native code] }"],
     },
     {
         name: "recursion",

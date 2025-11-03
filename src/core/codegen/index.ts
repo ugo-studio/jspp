@@ -44,7 +44,7 @@ export class CodeGenerator {
 
         const declarations = `#include "index.hpp"\n\n`;
 
-        let containerCode = `jspp::JsValue ${CONTAINER_FUNCTION_NAME}() {\n`;
+        let containerCode = `jspp::AnyValue ${CONTAINER_FUNCTION_NAME}() {\n`;
         this.indentationLevel++;
         containerCode += this.visit(ast, {
             isMainContext: true,
@@ -58,9 +58,9 @@ export class CodeGenerator {
         let mainCode = "int main() {\n";
         mainCode += `  try {\n`;
         mainCode += `    ${CONTAINER_FUNCTION_NAME}();\n`;
-        mainCode += `  } catch (const jspp::JsValue& e) {\n`;
+        mainCode += `  } catch (const jspp::AnyValue& e) {\n`;
         mainCode +=
-            "    auto error = std::make_shared<jspp::JsValue>(jspp::Exception::parse_error_from_value(e));\n";
+            "    auto error = std::make_shared<jspp::AnyValue>(jspp::Exception::parse_error_from_value(e));\n";
         mainCode += `    std::any_cast<std::shared_ptr<jspp::JsFunction>>(jspp::Access::get_property(console, "error"))->call({error});\n`;
         mainCode += `    return 1;\n`;
         mainCode += `  }\n`;

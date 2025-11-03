@@ -6,8 +6,8 @@
 #include "object.hpp"
 #include <cmath> // Required for std::pow
 
-// Define operators for JsValue
-inline bool jspp::is_truthy(const jspp::JsValue &val)
+// Define operators for AnyValue
+inline bool jspp::is_truthy(const jspp::AnyValue &val)
 {
     auto actual_val = jspp::Convert::unwrap_boolean(val);
     if (!actual_val.has_value())
@@ -45,14 +45,14 @@ inline bool jspp::is_truthy(const jspp::JsValue &val)
     {
         return std::any_cast<std::shared_ptr<jspp::JsFunction>>(actual_val) != nullptr;
     }
-    if (actual_val.type() == typeid(std::function<jspp::JsValue(const std::vector<jspp::JsValue> &)>))
+    if (actual_val.type() == typeid(std::function<jspp::AnyValue(const std::vector<jspp::AnyValue> &)>))
     {
         return true;
     }
     return true;
 }
 
-inline bool jspp::strict_equals(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline bool jspp::strict_equals(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     // Strict equality (===)
     auto actual_lhs = jspp::Convert::unwrap_number(jspp::Convert::unwrap_boolean(lhs));
@@ -103,7 +103,7 @@ inline bool jspp::strict_equals(const jspp::JsValue &lhs, const jspp::JsValue &r
     return false;
 }
 
-inline bool jspp::equals(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline bool jspp::equals(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     // Abstract/Loose Equality (==)
     auto actual_lhs = jspp::Convert::unwrap_number(jspp::Convert::unwrap_boolean(lhs));
@@ -153,27 +153,27 @@ inline bool jspp::equals(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
     // boolean == any
     if (actual_lhs.type() == typeid(bool))
     {
-        return equals(jspp::JsValue(std::any_cast<bool>(actual_lhs) ? 1 : 0), actual_rhs);
+        return equals(jspp::AnyValue(std::any_cast<bool>(actual_lhs) ? 1 : 0), actual_rhs);
     }
     if (actual_rhs.type() == typeid(bool))
     {
-        return equals(actual_lhs, jspp::JsValue(std::any_cast<bool>(actual_rhs) ? 1 : 0));
+        return equals(actual_lhs, jspp::AnyValue(std::any_cast<bool>(actual_rhs) ? 1 : 0));
     }
     // object == primitive
     if ((actual_lhs.type() == typeid(std::shared_ptr<jspp::JsObject>) || actual_lhs.type() == typeid(std::shared_ptr<jspp::JsArray>) || actual_lhs.type() == typeid(std::shared_ptr<jspp::JsString>) || actual_lhs.type() == typeid(std::shared_ptr<jspp::JsFunction>)) &&
         (actual_rhs.type() != typeid(std::shared_ptr<jspp::JsObject>) && actual_rhs.type() != typeid(std::shared_ptr<jspp::JsArray>) && actual_rhs.type() != typeid(std::shared_ptr<jspp::JsString>) && actual_rhs.type() != typeid(std::shared_ptr<jspp::JsFunction>)))
     {
-        return equals(jspp::JsValue(jspp::Convert::to_string(actual_lhs)), actual_rhs);
+        return equals(jspp::AnyValue(jspp::Convert::to_string(actual_lhs)), actual_rhs);
     }
     if ((actual_rhs.type() == typeid(std::shared_ptr<jspp::JsObject>) || actual_rhs.type() == typeid(std::shared_ptr<jspp::JsArray>) || actual_rhs.type() == typeid(std::shared_ptr<jspp::JsString>) || actual_rhs.type() == typeid(std::shared_ptr<jspp::JsFunction>)) &&
         (actual_lhs.type() != typeid(std::shared_ptr<jspp::JsObject>) && actual_lhs.type() != typeid(std::shared_ptr<jspp::JsArray>) && actual_lhs.type() != typeid(std::shared_ptr<jspp::JsString>) && actual_lhs.type() != typeid(std::shared_ptr<jspp::JsFunction>)))
     {
-        return equals(actual_lhs, jspp::JsValue(jspp::Convert::to_string(actual_rhs)));
+        return equals(actual_lhs, jspp::AnyValue(jspp::Convert::to_string(actual_rhs)));
     }
     return false;
 }
 
-inline jspp::JsValue operator+(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline jspp::AnyValue operator+(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     auto actual_lhs = jspp::Convert::unwrap_number(lhs);
     auto actual_rhs = jspp::Convert::unwrap_number(rhs);
@@ -191,7 +191,7 @@ inline jspp::JsValue operator+(const jspp::JsValue &lhs, const jspp::JsValue &rh
     }
     return undefined;
 }
-inline jspp::JsValue operator*(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline jspp::AnyValue operator*(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     auto actual_lhs = jspp::Convert::unwrap_number(lhs);
     auto actual_rhs = jspp::Convert::unwrap_number(rhs);
@@ -205,7 +205,7 @@ inline jspp::JsValue operator*(const jspp::JsValue &lhs, const jspp::JsValue &rh
         return jspp::Object::make_number(std::any_cast<double>(actual_lhs) * std::any_cast<int>(actual_rhs));
     return undefined;
 }
-inline jspp::JsValue operator-(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline jspp::AnyValue operator-(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     auto actual_lhs = jspp::Convert::unwrap_number(lhs);
     auto actual_rhs = jspp::Convert::unwrap_number(rhs);
@@ -219,7 +219,7 @@ inline jspp::JsValue operator-(const jspp::JsValue &lhs, const jspp::JsValue &rh
         return jspp::Object::make_number(std::any_cast<double>(actual_lhs) - std::any_cast<int>(actual_rhs));
     return undefined;
 }
-inline bool operator<=(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline bool operator<=(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     auto actual_lhs = jspp::Convert::unwrap_number(lhs);
     auto actual_rhs = jspp::Convert::unwrap_number(rhs);
@@ -233,7 +233,7 @@ inline bool operator<=(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
         return std::any_cast<double>(actual_lhs) <= std::any_cast<int>(actual_rhs);
     return false;
 }
-inline bool operator>(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline bool operator>(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     auto actual_lhs = jspp::Convert::unwrap_number(lhs);
     auto actual_rhs = jspp::Convert::unwrap_number(rhs);
@@ -247,7 +247,7 @@ inline bool operator>(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
         return std::any_cast<double>(actual_lhs) > std::any_cast<int>(actual_rhs);
     return false;
 }
-inline bool operator<(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline bool operator<(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     auto actual_lhs = jspp::Convert::unwrap_number(lhs);
     auto actual_rhs = jspp::Convert::unwrap_number(rhs);
@@ -262,7 +262,7 @@ inline bool operator<(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
     return false;
 }
 
-inline jspp::JsValue operator/(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline jspp::AnyValue operator/(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     auto actual_lhs = jspp::Convert::unwrap_number(lhs);
     auto actual_rhs = jspp::Convert::unwrap_number(rhs);
@@ -277,7 +277,7 @@ inline jspp::JsValue operator/(const jspp::JsValue &lhs, const jspp::JsValue &rh
     return undefined;
 }
 
-inline jspp::JsValue operator%(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline jspp::AnyValue operator%(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     auto actual_lhs = jspp::Convert::unwrap_number(lhs);
     auto actual_rhs = jspp::Convert::unwrap_number(rhs);
@@ -292,7 +292,7 @@ inline jspp::JsValue operator%(const jspp::JsValue &lhs, const jspp::JsValue &rh
     return undefined;
 }
 
-inline jspp::JsValue operator^(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline jspp::AnyValue operator^(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     auto actual_lhs = jspp::Convert::unwrap_number(lhs);
     auto actual_rhs = jspp::Convert::unwrap_number(rhs);
@@ -301,17 +301,17 @@ inline jspp::JsValue operator^(const jspp::JsValue &lhs, const jspp::JsValue &rh
     return undefined;
 }
 
-inline bool operator>=(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline bool operator>=(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     return (lhs > rhs) || jspp::equals(lhs, rhs);
 }
 
-inline bool operator!=(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline bool operator!=(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     return !jspp::equals(lhs, rhs);
 }
 
-inline jspp::JsValue operator&(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline jspp::AnyValue operator&(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     auto actual_lhs = jspp::Convert::unwrap_number(lhs);
     auto actual_rhs = jspp::Convert::unwrap_number(rhs);
@@ -320,7 +320,7 @@ inline jspp::JsValue operator&(const jspp::JsValue &lhs, const jspp::JsValue &rh
     return undefined;
 }
 
-inline jspp::JsValue operator|(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline jspp::AnyValue operator|(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     auto actual_lhs = jspp::Convert::unwrap_number(lhs);
     auto actual_rhs = jspp::Convert::unwrap_number(rhs);
@@ -329,7 +329,7 @@ inline jspp::JsValue operator|(const jspp::JsValue &lhs, const jspp::JsValue &rh
     return undefined;
 }
 
-inline jspp::JsValue operator~(const jspp::JsValue &val)
+inline jspp::AnyValue operator~(const jspp::AnyValue &val)
 {
     auto actual_val = jspp::Convert::unwrap_number(val);
     if (actual_val.type() == typeid(int))
@@ -337,7 +337,7 @@ inline jspp::JsValue operator~(const jspp::JsValue &val)
     return undefined;
 }
 
-inline jspp::JsValue operator-(const jspp::JsValue &val)
+inline jspp::AnyValue operator-(const jspp::AnyValue &val)
 {
     auto actual_val = jspp::Convert::unwrap_number(val);
     if (actual_val.type() == typeid(int))
@@ -347,7 +347,7 @@ inline jspp::JsValue operator-(const jspp::JsValue &val)
     return undefined;
 }
 
-inline jspp::JsValue operator<<(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline jspp::AnyValue operator<<(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     auto actual_lhs = jspp::Convert::unwrap_number(lhs);
     auto actual_rhs = jspp::Convert::unwrap_number(rhs);
@@ -356,7 +356,7 @@ inline jspp::JsValue operator<<(const jspp::JsValue &lhs, const jspp::JsValue &r
     return undefined;
 }
 
-inline jspp::JsValue operator>>(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline jspp::AnyValue operator>>(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     auto actual_lhs = jspp::Convert::unwrap_number(lhs);
     auto actual_rhs = jspp::Convert::unwrap_number(rhs);
@@ -365,7 +365,7 @@ inline jspp::JsValue operator>>(const jspp::JsValue &lhs, const jspp::JsValue &r
     return undefined;
 }
 
-inline jspp::JsValue jspp::pow(const jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline jspp::AnyValue jspp::pow(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     auto actual_lhs = jspp::Convert::unwrap_number(lhs);
     auto actual_rhs = jspp::Convert::unwrap_number(rhs);
@@ -380,7 +380,7 @@ inline jspp::JsValue jspp::pow(const jspp::JsValue &lhs, const jspp::JsValue &rh
     return undefined;
 }
 
-inline jspp::JsValue &operator++(jspp::JsValue &val)
+inline jspp::AnyValue &operator++(jspp::AnyValue &val)
 {
     // For in-place operators, it's more complex. We'll modify the original value
     // if it's a number, but this implementation assumes it's not a JsNumber object.
@@ -393,14 +393,14 @@ inline jspp::JsValue &operator++(jspp::JsValue &val)
     return val;
 }
 
-inline jspp::JsValue operator++(jspp::JsValue &val, int)
+inline jspp::AnyValue operator++(jspp::AnyValue &val, int)
 {
-    jspp::JsValue old = val;
+    jspp::AnyValue old = val;
     ++val;
     return old;
 }
 
-inline jspp::JsValue &operator--(jspp::JsValue &val)
+inline jspp::AnyValue &operator--(jspp::AnyValue &val)
 {
     auto actual_val = jspp::Convert::unwrap_number(val);
     if (actual_val.type() == typeid(int))
@@ -410,38 +410,38 @@ inline jspp::JsValue &operator--(jspp::JsValue &val)
     return val;
 }
 
-inline jspp::JsValue operator--(jspp::JsValue &val, int)
+inline jspp::AnyValue operator--(jspp::AnyValue &val, int)
 {
-    jspp::JsValue old = val;
+    jspp::AnyValue old = val;
     --val;
     return old;
 }
 
-inline jspp::JsValue &operator+=(jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline jspp::AnyValue &operator+=(jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     lhs = lhs + rhs;
     return lhs;
 }
 
-inline jspp::JsValue &operator-=(jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline jspp::AnyValue &operator-=(jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     lhs = lhs - rhs;
     return lhs;
 }
 
-inline jspp::JsValue &operator*=(jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline jspp::AnyValue &operator*=(jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     lhs = lhs * rhs;
     return lhs;
 }
 
-inline jspp::JsValue &operator/=(jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline jspp::AnyValue &operator/=(jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     lhs = lhs / rhs;
     return lhs;
 }
 
-inline jspp::JsValue &operator%=(jspp::JsValue &lhs, const jspp::JsValue &rhs)
+inline jspp::AnyValue &operator%=(jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     lhs = lhs % rhs;
     return lhs;
@@ -456,11 +456,11 @@ struct overloaded : Ts...
 template <class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
-inline std::ostream &operator<<(std::ostream &os, const jspp::JsValue &v)
+inline std::ostream &operator<<(std::ostream &os, const jspp::AnyValue &v)
 {
-    if (v.type() == typeid(std::shared_ptr<jspp::JsValue>))
+    if (v.type() == typeid(std::shared_ptr<jspp::AnyValue>))
     {
-        const auto &ptr = std::any_cast<std::shared_ptr<jspp::JsValue>>(v);
+        const auto &ptr = std::any_cast<std::shared_ptr<jspp::AnyValue>>(v);
         if (ptr)
             return os << *ptr;
         else

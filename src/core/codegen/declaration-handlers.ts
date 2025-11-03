@@ -47,8 +47,9 @@ export function visitVariableDeclaration(
         (varDecl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
 
     if (isLetOrConst) {
-        // If there's no initializer, assign undefined. Otherwise, use the initializer.
-        return `*${name}${initializer || " = undefined"}`;
+        // If there's no initializer, it remains uninitialized. Only assign if there's an initializer.
+        if (!initializer) return "";
+        return `*${name}${initializer}`;
     }
 
     // For 'var', it's a bit more complex.
@@ -61,6 +62,6 @@ export function visitVariableDeclaration(
         return `*${name}${initializer}`;
     } else {
         const initValue = initializer ? initializer.substring(3) : "undefined";
-        return `auto ${name} = std::make_shared<jspp::JsValue>(${initValue})`;
+        return `auto ${name} = std::make_shared<jspp::AnyValue>(${initValue})`;
     }
 }

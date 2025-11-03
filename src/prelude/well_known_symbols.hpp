@@ -4,7 +4,7 @@ namespace jspp
 {
     namespace WellKnownSymbols
     {
-        inline const char *iterator = "Symbol(Symbol.iterator)";
-        inline const char *toString = "Symbol(Symbol.toString)";
+        inline std::string iterator = std::string("Symbol(Symbol.iterator)");
+        inline std::string toString = std::string("Symbol(Symbol.toString)");
     }
 }

@@ -84,15 +84,17 @@ export function visitPropertyAccessExpression(
             scope,
         )
         : null;
-    let finalExpr = "";
 
     if (ts.isIdentifier(propAccess.expression) && !typeInfo && !this.isBuiltinObject(propAccess.expression)) {
-        finalExpr = `jspp::Exception::throw_unresolved_reference(${
+        return `jspp::Exception::throw_unresolved_reference(${
             this.getJsVarName(
                 propAccess.expression,
             )
         })`;
-    } else if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
+    }
+
+    let finalExpr = "";
+    if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
         finalExpr = `jspp::Access::deref(${exprText}, ${
             this.getJsVarName(
                 propAccess.expression as ts.Identifier,
@@ -122,6 +124,15 @@ export function visitElementAccessExpression(
             exprScope,
         )
         : null;
+
+    if (ts.isIdentifier(elemAccess.expression) && !exprTypeInfo && !this.isBuiltinObject(elemAccess.expression as ts.Identifier)) {
+        return `jspp::Exception::throw_unresolved_reference(${
+            this.getJsVarName(
+                elemAccess.expression as ts.Identifier,
+            )
+        })`;
+    }
+
     const finalExpr =
         exprTypeInfo && !exprTypeInfo.isParameter && !exprTypeInfo.isBuiltin
             ? `jspp::Access::deref(${exprText}, ${
@@ -138,6 +149,13 @@ export function visitElementAccessExpression(
             elemAccess.argumentExpression.getText(),
             argScope,
         );
+        if (!argTypeInfo && !this.isBuiltinObject(elemAccess.argumentExpression)) {
+            return `jspp::Exception::throw_unresolved_reference(${
+                this.getJsVarName(
+                    elemAccess.argumentExpression as ts.Identifier,
+                )
+            })`;
+        }
         if (argTypeInfo && !argTypeInfo.isParameter && !argTypeInfo.isBuiltin) {
             argText = `jspp::Access::deref(${argText}, ${
                 this.getJsVarName(

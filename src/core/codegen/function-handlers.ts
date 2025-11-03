@@ -13,7 +13,7 @@ export function generateLambda(
     const argsName = this.generateUniqueName("__args_", declaredSymbols);
 
     let lambda =
-        `${capture}(const std::vector<jspp::JsValue>& ${argsName}) mutable -> jspp::JsValue `;
+        `${capture}(const std::vector<jspp::AnyValue>& ${argsName}) mutable -> jspp::AnyValue `;
 
     const visitContext: VisitContext = {
         isMainContext: false,
@@ -68,7 +68,7 @@ export function generateLambda(
         lambda += "{ return undefined; }\n";
     }
 
-    const signature = `jspp::JsValue(const std::vector<jspp::JsValue>&)`;
+    const signature = `jspp::AnyValue(const std::vector<jspp::AnyValue>&)`;
     const callable = `std::function<${signature}>(${lambda})`;
     const fullExpression = `jspp::Object::make_function(${callable})`;
 
@@ -111,10 +111,10 @@ export function visitFunctionExpression(
     const funcExpr = node as ts.FunctionExpression;
     if (funcExpr.name) {
         const funcName = funcExpr.name.getText();
-        let code = "([&]() -> jspp::JsValue {\n";
+        let code = "([&]() -> jspp::AnyValue {\n";
         this.indentationLevel++;
         code +=
-            `${this.indent()}auto ${funcName} = std::make_shared<jspp::JsValue>();\n`;
+            `${this.indent()}auto ${funcName} = std::make_shared<jspp::AnyValue>();\n`;
         const lambda = this.generateLambda(funcExpr, false, "[=]");
         code += `${this.indent()}*${funcName} = ${lambda};\n`;
         code += `${this.indent()}return *${funcName};\n`;

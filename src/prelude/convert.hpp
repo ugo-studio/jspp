@@ -6,9 +6,16 @@
 
 namespace jspp
 {
+    // Forward declaration of Prototype namespace and get_prototype function
+    namespace Prototype
+    {
+        jspp::AnyValue get_prototype(const jspp::AnyValue &obj, const jspp::AnyValue &key);
+    }
+
     namespace Convert
     {
-        inline JsValue unwrap_number(const JsValue &val)
+
+        inline AnyValue unwrap_number(const AnyValue &val)
         {
             if (val.type() == typeid(std::shared_ptr<jspp::JsNumber>))
             {
@@ -25,7 +32,7 @@ namespace jspp
             return val;
         }
 
-        inline JsValue unwrap_boolean(const JsValue &val)
+        inline AnyValue unwrap_boolean(const AnyValue &val)
         {
             if (val.type() == typeid(std::shared_ptr<jspp::JsBoolean>))
             {
@@ -35,7 +42,7 @@ namespace jspp
             return val;
         }
 
-        inline std::string to_string(const JsValue &val)
+        inline std::string to_string(const AnyValue &val)
         {
             if (!val.has_value())
                 return "undefined";
@@ -47,18 +54,23 @@ namespace jspp
                 return std::any_cast<const char *>(val);
             if (val.type() == typeid(int))
                 return std::to_string(std::any_cast<int>(val));
-            if (val.type() == typeid(double)) {
+            if (val.type() == typeid(double))
+            {
                 double d_val = std::any_cast<double>(val);
-                if (std::abs(d_val) >= 1e21 || (std::abs(d_val) > 0 && std::abs(d_val) < 1e-6)) {
+                if (std::abs(d_val) >= 1e21 || (std::abs(d_val) > 0 && std::abs(d_val) < 1e-6))
+                {
                     std::ostringstream oss;
                     oss << std::scientific << std::setprecision(4) << d_val;
                     return oss.str();
-                } else {
+                }
+                else
+                {
                     std::ostringstream oss;
                     oss << std::setprecision(6) << std::fixed << d_val;
                     std::string s = oss.str();
                     s.erase(s.find_last_not_of('0') + 1, std::string::npos);
-                    if (s.back() == '.') {
+                    if (s.back() == '.')
+                    {
                         s.pop_back();
                     }
                     return s;
@@ -77,62 +89,19 @@ namespace jspp
                 if (it != ptr->properties.end())
                 {
                     const auto &prop = it->second;
-                    if (prop.type() == typeid(std::function<JsValue()>))
+                    if (prop.type() == typeid(std::function<AnyValue()>))
                     {
-                        auto result = std::any_cast<std::function<JsValue()>>(prop)();
+                        auto result = std::any_cast<std::function<AnyValue()>>(prop)();
                         return jspp::Convert::to_string(result);
                     }
                 }
-                const auto proto_it = ptr->prototype.find("toString");
-                if (proto_it != ptr->prototype.end())
-                {
-                    const auto &prop = proto_it->second;
-                    if (std::holds_alternative<DataDescriptor>(prop))
-                    {
-                        auto d = std::get<DataDescriptor>(prop);
-                        if (d.value.type() == typeid(std::function<JsValue()>))
-                        {
-                            auto s = std::any_cast<std::function<JsValue()>>(d.value)();
-                            return jspp::Convert::to_string(s);
-                        }
-                    }
-                    else if (std::holds_alternative<AccessorDescriptor>(prop))
-                    {
-                        const auto &accessor = std::get<AccessorDescriptor>(prop);
-                        if (std::holds_alternative<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.get))
-                        {
-                            auto result = std::get<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.get)({});
-                            return jspp::Convert::to_string(result);
-                        }
-                    }
-                }
+                // Use the forward-declared get_prototype
+                return jspp::Convert::to_string(jspp::Prototype::get_prototype(val, "toString"));
             }
             if (val.type() == typeid(std::shared_ptr<jspp::JsArray>))
             {
-                auto ptr = std::any_cast<std::shared_ptr<jspp::JsArray>>(val);
-                const auto proto_it = ptr->prototype.find("toString");
-                if (proto_it != ptr->prototype.end())
-                {
-                    const auto &prop = proto_it->second;
-                    if (std::holds_alternative<DataDescriptor>(prop))
-                    {
-                        auto d = std::get<DataDescriptor>(prop);
-                        if (d.value.type() == typeid(std::function<JsValue()>))
-                        {
-                            auto s = std::any_cast<std::function<JsValue()>>(d.value)();
-                            return jspp::Convert::to_string(s);
-                        }
-                    }
-                    else if (std::holds_alternative<AccessorDescriptor>(prop))
-                    {
-                        const auto &accessor = std::get<AccessorDescriptor>(prop);
-                        if (std::holds_alternative<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.get))
-                        {
-                            auto result = std::get<std::function<JsValue(const std::vector<JsValue> &)>>(accessor.get)({});
-                            return jspp::Convert::to_string(result);
-                        }
-                    }
-                }
+                // Use the forward-declared get_prototype
+                return jspp::Convert::to_string(jspp::Prototype::get_prototype(val, "toString"));
             }
             if (val.type() == typeid(std::shared_ptr<jspp::JsString>))
             {
@@ -141,21 +110,8 @@ namespace jspp
             }
             if (val.type() == typeid(std::shared_ptr<jspp::JsFunction>))
             {
-                auto ptr = std::any_cast<std::shared_ptr<jspp::JsFunction>>(val);
-                const auto proto_it = ptr->prototype.find("toString");
-                if (proto_it != ptr->prototype.end())
-                {
-                    const auto &prop = proto_it->second;
-                    if (std::holds_alternative<DataDescriptor>(prop))
-                    {
-                        auto d = std::get<DataDescriptor>(prop);
-                        if (d.value.type() == typeid(std::function<JsValue()>))
-                        {
-                            auto s = std::any_cast<std::function<JsValue()>>(d.value)();
-                            return jspp::Convert::to_string(s);
-                        }
-                    }
-                }
+                // Use the forward-declared get_prototype
+                return jspp::Convert::to_string(jspp::Prototype::get_prototype(val, "toString"));
             }
             if (val.type() == typeid(std::shared_ptr<jspp::JsNumber>))
             {

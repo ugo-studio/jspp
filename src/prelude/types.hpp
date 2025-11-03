@@ -26,9 +26,9 @@ inline Null null;
 // JSPP standard library
 namespace jspp
 {
-    // Dynamic JsValue
-    using JsValue = std::any;
-    using JsNumberValue = std::variant<int, double>;
+    // Dynamic AnyValue
+    using AnyValue = std::any;
+    using NumberValue = std::variant<int, double>;
 
     // Temporal Dead Zone
     struct Uninitialized
@@ -47,15 +47,15 @@ namespace jspp
     // Object and array prototypes
     struct DataDescriptor
     {
-        JsValue value = undefined;
+        AnyValue value = undefined;
         bool writable = true;
         bool enumerable = false;
         bool configurable = true;
     };
     struct AccessorDescriptor
     {
-        std::variant<std::function<JsValue(const std::vector<JsValue> &)>, Undefined> get = undefined; // getter
-        std::variant<std::function<JsValue(const std::vector<JsValue> &)>, Undefined> set = undefined; // setter
+        std::variant<std::function<AnyValue(const std::vector<AnyValue> &)>, Undefined> get = undefined; // getter
+        std::variant<std::function<AnyValue(const std::vector<AnyValue> &)>, Undefined> set = undefined; // setter
         bool enumerable = false;
         bool configurable = true;
     };
@@ -63,49 +63,54 @@ namespace jspp
     // Objects
     struct JsObject
     {
-        std::map<std::string, JsValue> properties;
-        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
+        std::map<std::string, AnyValue> properties;
+        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> prototype;
     };
 
     // Arrays
     struct JsArray
     {
-        std::vector<JsValue> items;
-        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
+        std::vector<AnyValue> items;
+        std::map<std::string, AnyValue> properties;
+        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> prototype;
     };
 
     // Strings
     struct JsString
     {
         std::string value;
-        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
+        std::map<std::string, AnyValue> properties;
+        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> prototype;
     };
 
     // Functions
     struct JsFunction
     {
-        std::function<JsValue(const std::vector<JsValue> &)> call;
-        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
+        std::function<AnyValue(const std::vector<AnyValue> &)> call;
+        std::map<std::string, AnyValue> properties;
+        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> prototype;
     };
 
     // Numbers
     struct JsNumber
     {
-        JsNumberValue value;
-        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
+        NumberValue value;
+        std::map<std::string, AnyValue> properties;
+        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> prototype;
     };
 
     // Booleans
     struct JsBoolean
     {
         bool value;
-        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, JsValue>> prototype;
+        std::map<std::string, AnyValue> properties;
+        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> prototype;
     };
 
     // Operators
-    inline bool is_truthy(const JsValue &val);
-    inline bool equals(const JsValue &lhs, const JsValue &rhs);
-    inline bool strict_equals(const JsValue &lhs, const JsValue &rhs);
-    inline JsValue pow(const JsValue &lhs, const JsValue &rhs);
+    inline bool is_truthy(const AnyValue &val);
+    inline bool equals(const AnyValue &lhs, const AnyValue &rhs);
+    inline bool strict_equals(const AnyValue &lhs, const AnyValue &rhs);
+    inline AnyValue pow(const AnyValue &lhs, const AnyValue &rhs);
 
 }

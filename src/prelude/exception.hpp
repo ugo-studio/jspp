@@ -1,20 +1,18 @@
 #pragma once
 
 #include "types.hpp"
-#include "prototype.hpp"
 
-namespace jspp {
+namespace jspp
+{
     namespace Exception
     {
-        inline jspp::JsValue make_error_with_name(const JsValue &message, const JsValue &name)
+        inline jspp::AnyValue make_error_with_name(const AnyValue &message, const AnyValue &name)
         {
             auto error = std::make_shared<JsObject>(JsObject{{{"message", message}, {"name", name}}});
             // Define and set prototype methods
-            Prototype::set_data_property(
-                error->prototype,
-                "toString",
-                std::function<jspp::JsValue()>([=]() -> jspp::JsValue
-                                               {  
+            error->prototype["toString"] = DataDescriptor{
+                jspp::Object::make_function([=](const std::vector<AnyValue> &) -> jspp::AnyValue
+                                            {
                         std::string name_str = "Error";
                         if (error->properties.count("name") > 0) {
                             if (error->properties["name"].type() == typeid(std::string)) {
@@ -45,15 +43,18 @@ namespace jspp {
                                 stack_str = std::any_cast<std::shared_ptr<jspp::JsString>>(error->properties["stack"])->value;
                             }
                         }
-                        return name_str + ": " + message_str + "\n    at " + stack_str; }));
+                        if (stack_str.empty()) {
+                            return jspp::Object::make_string(name_str + ": " + message_str);
+                        }
+                        return jspp::Object::make_string(name_str + ": " + message_str + "\n    at " + stack_str); })};
             // return object
-            return jspp::JsValue(error);
+            return jspp::AnyValue(error);
         }
-        inline jspp::JsValue make_default_error(const JsValue &message)
+        inline jspp::AnyValue make_default_error(const AnyValue &message)
         {
             return Exception::make_error_with_name(message, "Error");
         }
-        inline jspp::JsValue parse_error_from_value(const JsValue &val)
+        inline jspp::AnyValue parse_error_from_value(const AnyValue &val)
         {
             if (val.type() == typeid(std::shared_ptr<std::exception>))
             {
@@ -61,15 +62,15 @@ namespace jspp {
             }
             return val;
         }
-        inline jspp::JsValue throw_unresolved_reference(const std::string &varName)
+        inline jspp::AnyValue throw_unresolved_reference(const std::string &varName)
         {
             throw Exception::make_error_with_name(varName + " is not defined", "ReferenceError");
         }
-        inline jspp::JsValue throw_immutable_assignment()
+        inline jspp::AnyValue throw_immutable_assignment()
         {
             throw Exception::make_error_with_name("Assignment to constant variable.", "TypeError");
         }
-        inline jspp::JsValue throw_invalid_return_statement()
+        inline jspp::AnyValue throw_invalid_return_statement()
         {
             throw Exception::make_error_with_name("Return statements are only valid inside functions.", "SyntaxError");
         }
