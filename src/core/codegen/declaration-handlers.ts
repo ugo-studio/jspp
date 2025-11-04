@@ -47,8 +47,8 @@ export function visitVariableDeclaration(
         (varDecl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
 
     if (isLetOrConst) {
-        // If there's no initializer, it remains uninitialized. Only assign if there's an initializer.
-        if (!initializer) return "";
+        // If there's no initializer, it should be assigned undefined.
+        if (!initializer) return `*${name} = undefined`;
         return `*${name}${initializer}`;
     }
 

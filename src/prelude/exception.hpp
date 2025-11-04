@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.hpp"
+#include "well_known_symbols.hpp"
 
 namespace jspp
 {
@@ -10,7 +11,7 @@ namespace jspp
         {
             auto error = std::make_shared<JsObject>(JsObject{{{"message", message}, {"name", name}}});
             // Define and set prototype methods
-            error->prototype["toString"] = DataDescriptor{
+            error->prototype[WellKnownSymbols::toString] = DataDescriptor{
                 jspp::Object::make_function([=](const std::vector<AnyValue> &) -> jspp::AnyValue
                                             {
                         std::string name_str = "Error";

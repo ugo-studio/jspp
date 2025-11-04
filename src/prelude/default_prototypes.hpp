@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.hpp"
+#include "exception.hpp"
 #include "object.hpp"
 #include "convert.hpp"
 #include "well_known_symbols.hpp"
@@ -44,7 +45,7 @@ namespace jspp
                     false,
                     true};
             }
-            if (key_str == "toString" || key_str == WellKnownSymbols::toString)
+            if (key_str == WellKnownSymbols::toString)
             {
                 return DataDescriptor{Object::make_function([str_obj](const std::vector<AnyValue> &_) mutable -> jspp::AnyValue
                                                             { return Object::make_string(str_obj->value); })};
@@ -89,7 +90,249 @@ namespace jspp
                         return Object::make_string(result);
                     })};
             }
-            if (key_str == "slice")
+            if (key_str == "includes")
+            {
+                return DataDescriptor{Object::make_function(
+                    [str_obj](const std::vector<AnyValue> &args) mutable -> jspp::AnyValue
+                    {
+                        if (args.empty())
+                        {
+                            return Object::make_boolean(false);
+                        }
+                        std::string searchString = Convert::to_string(args[0]);
+                        return Object::make_boolean(str_obj->value.find(searchString) != std::string::npos);
+                    })};
+            }
+            if (key_str == "indexOf")
+            {
+                return DataDescriptor{Object::make_function(
+                    [str_obj](const std::vector<AnyValue> &args) mutable -> jspp::AnyValue
+                    {
+                        if (args.empty())
+                        {
+                            return Object::make_number(-1);
+                        }
+                        std::string searchString = Convert::to_string(args[0]);
+                        size_t pos = 0;
+                        if (args.size() > 1)
+                        {
+                            auto unwrapped_val = jspp::Convert::unwrap_number(args[1]);
+                            if (unwrapped_val.type() == typeid(int))
+                            {
+                                pos = std::any_cast<int>(unwrapped_val);
+                            }
+                        }
+                        size_t found = str_obj->value.find(searchString, pos);
+                        if (found == std::string::npos)
+                        {
+                            return Object::make_number(-1);
+                        }
+                        return Object::make_number((int)found);
+                    })};
+            }
+            if (key_str == "lastIndexOf")
+            {
+                return DataDescriptor{Object::make_function(
+                    [str_obj](const std::vector<AnyValue> &args) mutable -> jspp::AnyValue
+                    {
+                        if (args.empty())
+                        {
+                            return Object::make_number(-1);
+                        }
+                        std::string searchString = Convert::to_string(args[0]);
+                        size_t pos = std::string::npos;
+                        if (args.size() > 1)
+                        {
+                            auto unwrapped_val = jspp::Convert::unwrap_number(args[1]);
+                            if (unwrapped_val.type() == typeid(int))
+                            {
+                                pos = std::any_cast<int>(unwrapped_val);
+                            }
+                        }
+                        size_t found = str_obj->value.rfind(searchString, pos);
+                        if (found == std::string::npos)
+                        {
+                            return Object::make_number(-1);
+                        }
+                        return Object::make_number((int)found);
+                    })};
+            }
+            if (key_str == "padEnd")
+            {
+                return DataDescriptor{Object::make_function(
+                    [str_obj](const std::vector<AnyValue> &args) mutable -> jspp::AnyValue
+                    {
+                        int targetLength = 0;
+                        if (!args.empty())
+                        {
+                            auto unwrapped_val = jspp::Convert::unwrap_number(args[0]);
+                            if (unwrapped_val.type() == typeid(int))
+                            {
+                                targetLength = std::any_cast<int>(unwrapped_val);
+                            }
+                        }
+                        std::string padString = " ";
+                        if (args.size() > 1)
+                        {
+                            padString = Convert::to_string(args[1]);
+                        }
+                        if (str_obj->value.length() >= targetLength)
+                        {
+                            return Object::make_string(str_obj->value);
+                        }
+                        std::string result = str_obj->value;
+                        while (result.length() < targetLength)
+                        {
+                            result += padString;
+                        }
+                        return Object::make_string(result.substr(0, targetLength));
+                    })};
+            }
+            if (key_str == "padStart")
+            {
+                return DataDescriptor{Object::make_function(
+                    [str_obj](const std::vector<AnyValue> &args) mutable -> jspp::AnyValue
+                    {
+                        int targetLength = 0;
+                        if (!args.empty())
+                        {
+                            auto unwrapped_val = jspp::Convert::unwrap_number(args[0]);
+                            if (unwrapped_val.type() == typeid(int))
+                            {
+                                targetLength = std::any_cast<int>(unwrapped_val);
+                            }
+                        }
+                        std::string padString = " ";
+                        if (args.size() > 1)
+                        {
+                            padString = Convert::to_string(args[1]);
+                        }
+                        if (str_obj->value.length() >= targetLength)
+                        {
+                            return Object::make_string(str_obj->value);
+                        }
+                        std::string result = padString;
+                        while (result.length() < targetLength - str_obj->value.length())
+                        {
+                            result += padString;
+                        }
+                        return Object::make_string(result.substr(0, targetLength - str_obj->value.length()) + str_obj->value);
+                    })};
+            }
+            if (key_str == "repeat")
+            {
+                return DataDescriptor{Object::make_function(
+                    [str_obj](const std::vector<AnyValue> &args) mutable -> jspp::AnyValue
+                    {
+                        int count = 0;
+                        if (!args.empty())
+                        {
+                            auto unwrapped_val = jspp::Convert::unwrap_number(args[0]);
+                            if (unwrapped_val.type() == typeid(int))
+                            {
+                                count = std::any_cast<int>(unwrapped_val);
+                            }
+                        }
+                        if (count < 0)
+                        {
+                            throw Exception::make_error_with_name("Invalid count value", "RangeError");
+                        }
+                        std::string result = "";
+                        for (int i = 0; i < count; ++i)
+                        {
+                            result += str_obj->value;
+                        }
+                        return Object::make_string(result);
+                    })};
+            }
+            if (key_str == "replace")
+            {
+                return DataDescriptor{Object::make_function(
+                    [str_obj](const std::vector<AnyValue> &args) mutable -> jspp::AnyValue
+                    {
+                        if (args.empty())
+                        {
+                            return Object::make_string(str_obj->value);
+                        }
+                        std::string search = Convert::to_string(args[0]);
+                        std::string replace = "";
+                        if (args.size() > 1)
+                        {
+                            replace = Convert::to_string(args[1]);
+                        }
+                        size_t pos = str_obj->value.find(search);
+                        if (pos == std::string::npos)
+                        {
+                            return Object::make_string(str_obj->value);
+                        }
+                        std::string result = str_obj->value;
+                        result.replace(pos, search.length(), replace);
+                        return Object::make_string(result);
+                    })};
+            }
+            if (key_str == "replaceAll")
+            {
+                return DataDescriptor{Object::make_function(
+                    [str_obj](const std::vector<AnyValue> &args) mutable -> jspp::AnyValue
+                    {
+                        if (args.empty())
+                        {
+                            return Object::make_string(str_obj->value);
+                        }
+                        std::string search = Convert::to_string(args[0]);
+                        std::string replace = "";
+                        if (args.size() > 1)
+                        {
+                            replace = Convert::to_string(args[1]);
+                        }
+                        std::string result = str_obj->value;
+                        size_t pos = 0;
+                        while ((pos = result.find(search, pos)) != std::string::npos)
+                        {
+                            result.replace(pos, search.length(), replace);
+                            pos += replace.length();
+                        }
+                        return Object::make_string(result);
+                    })};
+            }
+            if (key_str == "split")
+            {
+                return DataDescriptor{Object::make_function(
+                    [str_obj](const std::vector<AnyValue> &args) mutable -> jspp::AnyValue
+                    {
+                        std::string separator = "";
+                        if (!args.empty())
+                        {
+                            separator = Convert::to_string(args[0]);
+                        }
+                        std::vector<AnyValue> result;
+                        std::string s = str_obj->value;
+                        size_t pos = 0;
+                        std::string token;
+                        while ((pos = s.find(separator)) != std::string::npos)
+                        {
+                            token = s.substr(0, pos);
+                            result.push_back(Object::make_string(token));
+                            s.erase(0, pos + separator.length());
+                        }
+                        result.push_back(Object::make_string(s));
+                        return Object::make_array(result);
+                    })};
+            }
+            if (key_str == "startsWith")
+            {
+                return DataDescriptor{Object::make_function(
+                    [str_obj](const std::vector<AnyValue> &args) mutable -> jspp::AnyValue
+                    {
+                        if (args.empty())
+                        {
+                            return Object::make_boolean(false);
+                        }
+                        std::string searchString = Convert::to_string(args[0]);
+                        return Object::make_boolean(str_obj->value.rfind(searchString, 0) == 0);
+                    })};
+            }
+            if (key_str == "substring")
             {
                 return DataDescriptor{Object::make_function(
                     [str_obj](const std::vector<AnyValue> &args) mutable -> jspp::AnyValue
@@ -112,15 +355,78 @@ namespace jspp
                                 end = std::any_cast<int>(unwrapped_val);
                             }
                         }
-                        if (start < 0)
+                        // Ensure start and end are within bounds and non-negative
+                        start = std::max(0, std::min((int)str_obj->value.length(), start));
+                        end = std::max(0, std::min((int)str_obj->value.length(), end));
+
+                        if (start > end)
                         {
-                            start = str_obj->value.length() + start;
-                        }
-                        if (end < 0)
-                        {
-                            end = str_obj->value.length() + end;
+                            std::swap(start, end);
                         }
                         return Object::make_string(str_obj->value.substr(start, end - start));
+                    })};
+            }
+            if (key_str == "toLowerCase")
+            {
+                return DataDescriptor{Object::make_function(
+                    [str_obj](const std::vector<AnyValue> &) mutable -> jspp::AnyValue
+                    {
+                        std::string s = str_obj->value;
+                        std::transform(s.begin(), s.end(), s.begin(),
+                                       [](unsigned char c)
+                                       { return std::tolower(c); });
+                        return Object::make_string(s);
+                    })};
+            }
+            if (key_str == "toUpperCase")
+            {
+                return DataDescriptor{Object::make_function(
+                    [str_obj](const std::vector<AnyValue> &) mutable -> jspp::AnyValue
+                    {
+                        std::string s = str_obj->value;
+                        std::transform(s.begin(), s.end(), s.begin(),
+                                       [](unsigned char c)
+                                       { return std::toupper(c); });
+                        return Object::make_string(s);
+                    })};
+            }
+            if (key_str == "trim")
+            {
+                return DataDescriptor{Object::make_function(
+                    [str_obj](const std::vector<AnyValue> &) mutable -> jspp::AnyValue
+                    {
+                        std::string s = str_obj->value;
+                        s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch)
+                                                        { return !std::isspace(ch); }));
+                        s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch)
+                                             { return !std::isspace(ch); })
+                                    .base(),
+                                s.end());
+                        return Object::make_string(s);
+                    })};
+            }
+            if (key_str == "trimEnd")
+            {
+                return DataDescriptor{Object::make_function(
+                    [str_obj](const std::vector<AnyValue> &) mutable -> jspp::AnyValue
+                    {
+                        std::string s = str_obj->value;
+                        s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch)
+                                             { return !std::isspace(ch); })
+                                    .base(),
+                                s.end());
+                        return Object::make_string(s);
+                    })};
+            }
+            if (key_str == "trimStart")
+            {
+                return DataDescriptor{Object::make_function(
+                    [str_obj](const std::vector<AnyValue> &) mutable -> jspp::AnyValue
+                    {
+                        std::string s = str_obj->value;
+                        s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch)
+                                                        { return !std::isspace(ch); }));
+                        return Object::make_string(s);
                     })};
             }
             return std::nullopt;
@@ -129,7 +435,7 @@ namespace jspp
         inline std::optional<PrototypeProperty> get_number_prototye(const AnyValue &obj, const std::string &key_str)
         {
             auto &num_obj = std::any_cast<const std::shared_ptr<JsNumber> &>(obj);
-            if (key_str == "toString")
+            if (key_str == WellKnownSymbols::toString)
             {
                 return DataDescriptor{Object::make_function([num_obj](const std::vector<AnyValue> &_) mutable -> jspp::AnyValue
                                                             { return Object::make_string(Convert::to_string(num_obj->value)); })};
@@ -165,7 +471,7 @@ namespace jspp
         inline std::optional<PrototypeProperty> get_boolean_prototye(const AnyValue &obj, const std::string &key_str)
         {
             auto &bool_obj = std::any_cast<const std::shared_ptr<JsBoolean> &>(obj);
-            if (key_str == "toString")
+            if (key_str == WellKnownSymbols::toString)
             {
                 return DataDescriptor{Object::make_function([bool_obj](const std::vector<AnyValue> &_) mutable -> jspp::AnyValue
                                                             { return Object::make_string(bool_obj->value ? "true" : "false"); })};
@@ -181,7 +487,7 @@ namespace jspp
         inline std::optional<PrototypeProperty> get_object_prototye(const AnyValue &obj, const std::string &key_str)
         {
             auto &obj_obj = std::any_cast<const std::shared_ptr<JsObject> &>(obj);
-            if (key_str == "toString")
+            if (key_str == WellKnownSymbols::toString)
             {
                 return DataDescriptor{Object::make_function([](const std::vector<AnyValue> &_) mutable -> jspp::AnyValue
                                                             { return Object::make_string("[object Object]"); })};
@@ -205,7 +511,7 @@ namespace jspp
         inline std::optional<PrototypeProperty> get_function_prototye(const AnyValue &obj, const std::string &key_str)
         {
             auto &func_obj = std::any_cast<const std::shared_ptr<JsFunction> &>(obj);
-            if (key_str == "toString")
+            if (key_str == WellKnownSymbols::toString)
             {
                 return DataDescriptor{Object::make_function([](const std::vector<AnyValue> &_) mutable -> jspp::AnyValue
                                                             { return Object::make_string("function () { [native code] }"); })};
@@ -336,7 +642,7 @@ namespace jspp
                         return Object::make_string(result);
                     })};
             }
-            if (key_str == "toString")
+            if (key_str == WellKnownSymbols::toString)
             {
                 return DataDescriptor{Object::make_function(
                     [arr_obj](const std::vector<AnyValue> &) mutable -> jspp::AnyValue

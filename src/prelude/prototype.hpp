@@ -27,7 +27,13 @@ namespace jspp
                     const auto &prop = proto_it->second;
                     if (std::holds_alternative<DataDescriptor>(prop))
                     {
-                        return std::get<DataDescriptor>(prop).value;
+                        const auto &data_desc = std::get<DataDescriptor>(prop);
+                        if (data_desc.value.type() == typeid(std::function<AnyValue(const std::vector<AnyValue> &)>))
+                        {
+                            auto fn = std::any_cast<std::function<AnyValue(const std::vector<AnyValue> &)>>(data_desc.value);
+                            return fn({});
+                        }
+                        return data_desc.value;
                     }
                     else if (std::holds_alternative<AccessorDescriptor>(prop))
                     {
@@ -73,7 +79,13 @@ namespace jspp
                     const auto &prop = proto_it->second;
                     if (std::holds_alternative<DataDescriptor>(prop))
                     {
-                        return std::get<DataDescriptor>(prop).value;
+                        const auto &data_desc = std::get<DataDescriptor>(prop);
+                        if (data_desc.value.type() == typeid(std::function<AnyValue(const std::vector<AnyValue> &)>))
+                        {
+                            auto fn = std::any_cast<std::function<AnyValue(const std::vector<AnyValue> &)>>(data_desc.value);
+                            return fn({});
+                        }
+                        return data_desc.value;
                     }
                     else if (std::holds_alternative<AccessorDescriptor>(prop))
                     {
@@ -119,7 +131,13 @@ namespace jspp
                     const auto &prop = proto_it->second;
                     if (std::holds_alternative<DataDescriptor>(prop))
                     {
-                        return std::get<DataDescriptor>(prop).value;
+                        const auto &data_desc = std::get<DataDescriptor>(prop);
+                        if (data_desc.value.type() == typeid(std::function<AnyValue(const std::vector<AnyValue> &)>))
+                        {
+                            auto fn = std::any_cast<std::function<AnyValue(const std::vector<AnyValue> &)>>(data_desc.value);
+                            return fn({});
+                        }
+                        return data_desc.value;
                     }
                     else if (std::holds_alternative<AccessorDescriptor>(prop))
                     {
@@ -165,7 +183,13 @@ namespace jspp
                     const auto &prop = proto_it->second;
                     if (std::holds_alternative<DataDescriptor>(prop))
                     {
-                        return std::get<DataDescriptor>(prop).value;
+                        const auto &data_desc = std::get<DataDescriptor>(prop);
+                        if (data_desc.value.type() == typeid(std::function<AnyValue(const std::vector<AnyValue> &)>))
+                        {
+                            auto fn = std::any_cast<std::function<AnyValue(const std::vector<AnyValue> &)>>(data_desc.value);
+                            return fn({});
+                        }
+                        return data_desc.value;
                     }
                     else if (std::holds_alternative<AccessorDescriptor>(prop))
                     {
@@ -211,7 +235,13 @@ namespace jspp
                     const auto &prop = proto_it->second;
                     if (std::holds_alternative<DataDescriptor>(prop))
                     {
-                        return std::get<DataDescriptor>(prop).value;
+                        const auto &data_desc = std::get<DataDescriptor>(prop);
+                        if (data_desc.value.type() == typeid(std::function<AnyValue(const std::vector<AnyValue> &)>))
+                        {
+                            auto fn = std::any_cast<std::function<AnyValue(const std::vector<AnyValue> &)>>(data_desc.value);
+                            return fn({});
+                        }
+                        return data_desc.value;
                     }
                     else if (std::holds_alternative<AccessorDescriptor>(prop))
                     {
@@ -257,7 +287,13 @@ namespace jspp
                     const auto &prop = proto_it->second;
                     if (std::holds_alternative<DataDescriptor>(prop))
                     {
-                        return std::get<DataDescriptor>(prop).value;
+                        const auto &data_desc = std::get<DataDescriptor>(prop);
+                        if (data_desc.value.type() == typeid(std::function<AnyValue(const std::vector<AnyValue> &)>))
+                        {
+                            auto fn = std::any_cast<std::function<AnyValue(const std::vector<AnyValue> &)>>(data_desc.value);
+                            return fn({});
+                        }
+                        return data_desc.value;
                     }
                     else if (std::holds_alternative<AccessorDescriptor>(prop))
                     {

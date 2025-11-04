@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.hpp"
+#include "well_known_symbols.hpp"
 #include <sstream>
 #include <iomanip>
 
@@ -84,24 +85,23 @@ namespace jspp
                 return "undefined";
             if (val.type() == typeid(std::shared_ptr<jspp::JsObject>))
             {
-                auto ptr = std::any_cast<std::shared_ptr<jspp::JsObject>>(val);
-                const auto it = ptr->properties.find("toString");
-                if (it != ptr->properties.end())
+                auto toStringFn = jspp::Prototype::get_prototype(val, WellKnownSymbols::toString);
+                if (toStringFn.type() == typeid(std::shared_ptr<jspp::JsFunction>))
                 {
-                    const auto &prop = it->second;
-                    if (prop.type() == typeid(std::function<AnyValue()>))
-                    {
-                        auto result = std::any_cast<std::function<AnyValue()>>(prop)();
-                        return jspp::Convert::to_string(result);
-                    }
+                    auto fn = std::any_cast<std::shared_ptr<jspp::JsFunction>>(toStringFn);
+                    return to_string(fn->call({}));
                 }
-                // Use the forward-declared get_prototype
-                return jspp::Convert::to_string(jspp::Prototype::get_prototype(val, "toString"));
+                return "[Object Object]";
             }
             if (val.type() == typeid(std::shared_ptr<jspp::JsArray>))
             {
-                // Use the forward-declared get_prototype
-                return jspp::Convert::to_string(jspp::Prototype::get_prototype(val, "toString"));
+                auto toStringFn = jspp::Prototype::get_prototype(val, WellKnownSymbols::toString);
+                if (toStringFn.type() == typeid(std::shared_ptr<jspp::JsFunction>))
+                {
+                    auto fn = std::any_cast<std::shared_ptr<jspp::JsFunction>>(toStringFn);
+                    return to_string(fn->call({}));
+                }
+                return "";
             }
             if (val.type() == typeid(std::shared_ptr<jspp::JsString>))
             {
@@ -110,8 +110,13 @@ namespace jspp
             }
             if (val.type() == typeid(std::shared_ptr<jspp::JsFunction>))
             {
-                // Use the forward-declared get_prototype
-                return jspp::Convert::to_string(jspp::Prototype::get_prototype(val, "toString"));
+                auto toStringFn = jspp::Prototype::get_prototype(val, WellKnownSymbols::toString);
+                if (toStringFn.type() == typeid(std::shared_ptr<jspp::JsFunction>))
+                {
+                    auto fn = std::any_cast<std::shared_ptr<jspp::JsFunction>>(toStringFn);
+                    return to_string(fn->call({}));
+                }
+                return "function () { [native code] }";
             }
             if (val.type() == typeid(std::shared_ptr<jspp::JsNumber>))
             {
