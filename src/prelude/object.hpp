@@ -15,7 +15,13 @@ namespace jspp
 
         inline std::shared_ptr<jspp::JsObject> make_object(const std::map<std::string, AnyValue> &properties)
         {
-            return std::make_shared<jspp::JsObject>(jspp::JsObject{std::any_cast<std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>>>(properties)});
+            // Create a new map with the correct type
+            std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> props_variant;
+            for (const auto &pair : properties)
+            {
+                props_variant[pair.first] = pair.second;
+            }
+            return std::make_shared<jspp::JsObject>(jspp::JsObject{props_variant});
         }
 
         inline std::shared_ptr<jspp::JsArray> make_array(const std::vector<AnyValue> &items)

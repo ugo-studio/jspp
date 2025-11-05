@@ -7,6 +7,13 @@
 
 namespace jspp
 {
+    // Forward declaration of Prototype namespace and (setter_exists, set_prototype) function
+    namespace Prototype
+    {
+        bool setter_exists(const AnyValue &obj, const AnyValue &key);
+        AnyValue set_prototype(const AnyValue &obj, const AnyValue &key, const AnyValue &val);
+    }
+
     namespace Access
     {
         // Helper function to check for TDZ and deref variables
@@ -92,7 +99,6 @@ namespace jspp
                     throw Exception::make_error_with_name("Cannot read properties of null", "TypeError");
 
                 const auto key_str = Convert::to_string(key);
-                std::cout << key_str << std::endl;
                 const auto it = ptr->properties.find(key_str);
                 if (it != ptr->properties.end())
                 {
@@ -114,7 +120,7 @@ namespace jspp
                     }
                     else if (std::holds_alternative<AnyValue>(it->second))
                     {
-                        return it->second;
+                        return std::get<AnyValue>(it->second);
                     }
                 }
 
@@ -149,7 +155,26 @@ namespace jspp
                 const auto it = ptr->properties.find(key_str);
                 if (it != ptr->properties.end())
                 {
-                    return it->second;
+                    if (std::holds_alternative<DataDescriptor>(it->second))
+                    {
+                        return std::get<DataDescriptor>(it->second).value;
+                    }
+                    else if (std::holds_alternative<AccessorDescriptor>(it->second))
+                    {
+                        auto desc = std::get<AccessorDescriptor>(it->second);
+                        if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(desc.get))
+                        {
+                            return std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(desc.get)({});
+                        }
+                        else if (std::holds_alternative<Undefined>(desc.get))
+                        {
+                            return undefined;
+                        }
+                    }
+                    else if (std::holds_alternative<AnyValue>(it->second))
+                    {
+                        return std::get<AnyValue>(it->second);
+                    }
                 }
                 // Handle prototype property
                 return Prototype::get_prototype(obj, key);
@@ -168,7 +193,7 @@ namespace jspp
                     unsigned long index = std::stoul(key_str, &pos);
                     if (pos == key_str.length() && index < ptr->value.length())
                     {
-                        return jspp::Object::make_string(std::string(1, ptr->value[index]));
+                        return Object::make_string(std::string(1, ptr->value[index]));
                     }
                 }
                 catch (...)
@@ -178,7 +203,26 @@ namespace jspp
                 const auto it = ptr->properties.find(key_str);
                 if (it != ptr->properties.end())
                 {
-                    return it->second;
+                    if (std::holds_alternative<DataDescriptor>(it->second))
+                    {
+                        return std::get<DataDescriptor>(it->second).value;
+                    }
+                    else if (std::holds_alternative<AccessorDescriptor>(it->second))
+                    {
+                        auto desc = std::get<AccessorDescriptor>(it->second);
+                        if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(desc.get))
+                        {
+                            return std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(desc.get)({});
+                        }
+                        else if (std::holds_alternative<Undefined>(desc.get))
+                        {
+                            return undefined;
+                        }
+                    }
+                    else if (std::holds_alternative<AnyValue>(it->second))
+                    {
+                        return std::get<AnyValue>(it->second);
+                    }
                 }
 
                 // Handle prototype property
@@ -193,7 +237,26 @@ namespace jspp
                 const auto it = ptr->properties.find(key_str);
                 if (it != ptr->properties.end())
                 {
-                    return it->second;
+                    if (std::holds_alternative<DataDescriptor>(it->second))
+                    {
+                        return std::get<DataDescriptor>(it->second).value;
+                    }
+                    else if (std::holds_alternative<AccessorDescriptor>(it->second))
+                    {
+                        auto desc = std::get<AccessorDescriptor>(it->second);
+                        if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(desc.get))
+                        {
+                            return std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(desc.get)({});
+                        }
+                        else if (std::holds_alternative<Undefined>(desc.get))
+                        {
+                            return undefined;
+                        }
+                    }
+                    else if (std::holds_alternative<AnyValue>(it->second))
+                    {
+                        return std::get<AnyValue>(it->second);
+                    }
                 }
                 // Handle prototype property
                 return Prototype::get_prototype(obj, key);
@@ -207,7 +270,26 @@ namespace jspp
                 const auto it = ptr->properties.find(key_str);
                 if (it != ptr->properties.end())
                 {
-                    return it->second;
+                    if (std::holds_alternative<DataDescriptor>(it->second))
+                    {
+                        return std::get<DataDescriptor>(it->second).value;
+                    }
+                    else if (std::holds_alternative<AccessorDescriptor>(it->second))
+                    {
+                        auto desc = std::get<AccessorDescriptor>(it->second);
+                        if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(desc.get))
+                        {
+                            return std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(desc.get)({});
+                        }
+                        else if (std::holds_alternative<Undefined>(desc.get))
+                        {
+                            return undefined;
+                        }
+                    }
+                    else if (std::holds_alternative<AnyValue>(it->second))
+                    {
+                        return std::get<AnyValue>(it->second);
+                    }
                 }
                 // Handle prototype property
                 return Prototype::get_prototype(obj, key);
@@ -221,7 +303,26 @@ namespace jspp
                 const auto it = ptr->properties.find(key_str);
                 if (it != ptr->properties.end())
                 {
-                    return it->second;
+                    if (std::holds_alternative<DataDescriptor>(it->second))
+                    {
+                        return std::get<DataDescriptor>(it->second).value;
+                    }
+                    else if (std::holds_alternative<AccessorDescriptor>(it->second))
+                    {
+                        auto desc = std::get<AccessorDescriptor>(it->second);
+                        if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(desc.get))
+                        {
+                            return std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(desc.get)({});
+                        }
+                        else if (std::holds_alternative<Undefined>(desc.get))
+                        {
+                            return undefined;
+                        }
+                    }
+                    else if (std::holds_alternative<AnyValue>(it->second))
+                    {
+                        return std::get<AnyValue>(it->second);
+                    }
                 }
                 // Handle prototype property
                 return Prototype::get_prototype(obj, key);
@@ -237,8 +338,11 @@ namespace jspp
                 if (!ptr)
                     throw Exception::make_error_with_name("Cannot set properties of null", "TypeError");
                 const auto key_str = Convert::to_string(key);
-                ptr->properties[key_str] = val;
-                return val;
+                if (ptr->properties.find(key_str) != ptr->properties.end() || !Prototype::setter_exists(obj, key))
+                {
+                    ptr->properties[key_str] = val;
+                }
+                return Prototype::set_prototype(obj, key, val);
             }
             if (obj.type() == typeid(std::shared_ptr<JsArray>))
             {
@@ -267,47 +371,61 @@ namespace jspp
                 {
                 }
 
-                ptr->properties[key_str] = val;
-                std::cout << "resized array to length " << Convert::to_string(val) << std::endl;
-                return val;
+                if (ptr->properties.find(key_str) != ptr->properties.end() || !Prototype::setter_exists(obj, key))
+                {
+                    ptr->properties[key_str] = val;
+                }
+                return Prototype::set_prototype(obj, key, val);
             }
             if (obj.type() == typeid(std::shared_ptr<JsFunction>))
             {
-                auto &ptr = std::any_cast<const std::shared_ptr<JsObject> &>(obj);
+                auto &ptr = std::any_cast<const std::shared_ptr<JsFunction> &>(obj);
                 if (!ptr)
                     throw Exception::make_error_with_name("Cannot set properties of null", "TypeError");
                 const auto key_str = Convert::to_string(key);
-                ptr->properties[key_str] = val;
-                return val;
+                if (ptr->properties.find(key_str) != ptr->properties.end() || !Prototype::setter_exists(obj, key))
+                {
+                    ptr->properties[key_str] = val;
+                }
+                return Prototype::set_prototype(obj, key, val);
             }
             if (obj.type() == typeid(std::shared_ptr<JsNumber>))
             {
-                auto &ptr = std::any_cast<const std::shared_ptr<JsObject> &>(obj);
+                auto &ptr = std::any_cast<const std::shared_ptr<JsNumber> &>(obj);
                 if (!ptr)
                     throw Exception::make_error_with_name("Cannot set properties of null", "TypeError");
                 const auto key_str = Convert::to_string(key);
-                ptr->properties[key_str] = val;
-                return val;
+                if (ptr->properties.find(key_str) != ptr->properties.end() || !Prototype::setter_exists(obj, key))
+                {
+                    ptr->properties[key_str] = val;
+                }
+                return Prototype::set_prototype(obj, key, val);
             }
             if (obj.type() == typeid(std::shared_ptr<JsBoolean>))
             {
-                auto &ptr = std::any_cast<const std::shared_ptr<JsObject> &>(obj);
+                auto &ptr = std::any_cast<const std::shared_ptr<JsBoolean> &>(obj);
                 if (!ptr)
                     throw Exception::make_error_with_name("Cannot set properties of null", "TypeError");
                 const auto key_str = Convert::to_string(key);
-                ptr->properties[key_str] = val;
-                return val;
+                if (ptr->properties.find(key_str) != ptr->properties.end() || !Prototype::setter_exists(obj, key))
+                {
+                    ptr->properties[key_str] = val;
+                }
+                return Prototype::set_prototype(obj, key, val);
             }
             if (obj.type() == typeid(std::shared_ptr<JsString>))
             {
-                auto &ptr = std::any_cast<const std::shared_ptr<JsObject> &>(obj);
+                auto &ptr = std::any_cast<const std::shared_ptr<JsString> &>(obj);
                 if (!ptr)
                     throw Exception::make_error_with_name("Cannot set properties of null", "TypeError");
                 const auto key_str = Convert::to_string(key);
-                ptr->properties[key_str] = val;
-                return val;
+                if (ptr->properties.find(key_str) != ptr->properties.end() || !Prototype::setter_exists(obj, key))
+                {
+                    ptr->properties[key_str] = val;
+                }
+                return Prototype::set_prototype(obj, key, val);
             }
-            throw jspp::Exception::make_error_with_name("Cannot set properties of non-object type", "TypeError");
+            throw Exception::make_error_with_name("Cannot set properties of non-object type", "TypeError");
         }
 
     }

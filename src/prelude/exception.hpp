@@ -59,32 +59,32 @@ namespace jspp
                             if (std::holds_alternative<DataDescriptor>(message)) {
                                 auto &data_desc = std::get<DataDescriptor>(message);
                                 if (data_desc.value.type() == typeid(std::string)) {
-                                    error_str = std::any_cast<std::string>(data_desc.value);
+                                    error_str += std::any_cast<std::string>(data_desc.value);
                                 } else if (data_desc.value.type() == typeid(const char *)) {
-                                    error_str = std::any_cast<const char *>(data_desc.value);
+                                    error_str += std::any_cast<const char *>(data_desc.value);
                                 } else if (data_desc.value.type() == typeid(std::shared_ptr<jspp::JsString>)) {
-                                    error_str = std::any_cast<std::string>(std::any_cast<std::shared_ptr<jspp::JsString>>(data_desc.value)->value);
+                                    error_str += std::any_cast<std::string>(std::any_cast<std::shared_ptr<jspp::JsString>>(data_desc.value)->value);
                                 }
                             } else if (std::holds_alternative<AccessorDescriptor>(message)) {
                                 auto &data_desc = std::get<AccessorDescriptor>(message);
                                 if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(data_desc.get)){
                                     auto val = std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(data_desc.get)({});
                                     if (val.type() == typeid(std::string)) {
-                                        error_str = std::any_cast<std::string>(val);
+                                        error_str += std::any_cast<std::string>(val);
                                     } else if (val.type() == typeid(const char *)) {
-                                        error_str = std::any_cast<const char *>(val);
+                                        error_str += std::any_cast<const char *>(val);
                                     } else if (val.type() == typeid(std::shared_ptr<jspp::JsString>)) {
-                                        error_str = std::any_cast<std::string>(std::any_cast<std::shared_ptr<jspp::JsString>>(val)->value);
+                                        error_str += std::any_cast<std::string>(std::any_cast<std::shared_ptr<jspp::JsString>>(val)->value);
                                     }
                                 }
                             } else if (std::holds_alternative<AnyValue>(message)) {
                                 auto &val = std::get<AnyValue>(message);
                                 if (val.type() == typeid(std::string)) {
-                                    error_str = std::any_cast<std::string>(val);
+                                    error_str += std::any_cast<std::string>(val);
                                 } else if (val.type() == typeid(const char *)) {
-                                    error_str = std::any_cast<const char *>(val);
+                                    error_str += std::any_cast<const char *>(val);
                                 } else if (val.type() == typeid(std::shared_ptr<jspp::JsString>)) {
-                                    error_str = std::any_cast<std::string>(std::any_cast<std::shared_ptr<jspp::JsString>>(val)->value);
+                                    error_str += std::any_cast<std::string>(std::any_cast<std::shared_ptr<jspp::JsString>>(val)->value);
                                 }
 
                             }
@@ -102,7 +102,11 @@ namespace jspp
         {
             if (val.type() == typeid(std::shared_ptr<std::exception>))
             {
-                return Exception::make_error_with_name(std::string(std::any_cast<std::exception>(val).what()), "Error");
+                auto ex_ptr = std::any_cast<std::shared_ptr<std::exception>>(val);
+                if (ex_ptr)
+                {
+                    return Exception::make_error_with_name(std::string(ex_ptr->what()), "Error");
+                }
             }
             return val;
         }

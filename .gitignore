@@ -12,6 +12,7 @@ prelude-build/*
 # code coverage
 coverage
 *.lcov
+codebase.md
 
 # logs
 logs

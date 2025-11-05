@@ -587,7 +587,6 @@ namespace jspp
                                                                     return val;
                                                                 }
                                                                 arr_obj->items.resize(new_length, undefined);
-                                                                std::cout << "resized array to length " << new_length << std::endl;
                                                                 return val; })),
                     false,
                     true};
