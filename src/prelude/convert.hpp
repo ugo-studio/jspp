@@ -116,7 +116,8 @@ namespace jspp
                     auto fn = std::any_cast<std::shared_ptr<jspp::JsFunction>>(toStringFn);
                     return to_string(fn->call({}));
                 }
-                return "function () { [native code] }";
+                auto ptr = std::any_cast<std::shared_ptr<jspp::JsFunction>>(val);
+                return "function " + ptr->name + "() { [native code] }";
             }
             if (val.type() == typeid(std::shared_ptr<jspp::JsNumber>))
             {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.hpp"
+#include "well_known_symbols.hpp"
 #include "convert.hpp"
 #include "object.hpp"
 #include <sstream>
@@ -9,6 +10,12 @@
 
 namespace jspp
 {
+    // Forward declaration of Prototype namespace and get_custom_prototype function
+    namespace Prototype
+    {
+        jspp::AnyValue get_custom_prototype(const jspp::AnyValue &obj, const jspp::AnyValue &key);
+    }
+
     namespace Log
     {
         // --- Configuration for Logging Verbosity ---
@@ -114,7 +121,11 @@ namespace jspp
             if (type == typeid(std::shared_ptr<JsBoolean>))
                 return Color::YELLOW + (std::any_cast<std::shared_ptr<JsBoolean>>(val)->value ? "true" : "false") + Color::RESET;
             if (type == typeid(std::shared_ptr<JsFunction>))
-                return Color::CYAN + "[Function]" + Color::RESET;
+            {
+                auto ptr = std::any_cast<std::shared_ptr<jspp::JsFunction>>(val);
+                auto name_part = ptr->name.size() > 0 ? ": " + ptr->name : "";
+                return Color::CYAN + "[Function" + name_part + "]" + Color::RESET;
+            }
 
             const void *ptr_address = nullptr;
             if (type == typeid(std::shared_ptr<JsObject>))
@@ -137,6 +148,16 @@ namespace jspp
             if (type == typeid(std::shared_ptr<JsObject>))
             {
                 auto ptr = std::any_cast<std::shared_ptr<JsObject>>(val);
+
+                // Use the custom `toString` prototype if available; (exclude defaults)
+                auto toStringFn = jspp::Prototype::get_custom_prototype(val, WellKnownSymbols::toString);
+                if (toStringFn.type() == typeid(std::shared_ptr<jspp::JsFunction>))
+                {
+                    auto fn = std::any_cast<std::shared_ptr<jspp::JsFunction>>(toStringFn);
+                    return Convert::to_string(fn->call({}));
+                }
+
+                // Else parse object manually
                 size_t prop_count = ptr->properties.size();
 
                 bool use_horizontal_layout = prop_count <= HORIZONTAL_OBJECT_MAX_PROPS && prop_count > 0;

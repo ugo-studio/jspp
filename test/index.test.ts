@@ -70,8 +70,8 @@ const cases: { name: string; expected: string[] }[] = [
         name: "log-function",
         expected: [
             "--- Log function ---",
-            "function () { [native code] }",
-            "function () { [native code] }",
+            "[Function: myFunc]",
+            "[Function]",
         ],
     },
     {
@@ -273,7 +273,7 @@ const cases: { name: string; expected: string[] }[] = [
             "replace:   Hello, JSPP!  ",
             "replaceAll: b b b",
             "slice: Hello",
-            "split: [  Hello,  World!  ]",
+            'split: [ "  Hello", " World!  " ]',
             "startsWith: true",
             "substring: Hello",
             "toLowerCase:   hello, world!  ",

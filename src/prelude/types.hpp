@@ -87,6 +87,7 @@ namespace jspp
     struct JsFunction
     {
         std::function<AnyValue(const std::vector<AnyValue> &)> call;
+        std::string name;
         std::unordered_map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> properties;
         std::unordered_map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> prototype;
     };

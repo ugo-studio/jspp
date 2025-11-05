@@ -37,7 +37,7 @@ namespace jspp
                         }
                     }
                 }
-                auto def_proto_it = PrototypeDefaults::get_object_prototye(obj, key_str);
+                auto def_proto_it = PrototypeDefaults::object_prototype(obj, key_str);
                 if (def_proto_it.has_value())
                 {
                     const auto &prop = def_proto_it.value();
@@ -75,7 +75,7 @@ namespace jspp
                         }
                     }
                 }
-                auto def_proto_it = PrototypeDefaults::get_array_prototye(obj, key_str);
+                auto def_proto_it = PrototypeDefaults::array_prototype(obj, key_str);
                 if (def_proto_it.has_value())
                 {
                     const auto &prop = def_proto_it.value();
@@ -113,7 +113,7 @@ namespace jspp
                         }
                     }
                 }
-                auto def_proto_it = PrototypeDefaults::get_function_prototye(obj, key_str);
+                auto def_proto_it = PrototypeDefaults::function_prototype(obj, key_str);
                 if (def_proto_it.has_value())
                 {
                     const auto &prop = def_proto_it.value();
@@ -151,7 +151,7 @@ namespace jspp
                         }
                     }
                 }
-                auto def_proto_it = PrototypeDefaults::get_number_prototye(obj, key_str);
+                auto def_proto_it = PrototypeDefaults::number_prototype(obj, key_str);
                 if (def_proto_it.has_value())
                 {
                     const auto &prop = def_proto_it.value();
@@ -189,7 +189,7 @@ namespace jspp
                         }
                     }
                 }
-                auto def_proto_it = PrototypeDefaults::get_string_prototye(obj, key_str);
+                auto def_proto_it = PrototypeDefaults::string_prototype(obj, key_str);
                 if (def_proto_it.has_value())
                 {
                     const auto &prop = def_proto_it.value();
@@ -227,7 +227,7 @@ namespace jspp
                         }
                     }
                 }
-                auto def_proto_it = PrototypeDefaults::get_boolean_prototye(obj, key_str);
+                auto def_proto_it = PrototypeDefaults::boolean_prototype(obj, key_str);
                 if (def_proto_it.has_value())
                 {
                     const auto &prop = def_proto_it.value();
@@ -245,9 +245,10 @@ namespace jspp
             throw Exception::make_error_with_name("Cannot read properties of non-object type", "TypeError");
         }
 
-        inline AnyValue get_prototype(
+        inline AnyValue get_either_custom_or_default_prototype(
             const AnyValue &obj,
-            const AnyValue &key)
+            const AnyValue &key,
+            const bool &fallback_to_default_prototypes)
         {
             if (obj.type() == typeid(std::shared_ptr<JsObject>))
             {
@@ -282,20 +283,23 @@ namespace jspp
                         return std::get<AnyValue>(prop);
                     }
                 }
-                auto def_proto_it = PrototypeDefaults::get_object_prototye(obj, key_str);
-                if (def_proto_it.has_value())
+                if (fallback_to_default_prototypes)
                 {
-                    const auto &prop = def_proto_it.value();
-                    if (std::holds_alternative<DataDescriptor>(prop))
+                    auto def_proto_it = PrototypeDefaults::object_prototype(obj, key_str);
+                    if (def_proto_it.has_value())
                     {
-                        return std::get<DataDescriptor>(prop).value;
-                    }
-                    else if (std::holds_alternative<AccessorDescriptor>(prop))
-                    {
-                        const auto &accessor = std::get<AccessorDescriptor>(prop);
-                        if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get))
+                        const auto &prop = def_proto_it.value();
+                        if (std::holds_alternative<DataDescriptor>(prop))
                         {
-                            return std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get)({});
+                            return std::get<DataDescriptor>(prop).value;
+                        }
+                        else if (std::holds_alternative<AccessorDescriptor>(prop))
+                        {
+                            const auto &accessor = std::get<AccessorDescriptor>(prop);
+                            if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get))
+                            {
+                                return std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get)({});
+                            }
                         }
                     }
                 }
@@ -334,20 +338,23 @@ namespace jspp
                         return std::get<AnyValue>(prop);
                     }
                 }
-                auto def_proto_it = PrototypeDefaults::get_array_prototye(obj, key_str);
-                if (def_proto_it.has_value())
+                if (fallback_to_default_prototypes)
                 {
-                    const auto &prop = def_proto_it.value();
-                    if (std::holds_alternative<DataDescriptor>(prop))
+                    auto def_proto_it = PrototypeDefaults::array_prototype(obj, key_str);
+                    if (def_proto_it.has_value())
                     {
-                        return std::get<DataDescriptor>(prop).value;
-                    }
-                    else if (std::holds_alternative<AccessorDescriptor>(prop))
-                    {
-                        const auto &accessor = std::get<AccessorDescriptor>(prop);
-                        if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get))
+                        const auto &prop = def_proto_it.value();
+                        if (std::holds_alternative<DataDescriptor>(prop))
                         {
-                            return std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get)({});
+                            return std::get<DataDescriptor>(prop).value;
+                        }
+                        else if (std::holds_alternative<AccessorDescriptor>(prop))
+                        {
+                            const auto &accessor = std::get<AccessorDescriptor>(prop);
+                            if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get))
+                            {
+                                return std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get)({});
+                            }
                         }
                     }
                 }
@@ -386,20 +393,23 @@ namespace jspp
                         return std::get<AnyValue>(prop);
                     }
                 }
-                auto def_proto_it = PrototypeDefaults::get_function_prototye(obj, key_str);
-                if (def_proto_it.has_value())
+                if (fallback_to_default_prototypes)
                 {
-                    const auto &prop = def_proto_it.value();
-                    if (std::holds_alternative<DataDescriptor>(prop))
+                    auto def_proto_it = PrototypeDefaults::function_prototype(obj, key_str);
+                    if (def_proto_it.has_value())
                     {
-                        return std::get<DataDescriptor>(prop).value;
-                    }
-                    else if (std::holds_alternative<AccessorDescriptor>(prop))
-                    {
-                        const auto &accessor = std::get<AccessorDescriptor>(prop);
-                        if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get))
+                        const auto &prop = def_proto_it.value();
+                        if (std::holds_alternative<DataDescriptor>(prop))
                         {
-                            return std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get)({});
+                            return std::get<DataDescriptor>(prop).value;
+                        }
+                        else if (std::holds_alternative<AccessorDescriptor>(prop))
+                        {
+                            const auto &accessor = std::get<AccessorDescriptor>(prop);
+                            if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get))
+                            {
+                                return std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get)({});
+                            }
                         }
                     }
                 }
@@ -438,20 +448,23 @@ namespace jspp
                         return std::get<AnyValue>(prop);
                     }
                 }
-                auto def_proto_it = PrototypeDefaults::get_number_prototye(obj, key_str);
-                if (def_proto_it.has_value())
+                if (fallback_to_default_prototypes)
                 {
-                    const auto &prop = def_proto_it.value();
-                    if (std::holds_alternative<DataDescriptor>(prop))
+                    auto def_proto_it = PrototypeDefaults::number_prototype(obj, key_str);
+                    if (def_proto_it.has_value())
                     {
-                        return std::get<DataDescriptor>(prop).value;
-                    }
-                    else if (std::holds_alternative<AccessorDescriptor>(prop))
-                    {
-                        const auto &accessor = std::get<AccessorDescriptor>(prop);
-                        if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get))
+                        const auto &prop = def_proto_it.value();
+                        if (std::holds_alternative<DataDescriptor>(prop))
                         {
-                            return std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get)({});
+                            return std::get<DataDescriptor>(prop).value;
+                        }
+                        else if (std::holds_alternative<AccessorDescriptor>(prop))
+                        {
+                            const auto &accessor = std::get<AccessorDescriptor>(prop);
+                            if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get))
+                            {
+                                return std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get)({});
+                            }
                         }
                     }
                 }
@@ -490,20 +503,23 @@ namespace jspp
                         return std::get<AnyValue>(prop);
                     }
                 }
-                auto def_proto_it = PrototypeDefaults::get_string_prototye(obj, key_str);
-                if (def_proto_it.has_value())
+                if (fallback_to_default_prototypes)
                 {
-                    const auto &prop = def_proto_it.value();
-                    if (std::holds_alternative<DataDescriptor>(prop))
+                    auto def_proto_it = PrototypeDefaults::string_prototype(obj, key_str);
+                    if (def_proto_it.has_value())
                     {
-                        return std::get<DataDescriptor>(prop).value;
-                    }
-                    else if (std::holds_alternative<AccessorDescriptor>(prop))
-                    {
-                        const auto &accessor = std::get<AccessorDescriptor>(prop);
-                        if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get))
+                        const auto &prop = def_proto_it.value();
+                        if (std::holds_alternative<DataDescriptor>(prop))
                         {
-                            return std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get)({});
+                            return std::get<DataDescriptor>(prop).value;
+                        }
+                        else if (std::holds_alternative<AccessorDescriptor>(prop))
+                        {
+                            const auto &accessor = std::get<AccessorDescriptor>(prop);
+                            if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get))
+                            {
+                                return std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get)({});
+                            }
                         }
                     }
                 }
@@ -542,26 +558,43 @@ namespace jspp
                         return std::get<AnyValue>(prop);
                     }
                 }
-                auto def_proto_it = PrototypeDefaults::get_boolean_prototye(obj, key_str);
-                if (def_proto_it.has_value())
+                if (fallback_to_default_prototypes)
                 {
-                    const auto &prop = def_proto_it.value();
-                    if (std::holds_alternative<DataDescriptor>(prop))
+                    auto def_proto_it = PrototypeDefaults::boolean_prototype(obj, key_str);
+                    if (def_proto_it.has_value())
                     {
-                        return std::get<DataDescriptor>(prop).value;
-                    }
-                    else if (std::holds_alternative<AccessorDescriptor>(prop))
-                    {
-                        const auto &accessor = std::get<AccessorDescriptor>(prop);
-                        if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get))
+                        const auto &prop = def_proto_it.value();
+                        if (std::holds_alternative<DataDescriptor>(prop))
                         {
-                            return std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get)({});
+                            return std::get<DataDescriptor>(prop).value;
+                        }
+                        else if (std::holds_alternative<AccessorDescriptor>(prop))
+                        {
+                            const auto &accessor = std::get<AccessorDescriptor>(prop);
+                            if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get))
+                            {
+                                return std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(accessor.get)({});
+                            }
                         }
                     }
                 }
                 return undefined;
             }
             throw Exception::make_error_with_name("Cannot read properties of non-object type", "TypeError");
+        }
+
+        inline AnyValue get_custom_prototype(
+            const AnyValue &obj,
+            const AnyValue &key)
+        {
+            return get_either_custom_or_default_prototype(obj, key, false);
+        }
+
+        inline AnyValue get_prototype(
+            const AnyValue &obj,
+            const AnyValue &key)
+        {
+            return get_either_custom_or_default_prototype(obj, key, true);
         }
 
         inline AnyValue set_prototype(
@@ -598,7 +631,7 @@ namespace jspp
                         }
                     }
                 }
-                auto def_proto_it = PrototypeDefaults::get_object_prototye(obj, key_str);
+                auto def_proto_it = PrototypeDefaults::object_prototype(obj, key_str);
                 if (def_proto_it.has_value())
                 {
                     const auto &prop = def_proto_it.value();
@@ -645,7 +678,7 @@ namespace jspp
                         }
                     }
                 }
-                auto def_proto_it = PrototypeDefaults::get_array_prototye(obj, key_str);
+                auto def_proto_it = PrototypeDefaults::array_prototype(obj, key_str);
                 if (def_proto_it.has_value())
                 {
                     const auto &prop = def_proto_it.value();
@@ -692,7 +725,7 @@ namespace jspp
                         }
                     }
                 }
-                auto def_proto_it = PrototypeDefaults::get_function_prototye(obj, key_str);
+                auto def_proto_it = PrototypeDefaults::function_prototype(obj, key_str);
                 if (def_proto_it.has_value())
                 {
                     const auto &prop = def_proto_it.value();
@@ -739,7 +772,7 @@ namespace jspp
                         }
                     }
                 }
-                auto def_proto_it = PrototypeDefaults::get_number_prototye(obj, key_str);
+                auto def_proto_it = PrototypeDefaults::number_prototype(obj, key_str);
                 if (def_proto_it.has_value())
                 {
                     const auto &prop = def_proto_it.value();
@@ -786,7 +819,7 @@ namespace jspp
                         }
                     }
                 }
-                auto def_proto_it = PrototypeDefaults::get_string_prototye(obj, key_str);
+                auto def_proto_it = PrototypeDefaults::string_prototype(obj, key_str);
                 if (def_proto_it.has_value())
                 {
                     const auto &prop = def_proto_it.value();
@@ -833,7 +866,7 @@ namespace jspp
                         }
                     }
                 }
-                auto def_proto_it = PrototypeDefaults::get_boolean_prototye(obj, key_str);
+                auto def_proto_it = PrototypeDefaults::boolean_prototype(obj, key_str);
                 if (def_proto_it.has_value())
                 {
                     const auto &prop = def_proto_it.value();

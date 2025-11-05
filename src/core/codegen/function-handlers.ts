@@ -70,13 +70,14 @@ export function generateLambda(
 
     const signature = `jspp::AnyValue(const std::vector<jspp::AnyValue>&)`;
     const callable = `std::function<${signature}>(${lambda})`;
-    const fullExpression = `jspp::Object::make_function(${callable})`;
 
-    if (ts.isFunctionDeclaration(node) && !isAssignment) {
-        const funcName = node.name?.getText();
-        if (funcName) {
-            return `${this.indent()}auto ${funcName} = ${fullExpression};\n`;
-        }
+    const funcName = node.name?.getText();
+    const fullExpression = `jspp::Object::make_function(${callable}, "${
+        funcName || ""
+    }")`;
+
+    if (ts.isFunctionDeclaration(node) && !isAssignment && funcName) {
+        return `${this.indent()}auto ${funcName} = ${fullExpression};\n`;
     }
     return fullExpression;
 }

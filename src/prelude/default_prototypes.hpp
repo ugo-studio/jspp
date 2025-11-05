@@ -33,7 +33,7 @@ namespace jspp
             };
         }
 
-        inline std::optional<PrototypeProperty> get_string_prototye(const AnyValue &obj, const std::string &key_str)
+        inline std::optional<PrototypeProperty> string_prototype(const AnyValue &obj, const std::string &key_str)
         {
             auto &str_obj = std::any_cast<const std::shared_ptr<JsString> &>(obj);
             if (key_str == WellKnownSymbols::toString || key_str == "toString")
@@ -674,7 +674,7 @@ namespace jspp
             return std::nullopt;
         };
 
-        inline std::optional<PrototypeProperty> get_number_prototye(const AnyValue &obj, const std::string &key_str)
+        inline std::optional<PrototypeProperty> number_prototype(const AnyValue &obj, const std::string &key_str)
         {
             auto &num_obj = std::any_cast<const std::shared_ptr<JsNumber> &>(obj);
             if (key_str == WellKnownSymbols::toString || key_str == "toString")
@@ -710,7 +710,7 @@ namespace jspp
             return std::nullopt;
         }
 
-        inline std::optional<PrototypeProperty> get_boolean_prototye(const AnyValue &obj, const std::string &key_str)
+        inline std::optional<PrototypeProperty> boolean_prototype(const AnyValue &obj, const std::string &key_str)
         {
             auto &bool_obj = std::any_cast<const std::shared_ptr<JsBoolean> &>(obj);
             if (key_str == WellKnownSymbols::toString || key_str == "toString")
@@ -726,7 +726,7 @@ namespace jspp
             return std::nullopt;
         }
 
-        inline std::optional<PrototypeProperty> get_object_prototye(const AnyValue &obj, const std::string &key_str)
+        inline std::optional<PrototypeProperty> object_prototype(const AnyValue &obj, const std::string &key_str)
         {
             auto &obj_obj = std::any_cast<const std::shared_ptr<JsObject> &>(obj);
             if (key_str == WellKnownSymbols::toString || key_str == "toString")
@@ -750,50 +750,7 @@ namespace jspp
             return std::nullopt;
         }
 
-        inline std::optional<PrototypeProperty> get_function_prototye(const AnyValue &obj, const std::string &key_str)
-        {
-            auto &func_obj = std::any_cast<const std::shared_ptr<JsFunction> &>(obj);
-            if (key_str == WellKnownSymbols::toString || key_str == "toString")
-            {
-                return DataDescriptor{Object::make_function([](const std::vector<AnyValue> &_) mutable -> jspp::AnyValue
-                                                            { return Object::make_string("function () { [native code] }"); })};
-            }
-            if (key_str == "call")
-            {
-                return DataDescriptor{Object::make_function(
-                    [func_obj](const std::vector<AnyValue> &args) mutable -> jspp::AnyValue
-                    {
-                        // NOTE: `this` context is not handled yet.
-                        std::vector<AnyValue> call_args;
-                        if (args.size() > 1)
-                        {
-                            call_args.assign(args.begin() + 1, args.end());
-                        }
-                        return func_obj->call(call_args);
-                    })};
-            }
-            if (key_str == "apply")
-            {
-                return DataDescriptor{Object::make_function(
-                    [func_obj](const std::vector<AnyValue> &args) mutable -> jspp::AnyValue
-                    {
-                        // NOTE: `this` context is not handled yet.
-                        if (args.size() > 1)
-                        {
-                            auto &arr_like = args[1];
-                            if (arr_like.type() == typeid(std::shared_ptr<JsArray>))
-                            {
-                                auto &arr = std::any_cast<const std::shared_ptr<JsArray> &>(arr_like);
-                                return func_obj->call(arr->items);
-                            }
-                        }
-                        return func_obj->call({});
-                    })};
-            }
-            return std::nullopt;
-        }
-
-        inline std::optional<PrototypeProperty> get_array_prototye(const AnyValue &obj, const std::string &key_str)
+        inline std::optional<PrototypeProperty> array_prototype(const AnyValue &obj, const std::string &key_str)
         {
             auto &arr_obj = std::any_cast<const std::shared_ptr<JsArray> &>(obj);
             if (key_str == WellKnownSymbols::toString || key_str == "toString")
@@ -979,5 +936,56 @@ namespace jspp
             return std::nullopt;
         }
 
+        inline std::optional<PrototypeProperty> function_prototype(const AnyValue &obj, const std::string &key_str)
+        {
+            auto &func_obj = std::any_cast<const std::shared_ptr<JsFunction> &>(obj);
+            if (key_str == WellKnownSymbols::toString || key_str == "toString")
+            {
+                return DataDescriptor{Object::make_function([func_obj](const std::vector<AnyValue> &_) mutable -> jspp::AnyValue
+                                                            { return Object::make_string("function " + func_obj->name + "() { [native code] }"); })};
+            }
+            if (key_str == "name")
+            {
+                return AccessorDescriptor{
+                    PrototypeDefaults::to_handler(std::function<AnyValue()>([func_obj]() mutable
+                                                                            { return Object::make_string(func_obj->name); })),
+                    undefined, // name cannot be changed
+                    false,
+                    true};
+            }
+            if (key_str == "call")
+            {
+                return DataDescriptor{Object::make_function(
+                    [func_obj](const std::vector<AnyValue> &args) mutable -> jspp::AnyValue
+                    {
+                        // NOTE: `this` context is not handled yet.
+                        std::vector<AnyValue> call_args;
+                        if (args.size() > 1)
+                        {
+                            call_args.assign(args.begin() + 1, args.end());
+                        }
+                        return func_obj->call(call_args);
+                    })};
+            }
+            if (key_str == "apply")
+            {
+                return DataDescriptor{Object::make_function(
+                    [func_obj](const std::vector<AnyValue> &args) mutable -> jspp::AnyValue
+                    {
+                        // NOTE: `this` context is not handled yet.
+                        if (args.size() > 1)
+                        {
+                            auto &arr_like = args[1];
+                            if (arr_like.type() == typeid(std::shared_ptr<JsArray>))
+                            {
+                                auto &arr = std::any_cast<const std::shared_ptr<JsArray> &>(arr_like);
+                                return func_obj->call(arr->items);
+                            }
+                        }
+                        return func_obj->call({});
+                    })};
+            }
+            return std::nullopt;
+        }
     }
 }
