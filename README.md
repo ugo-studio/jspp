@@ -103,7 +103,7 @@ This project is ambitious, and there is a long and exciting road ahead. Here is 
 
 ---
 
-### **Phase 1: Core Language Features** `(Current Position)`
+### **Phase 1: Core Language Features**
 
 This phase focuses on building a solid foundation that correctly models JavaScript's core runtime behavior.
 
@@ -123,8 +123,8 @@ This phase will broaden the range of supported JavaScript syntax and features.
 - [x] **Error Handling**: `try`/`catch`/`finally` blocks and `throw`.
 - [x] **Objects:** Literals, property access (dot and bracket notation), methods.
 - [x] **Arrays:** Literals, indexing, and core methods (`.push`, `.pop`, `.length`, etc.).
+- [x] **Operators:** Full suite of arithmetic, logical, and comparison operators.
 - [ ] **Control Flow:** tenary operators, `for` loops, `while` loops, `switch`.
-- [ ] **Operators:** Full suite of arithmetic, logical, and comparison operators.
 
 ### **Phase 3: Interoperability & Standard Library**
 

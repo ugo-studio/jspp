@@ -60,10 +60,10 @@ export class CodeGenerator {
         mainCode += `    ${CONTAINER_FUNCTION_NAME}();\n`;
         mainCode += `  } catch (const jspp::AnyValue& e) {\n`;
         mainCode +=
-            "    auto error = std::make_shared<jspp::AnyValue>(jspp::Exception::parse_error_from_value(e));\n";
+            "    auto error = std::make_shared<jspp::AnyValue>(jspp::Exception::parse_error_from_value(e));\n{\n";
         mainCode +=
             `    jspp::Access::call_function(jspp::Access::get_property(console, "error"),{error},"console.error");\n`;
-        mainCode += `    return 1;\n`;
+        mainCode += `    return 1;\n}\n`;
         mainCode += `  }\n`;
         mainCode += "  return 0;\n}";
 
