@@ -14,40 +14,83 @@ namespace jspp
             error->prototype[WellKnownSymbols::toString] = DataDescriptor{
                 jspp::Object::make_function([=](const std::vector<AnyValue> &) -> jspp::AnyValue
                                             {
-                        std::string name_str = "Error";
+                        std::string error_str = "Error";
+
                         if (error->properties.count("name") > 0) {
-                            if (error->properties["name"].type() == typeid(std::string)) {
-                                name_str = std::any_cast<std::string>(error->properties["name"]);
-                            } else if (error->properties["name"].type() == typeid(const char *)) {
-                                name_str = std::any_cast<const char *>(error->properties["name"]);
-                            } else if (error->properties["name"].type() == typeid(std::shared_ptr<jspp::JsString>)) {
-                                name_str = std::any_cast<std::shared_ptr<jspp::JsString>>(error->properties["name"])->value;
+                            auto &name = error->properties["name"];
+                            if (std::holds_alternative<DataDescriptor>(name)) {
+                                auto &data_desc = std::get<DataDescriptor>(name);
+                                if (data_desc.value.type() == typeid(std::string)) {
+                                    error_str = std::any_cast<std::string>(data_desc.value);
+                                } else if (data_desc.value.type() == typeid(const char *)) {
+                                    error_str = std::any_cast<const char *>(data_desc.value);
+                                } else if (data_desc.value.type() == typeid(std::shared_ptr<jspp::JsString>)) {
+                                    error_str = std::any_cast<std::string>(std::any_cast<std::shared_ptr<jspp::JsString>>(data_desc.value)->value);
+                                }
+                            } else if (std::holds_alternative<AccessorDescriptor>(name)) {
+                                auto &data_desc = std::get<AccessorDescriptor>(name);
+                                if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(data_desc.get)){
+                                    auto val = std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(data_desc.get)({});
+                                    if (val.type() == typeid(std::string)) {
+                                        error_str = std::any_cast<std::string>(val);
+                                    } else if (val.type() == typeid(const char *)) {
+                                        error_str = std::any_cast<const char *>(val);
+                                    } else if (val.type() == typeid(std::shared_ptr<jspp::JsString>)) {
+                                        error_str = std::any_cast<std::string>(std::any_cast<std::shared_ptr<jspp::JsString>>(val)->value);
+                                    }
+                                }
+                            } else if (std::holds_alternative<AnyValue>(name)) {
+                                auto &val = std::get<AnyValue>(name);
+                                if (val.type() == typeid(std::string)) {
+                                    error_str = std::any_cast<std::string>(val);
+                                } else if (val.type() == typeid(const char *)) {
+                                    error_str = std::any_cast<const char *>(val);
+                                } else if (val.type() == typeid(std::shared_ptr<jspp::JsString>)) {
+                                    error_str = std::any_cast<std::string>(std::any_cast<std::shared_ptr<jspp::JsString>>(val)->value);
+                                }
+
                             }
                         }
-                        std::string message_str = "";
+
+                        error_str += ": ";
+
                         if (error->properties.count("message") > 0) {
-                            if (error->properties["message"].type() == typeid(std::string)) {
-                                message_str = std::any_cast<std::string>(error->properties["message"]);
-                            } else if (error->properties["message"].type() == typeid(const char *)) {
-                                message_str = std::any_cast<const char *>(error->properties["message"]);
-                            } else if (error->properties["message"].type() == typeid(std::shared_ptr<jspp::JsString>)) {
-                                message_str = std::any_cast<std::shared_ptr<jspp::JsString>>(error->properties["message"])->value;
+                            auto &message = error->properties["message"];
+                            if (std::holds_alternative<DataDescriptor>(message)) {
+                                auto &data_desc = std::get<DataDescriptor>(message);
+                                if (data_desc.value.type() == typeid(std::string)) {
+                                    error_str = std::any_cast<std::string>(data_desc.value);
+                                } else if (data_desc.value.type() == typeid(const char *)) {
+                                    error_str = std::any_cast<const char *>(data_desc.value);
+                                } else if (data_desc.value.type() == typeid(std::shared_ptr<jspp::JsString>)) {
+                                    error_str = std::any_cast<std::string>(std::any_cast<std::shared_ptr<jspp::JsString>>(data_desc.value)->value);
+                                }
+                            } else if (std::holds_alternative<AccessorDescriptor>(message)) {
+                                auto &data_desc = std::get<AccessorDescriptor>(message);
+                                if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(data_desc.get)){
+                                    auto val = std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(data_desc.get)({});
+                                    if (val.type() == typeid(std::string)) {
+                                        error_str = std::any_cast<std::string>(val);
+                                    } else if (val.type() == typeid(const char *)) {
+                                        error_str = std::any_cast<const char *>(val);
+                                    } else if (val.type() == typeid(std::shared_ptr<jspp::JsString>)) {
+                                        error_str = std::any_cast<std::string>(std::any_cast<std::shared_ptr<jspp::JsString>>(val)->value);
+                                    }
+                                }
+                            } else if (std::holds_alternative<AnyValue>(message)) {
+                                auto &val = std::get<AnyValue>(message);
+                                if (val.type() == typeid(std::string)) {
+                                    error_str = std::any_cast<std::string>(val);
+                                } else if (val.type() == typeid(const char *)) {
+                                    error_str = std::any_cast<const char *>(val);
+                                } else if (val.type() == typeid(std::shared_ptr<jspp::JsString>)) {
+                                    error_str = std::any_cast<std::string>(std::any_cast<std::shared_ptr<jspp::JsString>>(val)->value);
+                                }
+
                             }
                         }
-                        std::string stack_str = "";
-                        if (error->properties.count("stack") > 0) {
-                            if (error->properties["stack"].type() == typeid(std::string)) {
-                                stack_str = std::any_cast<std::string>(error->properties["stack"]);
-                            } else if (error->properties["stack"].type() == typeid(const char *)) {
-                                stack_str = std::any_cast<const char *>(error->properties["stack"]);
-                            } else if (error->properties["stack"].type() == typeid(std::shared_ptr<jspp::JsString>)) {
-                                stack_str = std::any_cast<std::shared_ptr<jspp::JsString>>(error->properties["stack"])->value;
-                            }
-                        }
-                        if (stack_str.empty()) {
-                            return jspp::Object::make_string(name_str + ": " + message_str);
-                        }
-                        return jspp::Object::make_string(name_str + ": " + message_str + "\n    at " + stack_str); })};
+
+                        return jspp::Object::make_string(error_str); })};
             // return object
             return jspp::AnyValue(error);
         }

@@ -33,7 +33,21 @@ namespace jspp
                     // Add own properties first
                     for (const auto &pair : ptr->properties)
                     {
-                        if (seen_keys.find(pair.first) == seen_keys.end())
+                        bool is_enumerable = false;
+                        if (std::holds_alternative<DataDescriptor>(pair.second))
+                        {
+                            is_enumerable = std::get<DataDescriptor>(pair.second).enumerable;
+                        }
+                        else if (std::holds_alternative<AccessorDescriptor>(pair.second))
+                        {
+                            is_enumerable = std::get<AccessorDescriptor>(pair.second).enumerable;
+                        }
+                        else if (std::holds_alternative<AnyValue>(pair.second))
+                        {
+                            is_enumerable = true;
+                        }
+                        // If it's enumerable and not already seen (shadowed by own property)
+                        if (is_enumerable && seen_keys.find(pair.first) == seen_keys.end())
                         {
                             keys.push_back(pair.first);
                             seen_keys.insert(pair.first);
@@ -52,6 +66,10 @@ namespace jspp
                         {
                             is_enumerable = std::get<AccessorDescriptor>(pair.second).enumerable;
                         }
+                        else if (std::holds_alternative<AnyValue>(pair.second))
+                        {
+                            is_enumerable = true;
+                        }
                         // If it's enumerable and not already seen (shadowed by own property)
                         if (is_enumerable && seen_keys.find(pair.first) == seen_keys.end())
                         {
@@ -66,6 +84,7 @@ namespace jspp
 
         inline AnyValue get_property(const AnyValue &obj, const AnyValue &key)
         {
+
             if (obj.type() == typeid(std::shared_ptr<JsObject>))
             {
                 auto &ptr = std::any_cast<const std::shared_ptr<JsObject> &>(obj);
@@ -73,10 +92,30 @@ namespace jspp
                     throw Exception::make_error_with_name("Cannot read properties of null", "TypeError");
 
                 const auto key_str = Convert::to_string(key);
+                std::cout << key_str << std::endl;
                 const auto it = ptr->properties.find(key_str);
                 if (it != ptr->properties.end())
                 {
-                    return it->second;
+                    if (std::holds_alternative<DataDescriptor>(it->second))
+                    {
+                        return std::get<DataDescriptor>(it->second).value;
+                    }
+                    else if (std::holds_alternative<AccessorDescriptor>(it->second))
+                    {
+                        auto desc = std::get<AccessorDescriptor>(it->second);
+                        if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(desc.get))
+                        {
+                            return std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(desc.get)({});
+                        }
+                        else if (std::holds_alternative<Undefined>(desc.get))
+                        {
+                            return undefined;
+                        }
+                    }
+                    else if (std::holds_alternative<AnyValue>(it->second))
+                    {
+                        return it->second;
+                    }
                 }
 
                 // Handle prototype property
@@ -214,7 +253,7 @@ namespace jspp
                     unsigned long index = std::stoul(key_str, &pos);
                     if (pos != key_str.length())
                     {
-                        throw std::invalid_argument("not a valid integer index");
+                        throw std::invalid_argument("not a valid integer index"); // will be catched
                     }
 
                     if (index >= ptr->items.size())
@@ -229,6 +268,7 @@ namespace jspp
                 }
 
                 ptr->properties[key_str] = val;
+                std::cout << "resized array to length " << Convert::to_string(val) << std::endl;
                 return val;
             }
             if (obj.type() == typeid(std::shared_ptr<JsFunction>))

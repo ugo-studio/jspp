@@ -63,7 +63,7 @@ namespace jspp
     // Objects
     struct JsObject
     {
-        std::map<std::string, AnyValue> properties;
+        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> properties;
         std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> prototype;
     };
 
@@ -71,7 +71,7 @@ namespace jspp
     struct JsArray
     {
         std::vector<AnyValue> items;
-        std::map<std::string, AnyValue> properties;
+        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> properties;
         std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> prototype;
     };
 
@@ -79,7 +79,7 @@ namespace jspp
     struct JsString
     {
         std::string value;
-        std::map<std::string, AnyValue> properties;
+        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> properties;
         std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> prototype;
     };
 
@@ -87,7 +87,7 @@ namespace jspp
     struct JsFunction
     {
         std::function<AnyValue(const std::vector<AnyValue> &)> call;
-        std::map<std::string, AnyValue> properties;
+        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> properties;
         std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> prototype;
     };
 
@@ -95,7 +95,7 @@ namespace jspp
     struct JsNumber
     {
         NumberValue value;
-        std::map<std::string, AnyValue> properties;
+        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> properties;
         std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> prototype;
     };
 
@@ -103,7 +103,7 @@ namespace jspp
     struct JsBoolean
     {
         bool value;
-        std::map<std::string, AnyValue> properties;
+        std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> properties;
         std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> prototype;
     };
 
