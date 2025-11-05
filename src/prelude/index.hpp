@@ -5,6 +5,7 @@
 #include "object.hpp"
 #include "exception.hpp"
 #include "convert.hpp"
+#include "log.hpp" 
 #include "default_prototypes.hpp"
 #include "prototype.hpp"
 #include "access.hpp"

@@ -6,8 +6,11 @@
 inline auto console = jspp::Object::make_object({
     {"log", jspp::Object::make_function([](const std::vector<jspp::AnyValue> &args)
                                         {
-        for (const auto& arg : args) {
-            std::cout << arg << " ";
+        for (size_t i = 0; i < args.size(); ++i) {
+            std::cout << jspp::Log::to_log_string(args[i]);
+            if (i < args.size() - 1) {
+                std::cout << " ";
+            }
         }
         std::cout << std::endl;
         return undefined; })},

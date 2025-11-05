@@ -222,11 +222,32 @@ export function visitBinaryExpression(
                     })`
                     : objExprText;
 
-            return `jspp::Access::set_property(${finalObjExpr}, "${propName}", ${rightText})`;
+            let finalRightText = rightText;
+            if (ts.isIdentifier(binExpr.right)) {
+                const rightScope = this.getScopeForNode(binExpr.right);
+                const rightTypeInfo = this.typeAnalyzer.scopeManager
+                    .lookupFromScope(
+                        binExpr.right.getText(),
+                        rightScope,
+                    );
+                if (
+                    rightTypeInfo &&
+                    !rightTypeInfo.isParameter &&
+                    !rightTypeInfo.isBuiltin
+                ) {
+                    finalRightText = `jspp::Access::deref(${rightText}, ${
+                        this.getJsVarName(
+                            binExpr.right as ts.Identifier,
+                        )
+                    })`;
+                }
+            }
+
+            return `jspp::Access::set_property(${finalObjExpr}, "${propName}", ${finalRightText})`;
         } else if (ts.isElementAccessExpression(binExpr.left)) {
             const elemAccess = binExpr.left;
             const objExprText = this.visit(elemAccess.expression, context);
-            const argText = this.visit(elemAccess.argumentExpression, context);
+            let argText = this.visit(elemAccess.argumentExpression, context);
 
             const scope = this.getScopeForNode(elemAccess.expression);
             const typeInfo = ts.isIdentifier(elemAccess.expression)
@@ -245,7 +266,50 @@ export function visitBinaryExpression(
                     })`
                     : objExprText;
 
-            return `jspp::Access::set_property(${finalObjExpr}, ${argText}, ${rightText})`;
+            if (ts.isIdentifier(elemAccess.argumentExpression)) {
+                const argScope = this.getScopeForNode(
+                    elemAccess.argumentExpression,
+                );
+                const argTypeInfo = this.typeAnalyzer.scopeManager
+                    .lookupFromScope(
+                        elemAccess.argumentExpression.getText(),
+                        argScope,
+                    );
+                if (
+                    argTypeInfo &&
+                    !argTypeInfo.isParameter &&
+                    !argTypeInfo.isBuiltin
+                ) {
+                    argText = `jspp::Access::deref(${argText}, ${
+                        this.getJsVarName(
+                            elemAccess.argumentExpression as ts.Identifier,
+                        )
+                    })`;
+                }
+            }
+
+            let finalRightText = rightText;
+            if (ts.isIdentifier(binExpr.right)) {
+                const rightScope = this.getScopeForNode(binExpr.right);
+                const rightTypeInfo = this.typeAnalyzer.scopeManager
+                    .lookupFromScope(
+                        binExpr.right.getText(),
+                        rightScope,
+                    );
+                if (
+                    rightTypeInfo &&
+                    !rightTypeInfo.isParameter &&
+                    !rightTypeInfo.isBuiltin
+                ) {
+                    finalRightText = `jspp::Access::deref(${rightText}, ${
+                        this.getJsVarName(
+                            binExpr.right as ts.Identifier,
+                        )
+                    })`;
+                }
+            }
+
+            return `jspp::Access::set_property(${finalObjExpr}, ${argText}, ${finalRightText})`;
         }
 
         const leftText = this.visit(binExpr.left, context);

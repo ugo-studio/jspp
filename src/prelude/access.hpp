@@ -379,6 +379,7 @@ namespace jspp
                 }
                 catch (...)
                 {
+                    std::cout << "failed" << key_str << std::endl;
                 }
 
                 if (ptr->properties.find(key_str) != ptr->properties.end() || !Prototype::setter_exists(obj, key))

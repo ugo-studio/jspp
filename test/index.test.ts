@@ -68,7 +68,11 @@ const cases: { name: string; expected: string[] }[] = [
     { name: "void", expected: ["--- Void ---", "hello", "undefined"] },
     {
         name: "log-function",
-        expected: ["--- Log function ---", "function () { [native code] }", "function () { [native code] }"],
+        expected: [
+            "--- Log function ---",
+            "function () { [native code] }",
+            "function () { [native code] }",
+        ],
     },
     {
         name: "recursion",
@@ -314,6 +318,12 @@ const cases: { name: string; expected: string[] }[] = [
     },
 ];
 
+const stripAnsi = (str: string) =>
+    str.replace(
+        /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g,
+        "",
+    );
+
 describe("Interpreter tests", () => {
     for (const { name: caseName, expected } of cases) {
         test(`should correctly interpret and run ${caseName}.js`, async () => {
@@ -380,7 +390,7 @@ describe("Interpreter tests", () => {
                     /\r\n/g,
                     "\n",
                 );
-                const output = `${stdout}\n${stderr}`.trim();
+                const output = stripAnsi(`${stdout}\n${stderr}`.trim());
 
                 for (const expectedString of expected) {
                     expect(output).toInclude(expectedString);
