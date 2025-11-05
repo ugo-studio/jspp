@@ -85,7 +85,10 @@ export function visitPropertyAccessExpression(
         )
         : null;
 
-    if (ts.isIdentifier(propAccess.expression) && !typeInfo && !this.isBuiltinObject(propAccess.expression)) {
+    if (
+        ts.isIdentifier(propAccess.expression) && !typeInfo &&
+        !this.isBuiltinObject(propAccess.expression)
+    ) {
         return `jspp::Exception::throw_unresolved_reference(${
             this.getJsVarName(
                 propAccess.expression,
@@ -125,7 +128,10 @@ export function visitElementAccessExpression(
         )
         : null;
 
-    if (ts.isIdentifier(elemAccess.expression) && !exprTypeInfo && !this.isBuiltinObject(elemAccess.expression as ts.Identifier)) {
+    if (
+        ts.isIdentifier(elemAccess.expression) && !exprTypeInfo &&
+        !this.isBuiltinObject(elemAccess.expression as ts.Identifier)
+    ) {
         return `jspp::Exception::throw_unresolved_reference(${
             this.getJsVarName(
                 elemAccess.expression as ts.Identifier,
@@ -149,7 +155,9 @@ export function visitElementAccessExpression(
             elemAccess.argumentExpression.getText(),
             argScope,
         );
-        if (!argTypeInfo && !this.isBuiltinObject(elemAccess.argumentExpression)) {
+        if (
+            !argTypeInfo && !this.isBuiltinObject(elemAccess.argumentExpression)
+        ) {
             return `jspp::Exception::throw_unresolved_reference(${
                 this.getJsVarName(
                     elemAccess.argumentExpression as ts.Identifier,
@@ -298,14 +306,20 @@ export function visitBinaryExpression(
             })`
             : rightText;
 
-    if (leftIsIdentifier && !leftTypeInfo && !this.isBuiltinObject(binExpr.left as ts.Identifier)) {
+    if (
+        leftIsIdentifier && !leftTypeInfo &&
+        !this.isBuiltinObject(binExpr.left as ts.Identifier)
+    ) {
         return `jspp::Exception::throw_unresolved_reference(${
             this.getJsVarName(
                 binExpr.left as ts.Identifier,
             )
         })`;
     }
-    if (rightIsIdentifier && !rightTypeInfo && !this.isBuiltinObject(binExpr.right as ts.Identifier)) {
+    if (
+        rightIsIdentifier && !rightTypeInfo &&
+        !this.isBuiltinObject(binExpr.right as ts.Identifier)
+    ) {
         return `jspp::Exception::throw_unresolved_reference(${
             this.getJsVarName(
                 binExpr.right as ts.Identifier,
@@ -351,6 +365,7 @@ export function visitCallExpression(
 ): string {
     const callExpr = node as ts.CallExpression;
     const callee = callExpr.expression;
+    const calleeName = this.escapeString(callee.getText());
     const args = callExpr.arguments
         .map((arg) => {
             const argText = this.visit(arg, context);
@@ -394,7 +409,7 @@ export function visitCallExpression(
                 )
             })`;
         }
-        if (typeInfo.isBuiltin) {
+        if (typeInfo?.isBuiltin) {
             derefCallee = calleeCode;
         } else {
             derefCallee = `jspp::Access::deref(${calleeCode}, ${
@@ -406,7 +421,8 @@ export function visitCallExpression(
     } else {
         derefCallee = calleeCode;
     }
-    return `std::any_cast<std::shared_ptr<jspp::JsFunction>>(${derefCallee})->call({${args}})`;
+
+    return `jspp::Access::call_function(${derefCallee},{${args}},"${calleeName}")`;
 }
 
 export function visitVoidExpression(

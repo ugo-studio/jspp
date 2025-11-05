@@ -27,6 +27,16 @@ namespace jspp
             return *var;
         }
 
+        // Helper function to call JsFunction
+        inline AnyValue call_function(const AnyValue &var, const std::vector<AnyValue> &args, const std::string &name)
+        {
+            if (var.type() == typeid(std::shared_ptr<JsFunction>))
+            {
+                return std::any_cast<const std::shared_ptr<JsFunction> &>(var)->call(args);
+            }
+            throw Exception::make_error_with_name(name + " is not a function", "TypeError");
+        }
+
         inline std::vector<std::string> get_object_keys(const AnyValue &obj)
         {
             std::vector<std::string> keys;

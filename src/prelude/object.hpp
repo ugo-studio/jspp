@@ -7,16 +7,16 @@ namespace jspp
 {
     namespace Object
     {
-        inline std::shared_ptr<jspp::JsObject> make_object(const std::map<std::string, AnyValue> &properties);
+        inline std::shared_ptr<jspp::JsObject> make_object(const std::unordered_map<std::string, AnyValue> &properties);
         inline std::shared_ptr<jspp::JsArray> make_array(const std::vector<AnyValue> &properties);
         inline std::shared_ptr<jspp::JsFunction> make_function(const std::function<AnyValue(const std::vector<AnyValue> &)> &callable);
         inline std::shared_ptr<jspp::JsString> make_string(const std::string &value);
         inline std::shared_ptr<jspp::JsBoolean> make_boolean(const bool &value);
 
-        inline std::shared_ptr<jspp::JsObject> make_object(const std::map<std::string, AnyValue> &properties)
+        inline std::shared_ptr<jspp::JsObject> make_object(const std::unordered_map<std::string, AnyValue> &properties)
         {
             // Create a new map with the correct type
-            std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> props_variant;
+            std::unordered_map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> props_variant;
             for (const auto &pair : properties)
             {
                 props_variant[pair.first] = pair.second;

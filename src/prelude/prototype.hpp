@@ -9,7 +9,7 @@ namespace jspp
 {
     namespace Prototype
     {
-        using PrototypeMap = std::map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>>;
+        using PrototypeMap = std::unordered_map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>>;
 
         inline bool setter_exists(const AnyValue &obj,
                                   const AnyValue &key)

@@ -1,6 +1,7 @@
 import ts from "typescript";
+
 import { Scope } from "../../analysis/scope";
-import { CodeGenerator } from ".";
+import { CodeGenerator } from "./";
 
 const BUILTIN_OBJECTS = new Set(["console", "Symbol"]);
 
@@ -86,7 +87,7 @@ export function indent(this: CodeGenerator) {
 export function escapeString(this: CodeGenerator, str: string): string {
     return str
         .replace(/\\/g, "\\\\")
-        .replace(/"/g, '"')
+        .replace(/"/g, '\\"')
         .replace(/\n/g, "\\n")
         .replace(/\r/g, "\\r")
         .replace(/\t/g, "\\t");
