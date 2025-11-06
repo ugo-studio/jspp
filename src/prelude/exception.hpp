@@ -5,122 +5,76 @@
 
 namespace jspp
 {
+    // // Forward declarations
+    // struct JsObject;
+    // struct JsString;
+    // struct JsFunction;
+
     namespace Exception
     {
-        inline jspp::AnyValue make_error_with_name(const AnyValue &message, const AnyValue &name)
+        inline AnyValue make_error(const std::string &message, const std::string &name = "Error")
         {
-            auto error = std::make_shared<JsObject>(JsObject{{{"message", message}, {"name", name}}});
-            // Define and set prototype methods
-            error->prototype[WellKnownSymbols::toString] = DataDescriptor{
-                jspp::Object::make_function([=](const std::vector<AnyValue> &) -> jspp::AnyValue
-                                            {
-                        std::string error_str = "Error";
-
-                        if (error->properties.count("name") > 0) {
-                            auto &name = error->properties["name"];
-                            if (std::holds_alternative<DataDescriptor>(name)) {
-                                auto &data_desc = std::get<DataDescriptor>(name);
-                                if (data_desc.value.type() == typeid(std::string)) {
-                                    error_str = std::any_cast<std::string>(data_desc.value);
-                                } else if (data_desc.value.type() == typeid(const char *)) {
-                                    error_str = std::any_cast<const char *>(data_desc.value);
-                                } else if (data_desc.value.type() == typeid(std::shared_ptr<jspp::JsString>)) {
-                                    error_str = std::any_cast<std::string>(std::any_cast<std::shared_ptr<jspp::JsString>>(data_desc.value)->value);
-                                }
-                            } else if (std::holds_alternative<AccessorDescriptor>(name)) {
-                                auto &data_desc = std::get<AccessorDescriptor>(name);
-                                if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(data_desc.get)){
-                                    auto val = std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(data_desc.get)({});
-                                    if (val.type() == typeid(std::string)) {
-                                        error_str = std::any_cast<std::string>(val);
-                                    } else if (val.type() == typeid(const char *)) {
-                                        error_str = std::any_cast<const char *>(val);
-                                    } else if (val.type() == typeid(std::shared_ptr<jspp::JsString>)) {
-                                        error_str = std::any_cast<std::string>(std::any_cast<std::shared_ptr<jspp::JsString>>(val)->value);
-                                    }
-                                }
-                            } else if (std::holds_alternative<AnyValue>(name)) {
-                                auto &val = std::get<AnyValue>(name);
-                                if (val.type() == typeid(std::string)) {
-                                    error_str = std::any_cast<std::string>(val);
-                                } else if (val.type() == typeid(const char *)) {
-                                    error_str = std::any_cast<const char *>(val);
-                                } else if (val.type() == typeid(std::shared_ptr<jspp::JsString>)) {
-                                    error_str = std::any_cast<std::string>(std::any_cast<std::shared_ptr<jspp::JsString>>(val)->value);
-                                }
-
-                            }
-                        }
-
-                        error_str += ": ";
-
-                        if (error->properties.count("message") > 0) {
-                            auto &message = error->properties["message"];
-                            if (std::holds_alternative<DataDescriptor>(message)) {
-                                auto &data_desc = std::get<DataDescriptor>(message);
-                                if (data_desc.value.type() == typeid(std::string)) {
-                                    error_str += std::any_cast<std::string>(data_desc.value);
-                                } else if (data_desc.value.type() == typeid(const char *)) {
-                                    error_str += std::any_cast<const char *>(data_desc.value);
-                                } else if (data_desc.value.type() == typeid(std::shared_ptr<jspp::JsString>)) {
-                                    error_str += std::any_cast<std::string>(std::any_cast<std::shared_ptr<jspp::JsString>>(data_desc.value)->value);
-                                }
-                            } else if (std::holds_alternative<AccessorDescriptor>(message)) {
-                                auto &data_desc = std::get<AccessorDescriptor>(message);
-                                if (std::holds_alternative<std::function<AnyValue(const std::vector<AnyValue> &)>>(data_desc.get)){
-                                    auto val = std::get<std::function<AnyValue(const std::vector<AnyValue> &)>>(data_desc.get)({});
-                                    if (val.type() == typeid(std::string)) {
-                                        error_str += std::any_cast<std::string>(val);
-                                    } else if (val.type() == typeid(const char *)) {
-                                        error_str += std::any_cast<const char *>(val);
-                                    } else if (val.type() == typeid(std::shared_ptr<jspp::JsString>)) {
-                                        error_str += std::any_cast<std::string>(std::any_cast<std::shared_ptr<jspp::JsString>>(val)->value);
-                                    }
-                                }
-                            } else if (std::holds_alternative<AnyValue>(message)) {
-                                auto &val = std::get<AnyValue>(message);
-                                if (val.type() == typeid(std::string)) {
-                                    error_str += std::any_cast<std::string>(val);
-                                } else if (val.type() == typeid(const char *)) {
-                                    error_str += std::any_cast<const char *>(val);
-                                } else if (val.type() == typeid(std::shared_ptr<jspp::JsString>)) {
-                                    error_str += std::any_cast<std::string>(std::any_cast<std::shared_ptr<jspp::JsString>>(val)->value);
-                                }
-
-                            }
-                        }
-
-                        return jspp::Object::make_string(error_str); })};
-            // return object
-            return jspp::AnyValue(error);
+            auto errorObj = std::make_shared<JsObject>(JsObject{{{"message", JsString{message}}, {"name", JsString{name}}}});
+            errorObj->props[WellKnownSymbols::toString] = JsFunction{[errorObj](const std::vector<AnyValue> &) -> AnyValue
+                                                                     {
+                                                                         auto errorStr = JsString{"Error"};
+                                                                         if (errorObj->props.count("name") > 0)
+                                                                         {
+                                                                             auto &name = errorObj->props["name"];
+                                                                             if (std::holds_alternative<std::string>(name))
+                                                                             {
+                                                                                 errorStr.value = std::get<std::string>(name);
+                                                                             }
+                                                                         }
+                                                                         errorStr.value += ": ";
+                                                                         if (errorObj->props.count("message") > 0)
+                                                                         {
+                                                                             auto &message = errorObj->props["message"];
+                                                                             if (std::holds_alternative<std::string>(message))
+                                                                             {
+                                                                                 errorStr.value += std::get<std::string>(message);
+                                                                             }
+                                                                         }
+                                                                         return errorStr;
+                                                                     }};
+            return *errorObj;
         }
-        inline jspp::AnyValue make_default_error(const AnyValue &message)
+
+        inline AnyValue parse_error_from_value(const std::variant<AnyValue, std::exception> &ex)
         {
-            return Exception::make_error_with_name(message, "Error");
-        }
-        inline jspp::AnyValue parse_error_from_value(const AnyValue &val)
-        {
-            if (val.type() == typeid(std::shared_ptr<std::exception>))
+
+            if (std::holds_alternative<std::exception>(ex))
             {
-                auto ex_ptr = std::any_cast<std::shared_ptr<std::exception>>(val);
-                if (ex_ptr)
-                {
-                    return Exception::make_error_with_name(std::string(ex_ptr->what()), "Error");
-                }
+                auto ex_ptr = std::get<std::exception>(ex);
+                return Exception::make_error(std::string{ex_ptr.what()});
             }
-            return val;
+            return std::get<AnyValue>(ex);
         }
-        inline jspp::AnyValue throw_unresolved_reference(const std::string &varName)
+
+        inline jspp::AnyValue throw_unresolved_reference_error(const std::string &varName)
         {
-            throw Exception::make_error_with_name(varName + " is not defined", "ReferenceError");
+            throw Exception::make_error(varName + " is not defined", "ReferenceError");
         }
-        inline jspp::AnyValue throw_immutable_assignment()
+        inline jspp::AnyValue throw_uninitialized_reference_error(const std::string &varName)
         {
-            throw Exception::make_error_with_name("Assignment to constant variable.", "TypeError");
+            throw Exception::make_error("Cannot access '" + varName + "' before initialization", "ReferenceError");
         }
-        inline jspp::AnyValue throw_invalid_return_statement()
+        inline jspp::AnyValue throw_uninitialized_read_property_error(const std::string &varName)
         {
-            throw Exception::make_error_with_name("Return statements are only valid inside functions.", "SyntaxError");
+            throw Exception::make_error("Cannot read properties of uninitialized (reading '" + varName + "')", "TypeError");
         }
-    };
+        inline jspp::AnyValue throw_uninitialized_read_property_error()
+        {
+            throw Exception::make_error("Cannot read properties of uninitialized", "TypeError");
+        }
+        inline jspp::AnyValue throw_immutable_assignment_error()
+        {
+            throw Exception::make_error("Assignment to constant variable.", "TypeError");
+        }
+        inline jspp::AnyValue throw_invalid_return_statement_error()
+        {
+            throw Exception::make_error("Return statements are only valid inside functions.", "SyntaxError");
+        }
+
+    }
 }

@@ -35,16 +35,16 @@ export class ScopeManager {
         const rootScope = new Scope(null); // The global scope
         this.currentScope = rootScope;
         this.allScopes.push(rootScope); // Add the root scope to our list
-        this.define("undefined", {
-            type: "undefined",
-            isConst: true,
-            isBuiltin: true,
-        });
-        this.define("null", {
-            type: "null",
-            isConst: true,
-            isBuiltin: true,
-        });
+        // this.define("undefined", {
+        //     type: "undefined",
+        //     isConst: true,
+        //     isBuiltin: true,
+        // });
+        // this.define("null", {
+        //     type: "null",
+        //     isConst: true,
+        //     isBuiltin: true,
+        // });
     }
 
     // Enters a new, nested scope.

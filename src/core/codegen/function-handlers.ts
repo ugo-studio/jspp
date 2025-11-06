@@ -29,7 +29,7 @@ export function generateLambda(
                 const name = p.name.getText();
                 const defaultValue = p.initializer
                     ? this.visit(p.initializer, visitContext)
-                    : "undefined";
+                    : "jspp::NonValues::undefined";
                 paramExtraction +=
                     `${this.indent()}auto ${name} = ${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue};\n`;
             });
@@ -49,7 +49,7 @@ export function generateLambda(
                 const name = p.name.getText();
                 const defaultValue = p.initializer
                     ? this.visit(p.initializer, visitContext)
-                    : "undefined";
+                    : "jspp::NonValues::undefined";
                 lambda +=
                     `${this.indent()}auto ${name} = ${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue};\n`;
             });
@@ -65,16 +65,14 @@ export function generateLambda(
             lambda += `${this.indent()}}`;
         }
     } else {
-        lambda += "{ return undefined; }\n";
+        lambda += "{ return jspp::NonValues::undefined; }\n";
     }
 
     const signature = `jspp::AnyValue(const std::vector<jspp::AnyValue>&)`;
     const callable = `std::function<${signature}>(${lambda})`;
 
     const funcName = node.name?.getText();
-    const fullExpression = `jspp::Object::make_function(${callable}, "${
-        funcName || ""
-    }")`;
+    const fullExpression = `jspp::JsFunction{${callable}, "${funcName || ""}"}`;
 
     if (ts.isFunctionDeclaration(node) && !isAssignment && funcName) {
         return `${this.indent()}auto ${funcName} = ${fullExpression};\n`;

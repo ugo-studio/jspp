@@ -17,7 +17,7 @@ export function visitObjectLiteralExpression(
             props += `{"${key}", ${value}},`;
         }
     }
-    return `jspp::Object::make_object({${props}})`;
+    return `jspp::JsObject{{${props}}}`;
 }
 
 export function visitArrayLiteralExpression(
@@ -28,7 +28,7 @@ export function visitArrayLiteralExpression(
     const elements = (node as ts.ArrayLiteralExpression).elements
         .map((elem) => this.visit(elem, context))
         .join(", ");
-    return `jspp::Object::make_array({${elements}})`;
+    return `jspp::JsArray{{${elements}}}`;
 }
 
 export function visitPrefixUnaryExpression(
@@ -496,7 +496,7 @@ export function visitVoidExpression(
 ): string {
     const voidExpr = node as ts.VoidExpression;
     const exprText = this.visit(voidExpr.expression, context);
-    return `(${exprText}, undefined)`;
+    return `(${exprText}, jspp::NonValues::undefined)`;
 }
 
 export function visitTemplateExpression(
@@ -506,11 +506,11 @@ export function visitTemplateExpression(
 ): string {
     const templateExpr = node as ts.TemplateExpression;
 
-    let result = `jspp::Object::make_string("${
+    let result = `jspp::JsString{"${
         this.escapeString(
             templateExpr.head.text,
         )
-    }")`;
+    }"}`;
 
     for (const span of templateExpr.templateSpans) {
         const expr = span.expression;
@@ -545,11 +545,11 @@ export function visitTemplateExpression(
         result += ` + (${finalExpr})`;
 
         if (span.literal.text) {
-            result += ` + jspp::Object::make_string("${
+            result += ` + jspp::JsString{"${
                 this.escapeString(
                     span.literal.text,
                 )
-            }")`;
+            }"}`;
         }
     }
     return result;

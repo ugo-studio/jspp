@@ -32,12 +32,13 @@ export function visitVariableDeclaration(
                 initExpr.text,
                 scope,
             );
-            if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
-                initText = `jspp::Access::deref(${initText}, ${
-                    this.getJsVarName(
-                        initExpr,
-                    )
-                })`;
+            const varName = this.getJsVarName(initExpr);
+            if (varName === '"undefined"') {
+                initText = "jspp::NonValues::undefined";
+            } else if (
+                typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin
+            ) {
+                initText = `jspp::Access::deref(${initText}, ${varName})`;
             }
         }
         initializer = " = " + initText;
@@ -48,7 +49,7 @@ export function visitVariableDeclaration(
 
     if (isLetOrConst) {
         // If there's no initializer, it should be assigned undefined.
-        if (!initializer) return `*${name} = undefined`;
+        if (!initializer) return `*${name} = jspp::NonValues::undefined`;
         return `*${name}${initializer}`;
     }
 
@@ -61,7 +62,9 @@ export function visitVariableDeclaration(
         if (!initializer) return "";
         return `*${name}${initializer}`;
     } else {
-        const initValue = initializer ? initializer.substring(3) : "undefined";
+        const initValue = initializer
+            ? initializer.substring(3)
+            : "jspp::NonValues::undefined";
         return `auto ${name} = std::make_shared<jspp::AnyValue>(${initValue})`;
     }
 }

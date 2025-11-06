@@ -5,7 +5,6 @@
 #include <vector>
 #include <variant>
 #include <functional>
-#include <any>
 #include <memory>
 #include <map>
 #include <algorithm>
@@ -14,99 +13,35 @@
 #include <set>
 #include <cmath>
 
-struct Undefined
-{
-};
-inline Undefined undefined;
-struct Null
-{
-};
-inline Null null;
-
 // JSPP standard library
 namespace jspp
 {
-    // Dynamic AnyValue
-    using AnyValue = std::any;
-    using NumberValue = std::variant<int, double>;
-
-    // Temporal Dead Zone
-    struct Uninitialized
-    {
-    };
-    inline constexpr Uninitialized uninitialized;
-
     // Forward declarations
-    struct JsObject;
-    struct JsArray;
-    struct JsString;
-    struct JsFunction;
-    struct JsNumber;
-    struct JsBoolean;
+    struct JsUndefined;     // cannot
+    struct JsNull;          // cannot
+    struct JsUninitialized; // cannot
+    struct JsBoolean;       // cannot
+    struct JsNumber;        // cannot
+    struct JsString;        // cannot
+    struct JsObject;        // can set property
+    struct JsArray;         // can set property
+    struct JsFunction;      // can set property
 
-    // Object and array prototypes
-    struct DataDescriptor
-    {
-        AnyValue value = undefined;
-        bool writable = true;
-        bool enumerable = false;
-        bool configurable = true;
-    };
-    struct AccessorDescriptor
-    {
-        std::variant<std::function<AnyValue(const std::vector<AnyValue> &)>, Undefined> get = undefined; // getter
-        std::variant<std::function<AnyValue(const std::vector<AnyValue> &)>, Undefined> set = undefined; // setter
-        bool enumerable = false;
-        bool configurable = true;
-    };
+    // Object property configuration forward declarations
+    struct DataDescriptor;
+    struct AccessorDescriptor;
 
-    // Objects
-    struct JsObject
-    {
-        std::unordered_map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> properties;
-        std::unordered_map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> prototype;
-    };
+    // Dynamic AnyValue
+    // using AnyValue = std::variant<JsBoolean, JsNumber, JsString, JsObject, JsArray, JsFunction, Null, Undefined, Uninitialized, DataDescriptor, AccessorDescriptor>;
+    using AnyValue = std::variant<JsUndefined, JsNull, JsUninitialized, JsBoolean, JsNumber, JsString, JsObject, JsArray, JsFunction>;
 
-    // Arrays
-    struct JsArray
+    // Non-values
+    namespace NonValues
     {
-        std::vector<AnyValue> items;
-        std::unordered_map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> properties;
-        std::unordered_map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> prototype;
-    };
-
-    // Strings
-    struct JsString
-    {
-        std::string value;
-        std::unordered_map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> properties;
-        std::unordered_map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> prototype;
-    };
-
-    // Functions
-    struct JsFunction
-    {
-        std::function<AnyValue(const std::vector<AnyValue> &)> call;
-        std::string name;
-        std::unordered_map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> properties;
-        std::unordered_map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> prototype;
-    };
-
-    // Numbers
-    struct JsNumber
-    {
-        NumberValue value;
-        std::unordered_map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> properties;
-        std::unordered_map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> prototype;
-    };
-
-    // Booleans
-    struct JsBoolean
-    {
-        bool value;
-        std::unordered_map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> properties;
-        std::unordered_map<std::string, std::variant<DataDescriptor, AccessorDescriptor, AnyValue>> prototype;
-    };
+        inline constexpr JsUndefined undefined;
+        inline constexpr JsNull null;
+        inline constexpr JsUninitialized uninitialized;
+    }
 
     // Operators
     inline bool is_truthy(const AnyValue &val);

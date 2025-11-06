@@ -1,51 +1,52 @@
 import ts from "typescript";
+
 import type { Node } from "../../ast/types";
-import { CodeGenerator } from ".";
+import { CodeGenerator } from "./";
 import {
-    visitVariableDeclaration,
-    visitVariableDeclarationList,
+  visitVariableDeclaration,
+  visitVariableDeclarationList,
 } from "./declaration-handlers";
 import {
-    visitArrayLiteralExpression,
-    visitBinaryExpression,
-    visitCallExpression,
-    visitElementAccessExpression,
-    visitObjectLiteralExpression,
-    visitParenthesizedExpression,
-    visitPostfixUnaryExpression,
-    visitPrefixUnaryExpression,
-    visitPropertyAccessExpression,
-    visitTemplateExpression,
-    visitVoidExpression,
+  visitArrayLiteralExpression,
+  visitBinaryExpression,
+  visitCallExpression,
+  visitElementAccessExpression,
+  visitObjectLiteralExpression,
+  visitParenthesizedExpression,
+  visitPostfixUnaryExpression,
+  visitPrefixUnaryExpression,
+  visitPropertyAccessExpression,
+  visitTemplateExpression,
+  visitVoidExpression,
 } from "./expression-handlers";
 import {
-    visitArrowFunction,
-    visitFunctionDeclaration,
-    visitFunctionExpression,
+  visitArrowFunction,
+  visitFunctionDeclaration,
+  visitFunctionExpression,
 } from "./function-handlers";
 import {
-    visitFalseKeyword,
-    visitIdentifier,
-    visitNoSubstitutionTemplateLiteral,
-    visitNullKeyword,
-    visitNumericLiteral,
-    visitStringLiteral,
-    visitTrueKeyword,
-    visitUndefinedKeyword,
+  visitFalseKeyword,
+  visitIdentifier,
+  visitNoSubstitutionTemplateLiteral,
+  visitNullKeyword,
+  visitNumericLiteral,
+  visitStringLiteral,
+  visitTrueKeyword,
+  visitUndefinedKeyword,
 } from "./literal-handlers";
 import {
-    visitBlock,
-    visitCatchClause,
-    visitExpressionStatement,
-    visitForInStatement,
-    visitForOfStatement,
-    visitForStatement,
-    visitIfStatement,
-    visitReturnStatement,
-    visitSourceFile,
-    visitThrowStatement,
-    visitTryStatement,
-    visitVariableStatement,
+  visitBlock,
+  visitCatchClause,
+  visitExpressionStatement,
+  visitForInStatement,
+  visitForOfStatement,
+  visitForStatement,
+  visitIfStatement,
+  visitReturnStatement,
+  visitSourceFile,
+  visitThrowStatement,
+  visitTryStatement,
+  visitVariableStatement,
 } from "./statement-handlers";
 
 export interface VisitContext {
