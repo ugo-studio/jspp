@@ -4,16 +4,13 @@
 
 namespace jspp
 {
-    namespace Convert
-    {
-        inline std::string to_string(const AnyValue &val);
-    }
+    class AnyValue;
 
     struct JsObject
     {
         std::unordered_map<std::string, AnyValue> props;
 
-        std::string to_std_string() const
+        std::string to_raw_string() const
         {
             return "[Object Object]";
         }
@@ -23,18 +20,16 @@ namespace jspp
             auto it = props.find(key);
             if (it == props.end())
             {
-                static AnyValue undefinedVal = NonValues::undefined; // store somewhere safe
-                return undefinedVal;
+                return AnyValue::make_undefined();
             }
             return it->second;
         }
         AnyValue &operator[](const AnyValue &key)
         {
-            auto it = props.find(Convert::to_string(key));
+            auto it = props.find(key.convert_to_raw_string());
             if (it == props.end())
             {
-                static AnyValue undefinedVal = NonValues::undefined; // store somewhere safe
-                return undefinedVal;
+                return AnyValue::make_undefined();
             }
             return it->second;
         }

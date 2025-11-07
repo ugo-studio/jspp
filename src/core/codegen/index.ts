@@ -52,7 +52,7 @@ export class CodeGenerator {
             isFunctionBody: true,
         });
         this.indentationLevel--;
-        containerCode += "  return jspp::NonValues::undefined;\n";
+        containerCode += "  return jspp::AnyValue::make_undefined();\n";
         containerCode += "}\n\n";
 
         let mainCode = "int main() {\n";

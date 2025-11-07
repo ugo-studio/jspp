@@ -7,11 +7,10 @@
 #include <cstdlib> // malloc/free
 #include <new>     // placement new
 #include <type_traits>
+#include <sstream>
+#include <iomanip>
 
-#include "values/non-values.hpp"
-#include "values/boolean.hpp"
-#include "values/number.hpp"
-#include "values/string.hpp"
+#include "values/non_values.hpp"
 #include "values/object.hpp"
 #include "values/array.hpp"
 #include "values/function.hpp"
@@ -42,9 +41,9 @@ namespace jspp
             JsUndefined undefined;
             JsNull null;
             JsUninitialized uninitialized;
-            JsBoolean boolean;
-            JsNumber number;
-            JsString *str;
+            bool boolean;
+            double number;
+            std::string *str;
             JsObject *object;
             JsArray *array;
             JsFunction *function;
@@ -163,7 +162,24 @@ namespace jspp
             {
                 TaggedValue tv;
                 tv.type = JsType::Number;
-                tv.number = JsNumber{d}; // assume JsNumber has constructor from double / field 'value'
+                tv.number = d;
+                v.set_tagged(tv);
+            }
+            return v;
+        }
+
+        static AnyValue make_uninitialized() noexcept
+        {
+            AnyValue v;
+            if (nan_boxing_available())
+            {
+                uint64_t bits = QNAN_MASK | (static_cast<uint64_t>(JsType::Uninitialized) << TAG_SHIFT);
+                v.set_bits(bits);
+            }
+            else
+            {
+                TaggedValue tv;
+                tv.type = JsType::Uninitialized;
                 v.set_tagged(tv);
             }
             return v;
@@ -216,15 +232,35 @@ namespace jspp
             {
                 TaggedValue tv;
                 tv.type = JsType::Boolean;
-                tv.boolean = JsBoolean{b};
+                tv.boolean = b;
                 v.set_tagged(tv);
             }
             return v;
         }
 
         // pointer boxing (strings/objects/arrays/functions)
-        static AnyValue make_string(JsString *s) noexcept
+        static AnyValue make_string(std::string *s) noexcept
         {
+            AnyValue v;
+            if (nan_boxing_available())
+            {
+                uintptr_t ptr_bits = reinterpret_cast<uintptr_t>(s);
+                assert((ptr_bits & ~PAYLOAD_MASK) == 0 && "pointer doesn't fit in NaN-box payload");
+                uint64_t bits = QNAN_MASK | (static_cast<uint64_t>(JsType::String) << TAG_SHIFT) | (ptr_bits & PAYLOAD_MASK);
+                v.set_bits(bits);
+            }
+            else
+            {
+                TaggedValue tv;
+                tv.type = JsType::String;
+                tv.str = s;
+                v.set_tagged(tv);
+            }
+            return v;
+        }
+        static AnyValue make_string(std::string raw_s) noexcept
+        {
+            auto s = std::make_shared<std::string>(raw_s).get();
             AnyValue v;
             if (nan_boxing_available())
             {
@@ -347,6 +383,36 @@ namespace jspp
             }
         }
 
+        bool is_array() const noexcept
+        {
+            if (nan_boxing_available())
+            {
+                if ((storage.bits & QNAN_MASK) != QNAN_MASK)
+                    return false;
+                uint64_t tag = (storage.bits >> TAG_SHIFT) & 0xFFFFULL;
+                return static_cast<JsType>(tag) == JsType::Array;
+            }
+            else
+            {
+                return storage.tagged.type == JsType::Array;
+            }
+        }
+
+        bool is_function() const noexcept
+        {
+            if (nan_boxing_available())
+            {
+                if ((storage.bits & QNAN_MASK) != QNAN_MASK)
+                    return false;
+                uint64_t tag = (storage.bits >> TAG_SHIFT) & 0xFFFFULL;
+                return static_cast<JsType>(tag) == JsType::Function;
+            }
+            else
+            {
+                return storage.tagged.type == JsType::Function;
+            }
+        }
+
         bool is_boolean() const noexcept
         {
             if (nan_boxing_available())
@@ -392,6 +458,21 @@ namespace jspp
             }
         }
 
+        bool is_uninitialized() const noexcept
+        {
+            if (nan_boxing_available())
+            {
+                if ((storage.bits & QNAN_MASK) != QNAN_MASK)
+                    return false;
+                uint64_t tag = (storage.bits >> TAG_SHIFT) & 0xFFFFULL;
+                return static_cast<JsType>(tag) == JsType::Uninitialized;
+            }
+            else
+            {
+                return storage.tagged.type == JsType::Uninitialized;
+            }
+        }
+
         // extractors ----------------------------------------------------
         double as_double() const noexcept
         {
@@ -402,8 +483,7 @@ namespace jspp
             }
             else
             {
-                // assume JsNumber stores the raw double in a member 'value'
-                return storage.tagged.number.value;
+                return storage.tagged.number;
             }
         }
 
@@ -416,17 +496,17 @@ namespace jspp
             }
             else
             {
-                return storage.tagged.boolean.value;
+                return storage.tagged.boolean;
             }
         }
 
-        JsString *as_string() const noexcept
+        std::string *as_string() const noexcept
         {
             if (nan_boxing_available())
             {
                 assert(is_string());
                 uintptr_t payload = storage.bits & PAYLOAD_MASK;
-                return reinterpret_cast<JsString *>(payload);
+                return reinterpret_cast<std::string *>(payload);
             }
             else
             {
@@ -484,6 +564,49 @@ namespace jspp
         static bool runtime_using_nan_boxing() noexcept
         {
             return nan_boxing_available();
+        }
+
+        // convert value to raw string
+        std::string convert_to_raw_string() const noexcept
+        {
+            if (is_undefined())
+                return "undefined";
+            if (is_null())
+                return "null";
+            if (is_uninitialized())
+                return "<uninitialized>";
+            if (is_boolean())
+                return as_boolean() ? "true" : "false";
+            if (is_number())
+            {
+                auto value = as_double();
+                if (std::abs(value) >= 1e21 || (std::abs(value) > 0 && std::abs(value) < 1e-6))
+                {
+                    std::ostringstream oss;
+                    oss << std::scientific << std::setprecision(4) << value;
+                    return oss.str();
+                }
+                else
+                {
+                    std::ostringstream oss;
+                    oss << std::setprecision(6) << std::fixed << value;
+                    std::string s = oss.str();
+                    s.erase(s.find_last_not_of('0') + 1, std::string::npos);
+                    if (s.back() == '.')
+                    {
+                        s.pop_back();
+                    }
+                    return s;
+                }
+            }
+            if (is_string())
+                return *as_string();
+            if (is_object())
+                return as_object()->to_raw_string();
+            if (is_array())
+                return as_array()->to_raw_string();
+            if (is_function())
+                return as_function()->to_raw_string();
         }
     };
 

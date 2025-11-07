@@ -4,10 +4,7 @@
 
 namespace jspp
 {
-    namespace Convert
-    {
-        inline std::string to_string(const AnyValue &val);
-    }
+    class AnyValue;
 
     struct JsArray
     {
@@ -16,14 +13,14 @@ namespace jspp
         std::unordered_map<std::string, AnyValue> props; // non-index string properties
         uint64_t length = 0;
 
-        std::string to_std_string() const
+        std::string to_raw_string() const
         {
             std::string result = "";
             for (size_t i = 0; i < dense.size(); ++i)
             {
-                if (!std::holds_alternative<JsUndefined>(dense[i]) && !std::holds_alternative<JsNull>(dense[i]))
+                if (!dense[i].is_undefined() && !dense[i].is_null())
                 {
-                    result += Convert::to_string(dense[i]);
+                    result += dense[i].convert_to_raw_string();
                 }
                 if (i < dense.size() - 1)
                 {

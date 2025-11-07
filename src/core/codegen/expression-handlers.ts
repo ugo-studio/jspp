@@ -498,7 +498,7 @@ export function visitVoidExpression(
 ): string {
     const voidExpr = node as ts.VoidExpression;
     const exprText = this.visit(voidExpr.expression, context);
-    return `(${exprText}, jspp::NonValues::undefined)`;
+    return `(${exprText}, jspp::AnyValue::make_undefined())`;
 }
 
 export function visitTemplateExpression(
@@ -508,11 +508,11 @@ export function visitTemplateExpression(
 ): string {
     const templateExpr = node as ts.TemplateExpression;
 
-    let result = `jspp::JsString{"${
+    let result = `jspp::AnyValue::make_string("${
         this.escapeString(
             templateExpr.head.text,
         )
-    }"}`;
+    }")`;
 
     for (const span of templateExpr.templateSpans) {
         const expr = span.expression;
@@ -547,11 +547,11 @@ export function visitTemplateExpression(
         result += ` + (${finalExpr})`;
 
         if (span.literal.text) {
-            result += ` + jspp::JsString{"${
+            result += ` + jspp::AnyValue::make_string("${
                 this.escapeString(
                     span.literal.text,
                 )
-            }"}`;
+            }")`;
         }
     }
     return result;

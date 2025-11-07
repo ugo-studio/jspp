@@ -34,7 +34,7 @@ export function visitVariableDeclaration(
             );
             const varName = this.getJsVarName(initExpr);
             if (varName === '"undefined"') {
-                initText = "jspp::NonValues::undefined";
+                initText = "jspp::AnyValue::make_undefined()";
             } else if (
                 typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin
             ) {
@@ -49,7 +49,7 @@ export function visitVariableDeclaration(
 
     if (isLetOrConst) {
         // If there's no initializer, it should be assigned undefined.
-        if (!initializer) return `*${name} = jspp::NonValues::undefined`;
+        if (!initializer) return `*${name} = jspp::AnyValue::make_undefined()`;
         return `*${name}${initializer}`;
     }
 
@@ -64,7 +64,7 @@ export function visitVariableDeclaration(
     } else {
         const initValue = initializer
             ? initializer.substring(3)
-            : "jspp::NonValues::undefined";
+            : "jspp::AnyValue::make_undefined()";
         return `auto ${name} = std::make_shared<jspp::AnyValue>(${initValue})`;
     }
 }

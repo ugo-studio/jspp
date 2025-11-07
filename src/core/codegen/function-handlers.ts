@@ -29,7 +29,7 @@ export function generateLambda(
                 const name = p.name.getText();
                 const defaultValue = p.initializer
                     ? this.visit(p.initializer, visitContext)
-                    : "jspp::NonValues::undefined";
+                    : "jspp::AnyValue::make_undefined()";
                 paramExtraction +=
                     `${this.indent()}auto ${name} = ${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue};\n`;
             });
@@ -49,7 +49,7 @@ export function generateLambda(
                 const name = p.name.getText();
                 const defaultValue = p.initializer
                     ? this.visit(p.initializer, visitContext)
-                    : "jspp::NonValues::undefined";
+                    : "jspp::AnyValue::make_undefined()";
                 lambda +=
                     `${this.indent()}auto ${name} = ${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue};\n`;
             });
@@ -65,7 +65,7 @@ export function generateLambda(
             lambda += `${this.indent()}}`;
         }
     } else {
-        lambda += "{ return jspp::NonValues::undefined; }\n";
+        lambda += "{ return jspp::AnyValue::make_undefined(); }\n";
     }
 
     const signature = `jspp::AnyValue(const std::vector<jspp::AnyValue>&)`;

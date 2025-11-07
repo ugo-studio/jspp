@@ -13,21 +13,21 @@ export function visitNumericLiteral(
     this: CodeGenerator,
     node: ts.NumericLiteral,
 ): string {
-    return `jspp::JsNumber{${this.escapeString(node.text)}}`;
+    return `jspp::AnyValue::from_number(${this.escapeString(node.text)})`;
 }
 
 export function visitStringLiteral(
     this: CodeGenerator,
     node: ts.StringLiteral,
 ): string {
-    return `jspp::JsString{"${this.escapeString(node.text)}"}`;
+    return `jspp::AnyValue::make_string("${this.escapeString(node.text)}")`;
 }
 
 export function visitNoSubstitutionTemplateLiteral(
     this: CodeGenerator,
     node: ts.NoSubstitutionTemplateLiteral,
 ): string {
-    return `jspp::JsString{"${this.escapeString(node.text)}"}`;
+    return `jspp::AnyValue::make_string("${this.escapeString(node.text)}")`;
 }
 
 export function visitTrueKeyword(): string {
@@ -39,7 +39,7 @@ export function visitFalseKeyword(): string {
 }
 
 export function visitUndefinedKeyword(): string {
-    return "jspp::NonValues::undefined";
+    return "jspp::AnyValue::make_undefined()";
 }
 
 export function visitNullKeyword(): string {

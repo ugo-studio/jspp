@@ -10,7 +10,7 @@ namespace jspp
         std::string name;
         std::unordered_map<std::string, AnyValue> props;
 
-        std::string to_std_string() const
+        std::string to_raw_string() const
         {
             return "function " + name + "() { [native code] }";
         }
