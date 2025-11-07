@@ -8,9 +8,14 @@ namespace jspp
     {
         bool value;
 
-        AnyValue &operator[](const AnyValue &key)
+        std::string to_std_string() const
         {
-            return AnyValue{NonValues::undefined};
+            return value ? "true" : "false";
         }
+
+        // AnyValue &operator[](const AnyValue &key)
+        // {
+        //     return AnyValue{NonValues::undefined};
+        // }
     };
 }

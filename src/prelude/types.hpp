@@ -6,7 +6,7 @@
 #include <variant>
 #include <functional>
 #include <memory>
-#include <map>
+#include <unordered_map>
 #include <algorithm>
 #include <cctype>
 #include <cstring>
@@ -32,21 +32,22 @@ namespace jspp
     struct AccessorDescriptor;
 
     // Dynamic AnyValue
-    // using AnyValue = std::variant<JsBoolean, JsNumber, JsString, JsObject, JsArray, JsFunction, Null, Undefined, Uninitialized, DataDescriptor, AccessorDescriptor>;
-    using AnyValue = std::variant<JsUndefined, JsNull, JsUninitialized, JsBoolean, JsNumber, JsString, JsObject, JsArray, JsFunction>;
-
-    // Non-values
-    namespace NonValues
-    {
-        inline constexpr JsUndefined undefined;
-        inline constexpr JsNull null;
-        inline constexpr JsUninitialized uninitialized;
-    }
+    // Use std::shared_ptr for types that can contain other AnyValues.
+    using AnyValue = std::variant<
+        JsUndefined,
+        JsNull,
+        JsUninitialized,
+        JsBoolean,
+        JsNumber,
+        JsString,
+        std::shared_ptr<JsObject>,
+        std::shared_ptr<JsArray>,
+        std::shared_ptr<JsFunction>>;
 
     // Operators
     inline bool is_truthy(const AnyValue &val);
-    inline bool equals(const AnyValue &lhs, const AnyValue &rhs);
-    inline bool strict_equals(const AnyValue &lhs, const AnyValue &rhs);
+    inline JsBoolean equals(const AnyValue &lhs, const AnyValue &rhs);
+    inline JsBoolean strict_equals(const AnyValue &lhs, const AnyValue &rhs);
     inline AnyValue pow(const AnyValue &lhs, const AnyValue &rhs);
 
 }

@@ -107,7 +107,8 @@ export function visitPropertyAccessExpression(
         finalExpr = exprText;
     }
 
-    return `jspp::Access::get_property(${finalExpr}, "${propName}")`;
+    // return `jspp::Access::get_property(${finalExpr}, "${propName}")`;
+    return `${finalExpr}["${propName}"]`;
 }
 
 export function visitElementAccessExpression(
@@ -173,7 +174,8 @@ export function visitElementAccessExpression(
         }
     }
 
-    return `jspp::Access::get_property(${finalExpr}, ${argText})`;
+    // return `jspp::Access::get_property(${finalExpr}, ${argText})`;
+    return `${finalExpr}[${argText}]`;
 }
 
 export function visitBinaryExpression(

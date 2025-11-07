@@ -2,6 +2,9 @@
 
 #include "types.hpp"
 #include "well_known_symbols.hpp"
+#include "values/object.hpp"
+#include "values/string.hpp"
+#include "values/function.hpp"
 
 namespace jspp
 {

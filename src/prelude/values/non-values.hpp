@@ -8,27 +8,42 @@ namespace jspp
 
     struct JsUndefined
     {
-        AnyValue &operator[](const AnyValue &key)
+        std::string to_std_string() const
         {
-            return AnyValue{NonValues::undefined};
+            return "undefined";
         }
+
+        // AnyValue &operator[](const AnyValue &key)
+        // {
+        //     return AnyValue{NonValues::undefined};
+        // }
     };
 
     struct JsNull
     {
-        AnyValue &operator[](const AnyValue &key)
+        std::string to_std_string() const
         {
-            return AnyValue{NonValues::undefined};
+            return "null";
         }
+
+        // AnyValue &operator[](const AnyValue &key)
+        // {
+        //     return AnyValue{NonValues::undefined};
+        // }
     };
 
     struct JsUninitialized
     {
-        AnyValue &operator[](const AnyValue &_)
+        std::string to_std_string() const
         {
-            // return Exception::throw_uninitialized_read_property_error();
-            return AnyValue{NonValues::undefined};
+            return "<uninitialized>";
         }
+
+        // AnyValue &operator[](const AnyValue &_)
+        // {
+        //     // return Exception::throw_uninitialized_read_property_error();
+        //     return AnyValue{NonValues::undefined};
+        // }
     };
 
     namespace NonValues
@@ -37,4 +52,5 @@ namespace jspp
         inline constexpr JsNull null;
         inline constexpr JsUninitialized uninitialized;
     }
+
 }

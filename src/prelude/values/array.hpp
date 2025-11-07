@@ -4,12 +4,34 @@
 
 namespace jspp
 {
+    namespace Convert
+    {
+        inline std::string to_string(const AnyValue &val);
+    }
+
     struct JsArray
     {
         std::vector<AnyValue> dense;                     // dense storage for small/contiguous indices
         std::unordered_map<uint32_t, AnyValue> sparse;   // sparse indices (very large indices)
         std::unordered_map<std::string, AnyValue> props; // non-index string properties
         uint64_t length = 0;
+
+        std::string to_std_string() const
+        {
+            std::string result = "";
+            for (size_t i = 0; i < dense.size(); ++i)
+            {
+                if (!std::holds_alternative<JsUndefined>(dense[i]) && !std::holds_alternative<JsNull>(dense[i]))
+                {
+                    result += Convert::to_string(dense[i]);
+                }
+                if (i < dense.size() - 1)
+                {
+                    result += ",";
+                }
+            }
+            return result;
+        }
 
         static bool isArrayIndex(const std::string &s)
         {
