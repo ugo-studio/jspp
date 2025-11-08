@@ -72,7 +72,9 @@ export function generateLambda(
     const callable = `std::function<${signature}>(${lambda})`;
 
     const funcName = node.name?.getText();
-    const fullExpression = `jspp::JsFunction{${callable}, "${funcName || ""}"}`;
+    const fullExpression = `jspp::AnyValue::make_function(${callable}, "${
+        funcName || ""
+    }")`;
 
     if (ts.isFunctionDeclaration(node) && !isAssignment && funcName) {
         return `${this.indent()}auto ${funcName} = ${fullExpression};\n`;

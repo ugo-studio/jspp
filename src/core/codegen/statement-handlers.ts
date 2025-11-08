@@ -39,7 +39,7 @@ export function visitSourceFile(
             (decl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !==
                 0;
         const initializer = isLetOrConst
-            ? "jspp::NonValues::uninitialized"
+            ? "jspp::AnyValue::make_uninitialized()"
             : "jspp::AnyValue::make_undefined()";
         code +=
             `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;
@@ -118,7 +118,7 @@ export function visitBlock(
             (decl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !==
                 0;
         const initializer = isLetOrConst
-            ? "jspp::NonValues::uninitialized"
+            ? "jspp::AnyValue::make_uninitialized()"
             : "jspp::AnyValue::make_undefined()";
         code +=
             `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;
