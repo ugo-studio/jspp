@@ -8,7 +8,12 @@
 #include "values/object.hpp"
 #include "values/array.hpp"
 #include "values/function.hpp"
-#include "values/any_value_nan_fallback.hpp"
+
+#include "values/any_value.hpp"
+
+#include "values/object_operators.hpp"
+#include "values/array_operators.hpp"
+#include "values/function_operators.hpp"
 
 // helpers
 #include "operators.hpp"

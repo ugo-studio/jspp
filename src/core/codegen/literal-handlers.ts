@@ -13,7 +13,7 @@ export function visitNumericLiteral(
     this: CodeGenerator,
     node: ts.NumericLiteral,
 ): string {
-    return `jspp::AnyValue::from_number(${this.escapeString(node.text)})`;
+    return `jspp::AnyValue::make_number(${this.escapeString(node.text)})`;
 }
 
 export function visitStringLiteral(

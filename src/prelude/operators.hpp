@@ -70,7 +70,7 @@ inline bool jspp::is_truthy(const AnyValue &val)
 inline jspp::AnyValue operator+(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     if (lhs.is_number() && rhs.is_number())
-        return jspp::AnyValue::from_number(lhs.as_double() + rhs.as_double());
+        return jspp::AnyValue::make_number(lhs.as_double() + rhs.as_double());
     return jspp::AnyValue::make_undefined();
 }
 // inline jspp::AnyValue operator*(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)

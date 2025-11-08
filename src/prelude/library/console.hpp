@@ -75,6 +75,7 @@ inline auto console = jspp::JsObject{{
     {"log", jspp::AnyValue::make_function(logFn.get())},
     {"warn", jspp::AnyValue::make_function(warnFn.get())},
     {"error", jspp::AnyValue::make_function(errorFn.get())},
-    {"time", jspp::AnyValue::make_function(timeFn.get())},
+    {"time", jspp::AnyValue::make_uninitialized()},
+    // {"time", jspp::AnyValue::make_function(timeFn.get())},
     {"timeEnd", jspp::AnyValue::make_function(timeEndFn.get())},
 }};

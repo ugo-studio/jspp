@@ -1,4 +1,3 @@
-// any_value_nan_fallback.hpp
 #pragma once
 
 #include <cstdint>
@@ -150,7 +149,7 @@ namespace jspp
         }
 
         // factories -------------------------------------------------------
-        static AnyValue from_number(double d) noexcept
+        static AnyValue make_number(double d) noexcept
         {
             AnyValue v;
             if (nan_boxing_available())
@@ -607,6 +606,8 @@ namespace jspp
                 return as_array()->to_raw_string();
             if (is_function())
                 return as_function()->to_raw_string();
+            // should not be reached
+            return "";
         }
     };
 
