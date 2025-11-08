@@ -8,6 +8,7 @@
 #include <type_traits>
 #include <sstream>
 #include <iomanip>
+#include <limits>
 
 #include "values/non_values.hpp"
 #include "values/object.hpp"
@@ -20,11 +21,11 @@ namespace jspp
     // keep your JsType
     enum class JsType : uint8_t
     {
-        Undefined,
+        Undefined = 0,
         Null,
         Uninitialized,
         Boolean,
-        Number,
+        Number, // used only in fallback TaggedValue and for NaN sentinel in NaN-box mode
         String,
         Object,
         Array,
@@ -52,8 +53,6 @@ namespace jspp
         TaggedValue() noexcept
         {
             type = JsType::Undefined;
-            // placement-new the appropriate trivial members if needed
-            // (we rely on these types being trivially constructible or POD-like)
         }
     };
 
@@ -61,8 +60,9 @@ namespace jspp
     {
     private:
         // NaN-boxing constants
-        static constexpr uint64_t QNAN_MASK = 0x7FF8000000000000ULL; // quiet NaN pattern
-        static constexpr uint64_t TAG_SHIFT = 48;
+        static constexpr uint64_t QNAN_MASK = 0x7FF8000000000000ULL;    // quiet NaN pattern in exp + top mantissa bit
+        static constexpr uint64_t TAG_SHIFT = 48;                       // we use bits [51:48] as a 4-bit type tag
+        static constexpr uint64_t TAG_NIBBLE_MASK = 0xFULL;             // 4 bits
         static constexpr uint64_t PAYLOAD_MASK = 0x0000FFFFFFFFFFFFULL; // low 48 bits
 
         // storage: either 64-bit bitpattern (nan-box) OR a full TaggedValue
@@ -82,7 +82,6 @@ namespace jspp
                 return false;
 
             // Quick runtime check whether pointers' high bits fit in 48-bit payload.
-            // Allocate a few small blocks to see typical addresses returned by allocator.
             bool ok = true;
             for (int i = 0; i < 8; ++i)
             {
@@ -127,8 +126,22 @@ namespace jspp
         void set_bits(uint64_t b) noexcept { storage.bits = b; }
         void set_tagged(const TaggedValue &t) noexcept
         {
-            // placement-new to properly initialize union member
             new (&storage.tagged) TaggedValue(t);
+        }
+
+        // extract low 4-bit tag nibble from bits [51:48]
+        inline uint8_t get_tag_nibble() const noexcept
+        {
+            uint64_t top16 = (storage.bits >> TAG_SHIFT) & 0xFFFFULL;
+            return static_cast<uint8_t>(top16 & TAG_NIBBLE_MASK);
+        }
+
+        // compose a NaN-box with a given 4-bit tag and 48-bit payload
+        static inline uint64_t make_nanbox_bits(JsType tag, uint64_t payload = 0) noexcept
+        {
+            return QNAN_MASK |
+                   (((static_cast<uint64_t>(tag) & TAG_NIBBLE_MASK) << TAG_SHIFT)) |
+                   (payload & PAYLOAD_MASK);
         }
 
     public:
@@ -137,8 +150,7 @@ namespace jspp
         {
             if (nan_boxing_available())
             {
-                uint64_t bits = QNAN_MASK | (static_cast<uint64_t>(JsType::Undefined) << TAG_SHIFT);
-                set_bits(bits);
+                set_bits(make_nanbox_bits(JsType::Undefined));
             }
             else
             {
@@ -154,8 +166,16 @@ namespace jspp
             AnyValue v;
             if (nan_boxing_available())
             {
-                // if d is NOT a QNaN encoded pattern we just store its raw bits
-                v.set_bits(double_to_bits(d));
+                if (std::isnan(d))
+                {
+                    // Use a dedicated NaN-box sentinel tagged as "Number"
+                    v.set_bits(make_nanbox_bits(JsType::Number));
+                }
+                else
+                {
+                    // store raw double bits directly
+                    v.set_bits(double_to_bits(d));
+                }
             }
             else
             {
@@ -172,8 +192,7 @@ namespace jspp
             AnyValue v;
             if (nan_boxing_available())
             {
-                uint64_t bits = QNAN_MASK | (static_cast<uint64_t>(JsType::Uninitialized) << TAG_SHIFT);
-                v.set_bits(bits);
+                v.set_bits(make_nanbox_bits(JsType::Uninitialized));
             }
             else
             {
@@ -189,8 +208,7 @@ namespace jspp
             AnyValue v;
             if (nan_boxing_available())
             {
-                uint64_t bits = QNAN_MASK | (static_cast<uint64_t>(JsType::Undefined) << TAG_SHIFT);
-                v.set_bits(bits);
+                v.set_bits(make_nanbox_bits(JsType::Undefined));
             }
             else
             {
@@ -206,8 +224,7 @@ namespace jspp
             AnyValue v;
             if (nan_boxing_available())
             {
-                uint64_t bits = QNAN_MASK | (static_cast<uint64_t>(JsType::Null) << TAG_SHIFT);
-                v.set_bits(bits);
+                v.set_bits(make_nanbox_bits(JsType::Null));
             }
             else
             {
@@ -224,8 +241,7 @@ namespace jspp
             if (nan_boxing_available())
             {
                 uint64_t payload = b ? 1ULL : 0ULL;
-                uint64_t bits = QNAN_MASK | (static_cast<uint64_t>(JsType::Boolean) << TAG_SHIFT) | (payload & PAYLOAD_MASK);
-                v.set_bits(bits);
+                v.set_bits(make_nanbox_bits(JsType::Boolean, payload));
             }
             else
             {
@@ -245,8 +261,7 @@ namespace jspp
             {
                 uintptr_t ptr_bits = reinterpret_cast<uintptr_t>(s);
                 assert((ptr_bits & ~PAYLOAD_MASK) == 0 && "pointer doesn't fit in NaN-box payload");
-                uint64_t bits = QNAN_MASK | (static_cast<uint64_t>(JsType::String) << TAG_SHIFT) | (ptr_bits & PAYLOAD_MASK);
-                v.set_bits(bits);
+                v.set_bits(make_nanbox_bits(JsType::String, static_cast<uint64_t>(ptr_bits)));
             }
             else
             {
@@ -259,14 +274,14 @@ namespace jspp
         }
         static AnyValue make_string(std::string raw_s) noexcept
         {
-            auto s = std::make_shared<std::string>(raw_s).get();
+            // FIX: avoid dangling pointer from temporary shared_ptr
+            auto *s = new std::string(std::move(raw_s));
             AnyValue v;
             if (nan_boxing_available())
             {
                 uintptr_t ptr_bits = reinterpret_cast<uintptr_t>(s);
                 assert((ptr_bits & ~PAYLOAD_MASK) == 0 && "pointer doesn't fit in NaN-box payload");
-                uint64_t bits = QNAN_MASK | (static_cast<uint64_t>(JsType::String) << TAG_SHIFT) | (ptr_bits & PAYLOAD_MASK);
-                v.set_bits(bits);
+                v.set_bits(make_nanbox_bits(JsType::String, static_cast<uint64_t>(ptr_bits)));
             }
             else
             {
@@ -285,8 +300,7 @@ namespace jspp
             {
                 uintptr_t ptr_bits = reinterpret_cast<uintptr_t>(o);
                 assert((ptr_bits & ~PAYLOAD_MASK) == 0 && "pointer doesn't fit in NaN-box payload");
-                uint64_t bits = QNAN_MASK | (static_cast<uint64_t>(JsType::Object) << TAG_SHIFT) | (ptr_bits & PAYLOAD_MASK);
-                v.set_bits(bits);
+                v.set_bits(make_nanbox_bits(JsType::Object, static_cast<uint64_t>(ptr_bits)));
             }
             else
             {
@@ -305,8 +319,7 @@ namespace jspp
             {
                 uintptr_t ptr_bits = reinterpret_cast<uintptr_t>(a);
                 assert((ptr_bits & ~PAYLOAD_MASK) == 0 && "pointer doesn't fit in NaN-box payload");
-                uint64_t bits = QNAN_MASK | (static_cast<uint64_t>(JsType::Array) << TAG_SHIFT) | (ptr_bits & PAYLOAD_MASK);
-                v.set_bits(bits);
+                v.set_bits(make_nanbox_bits(JsType::Array, static_cast<uint64_t>(ptr_bits)));
             }
             else
             {
@@ -325,8 +338,7 @@ namespace jspp
             {
                 uintptr_t ptr_bits = reinterpret_cast<uintptr_t>(f);
                 assert((ptr_bits & ~PAYLOAD_MASK) == 0 && "pointer doesn't fit in NaN-box payload");
-                uint64_t bits = QNAN_MASK | (static_cast<uint64_t>(JsType::Function) << TAG_SHIFT) | (ptr_bits & PAYLOAD_MASK);
-                v.set_bits(bits);
+                v.set_bits(make_nanbox_bits(JsType::Function, static_cast<uint64_t>(ptr_bits)));
             }
             else
             {
@@ -343,8 +355,12 @@ namespace jspp
         {
             if (nan_boxing_available())
             {
-                // not a QNaN pattern => it's an actual double
-                return (storage.bits & QNAN_MASK) != QNAN_MASK;
+                // Numbers are either:
+                // - any non-NaN double (i.e., pattern does NOT match QNAN_MASK),
+                // - or the special NaN-boxed sentinel tagged as Number.
+                if ((storage.bits & QNAN_MASK) != QNAN_MASK)
+                    return true;
+                return get_tag_nibble() == static_cast<uint8_t>(JsType::Number);
             }
             else
             {
@@ -358,8 +374,7 @@ namespace jspp
             {
                 if ((storage.bits & QNAN_MASK) != QNAN_MASK)
                     return false;
-                uint64_t tag = (storage.bits >> TAG_SHIFT) & 0xFFFFULL;
-                return static_cast<JsType>(tag) == JsType::String;
+                return get_tag_nibble() == static_cast<uint8_t>(JsType::String);
             }
             else
             {
@@ -373,8 +388,7 @@ namespace jspp
             {
                 if ((storage.bits & QNAN_MASK) != QNAN_MASK)
                     return false;
-                uint64_t tag = (storage.bits >> TAG_SHIFT) & 0xFFFFULL;
-                return static_cast<JsType>(tag) == JsType::Object;
+                return get_tag_nibble() == static_cast<uint8_t>(JsType::Object);
             }
             else
             {
@@ -388,8 +402,7 @@ namespace jspp
             {
                 if ((storage.bits & QNAN_MASK) != QNAN_MASK)
                     return false;
-                uint64_t tag = (storage.bits >> TAG_SHIFT) & 0xFFFFULL;
-                return static_cast<JsType>(tag) == JsType::Array;
+                return get_tag_nibble() == static_cast<uint8_t>(JsType::Array);
             }
             else
             {
@@ -403,8 +416,7 @@ namespace jspp
             {
                 if ((storage.bits & QNAN_MASK) != QNAN_MASK)
                     return false;
-                uint64_t tag = (storage.bits >> TAG_SHIFT) & 0xFFFFULL;
-                return static_cast<JsType>(tag) == JsType::Function;
+                return get_tag_nibble() == static_cast<uint8_t>(JsType::Function);
             }
             else
             {
@@ -418,8 +430,7 @@ namespace jspp
             {
                 if ((storage.bits & QNAN_MASK) != QNAN_MASK)
                     return false;
-                uint64_t tag = (storage.bits >> TAG_SHIFT) & 0xFFFFULL;
-                return static_cast<JsType>(tag) == JsType::Boolean;
+                return get_tag_nibble() == static_cast<uint8_t>(JsType::Boolean);
             }
             else
             {
@@ -433,8 +444,7 @@ namespace jspp
             {
                 if ((storage.bits & QNAN_MASK) != QNAN_MASK)
                     return false;
-                uint64_t tag = (storage.bits >> TAG_SHIFT) & 0xFFFFULL;
-                return static_cast<JsType>(tag) == JsType::Null;
+                return get_tag_nibble() == static_cast<uint8_t>(JsType::Null);
             }
             else
             {
@@ -448,8 +458,7 @@ namespace jspp
             {
                 if ((storage.bits & QNAN_MASK) != QNAN_MASK)
                     return false;
-                uint64_t tag = (storage.bits >> TAG_SHIFT) & 0xFFFFULL;
-                return static_cast<JsType>(tag) == JsType::Undefined;
+                return get_tag_nibble() == static_cast<uint8_t>(JsType::Undefined);
             }
             else
             {
@@ -463,8 +472,7 @@ namespace jspp
             {
                 if ((storage.bits & QNAN_MASK) != QNAN_MASK)
                     return false;
-                uint64_t tag = (storage.bits >> TAG_SHIFT) & 0xFFFFULL;
-                return static_cast<JsType>(tag) == JsType::Uninitialized;
+                return get_tag_nibble() == static_cast<uint8_t>(JsType::Uninitialized);
             }
             else
             {
@@ -477,6 +485,12 @@ namespace jspp
         {
             if (nan_boxing_available())
             {
+                // If this is the special number-NaN sentinel, return a NaN
+                if ((storage.bits & QNAN_MASK) == QNAN_MASK &&
+                    get_tag_nibble() == static_cast<uint8_t>(JsType::Number))
+                {
+                    return std::numeric_limits<double>::quiet_NaN();
+                }
                 assert(is_number());
                 return bits_to_double(storage.bits);
             }
@@ -531,9 +545,7 @@ namespace jspp
         {
             if (nan_boxing_available())
             {
-                assert((storage.bits & QNAN_MASK) == QNAN_MASK);
-                uint64_t tag = (storage.bits >> TAG_SHIFT) & 0xFFFFULL;
-                assert(static_cast<JsType>(tag) == JsType::Array);
+                assert(is_array());
                 uintptr_t payload = storage.bits & PAYLOAD_MASK;
                 return reinterpret_cast<JsArray *>(payload);
             }
@@ -543,13 +555,11 @@ namespace jspp
             }
         }
 
-        JsFunction *as_function() const noexcept
+        JsFunction *as_function(const std::string &name = "") const noexcept
         {
             if (nan_boxing_available())
             {
-                assert((storage.bits & QNAN_MASK) == QNAN_MASK);
-                uint64_t tag = (storage.bits >> TAG_SHIFT) & 0xFFFFULL;
-                assert(static_cast<JsType>(tag) == JsType::Function);
+                assert(is_function());
                 uintptr_t payload = storage.bits & PAYLOAD_MASK;
                 return reinterpret_cast<JsFunction *>(payload);
             }
@@ -579,6 +589,10 @@ namespace jspp
             if (is_number())
             {
                 auto value = as_double();
+                if (std::isnan(value))
+                {
+                    return "NaN";
+                }
                 if (std::abs(value) >= 1e21 || (std::abs(value) > 0 && std::abs(value) < 1e-6))
                 {
                     std::ostringstream oss;
@@ -591,7 +605,7 @@ namespace jspp
                     oss << std::setprecision(6) << std::fixed << value;
                     std::string s = oss.str();
                     s.erase(s.find_last_not_of('0') + 1, std::string::npos);
-                    if (s.back() == '.')
+                    if (!s.empty() && s.back() == '.')
                     {
                         s.pop_back();
                     }
@@ -608,6 +622,30 @@ namespace jspp
                 return as_function()->to_raw_string();
             // should not be reached
             return "";
+        }
+
+        AnyValue &operator[](const std::string &key)
+        {
+            std::cout << key << std::endl;
+            if (is_object())
+                return (*as_object())[key];
+            if (is_array())
+                return (*as_array())[key];
+            if (is_function())
+                return (*as_function())[key];
+            static AnyValue empty{};
+            return empty;
+        }
+        AnyValue &operator[](uint32_t idx)
+        {
+            if (is_array())
+                return (*as_array())[idx];
+            static AnyValue empty{};
+            return empty;
+        }
+        AnyValue &operator[](const AnyValue &key)
+        {
+            return (*this)[key.convert_to_raw_string()];
         }
     };
 

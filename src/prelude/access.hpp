@@ -20,16 +20,16 @@ namespace jspp
             return *var;
         }
 
-        // Helper function to call JsFunction
-        inline AnyValue call_function(const AnyValue &var, const std::vector<AnyValue> &args, const std::string &name)
-        {
-            if (var.is_function())
-            {
-                return var.as_function()->call(args);
-            }
-            throw std::runtime_error("TypeError: " + name + " is not a function");
-            // throw Exception::make_error(name + " is not a function", "TypeError");
-        }
+        // // Helper function to call JsFunction
+        // inline AnyValue call_function(const AnyValue &var, const std::vector<AnyValue> &args, const std::string &name)
+        // {
+        //     if (var.is_function())
+        //     {
+        //         return var.as_function()->call(args);
+        //     }
+        //     throw std::runtime_error("TypeError: " + name + " is not a function");
+        //     // throw Exception::make_error(name + " is not a function", "TypeError");
+        // }
 
     }
 }

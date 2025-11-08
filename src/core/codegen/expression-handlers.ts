@@ -488,7 +488,8 @@ export function visitCallExpression(
         derefCallee = calleeCode;
     }
 
-    return `jspp::Access::call_function(${derefCallee},{${args}},"${calleeName}")`;
+    return `${derefCallee}.as_function("${calleeName}")->call({${args}})`;
+    // return `jspp::Access::call_function(${derefCallee},{${args}},"${calleeName}")`;
 }
 
 export function visitVoidExpression(

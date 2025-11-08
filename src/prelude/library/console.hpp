@@ -71,11 +71,18 @@ auto timeEndFn = std::make_shared<jspp::JsFunction>(jspp::JsFunction{[](const st
                                                                          return jspp::AnyValue::make_undefined();
                                                                      }});
 
+// auto consoleObj = std::make_shared<jspp::JsObject>(jspp::JsObject{{
+//     {"log", jspp::AnyValue::make_function(logFn.get())},
+//     {"warn", jspp::AnyValue::make_function(warnFn.get())},
+//     {"error", jspp::AnyValue::make_function(errorFn.get())},
+//     {"time", jspp::AnyValue::make_function(timeFn.get())},
+//     {"timeEnd", jspp::AnyValue::make_function(timeEndFn.get())},
+// }});
+// inline auto console = jspp::AnyValue::make_object(consoleObj.get());
 inline auto console = jspp::JsObject{{
     {"log", jspp::AnyValue::make_function(logFn.get())},
     {"warn", jspp::AnyValue::make_function(warnFn.get())},
     {"error", jspp::AnyValue::make_function(errorFn.get())},
-    {"time", jspp::AnyValue::make_uninitialized()},
-    // {"time", jspp::AnyValue::make_function(timeFn.get())},
+    {"time", jspp::AnyValue::make_function(timeFn.get())},
     {"timeEnd", jspp::AnyValue::make_function(timeEndFn.get())},
 }};

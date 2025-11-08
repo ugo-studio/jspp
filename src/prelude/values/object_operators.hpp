@@ -15,10 +15,9 @@ jspp::AnyValue &jspp::JsObject::operator[](const std::string &key)
     auto it = props.find(key);
     if (it == props.end())
     {
-        props[key] = AnyValue::make_undefined();
-        return (*this)[key];
+        // std::unordered_map::operator[] default-constructs AnyValue (which is Undefined)
+        return props[key];
     }
-    std::cout << key << ": " << it->second.convert_to_raw_string() << std::endl;
     return it->second;
 }
 

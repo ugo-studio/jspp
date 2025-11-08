@@ -9,10 +9,11 @@ std::string jspp::JsFunction::to_raw_string() const
     return "function " + name + "() { [native code] }";
 }
 
+// FIX: avoid infinite recursion
 jspp::AnyValue &jspp::JsFunction::operator[](const std::string &key)
 {
-    props[key] = AnyValue::make_undefined();
-    return (*this)[key];
+    // std::unordered_map::operator[] default-constructs AnyValue (which is Undefined)
+    return props[key];
 }
 
 jspp::AnyValue &jspp::JsFunction::operator[](const AnyValue &key)

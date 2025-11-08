@@ -22,7 +22,7 @@ async function main() {
         const { cppCode, preludePath } = interpreter.interpret(jsCode);
 
         await fs.mkdir(outputDir, { recursive: true });
-        await fs.writeFile(cppFilePath, cppCode);
+        // await fs.writeFile(cppFilePath, cppCode);
 
         console.log(`Compiling ${cppFilePath}...`);
         const compile = Bun.spawnSync({
@@ -34,6 +34,8 @@ async function main() {
                 exeFilePath,
                 "-I",
                 preludePath,
+                // "-O3",
+                // "-DNDEBUG",
                 // "-include",
                 // path.join(process.cwd(), "prelude-build", "index.hpp"),
             ],
