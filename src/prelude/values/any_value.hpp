@@ -263,27 +263,11 @@ namespace jspp
             v.storage.boolean = b;
             return v;
         }
-
-        static AnyValue make_string(std::string *s) noexcept
-        {
-            AnyValue v;
-            v.storage.type = JsType::String;
-            new (&v.storage.str) std::unique_ptr<std::string>(s);
-            return v;
-        }
         static AnyValue make_string(const std::string &raw_s) noexcept
         {
             AnyValue v;
             v.storage.type = JsType::String;
             new (&v.storage.str) std::unique_ptr<std::string>(std::make_unique<std::string>(raw_s));
-            return v;
-        }
-
-        static AnyValue make_object(JsObject *o) noexcept
-        {
-            AnyValue v;
-            v.storage.type = JsType::Object;
-            new (&v.storage.object) std::unique_ptr<JsObject>(o);
             return v;
         }
         static AnyValue make_object(const std::unordered_map<std::string, AnyValue> &props) noexcept
@@ -293,27 +277,11 @@ namespace jspp
             new (&v.storage.object) std::unique_ptr<JsObject>(std::make_unique<JsObject>(props));
             return v;
         }
-
-        static AnyValue make_array(JsArray *a) noexcept
-        {
-            AnyValue v;
-            v.storage.type = JsType::Array;
-            new (&v.storage.array) std::unique_ptr<JsArray>(a);
-            return v;
-        }
         static AnyValue make_array(const std::vector<AnyValue> &dense) noexcept
         {
             AnyValue v;
             v.storage.type = JsType::Array;
             new (&v.storage.array) std::unique_ptr<JsArray>(std::make_unique<JsArray>(dense));
-            return v;
-        }
-
-        static AnyValue make_function(JsFunction *f) noexcept
-        {
-            AnyValue v;
-            v.storage.type = JsType::Function;
-            new (&v.storage.function) std::unique_ptr<JsFunction>(f);
             return v;
         }
         static AnyValue make_function(const std::function<AnyValue(const std::vector<AnyValue> &)> &call, const std::string &name) noexcept

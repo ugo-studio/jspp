@@ -9,8 +9,8 @@
 
 static std::unordered_map<std::string, std::chrono::steady_clock::time_point> timers = {};
 
-auto logFn = std::make_unique<jspp::JsFunction>(jspp::JsFunction{[](const std::vector<jspp::AnyValue> &args)
-                                                                 {
+auto logFn = jspp::AnyValue::make_function([](const std::vector<jspp::AnyValue> &args)
+                                           {
                                                                      for (size_t i = 0; i < args.size(); ++i)
                                                                      {
                                                                          std::cout << args[i].convert_to_raw_string();
@@ -18,10 +18,9 @@ auto logFn = std::make_unique<jspp::JsFunction>(jspp::JsFunction{[](const std::v
                                                                              std::cout << " ";
                                                                      }
                                                                      std::cout << std::endl;
-                                                                     return jspp::AnyValue::make_undefined();
-                                                                 }});
-auto warnFn = std::make_unique<jspp::JsFunction>(jspp::JsFunction{[](const std::vector<jspp::AnyValue> &args)
-                                                                  {
+                                                                     return jspp::AnyValue::make_undefined(); }, "");
+auto warnFn = jspp::AnyValue::make_function([](const std::vector<jspp::AnyValue> &args)
+                                            {
                                                                       std::cerr << "\033[33m";
                                                                       for (size_t i = 0; i < args.size(); ++i)
                                                                       {
@@ -30,10 +29,9 @@ auto warnFn = std::make_unique<jspp::JsFunction>(jspp::JsFunction{[](const std::
                                                                               std::cout << " ";
                                                                       }
                                                                       std::cerr << "\033[0m" << std::endl; // reset
-                                                                      return jspp::AnyValue::make_undefined();
-                                                                  }});
-auto errorFn = std::make_unique<jspp::JsFunction>(jspp::JsFunction{[](const std::vector<jspp::AnyValue> &args)
-                                                                   {
+                                                                      return jspp::AnyValue::make_undefined(); }, "");
+auto errorFn = jspp::AnyValue::make_function([](const std::vector<jspp::AnyValue> &args)
+                                             {
                                                                        std::cerr << "\033[31m";
                                                                        for (size_t i = 0; i < args.size(); ++i)
                                                                        {
@@ -42,17 +40,15 @@ auto errorFn = std::make_unique<jspp::JsFunction>(jspp::JsFunction{[](const std:
                                                                                std::cout << " ";
                                                                        }
                                                                        std::cerr << "\033[0m" << std::endl; // reset
-                                                                       return jspp::AnyValue::make_undefined();
-                                                                   }});
-auto timeFn = std::make_unique<jspp::JsFunction>(jspp::JsFunction{[](const std::vector<jspp::AnyValue> &args)
-                                                                  {
+                                                                       return jspp::AnyValue::make_undefined(); }, "");
+auto timeFn = jspp::AnyValue::make_function([](const std::vector<jspp::AnyValue> &args)
+                                            {
                                                                       auto start = std::chrono::steady_clock::now(); // capture immediately
                                                                       auto key_str = args.size() > 0 ? args[0].convert_to_raw_string() : "";
                                                                       timers[key_str] = start;
-                                                                      return jspp::AnyValue::make_undefined();
-                                                                  }});
-auto timeEndFn = std::make_unique<jspp::JsFunction>(jspp::JsFunction{[](const std::vector<jspp::AnyValue> &args)
-                                                                     {
+                                                                      return jspp::AnyValue::make_undefined(); }, "");
+auto timeEndFn = jspp::AnyValue::make_function([](const std::vector<jspp::AnyValue> &args)
+                                               {
                                                                          auto end = std::chrono::steady_clock::now(); // capture immediately
                                                                          auto key_str = args.size() > 0 ? args[0].convert_to_raw_string() : "";
                                                                          auto it = timers.find(key_str);
@@ -68,21 +64,12 @@ auto timeEndFn = std::make_unique<jspp::JsFunction>(jspp::JsFunction{[](const st
                                                                          {
                                                                              std::cout << "Timer '" << key_str << "' does not exist." << std::endl;
                                                                          }
-                                                                         return jspp::AnyValue::make_undefined();
-                                                                     }});
+                                                                         return jspp::AnyValue::make_undefined(); }, "");
 
-// auto consoleObj = std::make_unique<jspp::JsObject>(jspp::JsObject{{
-//     {"log", jspp::AnyValue::make_function(logFn.release())},
-//     {"warn", jspp::AnyValue::make_function(warnFn.release())},
-//     {"error", jspp::AnyValue::make_function(errorFn.release())},
-//     {"time", jspp::AnyValue::make_function(timeFn.release())},
-//     {"timeEnd", jspp::AnyValue::make_function(timeEndFn.release())},
-// }});
-// inline auto console = jspp::AnyValue::make_object(consoleObj.release());
-inline auto console = jspp::JsObject{{
-    {"log", jspp::AnyValue::make_function(logFn.release())},
-    {"warn", jspp::AnyValue::make_function(warnFn.release())},
-    {"error", jspp::AnyValue::make_function(errorFn.release())},
-    {"time", jspp::AnyValue::make_function(timeFn.release())},
-    {"timeEnd", jspp::AnyValue::make_function(timeEndFn.release())},
-}};
+inline auto console = jspp::AnyValue::make_object({
+    {"log", logFn},
+    {"warn", warnFn},
+    {"error", errorFn},
+    {"time", timeFn},
+    {"timeEnd", timeEndFn},
+});
