@@ -3,6 +3,37 @@ import ts from "typescript";
 import { CodeGenerator } from "./";
 import type { VisitContext } from "./visitor";
 
+function visitObjectPropertyName(
+    this: CodeGenerator,
+    node: ts.PropertyName,
+    context: VisitContext,
+): string {
+    if (ts.isNumericLiteral(node)) {
+        return context.isPropertyNameAccess
+            ? node.getText()
+            : `"${node.getText()}"`;
+    } else if (ts.isStringLiteral(node)) {
+        return `"${
+            node.getText().substring(
+                1,
+                node.getText().length - 1,
+            ) // remove trailing "' from original name
+        }"`;
+    } else if (ts.isComputedPropertyName(node)) {
+        let name = ts.isIdentifier(node.expression)
+            ? `jspp::Access::deref(${node.expression.getText()},${
+                this.getJsVarName(
+                    node.expression as ts.Identifier,
+                )
+            })`
+            : this.visit(node.expression, context);
+        name += ".convert_to_raw_string()";
+        return name;
+    }
+
+    return node.getText();
+}
+
 export function visitObjectLiteralExpression(
     this: CodeGenerator,
     node: ts.ObjectLiteralExpression,
@@ -12,27 +43,7 @@ export function visitObjectLiteralExpression(
     let props = "";
     for (const prop of obj.properties) {
         if (ts.isPropertyAssignment(prop)) {
-            let key = "";
-            if (ts.isNumericLiteral(prop.name)) {
-                key = `"${prop.name.getText()}"`;
-            } else if (ts.isStringLiteral(prop.name)) {
-                key = `"${
-                    prop.name.getText().substring(
-                        1,
-                        prop.name.getText().length - 1,
-                    ) // remove trailing "' from original name
-                }"`;
-            } else if (ts.isComputedPropertyName(prop.name)) {
-                key = ts.isIdentifier(prop.name.expression)
-                    ? `jspp::Access::deref(${prop.name.expression.getText()},${
-                        this.getJsVarName(
-                            prop.name.expression as ts.Identifier,
-                        )
-                    })`
-                    : this.visit(prop.name.expression, context);
-                key += ".convert_to_raw_string()";
-            } else continue;
-
+            const key = visitObjectPropertyName.call(this, prop.name, context);
             const value = this.visit(prop.initializer, context);
             props += `{${key}, ${value}},`;
         }
@@ -48,7 +59,7 @@ export function visitArrayLiteralExpression(
     const elements = (node as ts.ArrayLiteralExpression).elements
         .map((elem) => this.visit(elem, context))
         .join(", ");
-    return `jspp::JsArray{{${elements}}}`;
+    return `jspp::AnyValue::make_array({${elements}})`;
 }
 
 export function visitPrefixUnaryExpression(
@@ -127,7 +138,6 @@ export function visitPropertyAccessExpression(
         finalExpr = exprText;
     }
 
-    // return `jspp::Access::get_property(${finalExpr}, "${propName}")`;
     return `${finalExpr}["${propName}"]`;
 }
 
@@ -138,7 +148,11 @@ export function visitElementAccessExpression(
 ): string {
     const elemAccess = node as ts.ElementAccessExpression;
     const exprText = this.visit(elemAccess.expression, context);
-    let argText = this.visit(elemAccess.argumentExpression, context);
+    let argText = visitObjectPropertyName.call(
+        this,
+        elemAccess.argumentExpression as ts.PropertyName,
+        { ...context, isPropertyNameAccess: true },
+    );
 
     // Dereference the expression being accessed
     const exprScope = this.getScopeForNode(elemAccess.expression);
@@ -194,7 +208,6 @@ export function visitElementAccessExpression(
         }
     }
 
-    // return `jspp::Access::get_property(${finalExpr}, ${argText})`;
     return `${finalExpr}[${argText}]`;
 }
 
@@ -266,11 +279,14 @@ export function visitBinaryExpression(
             }
 
             return `${finalObjExpr}["${propName}"] = ${finalRightText}`;
-            // return `jspp::Access::set_property(${finalObjExpr}, "${propName}", ${finalRightText})`;
         } else if (ts.isElementAccessExpression(binExpr.left)) {
             const elemAccess = binExpr.left;
             const objExprText = this.visit(elemAccess.expression, context);
-            let argText = this.visit(elemAccess.argumentExpression, context);
+            let argText = visitObjectPropertyName.call(
+                this,
+                elemAccess.argumentExpression as ts.PropertyName,
+                { ...context, isPropertyNameAccess: true },
+            );
 
             const scope = this.getScopeForNode(elemAccess.expression);
             const typeInfo = ts.isIdentifier(elemAccess.expression)
@@ -333,7 +349,6 @@ export function visitBinaryExpression(
             }
 
             return `${finalObjExpr}[${argText}] = ${finalRightText}`;
-            // return `jspp::Access::set_property(${finalObjExpr}, ${argText}, ${finalRightText})`;
         }
 
         const leftText = this.visit(binExpr.left, context);
@@ -510,9 +525,7 @@ export function visitCallExpression(
         derefCallee = calleeCode;
     }
 
-    return `${derefCallee}.as_function()->call({${args}})`;
-    // return `${derefCallee}.as_function("${calleeName}")->call({${args}})`;
-    // return `jspp::Access::call_function(${derefCallee},{${args}},"${calleeName}")`;
+    return `${derefCallee}.as_function("${calleeName}")->call({${args}})`;
 }
 
 export function visitVoidExpression(

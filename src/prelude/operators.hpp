@@ -71,7 +71,7 @@ inline jspp::AnyValue operator+(const jspp::AnyValue &lhs, const jspp::AnyValue 
 {
     if (lhs.is_number() && rhs.is_number())
         return jspp::AnyValue::make_number(lhs.as_double() + rhs.as_double());
-    return jspp::AnyValue::make_undefined();
+    return jspp::AnyValue::make_nan();
 }
 // inline jspp::AnyValue operator*(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 // {
@@ -104,12 +104,6 @@ inline jspp::AnyValue operator<(const jspp::AnyValue &lhs, const jspp::AnyValue 
         return jspp::AnyValue::make_boolean(lhs.as_double() < rhs.as_double());
     return jspp::AnyValue::make_boolean(false);
 }
-// inline bool operator<(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
-// {
-//     if (lhs.is_number() && rhs.is_number())
-//         return lhs.as_double() < rhs.as_double();
-//     return false;
-// }
 // inline jspp::JsBoolean operator>(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 // {
 //     if (std::holds_alternative<jspp::JsNumber>(lhs) && std::holds_alternative<jspp::JsNumber>(rhs))

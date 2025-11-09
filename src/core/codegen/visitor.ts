@@ -57,6 +57,7 @@ export interface VisitContext {
     exceptionName?: string;
     isInsideTryCatchLambda?: boolean;
     hasReturnedFlag?: string;
+    isPropertyNameAccess?: boolean;
 }
 
 export function visit(

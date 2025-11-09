@@ -327,10 +327,16 @@ namespace jspp
             assert(is_array());
             return storage.array.get();
         }
-        JsFunction *as_function() const noexcept
+        // JsFunction *as_function() const noexcept
+        // {
+        //     assert(is_function());
+        //     return storage.function.get();
+        // }
+        JsFunction *as_function(const std::string &expression = "") const
         {
-            assert(is_function());
-            return storage.function.get();
+            if (is_function())
+                return storage.function.get();
+            throw std::runtime_error("TypeError: " + expression + " is not a function");
         }
 
         std::string convert_to_raw_string() const noexcept
@@ -350,7 +356,7 @@ namespace jspp
             case JsType::Array:
                 return storage.array->to_raw_string();
             case JsType::Function:
-                return storage.object->to_raw_string();
+                return storage.function->to_raw_string();
             case JsType::Number:
             {
                 if (std::isnan(storage.number))
@@ -399,6 +405,12 @@ namespace jspp
                 return undefined;
             }
         }
+        const AnyValue &operator[](uint32_t idx) const noexcept
+        {
+            if (storage.type == JsType::Array)
+                return (*as_array())[idx];
+            return (*this)[std::to_string(idx)];
+        }
         const AnyValue &operator[](const AnyValue &key) const noexcept
         {
             return (*this)[key.convert_to_raw_string()];
@@ -419,6 +431,12 @@ namespace jspp
                 static AnyValue undefined = AnyValue{};
                 return undefined;
             }
+        }
+        AnyValue &operator[](uint32_t idx)
+        {
+            if (storage.type == JsType::Array)
+                return (*as_array())[idx];
+            return (*this)[std::to_string(idx)];
         }
         AnyValue &operator[](const AnyValue &key)
         {
