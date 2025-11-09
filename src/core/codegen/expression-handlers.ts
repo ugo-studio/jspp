@@ -12,9 +12,29 @@ export function visitObjectLiteralExpression(
     let props = "";
     for (const prop of obj.properties) {
         if (ts.isPropertyAssignment(prop)) {
-            const key = prop.name.getText();
+            let key = "";
+            if (ts.isNumericLiteral(prop.name)) {
+                key = `"${prop.name.getText()}"`;
+            } else if (ts.isStringLiteral(prop.name)) {
+                key = `"${
+                    prop.name.getText().substring(
+                        1,
+                        prop.name.getText().length - 1,
+                    ) // remove trailing "' from original name
+                }"`;
+            } else if (ts.isComputedPropertyName(prop.name)) {
+                key = ts.isIdentifier(prop.name.expression)
+                    ? `jspp::Access::deref(${prop.name.expression.getText()},${
+                        this.getJsVarName(
+                            prop.name.expression as ts.Identifier,
+                        )
+                    })`
+                    : this.visit(prop.name.expression, context);
+                key += ".convert_to_raw_string()";
+            } else continue;
+
             const value = this.visit(prop.initializer, context);
-            props += `{"${key}", ${value}},`;
+            props += `{${key}, ${value}},`;
         }
     }
     return `jspp::AnyValue::make_object({${props}})`;

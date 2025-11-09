@@ -72,17 +72,17 @@ auto timeEndFn = std::make_unique<jspp::JsFunction>(jspp::JsFunction{[](const st
                                                                      }});
 
 // auto consoleObj = std::make_unique<jspp::JsObject>(jspp::JsObject{{
-//     {"log", jspp::AnyValue::make_function(logFn.get())},
-//     {"warn", jspp::AnyValue::make_function(warnFn.get())},
-//     {"error", jspp::AnyValue::make_function(errorFn.get())},
-//     {"time", jspp::AnyValue::make_function(timeFn.get())},
-//     {"timeEnd", jspp::AnyValue::make_function(timeEndFn.get())},
+//     {"log", jspp::AnyValue::make_function(logFn.release())},
+//     {"warn", jspp::AnyValue::make_function(warnFn.release())},
+//     {"error", jspp::AnyValue::make_function(errorFn.release())},
+//     {"time", jspp::AnyValue::make_function(timeFn.release())},
+//     {"timeEnd", jspp::AnyValue::make_function(timeEndFn.release())},
 // }});
-// inline auto console = jspp::AnyValue::make_object(consoleObj.get());
+// inline auto console = jspp::AnyValue::make_object(consoleObj.release());
 inline auto console = jspp::JsObject{{
-    {"log", jspp::AnyValue::make_function(logFn.get())},
-    {"warn", jspp::AnyValue::make_function(warnFn.get())},
-    {"error", jspp::AnyValue::make_function(errorFn.get())},
-    {"time", jspp::AnyValue::make_function(timeFn.get())},
-    {"timeEnd", jspp::AnyValue::make_function(timeEndFn.get())},
+    {"log", jspp::AnyValue::make_function(logFn.release())},
+    {"warn", jspp::AnyValue::make_function(warnFn.release())},
+    {"error", jspp::AnyValue::make_function(errorFn.release())},
+    {"time", jspp::AnyValue::make_function(timeFn.release())},
+    {"timeEnd", jspp::AnyValue::make_function(timeEndFn.release())},
 }};
