@@ -17,7 +17,7 @@ namespace jspp
     {
         inline AnyValue make_error(const std::string &message, const std::string &name = "Error")
         {
-            auto errorObj = std::make_shared<JsObject>(JsObject{{{"message", JsString{message}}, {"name", JsString{name}}}});
+            auto errorObj = std::make_unique<JsObject>(JsObject{{{"message", JsString{message}}, {"name", JsString{name}}}});
             errorObj->props[WellKnownSymbols::toString] = JsFunction{[errorObj](const std::vector<AnyValue> &) -> AnyValue
                                                                      {
                                                                          auto errorStr = JsString{"Error"};

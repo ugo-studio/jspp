@@ -7,7 +7,7 @@ export function generateLambda(
     this: CodeGenerator,
     node: ts.ArrowFunction | ts.FunctionDeclaration | ts.FunctionExpression,
     isAssignment: boolean = false,
-    capture: string = "[=]",
+    capture: string = "[&]",
 ): string {
     const declaredSymbols = this.getDeclaredSymbols(node);
     const argsName = this.generateUniqueName("__args_", declaredSymbols);
@@ -115,8 +115,8 @@ export function visitFunctionExpression(
         let code = "([&]() -> jspp::AnyValue {\n";
         this.indentationLevel++;
         code +=
-            `${this.indent()}auto ${funcName} = std::make_shared<jspp::AnyValue>();\n`;
-        const lambda = this.generateLambda(funcExpr, false, "[=]");
+            `${this.indent()}auto ${funcName} = std::make_unique<jspp::AnyValue>();\n`;
+        const lambda = this.generateLambda(funcExpr, false, "[&]");
         code += `${this.indent()}*${funcName} = ${lambda};\n`;
         code += `${this.indent()}return *${funcName};\n`;
         this.indentationLevel--;

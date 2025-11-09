@@ -117,13 +117,11 @@ namespace jspp
             v.storage.str = s;
             return v;
         }
-        static AnyValue make_string(std::string raw_s) noexcept
+        static AnyValue make_string(std::string &raw_s) noexcept
         {
-            // Heap-allocate to avoid dangling pointer
-            auto *s = new std::string(std::move(raw_s));
             AnyValue v;
             v.storage.type = JsType::String;
-            v.storage.str = s;
+            v.storage.str = &raw_s;
             return v;
         }
 
@@ -134,10 +132,10 @@ namespace jspp
             v.storage.object = o;
             return v;
         }
-        static AnyValue make_object(const std::unordered_map<std::string, AnyValue> &props) noexcept
+        static AnyValue make_object(std::unordered_map<std::string, AnyValue> &props) noexcept
         {
-            auto *obj = new JsObject{};
-            obj->props = props;
+            // Heap-allocate to avoid dangling pointer
+            auto *obj = new JsObject{props};
             return make_object(obj);
         }
 
@@ -148,10 +146,9 @@ namespace jspp
             v.storage.array = a;
             return v;
         }
-        static AnyValue make_array(const std::vector<AnyValue> &dense) noexcept
+        static AnyValue make_array(std::vector<AnyValue> &dense) noexcept
         {
-            auto *arr = new JsArray{};
-            arr->dense = dense;
+            auto *arr = new JsArray{dense};
             return make_array(arr);
         }
 
@@ -162,11 +159,9 @@ namespace jspp
             v.storage.function = f;
             return v;
         }
-        static AnyValue make_function(const std::function<AnyValue(const std::vector<AnyValue> &)> &call, const std::string &name) noexcept
+        static AnyValue make_function(std::function<AnyValue(const std::vector<AnyValue> &)> &call, const std::string &name) noexcept
         {
-            auto *fn = new JsFunction{};
-            fn->call = call;
-            fn->name = name;
+            auto *fn = new JsFunction{call, name};
             return make_function(fn);
         }
 
@@ -266,6 +261,22 @@ namespace jspp
             // should not be reached
             return "";
         }
+
+        const AnyValue &operator[](const std::string &key) const noexcept
+        {
+            if (is_object())
+                return (*as_object())[key];
+            static AnyValue undefined = AnyValue{};
+            return undefined;
+        }
+        const AnyValue &operator[](const AnyValue &key) const noexcept
+        {
+            return (*this)[key.convert_to_raw_string()];
+        }
+        // AnyValue get_property(const std::string &key) const noexcept {}
+        // AnyValue get_property(const AnyValue &key) const noexcept {}
+        // AnyValue set_property(const std::string &key) const noexcept {}
+        // AnyValue set_property(const AnyValue &key) const noexcept {}
     };
 
 } // namespace jspp

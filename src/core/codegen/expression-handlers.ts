@@ -17,7 +17,7 @@ export function visitObjectLiteralExpression(
             props += `{"${key}", ${value}},`;
         }
     }
-    return `jspp::JsObject{{${props}}}`;
+    return `jspp::AnyValue::make_object({${props}})`;
 }
 
 export function visitArrayLiteralExpression(
@@ -245,7 +245,8 @@ export function visitBinaryExpression(
                 }
             }
 
-            return `jspp::Access::set_property(${finalObjExpr}, "${propName}", ${finalRightText})`;
+            return `${finalObjExpr}["${propName}"] = ${finalRightText}`;
+            // return `jspp::Access::set_property(${finalObjExpr}, "${propName}", ${finalRightText})`;
         } else if (ts.isElementAccessExpression(binExpr.left)) {
             const elemAccess = binExpr.left;
             const objExprText = this.visit(elemAccess.expression, context);
@@ -311,7 +312,8 @@ export function visitBinaryExpression(
                 }
             }
 
-            return `jspp::Access::set_property(${finalObjExpr}, ${argText}, ${finalRightText})`;
+            return `${finalObjExpr}[${argText}] = ${finalRightText}`;
+            // return `jspp::Access::set_property(${finalObjExpr}, ${argText}, ${finalRightText})`;
         }
 
         const leftText = this.visit(binExpr.left, context);

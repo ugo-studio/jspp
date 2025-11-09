@@ -24,7 +24,7 @@ export function visitSourceFile(
         if (funcName && !hoistedSymbols.has(funcName)) {
             hoistedSymbols.add(funcName);
             code +=
-                `${this.indent()}auto ${funcName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+                `${this.indent()}auto ${funcName} = std::make_unique<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
         }
     });
 
@@ -42,7 +42,7 @@ export function visitSourceFile(
             ? "jspp::AnyValue::make_uninitialized()"
             : "jspp::AnyValue::make_undefined()";
         code +=
-            `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;
+            `${this.indent()}auto ${name} = std::make_unique<jspp::AnyValue>(${initializer});\n`;
     });
 
     // 2. Assign all hoisted functions first
@@ -103,7 +103,7 @@ export function visitBlock(
         if (funcName && !hoistedSymbols.has(funcName)) {
             hoistedSymbols.add(funcName);
             code +=
-                `${this.indent()}auto ${funcName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+                `${this.indent()}auto ${funcName} = std::make_unique<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
         }
     });
 
@@ -121,7 +121,7 @@ export function visitBlock(
             ? "jspp::AnyValue::make_uninitialized()"
             : "jspp::AnyValue::make_undefined()";
         code +=
-            `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;
+            `${this.indent()}auto ${name} = std::make_unique<jspp::AnyValue>(${initializer});\n`;
     });
 
     // 2. Assign all hoisted functions first
@@ -209,7 +209,7 @@ export function visitForStatement(
                         ? this.visit(decl.initializer, context)
                         : "jspp::AnyValue::make_undefined()";
                     initializerCode =
-                        `auto ${name} = std::make_shared<jspp::AnyValue>(${initValue})`;
+                        `auto ${name} = std::make_unique<jspp::AnyValue>(${initValue})`;
                 }
             } else {
                 // For 'var', it's already hoisted, so this is an assignment.
@@ -258,7 +258,7 @@ export function visitForInStatement(
             varName = decl.name.getText();
             // Declare the shared_ptr before the loop
             code +=
-                `${this.indent()}auto ${varName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+                `${this.indent()}auto ${varName} = std::make_unique<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
         }
     } else if (ts.isIdentifier(forIn.initializer)) {
         varName = forIn.initializer.getText();
@@ -310,7 +310,7 @@ export function visitForOfStatement(
             varName = decl.name.getText();
             // Declare the shared_ptr before the loop
             code +=
-                `${this.indent()}auto ${varName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+                `${this.indent()}auto ${varName} = std::make_unique<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
         }
     } else if (ts.isIdentifier(forOf.initializer)) {
         varName = forOf.initializer.getText();
@@ -534,12 +534,12 @@ export function visitCatchClause(
 
         // Always create the JS exception variable.
         code +=
-            `${this.indent()}auto ${varName} = std::make_shared<jspp::AnyValue>(jspp::Exception::parse_error_from_value(${exceptionName}));\n`;
+            `${this.indent()}auto ${varName} = std::make_unique<jspp::AnyValue>(jspp::Exception::parse_error_from_value(${exceptionName}));\n`;
 
         // Shadow the C++ exception variable *only if* the names don't clash.
         if (varName !== exceptionName) {
             code +=
-                `${this.indent()}auto ${exceptionName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+                `${this.indent()}auto ${exceptionName} = std::make_unique<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
         }
 
         code += this.visit(catchClause.block, context);

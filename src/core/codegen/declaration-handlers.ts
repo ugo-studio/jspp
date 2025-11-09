@@ -65,6 +65,6 @@ export function visitVariableDeclaration(
         const initValue = initializer
             ? initializer.substring(3)
             : "jspp::AnyValue::make_undefined()";
-        return `auto ${name} = std::make_shared<jspp::AnyValue>(${initValue})`;
+        return `auto ${name} = std::make_unique<jspp::AnyValue>(${initValue})`;
     }
 }

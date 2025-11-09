@@ -19,6 +19,15 @@ namespace jspp
             }
             return *var;
         }
+        inline const AnyValue &deref(const std::unique_ptr<AnyValue> &var, const std::string &name)
+        {
+            if ((*var).is_uninitialized())
+            {
+                throw std::runtime_error("ReferenceError: Cannot access '" + name + "' before initialization");
+                // return Exception::throw_uninitialized_reference_error(name); // must also return const AnyValue&
+            }
+            return *var;
+        }
 
         // // Helper function to call JsFunction
         // inline AnyValue call_function(const AnyValue &var, const std::vector<AnyValue> &args, const std::string &name)
