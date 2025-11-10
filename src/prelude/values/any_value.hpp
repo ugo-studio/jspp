@@ -334,16 +334,6 @@ namespace jspp
             throw RuntimeError::make_error(expression + " is not a function", "TypeError");
         }
 
-        // --- COMPARISON OPERATORS
-        const AnyValue operator==(const AnyValue &other) const noexcept
-        {
-            return AnyValue::make_boolean(is_strictly_equal(other));
-        }
-        const AnyValue operator!=(const AnyValue &other) const noexcept
-        {
-            return AnyValue::make_boolean(!is_strictly_equal(other));
-        }
-
         // --- PROPERTY ACCESS OPERATORS
         const AnyValue &operator[](const std::string &key) const noexcept
         {
@@ -416,7 +406,7 @@ namespace jspp
                 return true;
             }
         }
-        const bool is_strictly_equal(const AnyValue &other) const noexcept
+        const bool is_strictly_equal_to(const AnyValue &other) const noexcept
         {
             if (storage.type == other.storage.type)
             {
@@ -439,6 +429,101 @@ namespace jspp
                 }
             }
             return false;
+        }
+        const bool is_equal_to(const AnyValue &other) const noexcept
+        {
+            // Implements JavaScript's Abstract Equality Comparison Algorithm (==)
+            // Step 1: If types are the same, use strict equality (===)
+            if (storage.type == other.storage.type)
+            {
+                return is_strictly_equal_to(other);
+            }
+            // Steps 2 & 3: null == undefined
+            if ((is_null() && other.is_undefined()) || (is_undefined() && other.is_null()))
+            {
+                return true;
+            }
+            // Step 4 & 5: number == string
+            if (is_number() && other.is_string())
+            {
+                double num_this = this->as_double();
+                double num_other;
+                try
+                {
+                    const std::string &s = *other.as_string();
+                    // JS considers empty string or whitespace-only string to be 0
+                    if (s.empty() || std::all_of(s.begin(), s.end(), [](unsigned char c)
+                                                 { return std::isspace(c); }))
+                    {
+                        num_other = 0.0;
+                    }
+                    else
+                    {
+                        size_t pos;
+                        num_other = std::stod(s, &pos);
+                        // Check if the entire string was consumed, allowing for trailing whitespace
+                        while (pos < s.length() && std::isspace(static_cast<unsigned char>(s[pos])))
+                        {
+                            pos++;
+                        }
+                        if (pos != s.length())
+                        {
+                            num_other = std::numeric_limits<double>::quiet_NaN();
+                        }
+                    }
+                }
+                catch (...)
+                {
+                    num_other = std::numeric_limits<double>::quiet_NaN();
+                }
+                return num_this == num_other;
+            }
+            if (is_string() && other.is_number())
+            {
+                // Delegate to the other operand to avoid code duplication
+                return other.is_equal_to(*this);
+            }
+            // Step 6 & 7: boolean == any
+            if (is_boolean())
+            {
+                // Convert boolean to number and re-compare
+                return AnyValue::make_number(as_boolean() ? 1.0 : 0.0).is_equal_to(other);
+            }
+            if (other.is_boolean())
+            {
+                // Convert boolean to number and re-compare
+                return is_equal_to(AnyValue::make_number(other.as_boolean() ? 1.0 : 0.0));
+            }
+            // Step 8 & 9: object == (string or number)
+            if ((other.is_object() || other.is_array() || other.is_function()) && (is_string() || is_number()))
+            {
+                // Delegate to the other operand to avoid code duplication
+                return other.is_equal_to(*this);
+            }
+            if ((is_object() || is_array() || is_function()) && (other.is_string() || other.is_number()))
+            {
+                // Convert object to primitive (string) and re-compare.
+                // This is a simplification of JS's ToPrimitive which would try valueOf() first.
+                return AnyValue::make_string(to_std_string()).is_equal_to(other);
+            }
+            // Step 10: All other cases (e.g., object == null) are false.
+            return false;
+        }
+        const AnyValue is_strictly_equal_to_primitive(const AnyValue &other) const noexcept
+        {
+            return AnyValue::make_boolean(is_strictly_equal_to(other));
+        }
+        const AnyValue is_equal_to_primitive(const AnyValue &other) const noexcept
+        {
+            return AnyValue::make_boolean(is_equal_to(other));
+        }
+        const AnyValue not_strictly_equal_to_primitive(const AnyValue &other) const noexcept
+        {
+            return AnyValue::make_boolean(!is_strictly_equal_to(other));
+        }
+        const AnyValue not_equal_to_primitive(const AnyValue &other) const noexcept
+        {
+            return AnyValue::make_boolean(!is_equal_to(other));
         }
         std::string to_std_string() const noexcept
         {

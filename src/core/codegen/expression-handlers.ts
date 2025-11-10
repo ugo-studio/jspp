@@ -431,18 +431,16 @@ export function visitBinaryExpression(
     }
 
     if (opToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken) {
-        return `(${finalLeft} == ${finalRight})`;
-        // return `jspp::strict_equals(${finalLeft}, ${finalRight})`;
+        return `${finalLeft}.is_strictly_equal_to_primitive(${finalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.EqualsEqualsToken) {
-        return `jspp::equals(${finalLeft}, ${finalRight})`;
+        return `${finalLeft}.is_equal_to_primitive(${finalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken) {
-        return `!(${finalLeft} == ${finalRight})`;
-        // return `!jspp::strict_equals(${finalLeft}, ${finalRight})`;
+        return `${finalLeft}.not_strictly_equal_to_primitive(${finalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.ExclamationEqualsToken) {
-        return `!jspp::equals(${finalLeft}, ${finalRight})`;
+        return `${finalLeft}.not_equal_to_primitive(${finalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.AsteriskAsteriskToken) {
         return `jspp::pow(${finalLeft}, ${finalRight})`;
