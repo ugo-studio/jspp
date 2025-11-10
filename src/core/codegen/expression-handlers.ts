@@ -31,7 +31,7 @@ function visitObjectPropertyName(
         return name;
     }
 
-    return node.getText();
+    return `"${node.getText()}"`;
 }
 
 export function visitObjectLiteralExpression(
