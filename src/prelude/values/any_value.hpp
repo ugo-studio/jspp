@@ -327,11 +327,6 @@ namespace jspp
             assert(is_array());
             return storage.array.get();
         }
-        // JsFunction *as_function() const noexcept
-        // {
-        //     assert(is_function());
-        //     return storage.function.get();
-        // }
         JsFunction *as_function(const std::string &expression = "") const
         {
             if (is_function())
@@ -339,6 +334,108 @@ namespace jspp
             throw std::runtime_error("TypeError: " + expression + " is not a function");
         }
 
+        // --- COMPARISON OPERATORS
+        const AnyValue operator==(const AnyValue &other) const noexcept
+        {
+            return AnyValue::make_boolean(is_strictly_equal(other));
+        }
+        const AnyValue operator!=(const AnyValue &other) const noexcept
+        {
+            return AnyValue::make_boolean(!is_strictly_equal(other));
+        }
+
+        // --- PROPERTY ACCESS OPERATORS
+        const AnyValue &operator[](const std::string &key) const noexcept
+        {
+            switch (storage.type)
+            {
+            case JsType::Object:
+                return (*as_object())[key];
+            case JsType::Array:
+                return (*as_array())[key];
+            case JsType::Function:
+                return (*as_function())[key];
+            default:
+                static AnyValue undefined = AnyValue{};
+                return undefined;
+            }
+        }
+        const AnyValue &operator[](uint32_t idx) const noexcept
+        {
+            if (storage.type == JsType::Array)
+                return (*as_array())[idx];
+            return (*this)[std::to_string(idx)];
+        }
+        const AnyValue &operator[](const AnyValue &key) const noexcept
+        {
+            return (*this)[key.convert_to_raw_string()];
+        }
+        // non-const property/index access
+        AnyValue &operator[](const std::string &key)
+        {
+            switch (storage.type)
+            {
+            case JsType::Object:
+                return (*as_object())[key];
+            case JsType::Array:
+                return (*as_array())[key];
+            case JsType::Function:
+                return (*as_function())[key];
+            default:
+                static AnyValue undefined = AnyValue{};
+                return undefined;
+            }
+        }
+        AnyValue &operator[](uint32_t idx)
+        {
+            if (storage.type == JsType::Array)
+                return (*as_array())[idx];
+            return (*this)[std::to_string(idx)];
+        }
+        AnyValue &operator[](const AnyValue &key)
+        {
+            return (*this)[key.convert_to_raw_string()];
+        }
+
+        // --- HELPERS
+        const bool is_truthy() const noexcept
+        {
+            switch (storage.type)
+            {
+            case JsType::Boolean:
+                return storage.boolean;
+            case JsType::Number:
+                return storage.number != 0.0;
+            case JsType::String:
+                return !storage.str->empty();
+            default:
+                return true;
+            }
+        }
+        const bool is_strictly_equal(const AnyValue &other) const noexcept
+        {
+            if (storage.type == other.storage.type)
+            {
+                switch (storage.type)
+                {
+                case JsType::Boolean:
+                    return storage.boolean == other.storage.boolean;
+                case JsType::Number:
+                    return storage.number == other.storage.number;
+                case JsType::String:
+                    return (*storage.str.get() == *other.storage.str.get());
+                case JsType::Array:
+                    return (&storage.array == &other.storage.array);
+                case JsType::Object:
+                    return (&storage.object == &other.storage.object);
+                case JsType::Function:
+                    return (&storage.function == &other.storage.function);
+                default:
+                    return true;
+                }
+            }
+            return false;
+        }
         std::string convert_to_raw_string() const noexcept
         {
             switch (storage.type)
@@ -388,59 +485,6 @@ namespace jspp
             default:
                 return "";
             }
-        }
-
-        const AnyValue &operator[](const std::string &key) const noexcept
-        {
-            switch (storage.type)
-            {
-            case JsType::Object:
-                return (*as_object())[key];
-            case JsType::Array:
-                return (*as_array())[key];
-            case JsType::Function:
-                return (*as_function())[key];
-            default:
-                static AnyValue undefined = AnyValue{};
-                return undefined;
-            }
-        }
-        const AnyValue &operator[](uint32_t idx) const noexcept
-        {
-            if (storage.type == JsType::Array)
-                return (*as_array())[idx];
-            return (*this)[std::to_string(idx)];
-        }
-        const AnyValue &operator[](const AnyValue &key) const noexcept
-        {
-            return (*this)[key.convert_to_raw_string()];
-        }
-
-        // non-const property/index access
-        AnyValue &operator[](const std::string &key)
-        {
-            switch (storage.type)
-            {
-            case JsType::Object:
-                return (*as_object())[key];
-            case JsType::Array:
-                return (*as_array())[key];
-            case JsType::Function:
-                return (*as_function())[key];
-            default:
-                static AnyValue undefined = AnyValue{};
-                return undefined;
-            }
-        }
-        AnyValue &operator[](uint32_t idx)
-        {
-            if (storage.type == JsType::Array)
-                return (*as_array())[idx];
-            return (*this)[std::to_string(idx)];
-        }
-        AnyValue &operator[](const AnyValue &key)
-        {
-            return (*this)[key.convert_to_raw_string()];
         }
     };
 }

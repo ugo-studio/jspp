@@ -160,7 +160,8 @@ export function visitBlock(
     if (context.isFunctionBody) {
         const lastStatement = block.statements[block.statements.length - 1];
         if (!lastStatement || !ts.isReturnStatement(lastStatement)) {
-            code += `${this.indent()}return jspp::AnyValue::make_undefined();\n`;
+            code +=
+                `${this.indent()}return jspp::AnyValue::make_undefined();\n`;
         }
     }
 
@@ -226,7 +227,7 @@ export function visitForStatement(
 
     code += `${this.indent()}for (${initializerCode}; `;
     if (forStmt.condition) {
-        code += `jspp::is_truthy(${this.visit(forStmt.condition, context)})`;
+        code += `(${this.visit(forStmt.condition, context)}).is_truthy()`;
     }
     code += "; ";
     if (forStmt.incrementor) {
@@ -360,7 +361,7 @@ export function visitIfStatement(
                 isFunctionBody: false,
             });
     }
-    return `${this.indent()}if (jspp::is_truthy(${condition})) ${thenStmt}${elseStmt}`;
+    return `${this.indent()}if ((${condition}).is_truthy()) ${thenStmt}${elseStmt}`;
 }
 
 export function visitExpressionStatement(

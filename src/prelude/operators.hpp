@@ -2,22 +2,6 @@
 
 #include "types.hpp"
 
-inline bool jspp::is_truthy(const AnyValue &val)
-{
-    if (val.is_boolean())
-        return val.as_boolean();
-    if (val.is_string())
-        return !val.as_string()->empty();
-    if (val.is_number())
-        return val.as_double() != 0.0;
-    if (val.is_undefined() || val.is_null())
-        return false;
-    if (val.is_uninitialized())
-        // Exception::throw_uninitialized_read_property_error();
-        throw std::runtime_error("TypeError: Cannot read properties of uninitialized");
-    return true; // default
-}
-
 // inline jspp::JsBoolean jspp::strict_equals(const AnyValue &lhs, const AnyValue &rhs)
 // {
 //     if (&lhs == &rhs)
@@ -67,37 +51,35 @@ inline bool jspp::is_truthy(const AnyValue &val)
 //     return JsBoolean{false}; // default
 // }
 
+// --- BASIC ARITHEMETIC
 inline jspp::AnyValue operator+(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     if (lhs.is_number() && rhs.is_number())
         return jspp::AnyValue::make_number(lhs.as_double() + rhs.as_double());
+    if (lhs.is_string() || rhs.is_string())
+        return jspp::AnyValue::make_string(lhs.convert_to_raw_string() + rhs.convert_to_raw_string());
     return jspp::AnyValue::make_nan();
 }
-// inline jspp::AnyValue operator*(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
-// {
-//     if (std::holds_alternative<jspp::JsNumber>(lhs) && std::holds_alternative<jspp::JsNumber>(rhs))
-//         return jspp::JsNumber{std::get<jspp::JsNumber>(lhs).value * std::get<jspp::JsNumber>(rhs).value};
-//     return jspp::AnyValue::make_undefined();
-// }
-// inline jspp::AnyValue operator-(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
-// {
-//     if (std::holds_alternative<jspp::JsNumber>(lhs) && std::holds_alternative<jspp::JsNumber>(rhs))
-//         return jspp::JsNumber{std::get<jspp::JsNumber>(lhs).value - std::get<jspp::JsNumber>(rhs).value};
-//     return jspp::AnyValue::make_undefined();
-// }
+inline jspp::AnyValue operator-(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
+{
+    if (lhs.is_number() && rhs.is_number())
+        return jspp::AnyValue::make_number(lhs.as_double() - rhs.as_double());
+    return jspp::AnyValue::make_nan();
+}
+inline jspp::AnyValue operator*(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
+{
+    if (lhs.is_number() && rhs.is_number())
+        return jspp::AnyValue::make_number(lhs.as_double() * rhs.as_double());
+    return jspp::AnyValue::make_nan();
+}
+inline jspp::AnyValue operator/(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
+{
+    if (lhs.is_number() && rhs.is_number())
+        return jspp::AnyValue::make_number(lhs.as_double() / rhs.as_double());
+    return jspp::AnyValue::make_nan();
+}
 
-// inline jspp::JsBoolean operator<=(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
-// {
-//     if (std::holds_alternative<jspp::JsNumber>(lhs) && std::holds_alternative<jspp::JsNumber>(rhs))
-//         return jspp::JsBoolean{(std::get<jspp::JsNumber>(lhs).value <= std::get<jspp::JsNumber>(rhs).value) || jspp::equals(std::get<jspp::JsNumber>(lhs), std::get<jspp::JsNumber>(rhs)).value};
-//     return jspp::JsBoolean{false};
-// }
-// inline jspp::JsBoolean operator>=(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
-// {
-//     if (std::holds_alternative<jspp::JsNumber>(lhs) && std::holds_alternative<jspp::JsNumber>(rhs))
-//         return jspp::JsBoolean{(std::get<jspp::JsNumber>(lhs).value >= std::get<jspp::JsNumber>(rhs).value) || jspp::equals(std::get<jspp::JsNumber>(lhs), std::get<jspp::JsNumber>(rhs)).value};
-//     return jspp::JsBoolean{false};
-// }
+// --- COMPARISON OPERATORS
 inline jspp::AnyValue operator<(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 {
     if (lhs.is_number() && rhs.is_number())
@@ -110,6 +92,18 @@ inline jspp::AnyValue operator<(const jspp::AnyValue &lhs, const jspp::AnyValue 
 //         return jspp::JsBoolean{std::get<jspp::JsNumber>(lhs).value > std::get<jspp::JsNumber>(rhs).value};
 //     return jspp::JsBoolean{false};
 // }
+// inline jspp::JsBoolean operator<=(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
+// {
+//     if (std::holds_alternative<jspp::JsNumber>(lhs) && std::holds_alternative<jspp::JsNumber>(rhs))
+//         return jspp::JsBoolean{(std::get<jspp::JsNumber>(lhs).value <= std::get<jspp::JsNumber>(rhs).value) || jspp::equals(std::get<jspp::JsNumber>(lhs), std::get<jspp::JsNumber>(rhs)).value};
+//     return jspp::JsBoolean{false};
+// }
+// inline jspp::JsBoolean operator>=(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
+// {
+//     if (std::holds_alternative<jspp::JsNumber>(lhs) && std::holds_alternative<jspp::JsNumber>(rhs))
+//         return jspp::JsBoolean{(std::get<jspp::JsNumber>(lhs).value >= std::get<jspp::JsNumber>(rhs).value) || jspp::equals(std::get<jspp::JsNumber>(lhs), std::get<jspp::JsNumber>(rhs)).value};
+//     return jspp::JsBoolean{false};
+// }
 // inline jspp::JsBoolean operator!=(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 // {
 //     if (std::holds_alternative<jspp::JsNumber>(lhs) && std::holds_alternative<jspp::JsNumber>(rhs))
@@ -117,12 +111,6 @@ inline jspp::AnyValue operator<(const jspp::AnyValue &lhs, const jspp::AnyValue 
 //     return jspp::JsBoolean{false};
 // }
 
-// inline jspp::AnyValue operator/(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
-// {
-//     if (std::holds_alternative<jspp::JsNumber>(lhs) && std::holds_alternative<jspp::JsNumber>(rhs))
-//         return jspp::JsNumber{std::get<jspp::JsNumber>(lhs).value / std::get<jspp::JsNumber>(rhs).value};
-//     return jspp::AnyValue::make_undefined();
-// }
 // inline jspp::AnyValue operator%(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
 // {
 //     if (std::holds_alternative<jspp::JsNumber>(lhs) && std::holds_alternative<jspp::JsNumber>(rhs))

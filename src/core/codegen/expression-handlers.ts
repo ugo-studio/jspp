@@ -431,13 +431,15 @@ export function visitBinaryExpression(
     }
 
     if (opToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken) {
-        return `jspp::strict_equals(${finalLeft}, ${finalRight})`;
+        return `(${finalLeft} == ${finalRight})`;
+        // return `jspp::strict_equals(${finalLeft}, ${finalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.EqualsEqualsToken) {
         return `jspp::equals(${finalLeft}, ${finalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken) {
-        return `!jspp::strict_equals(${finalLeft}, ${finalRight})`;
+        return `!(${finalLeft} == ${finalRight})`;
+        // return `!jspp::strict_equals(${finalLeft}, ${finalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.ExclamationEqualsToken) {
         return `!jspp::equals(${finalLeft}, ${finalRight})`;

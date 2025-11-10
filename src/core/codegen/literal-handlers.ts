@@ -6,6 +6,10 @@ export function visitIdentifier(
     this: CodeGenerator,
     node: ts.Identifier,
 ): string {
+    if (node.text === "NaN") {
+        return "jspp::AnyValue::make_nan()";
+    }
+
     return node.text;
 }
 
