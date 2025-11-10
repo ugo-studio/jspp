@@ -9,6 +9,9 @@ export function visitIdentifier(
     if (node.text === "NaN") {
         return "jspp::AnyValue::make_nan()";
     }
+    if (node.text === "undefined") {
+        return "jspp::AnyValue::make_undefined()";
+    }
 
     return node.text;
 }

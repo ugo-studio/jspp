@@ -27,14 +27,14 @@ namespace jspp
     enum class JsType : uint8_t
     {
         Undefined = 0,
-        Null,
-        Uninitialized,
-        Boolean,
-        Number,
-        String,
-        Object,
-        Array,
-        Function,
+        Null = 1,
+        Uninitialized = 2,
+        Boolean = 3,
+        Number = 4,
+        String = 5,
+        Object = 6,
+        Array = 7,
+        Function = 8,
     };
 
     // Tagged storage with a union for payload
@@ -487,7 +487,7 @@ namespace jspp
             case JsType::Uninitialized:
                 return "<uninitialized>";
             default:
-                return "";
+                return "shouldn't be reached";
             }
         }
     };

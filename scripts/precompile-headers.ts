@@ -34,6 +34,8 @@ async function precompileHeaders() {
                 PRECOMPILED_HEADER_PATH,
                 "-I",
                 PRELUDE_DIR,
+                "-O2",
+                "-DNDEBUG",
             ],
             stdout: "inherit",
             stderr: "inherit",

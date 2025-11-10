@@ -33,9 +33,7 @@ export function visitVariableDeclaration(
                 scope,
             );
             const varName = this.getJsVarName(initExpr);
-            if (varName === '"undefined"') {
-                initText = "jspp::AnyValue::make_undefined()";
-            } else if (
+            if (
                 typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin
             ) {
                 initText = `jspp::Access::deref(${initText}, ${varName})`;

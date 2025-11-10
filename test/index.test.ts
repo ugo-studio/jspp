@@ -364,6 +364,8 @@ describe("Interpreter tests", () => {
                     preludePath,
                     "-include",
                     path.join(process.cwd(), "prelude-build", "index.hpp"),
+                    "-O2",
+                    "-DNDEBUG",
                 ],
                 stdout: "pipe",
                 stderr: "pipe",
