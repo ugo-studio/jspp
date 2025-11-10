@@ -6,6 +6,7 @@
 #include "values/object.hpp"
 #include "values/function.hpp"
 #include "operators.hpp"
+#include "log_string.hpp"
 
 static std::unordered_map<std::string, std::chrono::steady_clock::time_point> timers = {};
 
@@ -13,7 +14,7 @@ auto logFn = jspp::AnyValue::make_function([](const std::vector<jspp::AnyValue> 
                                            {
                                                                      for (size_t i = 0; i < args.size(); ++i)
                                                                      {
-                                                                         std::cout << args[i].convert_to_raw_string();
+                                                                         std::cout << jspp::LogString::to_log_string(args[i]);
                                                                          if (i < args.size() - 1)
                                                                              std::cout << " ";
                                                                      }
@@ -24,7 +25,7 @@ auto warnFn = jspp::AnyValue::make_function([](const std::vector<jspp::AnyValue>
                                                                       std::cerr << "\033[33m";
                                                                       for (size_t i = 0; i < args.size(); ++i)
                                                                       {
-                                                                          std::cout << args[i].convert_to_raw_string();
+                                                                          std::cout << jspp::LogString::to_log_string(args[i]);
                                                                           if (i < args.size() - 1)
                                                                               std::cout << " ";
                                                                       }
@@ -35,7 +36,7 @@ auto errorFn = jspp::AnyValue::make_function([](const std::vector<jspp::AnyValue
                                                                        std::cerr << "\033[31m";
                                                                        for (size_t i = 0; i < args.size(); ++i)
                                                                        {
-                                                                           std::cout << args[i].convert_to_raw_string();
+                                                                           std::cout << jspp::LogString::to_log_string(args[i]);
                                                                            if (i < args.size() - 1)
                                                                                std::cout << " ";
                                                                        }

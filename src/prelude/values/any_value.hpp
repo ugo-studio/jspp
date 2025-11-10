@@ -49,9 +49,9 @@ namespace jspp
             bool boolean;
             double number;
             std::unique_ptr<std::string> str;
-            std::unique_ptr<JsObject> object;
-            std::unique_ptr<JsArray> array;
-            std::unique_ptr<JsFunction> function;
+            std::shared_ptr<JsObject> object;
+            std::shared_ptr<JsArray> array;
+            std::shared_ptr<JsFunction> function;
         };
 
         TaggedValue() noexcept : type(JsType::Undefined), undefined{} {}
@@ -71,13 +71,13 @@ namespace jspp
                 storage.str.~unique_ptr();
                 break;
             case JsType::Object:
-                storage.object.~unique_ptr();
+                storage.object.~shared_ptr();
                 break;
             case JsType::Array:
-                storage.array.~unique_ptr();
+                storage.array.~shared_ptr();
                 break;
             case JsType::Function:
-                storage.function.~unique_ptr();
+                storage.function.~shared_ptr();
                 break;
             default:
                 break;
@@ -115,13 +115,13 @@ namespace jspp
                 new (&storage.str) std::unique_ptr<std::string>(std::move(other.storage.str));
                 break;
             case JsType::Object:
-                new (&storage.object) std::unique_ptr<JsObject>(std::move(other.storage.object));
+                new (&storage.object) std::shared_ptr<JsObject>(std::move(other.storage.object));
                 break;
             case JsType::Array:
-                new (&storage.array) std::unique_ptr<JsArray>(std::move(other.storage.array));
+                new (&storage.array) std::shared_ptr<JsArray>(std::move(other.storage.array));
                 break;
             case JsType::Function:
-                new (&storage.function) std::unique_ptr<JsFunction>(std::move(other.storage.function));
+                new (&storage.function) std::shared_ptr<JsFunction>(std::move(other.storage.function));
                 break;
             }
         }
@@ -150,13 +150,13 @@ namespace jspp
                 new (&storage.str) std::unique_ptr<std::string>(std::make_unique<std::string>(*other.storage.str));
                 break;
             case JsType::Object:
-                new (&storage.object) std::unique_ptr<JsObject>(std::make_unique<JsObject>(*other.storage.object));
+                new (&storage.object) std::shared_ptr<JsObject>(other.storage.object); // shallow copy
                 break;
             case JsType::Array:
-                new (&storage.array) std::unique_ptr<JsArray>(std::make_unique<JsArray>(*other.storage.array));
+                new (&storage.array) std::shared_ptr<JsArray>(other.storage.array); // shallow copy
                 break;
             case JsType::Function:
-                new (&storage.function) std::unique_ptr<JsFunction>(std::make_unique<JsFunction>(*other.storage.function));
+                new (&storage.function) std::shared_ptr<JsFunction>(other.storage.function); // shallow copy
                 break;
             }
         }
@@ -274,21 +274,21 @@ namespace jspp
         {
             AnyValue v;
             v.storage.type = JsType::Object;
-            new (&v.storage.object) std::unique_ptr<JsObject>(std::make_unique<JsObject>(props));
+            new (&v.storage.object) std::shared_ptr<JsObject>(std::make_shared<JsObject>(props));
             return v;
         }
         static AnyValue make_array(const std::vector<AnyValue> &dense) noexcept
         {
             AnyValue v;
             v.storage.type = JsType::Array;
-            new (&v.storage.array) std::unique_ptr<JsArray>(std::make_unique<JsArray>(dense));
+            new (&v.storage.array) std::shared_ptr<JsArray>(std::make_shared<JsArray>(dense));
             return v;
         }
         static AnyValue make_function(const std::function<AnyValue(const std::vector<AnyValue> &)> &call, const std::string &name) noexcept
         {
             AnyValue v;
             v.storage.type = JsType::Function;
-            new (&v.storage.function) std::unique_ptr<JsFunction>(std::make_unique<JsFunction>(call, name));
+            new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(call, name));
             return v;
         }
 
@@ -368,6 +368,8 @@ namespace jspp
         }
         const AnyValue &operator[](const AnyValue &key) const noexcept
         {
+            if (key.storage.type == JsType::Number && storage.type == JsType::Array)
+                return (*storage.array)[key.storage.number];
             return (*this)[key.convert_to_raw_string()];
         }
         // non-const property/index access
@@ -394,6 +396,8 @@ namespace jspp
         }
         AnyValue &operator[](const AnyValue &key)
         {
+            if (key.storage.type == JsType::Number && storage.type == JsType::Array)
+                return (*storage.array)[key.storage.number];
             return (*this)[key.convert_to_raw_string()];
         }
 
@@ -425,11 +429,11 @@ namespace jspp
                 case JsType::String:
                     return (*storage.str.get() == *other.storage.str.get());
                 case JsType::Array:
-                    return (&storage.array == &other.storage.array);
+                    return (storage.array == other.storage.array);
                 case JsType::Object:
-                    return (&storage.object == &other.storage.object);
+                    return (storage.object == other.storage.object);
                 case JsType::Function:
-                    return (&storage.function == &other.storage.function);
+                    return (storage.function == other.storage.function);
                 default:
                     return true;
                 }
