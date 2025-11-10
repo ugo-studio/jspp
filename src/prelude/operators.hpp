@@ -33,9 +33,9 @@
 //         return JsBoolean{true};
 //     // number == string
 //     if (std::holds_alternative<JsNumber>(lhs) && std::holds_alternative<JsString>(rhs))
-//         return JsBoolean{std::get<JsNumber>(lhs).to_raw_string() == std::get<JsString>(rhs).to_raw_string()};
+//         return JsBoolean{std::get<JsNumber>(lhs).to_std_string() == std::get<JsString>(rhs).to_std_string()};
 //     if (std::holds_alternative<JsString>(lhs) && std::holds_alternative<JsNumber>(rhs))
-//         return JsBoolean{std::get<JsString>(lhs).to_raw_string() == std::get<JsNumber>(rhs).to_raw_string()};
+//         return JsBoolean{std::get<JsString>(lhs).to_std_string() == std::get<JsNumber>(rhs).to_std_string()};
 //     // boolean == any
 //     if (std::holds_alternative<JsBoolean>(lhs))
 //         return jspp::equals(jspp::JsNumber{std::get<JsBoolean>(lhs).value ? 1.0 : 0}, rhs);
@@ -44,10 +44,10 @@
 //     // object == primitive
 //     if ((std::holds_alternative<JsString>(lhs) || std::holds_alternative<std::shared_ptr<JsObject>>(lhs) || std::holds_alternative<std::shared_ptr<JsArray>>(lhs) || std::holds_alternative<std::shared_ptr<JsFunction>>(lhs)) &&
 //         (!std::holds_alternative<JsString>(rhs) && !std::holds_alternative<std::shared_ptr<JsObject>>(rhs) && !std::holds_alternative<std::shared_ptr<JsArray>>(rhs) && !std::holds_alternative<std::shared_ptr<JsFunction>>(rhs)))
-//         return jspp::equals(jspp::JsString{jspp::Convert::to_raw_string(lhs)}, rhs);
+//         return jspp::equals(jspp::JsString{jspp::Convert::to_std_string(lhs)}, rhs);
 //     if ((std::holds_alternative<JsString>(rhs) || std::holds_alternative<std::shared_ptr<JsObject>>(rhs) || std::holds_alternative<std::shared_ptr<JsArray>>(rhs) || std::holds_alternative<std::shared_ptr<JsFunction>>(rhs)) &&
 //         (!std::holds_alternative<JsString>(lhs) && !std::holds_alternative<std::shared_ptr<JsObject>>(lhs) && !std::holds_alternative<std::shared_ptr<JsArray>>(lhs) && !std::holds_alternative<std::shared_ptr<JsFunction>>(lhs)))
-//         return jspp::equals(lhs, jspp::JsString{jspp::Convert::to_raw_string(rhs)});
+//         return jspp::equals(lhs, jspp::JsString{jspp::Convert::to_std_string(rhs)});
 //     return JsBoolean{false}; // default
 // }
 
@@ -57,7 +57,7 @@ inline jspp::AnyValue operator+(const jspp::AnyValue &lhs, const jspp::AnyValue 
     if (lhs.is_number() && rhs.is_number())
         return jspp::AnyValue::make_number(lhs.as_double() + rhs.as_double());
     if (lhs.is_string() || rhs.is_string())
-        return jspp::AnyValue::make_string(lhs.convert_to_raw_string() + rhs.convert_to_raw_string());
+        return jspp::AnyValue::make_string(lhs.to_std_string() + rhs.to_std_string());
     return jspp::AnyValue::make_nan();
 }
 inline jspp::AnyValue operator-(const jspp::AnyValue &lhs, const jspp::AnyValue &rhs)
@@ -274,6 +274,6 @@ inline jspp::AnyValue operator<(const jspp::AnyValue &lhs, const jspp::AnyValue 
 
 // inline std::ostream &operator<<(std::ostream &os, const jspp::AnyValue &v)
 // {
-//     os << v.convert_to_raw_string();
+//     os << v.to_std_string();
 //     return os;
 // }

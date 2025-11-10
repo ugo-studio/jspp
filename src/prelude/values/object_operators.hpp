@@ -4,7 +4,7 @@
 #include "values/object.hpp"
 #include "values/any_value.hpp"
 
-std::string jspp::JsObject::to_raw_string() const
+std::string jspp::JsObject::to_std_string() const
 {
     return "[Object Object]";
 }
@@ -23,5 +23,5 @@ jspp::AnyValue &jspp::JsObject::operator[](const std::string &key)
 
 jspp::AnyValue &jspp::JsObject::operator[](const AnyValue &key)
 {
-    return (*this)[key.convert_to_raw_string()];
+    return (*this)[key.to_std_string()];
 }

@@ -24,7 +24,7 @@ export function visitSourceFile(
         if (funcName && !hoistedSymbols.has(funcName)) {
             hoistedSymbols.add(funcName);
             code +=
-                `${this.indent()}auto ${funcName} = std::make_unique<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+                `${this.indent()}auto ${funcName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
         }
     });
 
@@ -42,7 +42,7 @@ export function visitSourceFile(
             ? "jspp::AnyValue::make_uninitialized()"
             : "jspp::AnyValue::make_undefined()";
         code +=
-            `${this.indent()}auto ${name} = std::make_unique<jspp::AnyValue>(${initializer});\n`;
+            `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;
     });
 
     // 2. Assign all hoisted functions first
@@ -103,7 +103,7 @@ export function visitBlock(
         if (funcName && !hoistedSymbols.has(funcName)) {
             hoistedSymbols.add(funcName);
             code +=
-                `${this.indent()}auto ${funcName} = std::make_unique<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+                `${this.indent()}auto ${funcName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
         }
     });
 
@@ -121,7 +121,7 @@ export function visitBlock(
             ? "jspp::AnyValue::make_uninitialized()"
             : "jspp::AnyValue::make_undefined()";
         code +=
-            `${this.indent()}auto ${name} = std::make_unique<jspp::AnyValue>(${initializer});\n`;
+            `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;
     });
 
     // 2. Assign all hoisted functions first
@@ -210,7 +210,7 @@ export function visitForStatement(
                         ? this.visit(decl.initializer, context)
                         : "jspp::AnyValue::make_undefined()";
                     initializerCode =
-                        `auto ${name} = std::make_unique<jspp::AnyValue>(${initValue})`;
+                        `auto ${name} = std::make_shared<jspp::AnyValue>(${initValue})`;
                 }
             } else {
                 // For 'var', it's already hoisted, so this is an assignment.
@@ -259,7 +259,7 @@ export function visitForInStatement(
             varName = decl.name.getText();
             // Declare the shared_ptr before the loop
             code +=
-                `${this.indent()}auto ${varName} = std::make_unique<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+                `${this.indent()}auto ${varName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
         }
     } else if (ts.isIdentifier(forIn.initializer)) {
         varName = forIn.initializer.getText();
@@ -311,7 +311,7 @@ export function visitForOfStatement(
             varName = decl.name.getText();
             // Declare the shared_ptr before the loop
             code +=
-                `${this.indent()}auto ${varName} = std::make_unique<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+                `${this.indent()}auto ${varName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
         }
     } else if (ts.isIdentifier(forOf.initializer)) {
         varName = forOf.initializer.getText();
@@ -383,7 +383,7 @@ export function visitThrowStatement(
 ): string {
     const throwStmt = node as ts.ThrowStatement;
     const expr = this.visit(throwStmt.expression, context);
-    return `${this.indent()}throw jspp::AnyValue(${expr});
+    return `${this.indent()}throw jspp::RuntimeError(${expr});
 `;
 }
 
@@ -432,13 +432,13 @@ export function visitTryStatement(
             isFunctionBody: false,
         });
         code +=
-            `${this.indent()}auto ${finallyLambdaName} = [&]() ${finallyBlockCode.trim()};\n`;
+            `${this.indent()}auto ${finallyLambdaName} = [=]() ${finallyBlockCode.trim()};\n`;
 
         code += `${this.indent()}try {\n`;
         this.indentationLevel++;
 
         code +=
-            `${this.indent()}${resultVarName} = ([&]() -> jspp::AnyValue {\n`;
+            `${this.indent()}${resultVarName} = ([=]() -> jspp::AnyValue {\n`;
         this.indentationLevel++;
 
         const innerContext: VisitContext = {
@@ -505,7 +505,7 @@ export function visitTryStatement(
         let code = `${this.indent()}try `;
         code += this.visit(tryStmt.tryBlock, newContext);
         if (tryStmt.catchClause) {
-            code += ` catch (const jspp::AnyValue& ${exceptionName}) `;
+            code += ` catch (const std::exception& ${exceptionName}) `;
             code += this.visit(tryStmt.catchClause, newContext);
         }
         return code;
@@ -535,12 +535,12 @@ export function visitCatchClause(
 
         // Always create the JS exception variable.
         code +=
-            `${this.indent()}auto ${varName} = std::make_unique<jspp::AnyValue>(jspp::Exception::parse_error_from_value(${exceptionName}));\n`;
+            `${this.indent()}auto ${varName} = std::make_shared<jspp::AnyValue>(jspp::RuntimeError::error_to_value(${exceptionName}));\n`;
 
         // Shadow the C++ exception variable *only if* the names don't clash.
         if (varName !== exceptionName) {
             code +=
-                `${this.indent()}auto ${exceptionName} = std::make_unique<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+                `${this.indent()}auto ${exceptionName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
         }
 
         code += this.visit(catchClause.block, context);
@@ -564,7 +564,7 @@ export function visitReturnStatement(
     context: VisitContext,
 ): string {
     if (context.isMainContext) {
-        return `${this.indent()}jspp::Exception::throw_invalid_return_statement();\n`;
+        return `${this.indent()}jspp::RuntimeError::throw_invalid_return_statement();\n`;
     }
 
     const returnStmt = node as ts.ReturnStatement;
@@ -582,7 +582,7 @@ export function visitReturnStatement(
                 );
                 if (!typeInfo) {
                     returnCode +=
-                        `${this.indent()}jspp::Exception::throw_unresolved_reference(${
+                        `${this.indent()}jspp::RuntimeError::throw_unresolved_reference(${
                             this.getJsVarName(expr)
                         });\n`; // THROWS, not returns
                 }
@@ -618,7 +618,7 @@ export function visitReturnStatement(
                 scope,
             );
             if (!typeInfo) {
-                return `${this.indent()}jspp::Exception::throw_unresolved_reference(${
+                return `${this.indent()}jspp::RuntimeError::throw_unresolved_reference(${
                     this.getJsVarName(expr)
                 });\n`; // THROWS, not returns
             }

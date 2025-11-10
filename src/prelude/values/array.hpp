@@ -36,7 +36,7 @@ namespace jspp
             return std::to_string(static_cast<uint32_t>(v)) == s;
         }
 
-        std::string to_raw_string() const;
+        std::string to_std_string() const;
         AnyValue &operator[](const std::string &key);
         AnyValue &operator[](uint32_t idx);
         AnyValue &operator[](const AnyValue &key);

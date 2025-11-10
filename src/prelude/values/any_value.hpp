@@ -20,10 +20,10 @@
 #include "values/object.hpp"
 #include "values/array.hpp"
 #include "values/function.hpp"
+#include "error.hpp"
 
 namespace jspp
 {
-
     enum class JsType : uint8_t
     {
         Undefined = 0,
@@ -331,7 +331,7 @@ namespace jspp
         {
             if (is_function())
                 return storage.function.get();
-            throw std::runtime_error("TypeError: " + expression + " is not a function");
+            throw RuntimeError::make_error(expression + " is not a function", "TypeError");
         }
 
         // --- COMPARISON OPERATORS
@@ -370,7 +370,7 @@ namespace jspp
         {
             if (key.storage.type == JsType::Number && storage.type == JsType::Array)
                 return (*storage.array)[key.storage.number];
-            return (*this)[key.convert_to_raw_string()];
+            return (*this)[key.to_std_string()];
         }
         // non-const property/index access
         AnyValue &operator[](const std::string &key)
@@ -398,7 +398,7 @@ namespace jspp
         {
             if (key.storage.type == JsType::Number && storage.type == JsType::Array)
                 return (*storage.array)[key.storage.number];
-            return (*this)[key.convert_to_raw_string()];
+            return (*this)[key.to_std_string()];
         }
 
         // --- HELPERS
@@ -440,7 +440,7 @@ namespace jspp
             }
             return false;
         }
-        std::string convert_to_raw_string() const noexcept
+        std::string to_std_string() const noexcept
         {
             switch (storage.type)
             {
@@ -453,11 +453,11 @@ namespace jspp
             case JsType::String:
                 return *storage.str.get();
             case JsType::Object:
-                return storage.object->to_raw_string();
+                return storage.object->to_std_string();
             case JsType::Array:
-                return storage.array->to_raw_string();
+                return storage.array->to_std_string();
             case JsType::Function:
-                return storage.function->to_raw_string();
+                return storage.function->to_std_string();
             case JsType::Number:
             {
                 if (std::isnan(storage.number))

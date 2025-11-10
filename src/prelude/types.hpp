@@ -31,6 +31,9 @@ namespace jspp
     // Dynamic AnyValue
     class AnyValue;
 
+    // Custom runtime exception
+    struct RuntimeError;
+
     // Arithemetic operators
     inline AnyValue pow(const AnyValue &lhs, const AnyValue &rhs);
 

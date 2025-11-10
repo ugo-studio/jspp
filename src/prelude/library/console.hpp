@@ -45,13 +45,13 @@ auto errorFn = jspp::AnyValue::make_function([](const std::vector<jspp::AnyValue
 auto timeFn = jspp::AnyValue::make_function([](const std::vector<jspp::AnyValue> &args)
                                             {
                                                                       auto start = std::chrono::steady_clock::now(); // capture immediately
-                                                                      auto key_str = args.size() > 0 ? args[0].convert_to_raw_string() : "";
+                                                                      auto key_str = args.size() > 0 ? args[0].to_std_string() : "";
                                                                       timers[key_str] = start;
                                                                       return jspp::AnyValue::make_undefined(); }, "");
 auto timeEndFn = jspp::AnyValue::make_function([](const std::vector<jspp::AnyValue> &args)
                                                {
                                                                          auto end = std::chrono::steady_clock::now(); // capture immediately
-                                                                         auto key_str = args.size() > 0 ? args[0].convert_to_raw_string() : "";
+                                                                         auto key_str = args.size() > 0 ? args[0].to_std_string() : "";
                                                                          auto it = timers.find(key_str);
                                                                          if (it != timers.end())
                                                                          {

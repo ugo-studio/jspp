@@ -4,19 +4,23 @@
 #include "values/function.hpp"
 #include "values/any_value.hpp"
 
-std::string jspp::JsFunction::to_raw_string() const
+std::string jspp::JsFunction::to_std_string() const
 {
     return "function " + name + "() { [native code] }";
 }
 
-// FIX: avoid infinite recursion
 jspp::AnyValue &jspp::JsFunction::operator[](const std::string &key)
 {
-    // std::unordered_map::operator[] default-constructs AnyValue (which is Undefined)
-    return props[key];
+    auto it = props.find(key);
+    if (it == props.end())
+    {
+        // std::unordered_map::operator[] default-constructs AnyValue (which is Undefined)
+        return props[key];
+    }
+    return it->second;
 }
 
 jspp::AnyValue &jspp::JsFunction::operator[](const AnyValue &key)
 {
-    return (*this)[key.convert_to_raw_string()];
+    return (*this)[key.to_std_string()];
 }

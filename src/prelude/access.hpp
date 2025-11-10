@@ -2,27 +2,28 @@
 
 #include "types.hpp"
 #include "values/function.hpp"
+#include "error.hpp"
 
 namespace jspp
 {
-
     namespace Access
     {
         // Helper function to check for TDZ and deref variables
-        inline const AnyValue &deref(const std::unique_ptr<AnyValue> &var, const std::string &name)
+        inline const AnyValue &deref(const std::shared_ptr<AnyValue> &var, const std::string &name)
         {
             if ((*var).is_uninitialized())
             {
-                throw std::runtime_error("ReferenceError: Cannot access '" + name + "' before initialization");
-                // return Exception::throw_uninitialized_reference_error(name); // must also return const AnyValue&
+                RuntimeError::throw_uninitialized_reference_error(name);
+                // throw std::runtime_error("ReferenceError: Cannot access '" + name + "' before initialization");
             }
             return *var;
         }
-        inline AnyValue &deref(std::unique_ptr<AnyValue> &var, const std::string &name)
+        inline AnyValue &deref(std::shared_ptr<AnyValue> &var, const std::string &name)
         {
             if ((*var).is_uninitialized())
             {
-                throw std::runtime_error("ReferenceError: Cannot access '" + name + "' before initialization");
+                RuntimeError::throw_uninitialized_reference_error(name);
+                // throw std::runtime_error("ReferenceError: Cannot access '" + name + "' before initialization");
             }
             return *var;
         }

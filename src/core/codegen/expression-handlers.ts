@@ -27,7 +27,7 @@ function visitObjectPropertyName(
                 )
             })`
             : this.visit(node.expression, context);
-        name += ".convert_to_raw_string()";
+        name += ".to_std_string()";
         return name;
     }
 
@@ -120,7 +120,7 @@ export function visitPropertyAccessExpression(
         ts.isIdentifier(propAccess.expression) && !typeInfo &&
         !this.isBuiltinObject(propAccess.expression)
     ) {
-        return `jspp::Exception::throw_unresolved_reference(${
+        return `jspp::RuntimeError::throw_unresolved_reference(${
             this.getJsVarName(
                 propAccess.expression,
             )
@@ -167,7 +167,7 @@ export function visitElementAccessExpression(
         ts.isIdentifier(elemAccess.expression) && !exprTypeInfo &&
         !this.isBuiltinObject(elemAccess.expression as ts.Identifier)
     ) {
-        return `jspp::Exception::throw_unresolved_reference(${
+        return `jspp::RuntimeError::throw_unresolved_reference(${
             this.getJsVarName(
                 elemAccess.expression as ts.Identifier,
             )
@@ -193,7 +193,7 @@ export function visitElementAccessExpression(
         if (
             !argTypeInfo && !this.isBuiltinObject(elemAccess.argumentExpression)
         ) {
-            return `jspp::Exception::throw_unresolved_reference(${
+            return `jspp::RuntimeError::throw_unresolved_reference(${
                 this.getJsVarName(
                     elemAccess.argumentExpression as ts.Identifier,
                 )
@@ -358,14 +358,14 @@ export function visitBinaryExpression(
             scope,
         );
         if (!typeInfo && !this.isBuiltinObject(binExpr.left as ts.Identifier)) {
-            return `jspp::Exception::throw_unresolved_reference(${
+            return `jspp::RuntimeError::throw_unresolved_reference(${
                 this.getJsVarName(
                     binExpr.left as ts.Identifier,
                 )
             })`;
         }
         if (typeInfo?.isConst) {
-            return `jspp::Exception::throw_immutable_assignment()`;
+            return `jspp::RuntimeError::throw_immutable_assignment()`;
         }
         return `*${leftText} ${op} ${rightText}`;
     }
@@ -413,7 +413,7 @@ export function visitBinaryExpression(
         leftIsIdentifier && !leftTypeInfo &&
         !this.isBuiltinObject(binExpr.left as ts.Identifier)
     ) {
-        return `jspp::Exception::throw_unresolved_reference(${
+        return `jspp::RuntimeError::throw_unresolved_reference(${
             this.getJsVarName(
                 binExpr.left as ts.Identifier,
             )
@@ -423,7 +423,7 @@ export function visitBinaryExpression(
         rightIsIdentifier && !rightTypeInfo &&
         !this.isBuiltinObject(binExpr.right as ts.Identifier)
     ) {
-        return `jspp::Exception::throw_unresolved_reference(${
+        return `jspp::RuntimeError::throw_unresolved_reference(${
             this.getJsVarName(
                 binExpr.right as ts.Identifier,
             )
@@ -481,7 +481,7 @@ export function visitCallExpression(
                     scope,
                 );
                 if (!typeInfo) {
-                    return `jspp::Exception::throw_unresolved_reference(${
+                    return `jspp::RuntimeError::throw_unresolved_reference(${
                         this.getJsVarName(
                             arg,
                         )
@@ -508,7 +508,7 @@ export function visitCallExpression(
             scope,
         );
         if (!typeInfo && !this.isBuiltinObject(callee)) {
-            return `jspp::Exception::throw_unresolved_reference(${
+            return `jspp::RuntimeError::throw_unresolved_reference(${
                 this.getJsVarName(
                     callee,
                 )
@@ -565,7 +565,7 @@ export function visitTemplateExpression(
                 scope,
             );
             if (!typeInfo && !this.isBuiltinObject(expr)) {
-                finalExpr = `jspp::Exception::throw_unresolved_reference(${
+                finalExpr = `jspp::RuntimeError::throw_unresolved_reference(${
                     this.getJsVarName(
                         expr as ts.Identifier,
                     )

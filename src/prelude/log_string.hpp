@@ -69,7 +69,7 @@ namespace jspp
             if (val.is_boolean())
                 return Color::YELLOW + std::string(val.as_boolean() ? "true" : "false") + Color::RESET;
             if (val.is_number())
-                return Color::YELLOW + val.convert_to_raw_string() + Color::RESET;
+                return Color::YELLOW + val.to_std_string() + Color::RESET;
             if (val.is_string())
             {
                 const std::string &s = *val.as_string();
@@ -288,7 +288,7 @@ namespace jspp
             }
 
             // Fallback
-            return val.convert_to_raw_string();
+            return val.to_std_string();
         }
     }
 }

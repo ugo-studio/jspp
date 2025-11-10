@@ -4,14 +4,14 @@
 #include "values/array.hpp"
 #include "values/any_value.hpp"
 
-std::string jspp::JsArray::to_raw_string() const
+std::string jspp::JsArray::to_std_string() const
 {
     std::string result = "";
     for (size_t i = 0; i < dense.size(); ++i)
     {
         if (!dense[i].is_undefined() && !dense[i].is_null())
         {
-            result += dense[i].convert_to_raw_string();
+            result += dense[i].to_std_string();
         }
         if (i < dense.size() - 1)
         {
@@ -65,5 +65,5 @@ jspp::AnyValue &jspp::JsArray::operator[](uint32_t idx)
 
 jspp::AnyValue &jspp::JsArray::operator[](const AnyValue &key)
 {
-    return (*this)[key.convert_to_raw_string()];
+    return (*this)[key.to_std_string()];
 }
