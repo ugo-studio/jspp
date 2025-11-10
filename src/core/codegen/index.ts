@@ -56,15 +56,15 @@ export class CodeGenerator {
         containerCode += "}\n\n";
 
         let mainCode = "int main() {\n";
-        // mainCode += `  try {\n`;
+        mainCode += `  try {\n`;
         mainCode += `    ${CONTAINER_FUNCTION_NAME}();\n`;
-        // mainCode += `  } catch (const jspp::AnyValue& e) {\n`;
-        // mainCode +=
-        //     "    auto error = std::make_shared<jspp::AnyValue>(jspp::RuntimeError::error_to_value(e));\n{\n";
-        // mainCode +=
-        //     `    jspp::Access::call_function(jspp::Access::get_property(console, "error"),{error},"console.error");\n`;
-        // mainCode += `    return 1;\n}\n`;
-        // mainCode += `  }\n`;
+        mainCode += `  } catch (const std::exception& ex) {\n`;
+        mainCode +=
+            "    auto error = std::make_shared<jspp::AnyValue>(jspp::RuntimeError::error_to_value(ex));\n{\n";
+        mainCode +=
+            `    console["error"].as_function("console.error")->call({*error});\n`;
+        mainCode += `    return 1;\n}\n`;
+        mainCode += `  }\n`;
         mainCode += "  return 0;\n}";
 
         return declarations + containerCode + mainCode;

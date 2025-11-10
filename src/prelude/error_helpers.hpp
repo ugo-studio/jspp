@@ -23,7 +23,7 @@ jspp::RuntimeError jspp::RuntimeError::make_error(const std::string &message, co
                                                                                       str = "Error";
                                                                                   str += ": ";
                                                                                   if (message.is_string())
-                                                                                      str = message.to_std_string();
+                                                                                      str += message.to_std_string();
                                                                                   return AnyValue::make_string(str); },
                                                                       WellKnownSymbols::toString);
     return RuntimeError(errorObj);

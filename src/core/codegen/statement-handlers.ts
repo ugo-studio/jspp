@@ -438,7 +438,7 @@ export function visitTryStatement(
         this.indentationLevel++;
 
         code +=
-            `${this.indent()}${resultVarName} = ([=]() -> jspp::AnyValue {\n`;
+            `${this.indent()}${resultVarName} = ([=, &${hasReturnedFlagName}]() -> jspp::AnyValue {\n`;
         this.indentationLevel++;
 
         const innerContext: VisitContext = {
@@ -460,7 +460,7 @@ export function visitTryStatement(
             );
             const catchContext = { ...innerContext, exceptionName };
             code +=
-                `${this.indent()}catch (const jspp::AnyValue& ${exceptionName}) {\n`;
+                `${this.indent()}catch (const std::exception& ${exceptionName}) {\n`;
             this.indentationLevel++;
             code += this.visit(tryStmt.catchClause.block, catchContext);
             this.indentationLevel--;
@@ -564,7 +564,7 @@ export function visitReturnStatement(
     context: VisitContext,
 ): string {
     if (context.isMainContext) {
-        return `${this.indent()}jspp::RuntimeError::throw_invalid_return_statement();\n`;
+        return `${this.indent()}jspp::RuntimeError::throw_invalid_return_statement_error();\n`;
     }
 
     const returnStmt = node as ts.ReturnStatement;
@@ -582,7 +582,7 @@ export function visitReturnStatement(
                 );
                 if (!typeInfo) {
                     returnCode +=
-                        `${this.indent()}jspp::RuntimeError::throw_unresolved_reference(${
+                        `${this.indent()}jspp::RuntimeError::throw_unresolved_reference_error(${
                             this.getJsVarName(expr)
                         });\n`; // THROWS, not returns
                 }
@@ -618,7 +618,7 @@ export function visitReturnStatement(
                 scope,
             );
             if (!typeInfo) {
-                return `${this.indent()}jspp::RuntimeError::throw_unresolved_reference(${
+                return `${this.indent()}jspp::RuntimeError::throw_unresolved_reference_error(${
                     this.getJsVarName(expr)
                 });\n`; // THROWS, not returns
             }

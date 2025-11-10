@@ -35,6 +35,8 @@ namespace jspp
         Object = 6,
         Array = 7,
         Function = 8,
+        DataDescriptor = 9,
+        AccessorDescriptor = 10,
     };
 
     // Tagged storage with a union for payload
@@ -52,6 +54,8 @@ namespace jspp
             std::shared_ptr<JsObject> object;
             std::shared_ptr<JsArray> array;
             std::shared_ptr<JsFunction> function;
+            std::shared_ptr<DataDescriptor> data_desc;
+            std::shared_ptr<AccessorDescriptor> accessor_desc;
         };
 
         TaggedValue() noexcept : type(JsType::Undefined), undefined{} {}
@@ -78,6 +82,12 @@ namespace jspp
                 break;
             case JsType::Function:
                 storage.function.~shared_ptr();
+                break;
+            case JsType::DataDescriptor:
+                storage.data_desc.~shared_ptr();
+                break;
+            case JsType::AccessorDescriptor:
+                storage.accessor_desc.~shared_ptr();
                 break;
             default:
                 break;
@@ -123,6 +133,12 @@ namespace jspp
             case JsType::Function:
                 new (&storage.function) std::shared_ptr<JsFunction>(std::move(other.storage.function));
                 break;
+            case JsType::DataDescriptor:
+                new (&storage.data_desc) std::shared_ptr<DataDescriptor>(std::move(other.storage.data_desc));
+                break;
+            case JsType::AccessorDescriptor:
+                new (&storage.accessor_desc) std::shared_ptr<AccessorDescriptor>(std::move(other.storage.accessor_desc));
+                break;
             }
         }
 
@@ -157,6 +173,12 @@ namespace jspp
                 break;
             case JsType::Function:
                 new (&storage.function) std::shared_ptr<JsFunction>(other.storage.function); // shallow copy
+                break;
+            case JsType::DataDescriptor:
+                new (&storage.data_desc) std::shared_ptr<DataDescriptor>(other.storage.data_desc); // shallow copy
+                break;
+            case JsType::AccessorDescriptor:
+                new (&storage.accessor_desc) std::shared_ptr<AccessorDescriptor>(other.storage.accessor_desc); // shallow copy
                 break;
             }
         }
@@ -291,6 +313,23 @@ namespace jspp
             new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(call, name));
             return v;
         }
+        static AnyValue make_data_descriptor(const std::shared_ptr<AnyValue> &value, bool writable, bool enumerable, bool configurable) noexcept
+        {
+            AnyValue v;
+            v.storage.type = JsType::DataDescriptor;
+            new (&v.storage.data_desc) std::shared_ptr<DataDescriptor>(std::make_shared<DataDescriptor>(value, writable, enumerable, configurable));
+            return v;
+        }
+        static AnyValue make_accessor_descriptor(const std::optional<std::function<AnyValue(const std::vector<AnyValue> &)>> &get,
+                                                 const std::optional<std::function<AnyValue(const std::vector<AnyValue> &)>> &set,
+                                                 bool enumerable,
+                                                 bool configurable) noexcept
+        {
+            AnyValue v;
+            v.storage.type = JsType::AccessorDescriptor;
+            new (&v.storage.accessor_desc) std::shared_ptr<AccessorDescriptor>(std::make_shared<AccessorDescriptor>(get, set, enumerable, configurable));
+            return v;
+        }
 
         bool is_number() const noexcept { return storage.type == JsType::Number; }
         bool is_string() const noexcept { return storage.type == JsType::String; }
@@ -301,6 +340,8 @@ namespace jspp
         bool is_null() const noexcept { return storage.type == JsType::Null; }
         bool is_undefined() const noexcept { return storage.type == JsType::Undefined; }
         bool is_uninitialized() const noexcept { return storage.type == JsType::Uninitialized; }
+        bool is_data_descriptor() const noexcept { return storage.type == JsType::DataDescriptor; }
+        bool is_accessor_descriptor() const noexcept { return storage.type == JsType::AccessorDescriptor; }
 
         double as_double() const noexcept
         {
@@ -332,6 +373,16 @@ namespace jspp
             if (is_function())
                 return storage.function.get();
             throw RuntimeError::make_error(expression + " is not a function", "TypeError");
+        }
+        DataDescriptor *as_data_descriptor() const noexcept
+        {
+            assert(is_data_descriptor());
+            return storage.data_desc.get();
+        }
+        AccessorDescriptor *as_accessor_descriptor() const noexcept
+        {
+            assert(is_accessor_descriptor());
+            return storage.accessor_desc.get();
         }
 
         // --- PROPERTY ACCESS OPERATORS
@@ -543,6 +594,15 @@ namespace jspp
                 return storage.array->to_std_string();
             case JsType::Function:
                 return storage.function->to_std_string();
+            case JsType::DataDescriptor:
+                return storage.data_desc->value->to_std_string();
+            case JsType::AccessorDescriptor:
+            {
+                if (storage.accessor_desc->get.has_value())
+                    return storage.accessor_desc->get.value()({}).to_std_string();
+                else
+                    return "undefined";
+            }
             case JsType::Number:
             {
                 if (std::isnan(storage.number))
@@ -572,7 +632,7 @@ namespace jspp
             case JsType::Uninitialized:
                 return "<uninitialized>";
             default:
-                return "shouldn't be reached";
+                return "";
             }
         }
     };
