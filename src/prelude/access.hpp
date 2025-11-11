@@ -14,7 +14,6 @@ namespace jspp
             if ((*var).is_uninitialized()) [[unlikely]]
             {
                 RuntimeError::throw_uninitialized_reference_error(name);
-                // throw std::runtime_error("ReferenceError: Cannot access '" + name + "' before initialization");
             }
             return *var;
         }
@@ -23,7 +22,22 @@ namespace jspp
             if ((*var).is_uninitialized()) [[unlikely]]
             {
                 RuntimeError::throw_uninitialized_reference_error(name);
-                // throw std::runtime_error("ReferenceError: Cannot access '" + name + "' before initialization");
+            }
+            return *var;
+        }
+        inline const AnyValue &deref(const std::unique_ptr<AnyValue> &var, const std::string &name)
+        {
+            if ((*var).is_uninitialized()) [[unlikely]]
+            {
+                RuntimeError::throw_uninitialized_reference_error(name);
+            }
+            return *var;
+        }
+        inline AnyValue &deref(std::unique_ptr<AnyValue> &var, const std::string &name)
+        {
+            if ((*var).is_uninitialized()) [[unlikely]]
+            {
+                RuntimeError::throw_uninitialized_reference_error(name);
             }
             return *var;
         }

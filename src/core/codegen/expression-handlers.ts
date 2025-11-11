@@ -527,7 +527,8 @@ export function visitCallExpression(
         derefCallee = calleeCode;
     }
 
-    return `${derefCallee}.as_function("${calleeName}")->call({${args}})`;
+    return `${derefCallee}.as_function()->call({${args}})`;
+    // return `${derefCallee}.as_function("${calleeName}")->call({${args}})`;
 }
 
 export function visitVoidExpression(

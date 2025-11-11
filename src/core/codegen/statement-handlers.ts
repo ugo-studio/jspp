@@ -210,7 +210,7 @@ export function visitForStatement(
                         ? this.visit(decl.initializer, context)
                         : "jspp::AnyValue::make_undefined()";
                     initializerCode =
-                        `auto ${name} = std::make_shared<jspp::AnyValue>(${initValue})`;
+                        `auto ${name} = std::make_unique<jspp::AnyValue>(${initValue})`;
                 }
             } else {
                 // For 'var', it's already hoisted, so this is an assignment.
