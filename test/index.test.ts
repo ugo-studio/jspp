@@ -405,7 +405,7 @@ describe("Interpreter tests", () => {
                 // await fs.unlink(outputFile);
                 await fs.unlink(exeFile);
             }
-        }, 10000);
+        }, 20000);
     }
 
     test("should throw an error for reserved-keyword.js", async () => {

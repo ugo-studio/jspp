@@ -8,11 +8,7 @@ function visitObjectPropertyName(
     node: ts.PropertyName,
     context: VisitContext,
 ): string {
-    if (ts.isNumericLiteral(node)) {
-        return context.isPropertyNameAccess
-            ? node.getText()
-            : `"${node.getText()}"`;
-    } else if (ts.isStringLiteral(node)) {
+    if (ts.isStringLiteral(node)) {
         return `"${
             node.getText().substring(
                 1,
@@ -31,7 +27,9 @@ function visitObjectPropertyName(
         return name;
     }
 
-    return `"${node.getText()}"`;
+    return context.isPropertyNameAccess
+        ? node.getText()
+        : `"${node.getText()}"`;
 }
 
 export function visitObjectLiteralExpression(
