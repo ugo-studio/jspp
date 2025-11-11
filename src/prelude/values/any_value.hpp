@@ -439,7 +439,7 @@ namespace jspp
         }
 
         // --- PROPERTY ACCESS OPERATORS
-        const AnyValue get_own_property(const std::string &key) const noexcept
+        AnyValue get_own_property(const std::string &key) noexcept
         {
             switch (storage.type)
             {
@@ -454,20 +454,20 @@ namespace jspp
                 return undefined;
             }
         }
-        const AnyValue get_own_property(uint32_t idx) const noexcept
+        AnyValue get_own_property(uint32_t idx) noexcept
         {
             if (storage.type == JsType::Array)
                 return resolve_property_for_read((*as_array())[idx]);
             return get_own_property(std::to_string(idx));
         }
-        const AnyValue get_own_property(const AnyValue &key) const noexcept
+        AnyValue get_own_property(const AnyValue &key) noexcept
         {
             if (key.storage.type == JsType::Number && storage.type == JsType::Array)
                 return resolve_property_for_read((*storage.array)[key.storage.number]);
             return get_own_property(key.to_std_string());
         }
         // non-const property/index access; for setting values
-        const AnyValue set_own_property(const std::string &key, const AnyValue &value) const
+        AnyValue set_own_property(const std::string &key, const AnyValue &value)
         {
             switch (storage.type)
             {
@@ -481,7 +481,7 @@ namespace jspp
                 return value;
             }
         }
-        const AnyValue set_own_property(uint32_t idx, const AnyValue &value) const
+        AnyValue set_own_property(uint32_t idx, const AnyValue &value)
         {
             if (storage.type == JsType::Array)
             {
@@ -489,7 +489,7 @@ namespace jspp
             }
             return set_own_property(std::to_string(idx), value);
         }
-        const AnyValue set_own_property(const AnyValue &key, const AnyValue &value) const
+        AnyValue set_own_property(const AnyValue &key, const AnyValue &value)
         {
             if (key.storage.type == JsType::Number && storage.type == JsType::Array)
             {
@@ -632,7 +632,7 @@ namespace jspp
         {
             return AnyValue::make_boolean(!is_equal_to(other));
         }
-        std::string to_std_string() const noexcept
+        const std::string to_std_string() const noexcept
         {
             switch (storage.type)
             {
