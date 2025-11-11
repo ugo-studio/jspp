@@ -4,7 +4,7 @@
 #include "well_known_symbols.hpp"
 #include "values/any_value.hpp"
 #include <sstream>
-#include <set>
+#include <unordered_set>
 #include <algorithm>
 
 namespace jspp
@@ -33,7 +33,7 @@ namespace jspp
 
         // Forward declarations
         inline std::string to_log_string(const AnyValue &val);
-        inline std::string to_log_string(const AnyValue &val, std::set<const void *> &visited, int depth);
+        inline std::string to_log_string(const AnyValue &val, std::unordered_set<const void *> &visited, int depth);
         inline bool is_simple_value(const AnyValue &val);
 
         inline bool is_simple_value(const AnyValue &val)
@@ -53,11 +53,11 @@ namespace jspp
 
         inline std::string to_log_string(const AnyValue &val)
         {
-            std::set<const void *> visited;
+            std::unordered_set<const void *> visited;
             return to_log_string(val, visited, 0);
         }
 
-        inline std::string to_log_string(const AnyValue &val, std::set<const void *> &visited, int depth)
+        inline std::string to_log_string(const AnyValue &val, std::unordered_set<const void *> &visited, int depth)
         {
             // Primitives and simple wrapped values
             if (val.is_uninitialized())

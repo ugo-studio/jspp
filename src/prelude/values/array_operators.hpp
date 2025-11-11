@@ -24,6 +24,12 @@ std::string jspp::JsArray::to_std_string() const
 // bracket by string: mimic JS arr["0"] vs arr["00"]
 jspp::AnyValue &jspp::JsArray::operator[](const std::string &key)
 {
+    // Quick check: if the first character is not a digit, it can't be a standard index.
+    if (key.empty() || !std::isdigit(static_cast<unsigned char>(key[0])))
+    {
+        return props[key];
+    }
+
     if (isArrayIndex(key))
     {
         uint32_t idx = static_cast<uint32_t>(std::stoull(key));

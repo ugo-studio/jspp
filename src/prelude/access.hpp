@@ -11,7 +11,7 @@ namespace jspp
         // Helper function to check for TDZ and deref variables
         inline const AnyValue &deref(const std::shared_ptr<AnyValue> &var, const std::string &name)
         {
-            if ((*var).is_uninitialized())
+            if ((*var).is_uninitialized()) [[unlikely]]
             {
                 RuntimeError::throw_uninitialized_reference_error(name);
                 // throw std::runtime_error("ReferenceError: Cannot access '" + name + "' before initialization");
@@ -20,7 +20,7 @@ namespace jspp
         }
         inline AnyValue &deref(std::shared_ptr<AnyValue> &var, const std::string &name)
         {
-            if ((*var).is_uninitialized())
+            if ((*var).is_uninitialized()) [[unlikely]]
             {
                 RuntimeError::throw_uninitialized_reference_error(name);
                 // throw std::runtime_error("ReferenceError: Cannot access '" + name + "' before initialization");
