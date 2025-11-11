@@ -56,6 +56,8 @@ export class CodeGenerator {
         containerCode += "}\n\n";
 
         let mainCode = "int main() {\n";
+        mainCode += `  std::ios::sync_with_stdio(false);\n`;
+        mainCode += `  std::cin.tie(nullptr);\n`;
         mainCode += `  try {\n`;
         mainCode += `    ${CONTAINER_FUNCTION_NAME}();\n`;
         mainCode += `  } catch (const std::exception& ex) {\n`;

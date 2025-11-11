@@ -74,6 +74,8 @@
         "forward_list": "cpp",
         "locale": "cpp",
         "xlocbuf": "cpp",
-        "xlocmes": "cpp"
+        "xlocmes": "cpp",
+        "queue": "cpp",
+        "unordered_set": "cpp"
     }
 }
