@@ -138,7 +138,8 @@ export function visitPropertyAccessExpression(
         finalExpr = exprText;
     }
 
-    return `${finalExpr}["${propName}"]`;
+    return `${finalExpr}.get_own_property("${propName}")`;
+    // return `${finalExpr}["${propName}"]`;
 }
 
 export function visitElementAccessExpression(
@@ -208,7 +209,8 @@ export function visitElementAccessExpression(
         }
     }
 
-    return `${finalExpr}[${argText}]`;
+    return `${finalExpr}.get_own_property(${argText})`;
+    // return `${finalExpr}[${argText}]`;
 }
 
 export function visitBinaryExpression(
@@ -278,7 +280,8 @@ export function visitBinaryExpression(
                 }
             }
 
-            return `${finalObjExpr}["${propName}"] = ${finalRightText}`;
+            return `${finalObjExpr}.set_own_property("${propName}", ${finalRightText})`;
+            // return `${finalObjExpr}["${propName}"] = ${finalRightText}`;
         } else if (ts.isElementAccessExpression(binExpr.left)) {
             const elemAccess = binExpr.left;
             const objExprText = this.visit(elemAccess.expression, context);
@@ -348,7 +351,8 @@ export function visitBinaryExpression(
                 }
             }
 
-            return `${finalObjExpr}[${argText}] = ${finalRightText}`;
+            return `${finalObjExpr}.set_own_property(${argText}, ${finalRightText})`;
+            // return `${finalObjExpr}[${argText}] = ${finalRightText}`;
         }
 
         const leftText = this.visit(binExpr.left, context);
@@ -563,11 +567,12 @@ export function visitTemplateExpression(
                 scope,
             );
             if (!typeInfo && !this.isBuiltinObject(expr)) {
-                finalExpr = `jspp::RuntimeError::throw_unresolved_reference_error(${
-                    this.getJsVarName(
-                        expr as ts.Identifier,
-                    )
-                })`;
+                finalExpr =
+                    `jspp::RuntimeError::throw_unresolved_reference_error(${
+                        this.getJsVarName(
+                            expr as ts.Identifier,
+                        )
+                    })`;
             } else if (
                 typeInfo &&
                 !typeInfo.isParameter &&

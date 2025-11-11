@@ -62,7 +62,7 @@ export class CodeGenerator {
         mainCode +=
             "    auto error = std::make_shared<jspp::AnyValue>(jspp::RuntimeError::error_to_value(ex));\n{\n";
         mainCode +=
-            `    console["error"].as_function("console.error")->call({*error});\n`;
+            `    console.get_own_property("error").as_function("console.error")->call({*error});\n`;
         mainCode += `    return 1;\n}\n`;
         mainCode += `  }\n`;
         mainCode += "  return 0;\n}";

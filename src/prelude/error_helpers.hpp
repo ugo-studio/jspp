@@ -12,10 +12,10 @@ const char *jspp::RuntimeError::what() const noexcept
 jspp::RuntimeError jspp::RuntimeError::make_error(const std::string &message, const std::string &name = "Error")
 {
     auto errorObj = std::make_shared<AnyValue>(AnyValue::make_object({{"message", AnyValue::make_string(message)}, {"name", AnyValue::make_string(name)}}));
-    (*errorObj)[WellKnownSymbols::toString] = AnyValue::make_function([errorObj](const std::vector<AnyValue> &) -> AnyValue
-                                                                      {
-                                                                                  AnyValue name = (*errorObj)["name"];
-                                                                                  AnyValue message = (*errorObj)["message"];
+    (*errorObj).set_own_property(WellKnownSymbols::toString, AnyValue::make_function([errorObj](const std::vector<AnyValue> &) -> AnyValue
+                                                                                 {
+                                                                                  AnyValue name = (*errorObj).get_own_property("name");
+                                                                                  AnyValue message = (*errorObj).get_own_property("message");
                                                                                   std::string str = "";
                                                                                   if (name.is_string())
                                                                                       str = name.to_std_string();
@@ -25,7 +25,7 @@ jspp::RuntimeError jspp::RuntimeError::make_error(const std::string &message, co
                                                                                   if (message.is_string())
                                                                                       str += message.to_std_string();
                                                                                   return AnyValue::make_string(str); },
-                                                                      WellKnownSymbols::toString);
+                                                                                 WellKnownSymbols::toString));
     return RuntimeError(errorObj);
 }
 jspp::AnyValue jspp::RuntimeError::error_to_value(const std::exception &ex)

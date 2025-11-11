@@ -331,6 +331,59 @@ namespace jspp
             return v;
         }
 
+        static AnyValue resolve_property_for_read(const AnyValue &val) noexcept
+        {
+            switch (val.storage.type)
+            {
+            case JsType::DataDescriptor:
+            {
+                return *(val.storage.data_desc->value);
+            }
+            case JsType::AccessorDescriptor:
+            {
+                if (val.storage.accessor_desc->get.has_value())
+                    return val.storage.accessor_desc->get.value()({});
+                else
+                {
+                    static AnyValue undefined = AnyValue{};
+                    return undefined;
+                }
+            }
+            default:
+            {
+                return val;
+            }
+            }
+        }
+        static AnyValue resolve_property_for_write(AnyValue &val, const AnyValue &new_val)
+        {
+            switch (val.storage.type)
+            {
+            case JsType::DataDescriptor:
+            {
+                *(val.storage.data_desc->value) = new_val;
+                return new_val;
+            }
+            case JsType::AccessorDescriptor:
+            {
+                if (val.storage.accessor_desc->set.has_value())
+                {
+                    val.storage.accessor_desc->set.value()({new_val});
+                    return new_val;
+                }
+                else
+                {
+                    throw RuntimeError::make_error("Cannot set property of #<Object> which has only a getter", "TypeError");
+                }
+            }
+            default:
+            {
+                val = new_val;
+                return new_val;
+            }
+            }
+        }
+
         bool is_number() const noexcept { return storage.type == JsType::Number; }
         bool is_string() const noexcept { return storage.type == JsType::String; }
         bool is_object() const noexcept { return storage.type == JsType::Object; }
@@ -386,60 +439,63 @@ namespace jspp
         }
 
         // --- PROPERTY ACCESS OPERATORS
-        const AnyValue &operator[](const std::string &key) const noexcept
+        const AnyValue get_own_property(const std::string &key) const noexcept
         {
             switch (storage.type)
             {
             case JsType::Object:
-                return (*as_object())[key];
+                return resolve_property_for_read((*as_object())[key]);
             case JsType::Array:
-                return (*as_array())[key];
+                return resolve_property_for_read((*as_array())[key]);
             case JsType::Function:
-                return (*as_function())[key];
+                return resolve_property_for_read((*as_function())[key]);
             default:
                 static AnyValue undefined = AnyValue{};
                 return undefined;
             }
         }
-        const AnyValue &operator[](uint32_t idx) const noexcept
+        const AnyValue get_own_property(uint32_t idx) const noexcept
         {
             if (storage.type == JsType::Array)
-                return (*as_array())[idx];
-            return (*this)[std::to_string(idx)];
+                return resolve_property_for_read((*as_array())[idx]);
+            return get_own_property(std::to_string(idx));
         }
-        const AnyValue &operator[](const AnyValue &key) const noexcept
+        const AnyValue get_own_property(const AnyValue &key) const noexcept
         {
             if (key.storage.type == JsType::Number && storage.type == JsType::Array)
-                return (*storage.array)[key.storage.number];
-            return (*this)[key.to_std_string()];
+                return resolve_property_for_read((*storage.array)[key.storage.number]);
+            return get_own_property(key.to_std_string());
         }
-        // non-const property/index access
-        AnyValue &operator[](const std::string &key)
+        // non-const property/index access; for setting values
+        const AnyValue set_own_property(const std::string &key, const AnyValue &value) const
         {
             switch (storage.type)
             {
             case JsType::Object:
-                return (*as_object())[key];
+                return resolve_property_for_write((*as_object())[key], value);
             case JsType::Array:
-                return (*as_array())[key];
+                return resolve_property_for_write((*as_array())[key], value);
             case JsType::Function:
-                return (*as_function())[key];
+                return resolve_property_for_write((*as_function())[key], value);
             default:
-                static AnyValue undefined = AnyValue{};
-                return undefined;
+                return value;
             }
         }
-        AnyValue &operator[](uint32_t idx)
+        const AnyValue set_own_property(uint32_t idx, const AnyValue &value) const
         {
             if (storage.type == JsType::Array)
-                return (*as_array())[idx];
-            return (*this)[std::to_string(idx)];
+            {
+                return resolve_property_for_write((*as_array())[idx], value);
+            }
+            return set_own_property(std::to_string(idx), value);
         }
-        AnyValue &operator[](const AnyValue &key)
+        const AnyValue set_own_property(const AnyValue &key, const AnyValue &value) const
         {
             if (key.storage.type == JsType::Number && storage.type == JsType::Array)
-                return (*storage.array)[key.storage.number];
-            return (*this)[key.to_std_string()];
+            {
+                return resolve_property_for_write((*storage.array)[key.storage.number], value);
+            }
+            return set_own_property(key.to_std_string(), value);
         }
 
         // --- HELPERS
