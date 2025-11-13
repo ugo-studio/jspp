@@ -5,11 +5,11 @@
 
 // values
 #include "values/non_values.hpp"
-#include "values/descriptors.hpp"
 #include "values/object.hpp"
 #include "values/array.hpp"
 #include "values/function.hpp"
 #include "error.hpp"
+#include "descriptors.hpp"
 #include "any_value.hpp"
 #include "error_helpers.hpp"
 #include "values/operators/object.hpp"

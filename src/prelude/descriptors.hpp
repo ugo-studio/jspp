@@ -22,11 +22,4 @@ namespace jspp
         bool enumerable = false;
         bool configurable = true;
     };
-
-    enum class ValueType : uint8_t
-    {
-        DataDescriptor = 0,
-        AccessorDescriptor = 1,
-        AnyValue = 2
-    };
 }
