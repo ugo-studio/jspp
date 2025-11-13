@@ -13,7 +13,12 @@ namespace jspp
         std::unordered_map<std::string, AnyValue> props; // non-index string properties
         uint64_t length = 0;
 
-        static bool isArrayIndex(const std::string &s)
+        std::string to_std_string() const;
+        AnyValue &operator[](const std::string &key);
+        AnyValue &operator[](uint32_t idx);
+        AnyValue &operator[](const AnyValue &key);
+
+        static bool is_array_index(const std::string &s)
         {
             if (s.empty())
                 return false;
@@ -35,10 +40,5 @@ namespace jspp
             // ToString(ToUint32(v)) === s?
             return std::to_string(static_cast<uint32_t>(v)) == s;
         }
-
-        std::string to_std_string() const;
-        AnyValue &operator[](const std::string &key);
-        AnyValue &operator[](uint32_t idx);
-        AnyValue &operator[](const AnyValue &key);
     };
 }

@@ -17,6 +17,7 @@
 #include <cmath>
 
 #include "values/non_values.hpp"
+#include "values/descriptors.hpp"
 #include "values/object.hpp"
 #include "values/array.hpp"
 #include "values/function.hpp"

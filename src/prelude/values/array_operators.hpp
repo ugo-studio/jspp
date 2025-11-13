@@ -3,6 +3,7 @@
 #include "types.hpp"
 #include "values/array.hpp"
 #include "values/any_value.hpp"
+#include "error.hpp"
 
 std::string jspp::JsArray::to_std_string() const
 {
@@ -24,22 +25,69 @@ std::string jspp::JsArray::to_std_string() const
 // bracket by string: mimic JS arr["0"] vs arr["00"]
 jspp::AnyValue &jspp::JsArray::operator[](const std::string &key)
 {
-    // Quick check: if the first character is not a digit, it can't be a standard index.
-    if (key.empty() || !std::isdigit(static_cast<unsigned char>(key[0])))
-    {
-        return props[key];
-    }
-
-    if (isArrayIndex(key))
+    if (
+        !key.empty() && std::isdigit(static_cast<unsigned char>(key[0])) // Quick check: if the first character is not a digit, it can't be a standard index.
+        && is_array_index(key))
     {
         uint32_t idx = static_cast<uint32_t>(std::stoull(key));
         return (*this)[idx];
     }
     else
     {
-        // non-index property — stored in props
-        // creates default if missing (like JS arr["foo"] = ...)
-        return props[key];
+        auto it = props.find(key);
+        if (it == props.end())
+        {
+            if (key == "length")
+            {
+                static AnyValue proto = AnyValue::make_accessor_descriptor([this](const std::vector<AnyValue> &args) -> AnyValue
+                                                                           { return AnyValue::make_number(this->length); },
+                                                                           [this](const std::vector<AnyValue> &args) -> AnyValue
+                                                                           {
+                                                                               if (args.size() > 0 && args[0].is_number())
+                                                                               {
+                                                                                   double newLenD = args[0].as_double();
+                                                                                   if (newLenD < 0 || std::isnan(newLenD) || std::isinf(newLenD))
+                                                                                   {
+                                                                                       throw RuntimeError::make_error("Invalid array length", "RangeError");
+                                                                                   }
+                                                                                   uint64_t newLen = static_cast<uint64_t>(newLenD);
+                                                                                   if (newLenD != static_cast<double>(newLen))
+                                                                                   {
+                                                                                       throw RuntimeError::make_error("Invalid array length", "RangeError");
+                                                                                   }
+                                                                                   // truncate dense and sparse storage if needed
+                                                                                   if (newLen < this->length)
+                                                                                   {
+                                                                                       // truncate dense
+                                                                                       if (newLen < this->dense.size())
+                                                                                       {
+                                                                                           this->dense.resize(static_cast<size_t>(newLen));
+                                                                                       }
+                                                                                       // truncate sparse
+                                                                                       for (auto it = this->sparse.begin(); it != this->sparse.end();)
+                                                                                       {
+                                                                                           if (it->first >= newLen)
+                                                                                           {
+                                                                                               it = this->sparse.erase(it);
+                                                                                           }
+                                                                                           else
+                                                                                           {
+                                                                                               ++it;
+                                                                                           }
+                                                                                       }
+                                                                                   }
+                                                                                   this->length = newLen;
+                                                                               }
+                                                                               return AnyValue::make_undefined();
+                                                                           },
+                                                                           false,
+                                                                           false);
+                return proto;
+            }
+            // std::unordered_map::operator[] default-constructs AnyValue (which is Undefined)
+            return props[key];
+        }
+        return it->second;
     }
 }
 
