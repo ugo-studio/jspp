@@ -22,15 +22,14 @@ std::string jspp::JsArray::to_std_string() const
     return result;
 }
 
-// bracket by string: mimic JS arr["0"] vs arr["00"]
-jspp::AnyValue &jspp::JsArray::operator[](const std::string &key)
+jspp::AnyValue jspp::JsArray::get_property(const std::string &key)
 {
     if (
         !key.empty() && std::isdigit(static_cast<unsigned char>(key[0])) // Quick check: if the first character is not a digit, it can't be a standard index.
         && is_array_index(key))
     {
         uint32_t idx = static_cast<uint32_t>(std::stoull(key));
-        return (*this)[idx];
+        return get_property(idx);
     }
     else
     {
@@ -41,83 +40,123 @@ jspp::AnyValue &jspp::JsArray::operator[](const std::string &key)
             {
                 static AnyValue proto = AnyValue::make_accessor_descriptor([this](const std::vector<AnyValue> &args) -> AnyValue
                                                                            { return AnyValue::make_number(this->length); },
-                                                                           [this](const std::vector<AnyValue> &args) -> AnyValue
-                                                                           {
-                                                                               if (args.size() > 0 && args[0].is_number())
-                                                                               {
-                                                                                   double newLenD = args[0].as_double();
-                                                                                   if (newLenD < 0 || std::isnan(newLenD) || std::isinf(newLenD))
-                                                                                   {
-                                                                                       throw RuntimeError::make_error("Invalid array length", "RangeError");
-                                                                                   }
-                                                                                   uint64_t newLen = static_cast<uint64_t>(newLenD);
-                                                                                   if (newLenD != static_cast<double>(newLen))
-                                                                                   {
-                                                                                       throw RuntimeError::make_error("Invalid array length", "RangeError");
-                                                                                   }
-                                                                                   // truncate dense and sparse storage if needed
-                                                                                   if (newLen < this->length)
-                                                                                   {
-                                                                                       // truncate dense
-                                                                                       if (newLen < this->dense.size())
-                                                                                       {
-                                                                                           this->dense.resize(static_cast<size_t>(newLen));
-                                                                                       }
-                                                                                       // truncate sparse
-                                                                                       for (auto it = this->sparse.begin(); it != this->sparse.end();)
-                                                                                       {
-                                                                                           if (it->first >= newLen)
-                                                                                           {
-                                                                                               it = this->sparse.erase(it);
-                                                                                           }
-                                                                                           else
-                                                                                           {
-                                                                                               ++it;
-                                                                                           }
-                                                                                       }
-                                                                                   }
-                                                                                   this->length = newLen;
-                                                                               }
-                                                                               return AnyValue::make_undefined();
-                                                                           },
+                                                                           std::nullopt,
                                                                            false,
                                                                            false);
-                return proto;
+                return AnyValue::resolve_property_for_read(proto);
             }
-            // std::unordered_map::operator[] default-constructs AnyValue (which is Undefined)
-            return props[key];
+            return AnyValue::make_undefined();
         }
-        return it->second;
+        return AnyValue::resolve_property_for_read(it->second);
     }
 }
 
-// bracket by numeric index
-jspp::AnyValue &jspp::JsArray::operator[](uint32_t idx)
+jspp::AnyValue jspp::JsArray::get_property(uint32_t idx)
 {
-    // update length like JS does
+    if (idx < dense.size())
+    {
+        return AnyValue::resolve_property_for_read(dense[idx]);
+    }
+    auto it = sparse.find(idx);
+    if (it != sparse.end())
+    {
+        return AnyValue::resolve_property_for_read(it->second);
+    }
+    return AnyValue::make_undefined();
+}
+
+jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const AnyValue &value)
+{
+    if (
+        !key.empty() && std::isdigit(static_cast<unsigned char>(key[0])) // Quick check: if the first character is not a digit, it can't be a standard index.
+        && is_array_index(key))
+    {
+        uint32_t idx = static_cast<uint32_t>(std::stoull(key));
+        return set_property(idx, value);
+    }
+    else
+    {
+        // if (key == "length")
+        // {
+        //     if (value.is_number())
+        //     {
+        //         double newLenD = value.as_double();
+        //         if (newLenD < 0 || std::isnan(newLenD) || std::isinf(newLenD))
+        //         {
+        //             throw RuntimeError::make_error("Invalid array length", "RangeError");
+        //         }
+        //         uint64_t newLen = static_cast<uint64_t>(newLenD);
+        //         if (newLenD != static_cast<double>(newLen))
+        //         {
+        //             throw RuntimeError::make_error("Invalid array length", "RangeError");
+        //         }
+        //         // truncate dense and sparse storage if needed
+        //         if (newLen < this->length)
+        //         {
+        //             // truncate dense
+        //             if (newLen < this->dense.size())
+        //             {
+        //                 this->dense.resize(static_cast<size_t>(newLen));
+        //             }
+        //             // truncate sparse
+        //             for (auto it = this->sparse.begin(); it != this->sparse.end();)
+        //             {
+        //                 if (it->first >= newLen)
+        //                 {
+        //                     it = this->sparse.erase(it);
+        //                 }
+        //                 else
+        //                 {
+        //                     ++it;
+        //                 }
+        //             }
+        //         }
+        //         this->length = newLen;
+        //     }
+        //     return value;
+        // }
+
+        auto it = props.find(key);
+        if (it != props.end())
+        {
+            return AnyValue::resolve_property_for_write(it->second, value);
+        }
+        else
+        {
+            props[key] = value;
+            return value;
+        }
+    }
+}
+
+jspp::AnyValue jspp::JsArray::set_property(uint32_t idx, const AnyValue &value)
+{
     uint64_t newLen = static_cast<uint64_t>(idx) + 1;
     if (newLen > length)
         length = newLen;
 
-    // cheap heuristic: keep reasonably close indices in vector
-    const uint32_t DENSE_GROW_THRESHOLD = 1024; // tune to your use-case
+    const uint32_t DENSE_GROW_THRESHOLD = 1024;
     if (idx < dense.size())
     {
-        return dense[idx];
+        return AnyValue::resolve_property_for_write(dense[idx], value);
     }
     else if (idx <= dense.size() + DENSE_GROW_THRESHOLD)
     {
-        dense.resize(idx + 1); // fill with default-constructed T
-        return dense[idx];
+        dense.resize(idx + 1);
+        dense[idx] = value;
+        return value;
     }
     else
     {
-        // very large/sparse index → use hash map
-        return sparse[idx]; // creates default in map
+        auto it = sparse.find(idx);
+        if (it != sparse.end())
+        {
+            return AnyValue::resolve_property_for_write(it->second, value);
+        }
+        else
+        {
+            sparse[idx] = value;
+            return value;
+        }
     }
-}
-
-jspp::AnyValue &jspp::JsArray::operator[](const AnyValue &key)
-{
-    return (*this)[key.to_std_string()];
 }

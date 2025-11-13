@@ -14,9 +14,10 @@ namespace jspp
         uint64_t length = 0;
 
         std::string to_std_string() const;
-        AnyValue &operator[](const std::string &key);
-        AnyValue &operator[](uint32_t idx);
-        AnyValue &operator[](const AnyValue &key);
+        AnyValue get_property(const std::string &key);
+        AnyValue get_property(uint32_t idx);
+        AnyValue set_property(const std::string &key, const AnyValue &value);
+        AnyValue set_property(uint32_t idx, const AnyValue &value);
 
         static bool is_array_index(const std::string &s)
         {

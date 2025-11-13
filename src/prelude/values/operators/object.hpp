@@ -9,19 +9,26 @@ std::string jspp::JsObject::to_std_string() const
     return "[Object Object]";
 }
 
-jspp::AnyValue &jspp::JsObject::operator[](const std::string &key)
+jspp::AnyValue jspp::JsObject::get_property(const std::string &key)
 {
-
     auto it = props.find(key);
-    if (it == props.end())
+    if (it != props.end())
     {
-        // std::unordered_map::operator[] default-constructs AnyValue (which is Undefined)
-        return props[key];
+        return jspp::AnyValue::resolve_property_for_read(it->second);
     }
-    return it->second;
+    return jspp::AnyValue::make_undefined();
 }
 
-jspp::AnyValue &jspp::JsObject::operator[](const AnyValue &key)
+jspp::AnyValue jspp::JsObject::set_property(const std::string &key, const AnyValue &value)
 {
-    return (*this)[key.to_std_string()];
+    auto it = props.find(key);
+    if (it != props.end())
+    {
+        return jspp::AnyValue::resolve_property_for_write(it->second, value);
+    }
+    else
+    {
+        props[key] = value;
+        return value;
+    }
 }

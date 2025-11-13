@@ -445,11 +445,11 @@ namespace jspp
             switch (storage.type)
             {
             case JsType::Object:
-                return resolve_property_for_read((*as_object())[key]);
+                return as_object()->get_property(key);
             case JsType::Array:
-                return resolve_property_for_read((*as_array())[key]);
+                return as_array()->get_property(key);
             case JsType::Function:
-                return resolve_property_for_read((*as_function())[key]);
+                return as_function()->get_property(key);
             default:
                 static AnyValue undefined = AnyValue{};
                 return undefined;
@@ -458,13 +458,13 @@ namespace jspp
         AnyValue get_own_property(uint32_t idx) noexcept
         {
             if (storage.type == JsType::Array)
-                return resolve_property_for_read((*as_array())[idx]);
+                return as_array()->get_property(idx);
             return get_own_property(std::to_string(idx));
         }
         AnyValue get_own_property(const AnyValue &key) noexcept
         {
             if (key.storage.type == JsType::Number && storage.type == JsType::Array)
-                return resolve_property_for_read((*storage.array)[key.storage.number]);
+                return storage.array->get_property(key.storage.number);
             return get_own_property(key.to_std_string());
         }
         // non-const property/index access; for setting values
@@ -473,11 +473,11 @@ namespace jspp
             switch (storage.type)
             {
             case JsType::Object:
-                return resolve_property_for_write((*as_object())[key], value);
+                return as_object()->set_property(key, value);
             case JsType::Array:
-                return resolve_property_for_write((*as_array())[key], value);
+                return as_array()->set_property(key, value);
             case JsType::Function:
-                return resolve_property_for_write((*as_function())[key], value);
+                return as_function()->set_property(key, value);
             default:
                 return value;
             }
@@ -486,7 +486,7 @@ namespace jspp
         {
             if (storage.type == JsType::Array)
             {
-                return resolve_property_for_write((*as_array())[idx], value);
+                return as_array()->set_property(idx, value);
             }
             return set_own_property(std::to_string(idx), value);
         }
@@ -494,7 +494,7 @@ namespace jspp
         {
             if (key.storage.type == JsType::Number && storage.type == JsType::Array)
             {
-                return resolve_property_for_write((*storage.array)[key.storage.number], value);
+                return storage.array->set_property(key.storage.number, value);
             }
             return set_own_property(key.to_std_string(), value);
         }

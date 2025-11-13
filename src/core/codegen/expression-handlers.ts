@@ -40,9 +40,30 @@ export function visitObjectLiteralExpression(
     const obj = node as ts.ObjectLiteralExpression;
     let props = "";
     for (const prop of obj.properties) {
+        // console.log("Property kind:", ts.SyntaxKind[prop.kind]);
         if (ts.isPropertyAssignment(prop)) {
             const key = visitObjectPropertyName.call(this, prop.name, context);
-            const value = this.visit(prop.initializer, context);
+            const value = ts.isIdentifier(prop.initializer)
+                ? `jspp::Access::deref(${
+                    this.visit(prop.initializer, context)
+                }, ${
+                    this.getJsVarName(
+                        prop.initializer,
+                    )
+                })`
+                : this.visit(prop.initializer, context);
+
+            props += `{${key}, ${value}},`;
+        } else if (ts.isShorthandPropertyAssignment(prop)) {
+            const key = visitObjectPropertyName.call(this, prop.name, context);
+            const value = `jspp::Access::deref(${
+                this.visit(prop.name, context)
+            }, ${
+                this.getJsVarName(
+                    prop.name,
+                )
+            })`;
+
             props += `{${key}, ${value}},`;
         }
     }
