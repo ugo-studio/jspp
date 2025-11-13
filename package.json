@@ -3,10 +3,10 @@
   "module": "src/index.ts",
   "type": "module",
   "scripts": {
-    "test": "bun test",
-    "dev": "bun run scripts/run-js.ts",
     "typecheck": "tsc --noEmit",
-    "precompile": "bun run scripts/precompile-headers.ts"
+    "precompile": "bun run scripts/precompile-headers.ts",
+    "test": "bun run precompile && bun test",
+    "code": "bun run scripts/run-js.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"
