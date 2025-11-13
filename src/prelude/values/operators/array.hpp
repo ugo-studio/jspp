@@ -2,7 +2,7 @@
 
 #include "types.hpp"
 #include "values/array.hpp"
-#include "values/any_value.hpp"
+#include "any_value.hpp"
 #include "error.hpp"
 
 std::string jspp::JsArray::to_std_string() const
