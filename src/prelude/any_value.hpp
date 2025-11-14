@@ -300,7 +300,7 @@ namespace jspp
             new (&v.storage.object) std::shared_ptr<JsObject>(std::make_shared<JsObject>(props));
             return v;
         }
-        static AnyValue make_array(const std::vector<AnyValue> &dense) noexcept
+        static AnyValue make_array(const std::vector<std::optional<AnyValue>> &dense) noexcept
         {
             AnyValue v;
             v.storage.type = JsType::Array;

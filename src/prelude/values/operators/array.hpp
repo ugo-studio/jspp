@@ -7,18 +7,38 @@
 
 std::string jspp::JsArray::to_std_string() const
 {
-    std::string result = "";
-    for (size_t i = 0; i < dense.size(); ++i)
+    if (length == 0)
     {
-        if (dense[i].has_value())
+        return "";
+    }
+
+    std::string result = "";
+    for (uint64_t i = 0; i < length; ++i)
+    {
+        std::optional<AnyValue> itemVal;
+        if (i < dense.size())
         {
-            const auto &item = dense[i].value();
+            itemVal = dense[i];
+        }
+        else
+        {
+            auto it = sparse.find(static_cast<uint32_t>(i));
+            if (it != sparse.end())
+            {
+                itemVal = it->second;
+            }
+        }
+
+        if (itemVal.has_value())
+        {
+            const auto &item = itemVal.value();
             if (!item.is_undefined() && !item.is_null())
             {
                 result += item.to_std_string();
             }
         }
-        if (i < dense.size() - 1)
+
+        if (i < length - 1)
         {
             result += ",";
         }

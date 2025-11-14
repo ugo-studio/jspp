@@ -36,15 +36,20 @@ namespace jspp
         inline std::string to_log_string(const AnyValue &val, std::unordered_set<const void *> &visited, int depth);
         inline bool is_simple_value(const AnyValue &val);
 
-        inline bool is_valid_js_identifier(const std::string& s) {
-            if (s.empty()) {
+        inline bool is_valid_js_identifier(const std::string &s)
+        {
+            if (s.empty())
+            {
                 return false;
             }
-            if (!std::isalpha(s[0]) && s[0] != '_' && s[0] != '$') {
+            if (!std::isalpha(s[0]) && s[0] != '_' && s[0] != '$')
+            {
                 return false;
             }
-            for (size_t i = 1; i < s.length(); ++i) {
-                if (!std::isalnum(s[i]) && s[i] != '_' && s[i] != '$') {
+            for (size_t i = 1; i < s.length(); ++i)
+            {
+                if (!std::isalnum(s[i]) && s[i] != '_' && s[i] != '$')
+                {
                     return false;
                 }
             }
@@ -167,9 +172,12 @@ namespace jspp
                     size_t current_prop = 0;
                     for (const auto &pair : obj->props)
                     {
-                        if (is_valid_js_identifier(pair.first)) {
+                        if (is_valid_js_identifier(pair.first))
+                        {
                             ss << pair.first;
-                        } else {
+                        }
+                        else
+                        {
                             ss << "\"" << pair.first << "\"";
                         }
                         ss << ": " << to_log_string(pair.second, visited, depth + 1);
@@ -193,9 +201,12 @@ namespace jspp
                                 ss << ",\n";
 
                             ss << next_indent;
-                            if (is_valid_js_identifier(pair.first)) {
+                            if (is_valid_js_identifier(pair.first))
+                            {
                                 ss << pair.first;
-                            } else {
+                            }
+                            else
+                            {
                                 ss << "\"" << pair.first << "\"";
                             }
                             ss << ": " << to_log_string(pair.second, visited, depth + 1);
@@ -218,97 +229,169 @@ namespace jspp
                 auto arr = val.as_array();
                 size_t item_count = static_cast<size_t>(arr->length);
 
-                // If small and simple, keep single-line layout
-                bool small_and_simple = item_count > 0 && item_count <= HORIZONTAL_ARRAY_MAX_ITEMS;
-                if (small_and_simple)
+                // If custom toString exists on the object, prefer it
+                auto itToString = arr->props.find(jspp::WellKnownSymbols::toString);
+                if (depth > 0 && itToString != arr->props.end() && itToString->second.is_function())
+                {
+                    try
+                    {
+                        auto result = itToString->second.as_function("toString")->call({});
+                        return to_log_string(result, visited, depth);
+                    }
+                    catch (...)
+                    {
+                        // ignore and fallback to manual formatting
+                    }
+                }
+
+                std::string indent(depth * 2, ' ');
+                std::string next_indent((depth + 1) * 2, ' ');
+                std::stringstream ss;
+
+                // Horizontal layout for small and simple arrays
+                bool use_horizontal_layout = item_count <= HORIZONTAL_ARRAY_MAX_ITEMS;
+                if (use_horizontal_layout)
                 {
                     for (size_t i = 0; i < item_count; ++i)
                     {
-                        const AnyValue *itemVal = nullptr;
+                        std::optional<AnyValue> itemVal;
                         if (i < arr->dense.size())
-                            itemVal = &arr->dense[i];
+                        {
+                            itemVal = arr->dense[i];
+                        }
                         else
                         {
                             auto it = arr->sparse.find(static_cast<uint32_t>(i));
                             if (it != arr->sparse.end())
-                                itemVal = &it->second;
+                            {
+                                itemVal = it->second;
+                            }
                         }
-                        if (itemVal && !is_simple_value(*itemVal))
+                        if (itemVal.has_value() && !is_simple_value(itemVal.value()))
                         {
-                            small_and_simple = false;
+                            use_horizontal_layout = false;
                             break;
                         }
                     }
                 }
 
-                if (small_and_simple)
+                if (use_horizontal_layout)
                 {
-                    std::stringstream sline;
-                    sline << "[ ";
+                    ss << "[ ";
+                    size_t empty_count = 0;
+                    bool needs_comma = false;
+
                     for (size_t i = 0; i < item_count; ++i)
                     {
-                        const AnyValue *itemVal = nullptr;
+                        std::optional<AnyValue> itemVal;
                         if (i < arr->dense.size())
-                            itemVal = &arr->dense[i];
+                        {
+                            itemVal = arr->dense[i];
+                        }
                         else
                         {
                             auto it = arr->sparse.find(static_cast<uint32_t>(i));
                             if (it != arr->sparse.end())
-                                itemVal = &it->second;
+                            {
+                                itemVal = it->second;
+                            }
                         }
-                        if (itemVal)
-                            sline << to_log_string(*itemVal, visited, depth + 1);
+
+                        if (itemVal.has_value())
+                        {
+                            if (empty_count > 0)
+                            {
+                                if (needs_comma)
+                                    ss << Color::BRIGHT_BLACK << ", " << Color::RESET;
+                                ss << Color::BRIGHT_BLACK << empty_count << " x empty item" << (empty_count > 1 ? "s" : "") << Color::RESET;
+                                needs_comma = true;
+                                empty_count = 0;
+                            }
+                            if (needs_comma)
+                                ss << Color::BRIGHT_BLACK << ", " << Color::RESET;
+                            ss << to_log_string(itemVal.value(), visited, depth + 1);
+                            needs_comma = true;
+                        }
                         else
-                            sline << Color::BRIGHT_BLACK << "<empty>" << Color::RESET;
-                        if (i < item_count - 1)
-                            sline << Color::BRIGHT_BLACK << ", " << Color::RESET;
+                        {
+                            empty_count++;
+                        }
                     }
-                    sline << " ]";
-                    return sline.str();
+
+                    if (empty_count > 0)
+                    {
+                        if (needs_comma)
+                            ss << Color::BRIGHT_BLACK << ", " << Color::RESET;
+                        ss << Color::BRIGHT_BLACK << empty_count << " x empty item" << (empty_count > 1 ? "s" : "") << Color::RESET;
+                    }
+
+                    ss << " ]";
+                    return ss.str();
                 }
 
-                // Bun-like multi-line layout: 10 items per row, ordered 0..length-1
+                // Bun-like multi-line layout
                 ss << "[\n";
 
                 const size_t items_to_show = std::min(item_count, MAX_ARRAY_ITEMS);
+                size_t empty_count = 0;
+                bool first_item_printed = false;
+
                 for (size_t i = 0; i < items_to_show; ++i)
                 {
-                    // New row every 10 items
-                    if (i % 10 == 0)
-                        ss << next_indent;
-
-                    const AnyValue *itemVal = nullptr;
+                    std::optional<AnyValue> itemVal;
                     if (i < arr->dense.size())
-                        itemVal = &arr->dense[i];
+                    {
+                        itemVal = arr->dense[i];
+                    }
                     else
                     {
                         auto it = arr->sparse.find(static_cast<uint32_t>(i));
                         if (it != arr->sparse.end())
-                            itemVal = &it->second;
+                        {
+                            itemVal = it->second;
+                        }
                     }
 
-                    if (itemVal)
-                        ss << to_log_string(*itemVal, visited, depth + 1);
+                    if (itemVal.has_value())
+                    {
+                        if (empty_count > 0)
+                        {
+                            if (first_item_printed)
+                                ss << Color::BRIGHT_BLACK << ",\n"
+                                   << Color::RESET;
+                            ss << next_indent << Color::BRIGHT_BLACK << empty_count << " x empty item" << (empty_count > 1 ? "s" : "") << Color::RESET;
+                            first_item_printed = true;
+                            empty_count = 0;
+                        }
+                        if (first_item_printed)
+                            ss << Color::BRIGHT_BLACK << ",\n"
+                               << Color::RESET;
+                        ss << next_indent << to_log_string(itemVal.value(), visited, depth + 1);
+                        first_item_printed = true;
+                    }
                     else
-                        ss << Color::BRIGHT_BLACK << "<empty>" << Color::RESET;
+                    {
+                        empty_count++;
+                    }
+                }
 
-                    // Comma rules:
-                    // - Comma after each item except the very last when there are no more items to print.
-                    // - If we will elide the rest (item_count > items_to_show), keep a comma after the last shown item too (like Bun).
-                    bool write_comma = (i < items_to_show - 1) || (item_count > items_to_show);
-                    if (write_comma)
-                        ss << Color::BRIGHT_BLACK << ", " << Color::RESET;
-
-                    // End of row or last shown item → newline
-                    if ((i % 10 == 9) || (i == items_to_show - 1))
-                        ss << "\n";
+                if (empty_count > 0)
+                {
+                    if (first_item_printed)
+                        ss << Color::BRIGHT_BLACK << ",\n"
+                           << Color::RESET;
+                    ss << next_indent << Color::BRIGHT_BLACK << empty_count << " x empty item" << (empty_count > 1 ? "s" : "") << Color::RESET;
+                    first_item_printed = true;
                 }
 
                 if (item_count > items_to_show)
                 {
-                    ss << next_indent << Color::BRIGHT_BLACK << "... " << (item_count - items_to_show) << " more items" << Color::RESET << "\n";
+                    if (first_item_printed)
+                        ss << Color::BRIGHT_BLACK << ",\n"
+                           << Color::RESET;
+                    ss << next_indent << Color::BRIGHT_BLACK << "... " << (item_count - items_to_show) << " more items" << Color::RESET;
                 }
-
+                ss << "\n";
                 ss << indent << "]";
                 return ss.str();
             }
