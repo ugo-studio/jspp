@@ -105,7 +105,7 @@ jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const AnyValu
             auto proto_value = proto_it.value();
             if (proto_value.is_accessor_descriptor())
             {
-                return AnyValue::resolve_property_for_read(proto_it.value());
+                return AnyValue::resolve_property_for_write(proto_it.value(), value);
             }
         }
 
