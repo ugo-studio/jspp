@@ -440,7 +440,7 @@ namespace jspp
         }
 
         // --- PROPERTY ACCESS OPERATORS
-        AnyValue get_own_property(const std::string &key) noexcept
+        AnyValue get_own_property(const std::string &key)
         {
             switch (storage.type)
             {
@@ -450,6 +450,10 @@ namespace jspp
                 return as_array()->get_property(key);
             case JsType::Function:
                 return as_function()->get_property(key);
+            case JsType::Undefined:
+                throw RuntimeError::make_error("Cannot read properties of undefined (reading '" + key + "')", "TypeError");
+            case JsType::Null:
+                throw RuntimeError::make_error("Cannot read properties of null (reading '" + key + "')", "TypeError");
             default:
                 static AnyValue undefined = AnyValue{};
                 return undefined;
@@ -478,6 +482,10 @@ namespace jspp
                 return as_array()->set_property(key, value);
             case JsType::Function:
                 return as_function()->set_property(key, value);
+            case JsType::Undefined:
+                throw RuntimeError::make_error("Cannot set properties of undefined (setting '" + key + "')", "TypeError");
+            case JsType::Null:
+                throw RuntimeError::make_error("Cannot set properties of null (setting '" + key + "')", "TypeError");
             default:
                 return value;
             }

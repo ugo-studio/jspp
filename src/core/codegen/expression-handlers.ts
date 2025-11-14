@@ -76,7 +76,15 @@ export function visitArrayLiteralExpression(
     context: VisitContext,
 ): string {
     const elements = (node as ts.ArrayLiteralExpression).elements
-        .map((elem) => this.visit(elem, context))
+        .map((elem) =>
+            ts.isIdentifier(elem)
+                ? `jspp::Access::deref(${this.visit(elem, context)}, ${
+                    this.getJsVarName(
+                        elem,
+                    )
+                })`
+                : this.visit(elem, context)
+        )
         .join(", ");
     return `jspp::AnyValue::make_array({${elements}})`;
 }
