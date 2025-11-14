@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.hpp"
+#include <optional>
 
 namespace jspp
 {
@@ -8,12 +9,17 @@ namespace jspp
 
     struct JsArray
     {
-        std::vector<AnyValue> dense;                     // dense storage for small/contiguous indices
-        std::unordered_map<uint32_t, AnyValue> sparse;   // sparse indices (very large indices)
-        std::unordered_map<std::string, AnyValue> props; // non-index string properties
+        std::vector<std::optional<AnyValue>> dense;                   // dense storage for small/contiguous indices
+        std::unordered_map<uint32_t, std::optional<AnyValue>> sparse; // sparse indices (very large indices)
+        std::unordered_map<std::string, AnyValue> props;              // non-index string properties
         uint64_t length = 0;
 
+        JsArray() = default;
+        explicit JsArray(const std::vector<std::optional<AnyValue>> &items) : dense(items), length(items.size()) {}
+
         std::string to_std_string() const;
+        std::optional<jspp::AnyValue> get_prototype(const std::string &key) const;
+
         AnyValue get_property(const std::string &key);
         AnyValue get_property(uint32_t idx);
         AnyValue set_property(const std::string &key, const AnyValue &value);

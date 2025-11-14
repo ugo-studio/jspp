@@ -36,6 +36,21 @@ namespace jspp
         inline std::string to_log_string(const AnyValue &val, std::unordered_set<const void *> &visited, int depth);
         inline bool is_simple_value(const AnyValue &val);
 
+        inline bool is_valid_js_identifier(const std::string& s) {
+            if (s.empty()) {
+                return false;
+            }
+            if (!std::isalpha(s[0]) && s[0] != '_' && s[0] != '$') {
+                return false;
+            }
+            for (size_t i = 1; i < s.length(); ++i) {
+                if (!std::isalnum(s[i]) && s[i] != '_' && s[i] != '$') {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         inline bool is_simple_value(const AnyValue &val)
         {
             return val.is_undefined() || val.is_null() || val.is_uninitialized() ||
@@ -152,7 +167,12 @@ namespace jspp
                     size_t current_prop = 0;
                     for (const auto &pair : obj->props)
                     {
-                        ss << pair.first << ": " << to_log_string(pair.second, visited, depth + 1);
+                        if (is_valid_js_identifier(pair.first)) {
+                            ss << pair.first;
+                        } else {
+                            ss << "\"" << pair.first << "\"";
+                        }
+                        ss << ": " << to_log_string(pair.second, visited, depth + 1);
                         if (++current_prop < prop_count)
                             ss << Color::BRIGHT_BLACK << ", " << Color::RESET;
                     }
@@ -172,7 +192,13 @@ namespace jspp
                             if (props_shown > 0)
                                 ss << ",\n";
 
-                            ss << next_indent << pair.first << ": " << to_log_string(pair.second, visited, depth + 1);
+                            ss << next_indent;
+                            if (is_valid_js_identifier(pair.first)) {
+                                ss << pair.first;
+                            } else {
+                                ss << "\"" << pair.first << "\"";
+                            }
+                            ss << ": " << to_log_string(pair.second, visited, depth + 1);
                             props_shown++;
                         }
                         if (prop_count > MAX_OBJECT_PROPS)

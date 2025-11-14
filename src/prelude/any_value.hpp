@@ -314,11 +314,11 @@ namespace jspp
             new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(call, name));
             return v;
         }
-        static AnyValue make_data_descriptor(const std::shared_ptr<AnyValue> &value, bool writable, bool enumerable, bool configurable) noexcept
+        static AnyValue make_data_descriptor(const AnyValue &value, bool writable, bool enumerable, bool configurable) noexcept
         {
             AnyValue v;
             v.storage.type = JsType::DataDescriptor;
-            new (&v.storage.data_desc) std::shared_ptr<DataDescriptor>(std::make_shared<DataDescriptor>(value, writable, enumerable, configurable));
+            new (&v.storage.data_desc) std::shared_ptr<DataDescriptor>(std::make_shared<DataDescriptor>(std::make_shared<AnyValue>(value), writable, enumerable, configurable));
             return v;
         }
         static AnyValue make_accessor_descriptor(const std::optional<std::function<AnyValue(const std::vector<AnyValue> &)>> &get,
@@ -332,6 +332,7 @@ namespace jspp
             return v;
         }
 
+        // property resolution helpers ---------------------------------------
         static AnyValue resolve_property_for_read(const AnyValue &val) noexcept
         {
             switch (val.storage.type)
@@ -385,6 +386,7 @@ namespace jspp
             }
         }
 
+        // type checkers and accessors ---------------------------------------
         bool is_number() const noexcept { return storage.type == JsType::Number; }
         bool is_string() const noexcept { return storage.type == JsType::String; }
         bool is_object() const noexcept { return storage.type == JsType::Object; }
@@ -397,6 +399,7 @@ namespace jspp
         bool is_data_descriptor() const noexcept { return storage.type == JsType::DataDescriptor; }
         bool is_accessor_descriptor() const noexcept { return storage.type == JsType::AccessorDescriptor; }
 
+        // --- TYPE CASTERS
         double as_double() const noexcept
         {
             assert(is_number());
@@ -471,7 +474,7 @@ namespace jspp
                 return storage.array->get_property(key.storage.number);
             return get_own_property(key.to_std_string());
         }
-        // non-const property/index access; for setting values
+        // for setting values
         AnyValue set_own_property(const std::string &key, const AnyValue &value)
         {
             switch (storage.type)
