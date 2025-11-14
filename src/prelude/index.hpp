@@ -12,6 +12,7 @@
 #include "descriptors.hpp"
 #include "any_value.hpp"
 #include "error_helpers.hpp"
+#include "values/prototypes/string.hpp"
 #include "values/prototypes/object.hpp"
 #include "values/prototypes/array.hpp"
 #include "values/prototypes/function.hpp"

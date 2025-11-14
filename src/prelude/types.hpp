@@ -12,6 +12,7 @@
 #include <cstring>
 #include <set>
 #include <cmath>
+#include <optional>
 
 // JSPP standard library
 namespace jspp
@@ -37,4 +38,13 @@ namespace jspp
     // Arithemetic operators
     inline AnyValue pow(const AnyValue &lhs, const AnyValue &rhs);
 
+    // AnyValue prototypes
+    namespace StringPrototypes
+    {
+        inline std::optional<AnyValue> get(const std::string &key, const std::unique_ptr<std::string> &self);
+    }
+    namespace ArrayPrototypes
+    {
+        inline std::optional<AnyValue> get(const std::string &key, JsArray *self);
+    }
 }

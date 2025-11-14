@@ -16,6 +16,7 @@
 #include <functional>
 #include <cmath>
 
+#include "types.hpp"
 #include "values/non_values.hpp"
 #include "values/object.hpp"
 #include "values/array.hpp"
@@ -453,20 +454,46 @@ namespace jspp
                 return as_array()->get_property(key);
             case JsType::Function:
                 return as_function()->get_property(key);
+            case JsType::String:
+            {
+                // Check for prototype methods
+                auto proto_fn = StringPrototypes::get(key, this->storage.str);
+                if (proto_fn.has_value())
+                {
+                    return resolve_property_for_read(proto_fn.value());
+                }
+                // Handle character access by string index (e.g., "abc"["1"])
+                if (JsArray::is_array_index(key))
+                {
+                    uint32_t idx = static_cast<uint32_t>(std::stoull(key));
+                    return get_own_property(idx);
+                }
+            }
             case JsType::Undefined:
                 throw RuntimeError::make_error("Cannot read properties of undefined (reading '" + key + "')", "TypeError");
             case JsType::Null:
                 throw RuntimeError::make_error("Cannot read properties of null (reading '" + key + "')", "TypeError");
             default:
-                static AnyValue undefined = AnyValue{};
-                return undefined;
+                return AnyValue::make_undefined();
             }
         }
         AnyValue get_own_property(uint32_t idx) noexcept
         {
-            if (storage.type == JsType::Array)
+            switch (storage.type)
+            {
+            case JsType::Array:
                 return as_array()->get_property(idx);
-            return get_own_property(std::to_string(idx));
+            case JsType::String: // Handle character access by index (e.g., "abc"[1])
+            {
+                if (idx < storage.str->length())
+                {
+                    return AnyValue::make_string(std::string(1, (*storage.str)[idx]));
+                }
+                return AnyValue::make_undefined();
+            }
+            default:
+                return get_own_property(std::to_string(idx));
+            }
         }
         AnyValue get_own_property(const AnyValue &key) noexcept
         {
