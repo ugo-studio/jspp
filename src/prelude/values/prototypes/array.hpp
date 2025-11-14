@@ -8,96 +8,101 @@
 #include <algorithm>
 #include <vector>
 
-std::optional<jspp::AnyValue> jspp::JsArray::get_prototype(const std::string &key) const
+namespace jspp
 {
-    // --- length property ---
-    if (key == "length")
+    namespace ArrayPrototypes
     {
-        auto getter = [this](const std::vector<AnyValue> &args) -> AnyValue
+        inline std::optional<AnyValue> get(const std::string &key, JsArray *this_ptr)
         {
-            return AnyValue::make_number(this->length);
-        };
 
-        auto setter = [this_ptr = const_cast<JsArray *>(this)](const std::vector<AnyValue> &args) -> AnyValue
-        {
-            if (args.empty())
+            // --- toString() method ---
+            if (key == "toString")
             {
-                return AnyValue::make_undefined();
+                static AnyValue proto = AnyValue::make_data_descriptor(AnyValue::make_function([this_ptr](const std::vector<AnyValue> &args) -> AnyValue
+                                                                                               { return AnyValue::make_string(this_ptr->to_std_string()); },
+                                                                                               "toString"),
+                                                                       true,
+                                                                       false,
+                                                                       true);
+                return proto;
             }
 
-            const auto &new_len_val = args[0];
-            double new_len_double = Operators_Private::ToNumber(new_len_val);
-
-            if (new_len_double < 0 || std::isnan(new_len_double) || std::isinf(new_len_double) || new_len_double != static_cast<uint64_t>(new_len_double))
+            // --- length property ---
+            if (key == "length")
             {
-                throw RuntimeError::make_error("Invalid array length", "RangeError");
-            }
-            uint64_t new_len = static_cast<uint64_t>(new_len_double);
-
-            // Truncate dense part
-            if (new_len < this_ptr->dense.size())
-            {
-                this_ptr->dense.resize(new_len);
-            }
-
-            // Remove sparse elements beyond the new length
-            for (auto it = this_ptr->sparse.begin(); it != this_ptr->sparse.end();)
-            {
-                if (it->first >= new_len)
+                auto getter = [this_ptr](const std::vector<AnyValue> &args) -> AnyValue
                 {
-                    it = this_ptr->sparse.erase(it);
-                }
-                else
+                    return AnyValue::make_number(this_ptr->length);
+                };
+
+                auto setter = [this_ptr](const std::vector<AnyValue> &args) -> AnyValue
                 {
-                    ++it;
-                }
+                    if (args.empty())
+                    {
+                        return AnyValue::make_undefined();
+                    }
+
+                    const auto &new_len_val = args[0];
+                    double new_len_double = Operators_Private::ToNumber(new_len_val);
+
+                    if (new_len_double < 0 || std::isnan(new_len_double) || std::isinf(new_len_double) || new_len_double != static_cast<uint64_t>(new_len_double))
+                    {
+                        throw RuntimeError::make_error("Invalid array length", "RangeError");
+                    }
+                    uint64_t new_len = static_cast<uint64_t>(new_len_double);
+
+                    // Truncate dense part
+                    if (new_len < this_ptr->dense.size())
+                    {
+                        this_ptr->dense.resize(new_len);
+                    }
+
+                    // Remove sparse elements beyond the new length
+                    for (auto it = this_ptr->sparse.begin(); it != this_ptr->sparse.end();)
+                    {
+                        if (it->first >= new_len)
+                        {
+                            it = this_ptr->sparse.erase(it);
+                        }
+                        else
+                        {
+                            ++it;
+                        }
+                    }
+
+                    this_ptr->length = new_len;
+                    return new_len_val;
+                };
+
+                AnyValue proto = AnyValue::make_accessor_descriptor(getter,
+                                                                    setter,
+                                                                    false,
+                                                                    false);
+                return proto;
             }
 
-            this_ptr->length = new_len;
-            return new_len_val;
-        };
-
-        AnyValue proto = AnyValue::make_accessor_descriptor(getter,
-                                                            setter,
-                                                            false,
-                                                            false);
-        return proto;
-    }
-
-    // --- toString() method ---
-    if (key == "toString")
-    {
-        static AnyValue proto = AnyValue::make_data_descriptor(AnyValue::make_function([this](const std::vector<AnyValue> &args) -> AnyValue
-                                                                                       { return AnyValue::make_string(this->to_std_string()); },
-                                                                                       "toString"),
-                                                               true,
-                                                               false,
-                                                               true);
-        return proto;
-    }
-
-    // --- push() method ---
-    if (key == "push")
-    {
-        static AnyValue proto = AnyValue::make_data_descriptor(AnyValue::make_function([this_ptr = const_cast<JsArray *>(this)](const std::vector<AnyValue> &args) -> AnyValue
-                                                                                       {
+            // --- push() method ---
+            if (key == "push")
+            {
+                static AnyValue proto = AnyValue::make_data_descriptor(AnyValue::make_function([this_ptr](const std::vector<AnyValue> &args) -> AnyValue
+                                                                                               {
                                                                                            for (const auto &arg : args)
                                                                                            {
                                                                                                this_ptr->set_property(static_cast<uint32_t>(this_ptr->length), arg);
                                                                                            }
                                                                                            return AnyValue::make_number(this_ptr->length); },
-                                                                                       "push"),
-                                                               true,
-                                                               false,
-                                                               true);
-        return proto;
-    }
+                                                                                               "push"),
+                                                                       true,
+                                                                       false,
+                                                                       true);
+                return proto;
+            }
 
-    // --- pop() method ---
-    if (key == "pop")
-    {
-        static AnyValue proto = AnyValue::make_data_descriptor(AnyValue::make_function([this_ptr = const_cast<JsArray *>(this)](const std::vector<AnyValue> &args) -> AnyValue
-                                                                                       {
+            // --- pop() method ---
+            if (key == "pop")
+            {
+                static AnyValue proto = AnyValue::make_data_descriptor(AnyValue::make_function([this_ptr](const std::vector<AnyValue> &args) -> AnyValue
+                                                                                               {
                                                                                            if (this_ptr->length == 0)
                                                                                            {
                                                                                                return AnyValue::make_undefined();
@@ -115,18 +120,18 @@ std::optional<jspp::AnyValue> jspp::JsArray::get_prototype(const std::string &ke
 
                                                                                            this_ptr->length--;
                                                                                            return last_val; },
-                                                                                       "pop"),
-                                                               true,
-                                                               false,
-                                                               true);
-        return proto;
-    }
+                                                                                               "pop"),
+                                                                       true,
+                                                                       false,
+                                                                       true);
+                return proto;
+            }
 
-    // --- shift() method ---
-    if (key == "shift")
-    {
-        static AnyValue proto = AnyValue::make_data_descriptor(AnyValue::make_function([this_ptr = const_cast<JsArray *>(this)](const std::vector<AnyValue> &args) -> AnyValue
-                                                                                       {
+            // --- shift() method ---
+            if (key == "shift")
+            {
+                static AnyValue proto = AnyValue::make_data_descriptor(AnyValue::make_function([this_ptr](const std::vector<AnyValue> &args) -> AnyValue
+                                                                                               {
                                                                                            if (this_ptr->length == 0)
                                                                                            {
                                                                                                return AnyValue::make_undefined();
@@ -150,18 +155,18 @@ std::optional<jspp::AnyValue> jspp::JsArray::get_prototype(const std::string &ke
                                                                                            this_ptr->length--;
 
                                                                                            return first_val; },
-                                                                                       "shift"),
-                                                               true,
-                                                               false,
-                                                               true);
-        return proto;
-    }
+                                                                                               "shift"),
+                                                                       true,
+                                                                       false,
+                                                                       true);
+                return proto;
+            }
 
-    // --- unshift() method ---
-    if (key == "unshift")
-    {
-        static AnyValue proto = AnyValue::make_data_descriptor(AnyValue::make_function([this_ptr = const_cast<JsArray *>(this)](const std::vector<AnyValue> &args) -> AnyValue
-                                                                                       {
+            // --- unshift() method ---
+            if (key == "unshift")
+            {
+                static AnyValue proto = AnyValue::make_data_descriptor(AnyValue::make_function([this_ptr](const std::vector<AnyValue> &args) -> AnyValue
+                                                                                               {
                                                                                              size_t args_count = args.size();
                                                                                              if (args_count == 0)
                                                                                              {
@@ -181,18 +186,18 @@ std::optional<jspp::AnyValue> jspp::JsArray::get_prototype(const std::string &ke
                                                                                              }
 
                                                                                              return AnyValue::make_number(this_ptr->length); },
-                                                                                       "unshift"),
-                                                               true,
-                                                               false,
-                                                               true);
-        return proto;
-    }
+                                                                                               "unshift"),
+                                                                       true,
+                                                                       false,
+                                                                       true);
+                return proto;
+            }
 
-    // --- join() method ---
-    if (key == "join")
-    {
-        static AnyValue proto = AnyValue::make_data_descriptor(AnyValue::make_function([this_ptr = const_cast<JsArray *>(this)](const std::vector<AnyValue> &args) -> AnyValue
-                                                                                       {
+            // --- join() method ---
+            if (key == "join")
+            {
+                static AnyValue proto = AnyValue::make_data_descriptor(AnyValue::make_function([this_ptr](const std::vector<AnyValue> &args) -> AnyValue
+                                                                                               {
                                                                                            std::string sep = ",";
                                                                                            if (!args.empty() && !args[0].is_undefined())
                                                                                            {
@@ -213,18 +218,18 @@ std::optional<jspp::AnyValue> jspp::JsArray::get_prototype(const std::string &ke
                                                                                                }
                                                                                            }
                                                                                            return AnyValue::make_string(result); },
-                                                                                       "join"),
-                                                               true,
-                                                               false,
-                                                               true);
-        return proto;
-    }
+                                                                                               "join"),
+                                                                       true,
+                                                                       false,
+                                                                       true);
+                return proto;
+            }
 
-    // --- forEach() method ---
-    if (key == "forEach")
-    {
-        static AnyValue proto = AnyValue::make_data_descriptor(AnyValue::make_function([this_ptr = const_cast<JsArray *>(this)](const std::vector<AnyValue> &args) -> AnyValue
-                                                                                       {
+            // --- forEach() method ---
+            if (key == "forEach")
+            {
+                static AnyValue proto = AnyValue::make_data_descriptor(AnyValue::make_function([this_ptr](const std::vector<AnyValue> &args) -> AnyValue
+                                                                                               {
                                                                                            if (args.empty() || !args[0].is_function())
                                                                                            {
                                                                                                throw RuntimeError::make_error("callback is not a function", "TypeError");
@@ -239,12 +244,14 @@ std::optional<jspp::AnyValue> jspp::JsArray::get_prototype(const std::string &ke
                                                                                                }
                                                                                            }
                                                                                            return AnyValue::make_undefined(); },
-                                                                                       "forEach"),
-                                                               true,
-                                                               false,
-                                                               true);
-        return proto;
-    }
+                                                                                               "forEach"),
+                                                                       true,
+                                                                       false,
+                                                                       true);
+                return proto;
+            }
 
-    return std::nullopt;
+            return std::nullopt;
+        }
+    }
 }

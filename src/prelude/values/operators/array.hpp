@@ -2,8 +2,9 @@
 
 #include "types.hpp"
 #include "values/array.hpp"
-#include "any_value.hpp"
 #include "error.hpp"
+#include "any_value.hpp"
+#include "values/prototypes/array.hpp"
 
 std::string jspp::JsArray::to_std_string() const
 {
@@ -61,7 +62,7 @@ jspp::AnyValue jspp::JsArray::get_property(const std::string &key)
         if (it == props.end())
         {
             // check prototype
-            auto proto_it = get_prototype(key);
+            auto proto_it = ArrayPrototypes::get(key, this);
             if (proto_it.has_value())
             {
                 return AnyValue::resolve_property_for_read(proto_it.value());
@@ -99,7 +100,7 @@ jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const AnyValu
     else
     {
         // set prototype property if accessor descriptor
-        auto proto_it = get_prototype(key);
+        auto proto_it = ArrayPrototypes::get(key, this);
         if (proto_it.has_value())
         {
             auto proto_value = proto_it.value();

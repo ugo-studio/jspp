@@ -18,7 +18,6 @@ namespace jspp
         explicit JsArray(const std::vector<std::optional<AnyValue>> &items) : dense(items), length(items.size()) {}
 
         std::string to_std_string() const;
-        std::optional<jspp::AnyValue> get_prototype(const std::string &key) const;
 
         AnyValue get_property(const std::string &key);
         AnyValue get_property(uint32_t idx);
