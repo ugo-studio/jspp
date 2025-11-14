@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <cctype>
 
 namespace jspp
 {
@@ -49,69 +50,17 @@ namespace jspp
                                                key);
             }
 
-            // --- toUpperCase() ---
-            if (key == "toUpperCase")
+            // --- concat(str1, str2, ...) ---
+            if (key == "concat")
             {
                 return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
-                    std::transform(self->begin(), self->end(), self->begin(), ::toupper);
-                    return AnyValue::make_string(*self); },
-                                               key);
-            }
-
-            // --- toLowerCase() ---
-            if (key == "toLowerCase")
-            {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
-                                               {
-                    std::transform(self->begin(), self->end(), self->begin(), ::tolower);
-                    return AnyValue::make_string(*self); },
-                                               key);
-            }
-
-            // --- slice(beginIndex, endIndex) ---
-            if (key == "slice")
-            {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
-                                               {
-                    int len = self->length();
-                    int start = args.empty() ? 0 : Operators_Private::ToInt32(args[0]);
-                    int end = (args.size() < 2 || args[1].is_undefined()) ? len : Operators_Private::ToInt32(args[1]);
-
-                    if (start < 0) start += len;
-                    if (end < 0) end += len;
-
-                    start = std::max(0, std::min(len, start));
-                    end = std::max(0, std::min(len, end));
-
-                    if (start >= end) return AnyValue::make_string("");
-                    return AnyValue::make_string(self->substr(start, end - start)); },
-                                               key);
-            }
-
-            // --- trim() ---
-            if (key == "trim")
-            {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
-                                               {
-                    const char* whitespace = " \t\n\r\f\v";
-                    self->erase(0, self->find_first_not_of(whitespace));
-                    self->erase(self->find_last_not_of(whitespace) + 1);
-                    return AnyValue::make_string(*self); },
-                                               key);
-            }
-
-            // --- startsWith(searchString, position) ---
-            if (key == "startsWith")
-            {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
-                                               {
-                    if(args.empty()) return AnyValue::make_boolean(false);
-                    std::string search = args[0].to_std_string();
-                    size_t pos = (args.size() > 1) ? static_cast<size_t>(Operators_Private::ToNumber(args[1])) : 0;
-                    if (pos > self->length()) pos = self->length();
-
-                    return AnyValue::make_boolean(self->rfind(search, pos) == pos); },
+                    std::string result = *self;
+                    for (const auto& arg : args)
+                    {
+                        result += arg.to_std_string();
+                    }
+                    return AnyValue::make_string(result); },
                                                key);
             }
 
@@ -144,6 +93,143 @@ namespace jspp
                                                key);
             }
 
+            // --- indexOf(searchString, position) ---
+            if (key == "indexOf")
+            {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                               {
+                    if (args.empty()) return AnyValue::make_number(-1);
+                    std::string search = args[0].to_std_string();
+                    size_t pos = (args.size() > 1) ? static_cast<size_t>(Operators_Private::ToNumber(args[1])) : 0;
+                    size_t result = self->find(search, pos);
+                    return result == std::string::npos ? AnyValue::make_number(-1) : AnyValue::make_number(result); },
+                                               key);
+            }
+
+            // --- lastIndexOf(searchString, position) ---
+            if (key == "lastIndexOf")
+            {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                               {
+                    if (args.empty()) return AnyValue::make_number(-1);
+                    std::string search = args[0].to_std_string();
+                    size_t pos = (args.size() > 1 && !args[1].is_undefined()) ? static_cast<size_t>(Operators_Private::ToNumber(args[1])) : std::string::npos;
+                    size_t result = self->rfind(search, pos);
+                    return result == std::string::npos ? AnyValue::make_number(-1) : AnyValue::make_number(result); },
+                                               key);
+            }
+
+            // --- padEnd(targetLength, padString) ---
+            if (key == "padEnd")
+            {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                               {
+                    size_t target_length = args.empty() ? 0 : static_cast<size_t>(Operators_Private::ToNumber(args[0]));
+                    if (self->length() >= target_length) return AnyValue::make_string(*self);
+                    std::string pad_string = (args.size() > 1 && !args[1].is_undefined() && !args[1].to_std_string().empty()) ? args[1].to_std_string() : " ";
+                    std::string result = *self;
+                    while (result.length() < target_length)
+                    {
+                        result += pad_string;
+                    }
+                    return AnyValue::make_string(result.substr(0, target_length)); },
+                                               key);
+            }
+
+            // --- padStart(targetLength, padString) ---
+            if (key == "padStart")
+            {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                               {
+                    size_t target_length = args.empty() ? 0 : static_cast<size_t>(Operators_Private::ToNumber(args[0]));
+                    if (self->length() >= target_length) return AnyValue::make_string(*self);
+                    std::string pad_string = (args.size() > 1 && !args[1].is_undefined() && !args[1].to_std_string().empty()) ? args[1].to_std_string() : " ";
+                    std::string padding;
+                    while (padding.length() < target_length - self->length())
+                    {
+                        padding += pad_string;
+                    }
+                    return AnyValue::make_string(padding.substr(0, target_length - self->length()) + *self); },
+                                               key);
+            }
+
+            // --- repeat(count) ---
+            if (key == "repeat")
+            {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                               {
+                    double count = args.empty() ? 0 : Operators_Private::ToNumber(args[0]);
+                    if (count < 0) {
+                        // In a real implementation, this should throw a RangeError.
+                        return AnyValue::make_string("");
+                    }
+                    std::string result = "";
+                    for (int i = 0; i < count; ++i)
+                    {
+                        result += *self;
+                    }
+                    return AnyValue::make_string(result); },
+                                               key);
+            }
+
+            // --- replace(substr, newSubstr) ---
+            if (key == "replace")
+            {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                               {
+                    if (args.size() < 2) return AnyValue::make_string(*self);
+                    std::string search = args[0].to_std_string();
+                    std::string replacement = args[1].to_std_string();
+                    std::string result = *self;
+                    size_t pos = result.find(search);
+                    if (pos != std::string::npos)
+                    {
+                        result.replace(pos, search.length(), replacement);
+                    }
+                    return AnyValue::make_string(result); },
+                                               key);
+            }
+
+            // --- replaceAll(substr, newSubstr) ---
+            if (key == "replaceAll")
+            {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                               {
+                    if (args.size() < 2) return AnyValue::make_string(*self);
+                    std::string search = args[0].to_std_string();
+                    if (search.empty()) return AnyValue::make_string(*self);
+                    std::string replacement = args[1].to_std_string();
+                    std::string result = *self;
+                    size_t pos = result.find(search);
+                    while (pos != std::string::npos)
+                    {
+                        result.replace(pos, search.length(), replacement);
+                        pos = result.find(search, pos + replacement.length());
+                    }
+                    return AnyValue::make_string(result); },
+                                               key);
+            }
+
+            // --- slice(beginIndex, endIndex) ---
+            if (key == "slice")
+            {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                               {
+                    int len = self->length();
+                    int start = args.empty() ? 0 : Operators_Private::ToInt32(args[0]);
+                    int end = (args.size() < 2 || args[1].is_undefined()) ? len : Operators_Private::ToInt32(args[1]);
+
+                    if (start < 0) start += len;
+                    if (end < 0) end += len;
+
+                    start = std::max(0, std::min(len, start));
+                    end = std::max(0, std::min(len, end));
+
+                    if (start >= end) return AnyValue::make_string("");
+                    return AnyValue::make_string(self->substr(start, end - start)); },
+                                               key);
+            }
+
             // --- split(separator) ---
             if (key == "split")
             {
@@ -166,6 +252,102 @@ namespace jspp
                         result_vec.push_back(AnyValue::make_string(temp));
                     }
                     return AnyValue::make_array(result_vec); },
+                                               key);
+            }
+
+            // --- startsWith(searchString, position) ---
+            if (key == "startsWith")
+            {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                               {
+                    if(args.empty()) return AnyValue::make_boolean(false);
+                    std::string search = args[0].to_std_string();
+                    size_t pos = (args.size() > 1) ? static_cast<size_t>(Operators_Private::ToNumber(args[1])) : 0;
+                    if (pos > self->length()) pos = self->length();
+
+                    return AnyValue::make_boolean(self->rfind(search, pos) == pos); },
+                                               key);
+            }
+
+            // --- substring(indexStart, indexEnd) ---
+            if (key == "substring")
+            {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                               {
+                    int len = self->length();
+                    int start = args.empty() ? 0 : Operators_Private::ToInt32(args[0]);
+                    int end = (args.size() < 2 || args[1].is_undefined()) ? len : Operators_Private::ToInt32(args[1]);
+
+                    start = std::max(0, start);
+                    end = std::max(0, end);
+                    
+                    if (start > end) std::swap(start, end);
+
+                    start = std::min(len, start);
+                    end = std::min(len, end);
+
+                    return AnyValue::make_string(self->substr(start, end - start)); },
+                                               key);
+            }
+
+            // --- toLowerCase() ---
+            if (key == "toLowerCase")
+            {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                               {
+                    std::string result = *self;
+                    std::transform(result.begin(), result.end(), result.begin(),
+                                   [](unsigned char c){ return std::tolower(c); });
+                    return AnyValue::make_string(result); },
+                                               key);
+            }
+
+            // --- toUpperCase() ---
+            if (key == "toUpperCase")
+            {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                               {
+                    std::string result = *self;
+                    std::transform(result.begin(), result.end(), result.begin(),
+                                   [](unsigned char c){ return std::toupper(c); });
+                    return AnyValue::make_string(result); },
+                                               key);
+            }
+
+            // --- trim() ---
+            if (key == "trim")
+            {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                               {
+                    const char* whitespace = " \t\n\r\f\v";
+                    std::string result = *self;
+                    result.erase(0, result.find_first_not_of(whitespace));
+                    result.erase(result.find_last_not_of(whitespace) + 1);
+                    return AnyValue::make_string(result); },
+                                               key);
+            }
+
+            // --- trimEnd() ---
+            if (key == "trimEnd")
+            {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                               {
+                    const char* whitespace = " \t\n\r\f\v";
+                    std::string result = *self;
+                    result.erase(result.find_last_not_of(whitespace) + 1);
+                    return AnyValue::make_string(result); },
+                                               key);
+            }
+
+            // --- trimStart() ---
+            if (key == "trimStart")
+            {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                               {
+                    const char* whitespace = " \t\n\r\f\v";
+                    std::string result = *self;
+                    result.erase(0, result.find_first_not_of(whitespace));
+                    return AnyValue::make_string(result); },
                                                key);
             }
 
