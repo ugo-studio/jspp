@@ -45,7 +45,7 @@ The transpilation process is a classic three-stage pipeline:
 2.  **Analysis:** The `TypeAnalyzer` traverses the AST. While it doesn't perform traditional static type checking, it plays a crucial role in understanding the code's structure. It identifies scopes (global, function, block) and detects when variables are "captured" by closures.
 
 3.  **Code Generation:** The `CodeGenerator` performs a final traversal of the AST. It translates each node into its C++ equivalent.
-    - All variables are declared as `std::shared_ptr<AnyValue>` (where `AnyValue` is a Tagged Union for the dynamic types of JavaScript). This approach elegantly mimics JavaScript's dynamic types and reference-based memory model.
+    - All variables are declared as `std::shared_ptr<AnyValue>` (where `AnyValue` uses a [Tagged Union](https://en.wikipedia.org/wiki/Tagged_union) system for managing dynamic types like JavaScript). This approach elegantly mimics JavaScript's dynamic types and reference-based memory model.
     - Closures are implemented as C++ lambdas that capture `shared_ptr`s by value, ensuring variable lifetimes are correctly extended beyond their original scope.
     - The entire script is wrapped into a single `main` function, with hoisting logic carefully replicated to ensure correct execution order.
 
@@ -138,7 +138,6 @@ This phase will focus on building out the standard library and enabling modular 
 
 With a feature-complete transpiler, the focus will shift to performance and advanced capabilities.
 
-- [ ] **Type Inference:** Analyze code to replace `std::any` with concrete C++ types (`int`, `double`, `std::string`) where possible, unlocking massive performance gains.
 - [ ] **Performance Benchmarking:** Create a suite to compare transpiled C++ performance against V8 and other JS engines.
 - [ ] **C++ Interoperability:** Define a clear API for calling C++ functions from the transpiled JavaScript and vice-versa.
 
