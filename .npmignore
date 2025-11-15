@@ -1,3 +1,6 @@
+# dependencies (bun install)
+node_modules
+
 # Source files (except prelude headers)
 /src/*
 !/src/prelude
@@ -21,5 +24,9 @@ bun.lockb
 # Logs and temp files
 *.log
 *.tsbuildinfo
+*.ninja
+*.gch
+codebase.md
 coverage/
 my-code/
+prelude-build/

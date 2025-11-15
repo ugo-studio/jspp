@@ -1,6 +1,6 @@
 {
-  "name": "jspp",
-  "version": "1.0.0",
+  "name": "@ugo-studio/jspp",
+  "version": "0.1.0",
   "description": "A modern, experimental transpiler that converts JavaScript code into high-performance, standard C++23.",
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -14,12 +14,13 @@
     "prelude-build"
   ],
   "scripts": {
+    "dev": "bun run src/cli.ts",
     "typecheck": "tsc --noEmit",
     "precompile": "bun run scripts/precompile-headers.ts",
     "test": "bun run precompile && bun test",
     "build": "tsc",
     "prepack": "bun run build",
-    "publish-package": "npm publish"
+    "publish-package": "npm publish --access=public"
   },
   "devDependencies": {
     "@types/bun": "latest"

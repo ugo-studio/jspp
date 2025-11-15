@@ -49,9 +49,17 @@ The transpilation process is a classic three-stage pipeline:
     - Closures are implemented as C++ lambdas that capture `shared_ptr`s by value, ensuring variable lifetimes are correctly extended beyond their original scope.
     - The entire script is wrapped into a single `main` function, with hoisting logic carefully replicated to ensure correct execution order.
 
-## Getting Started
+## Installation
 
-To get a local copy up and running, follow these simple steps.
+To use JSPP as a command-line tool, install it globally via npm:
+
+```sh
+npm install -g  @ugo-studio/jspp
+```
+
+## For Developers
+
+To contribute to JSPP or run its test suite, follow these steps:
 
 ### Prerequisites
 
@@ -60,7 +68,7 @@ To get a local copy up and running, follow these simple steps.
 - **C++ Compiler:** A compiler with support for C++23 is required. This project is tested with `g++`.
   - `g++` (MinGW on Windows, or available via build-essentials on Linux)
 
-### Installation
+### Setup
 
 1.  Clone the repo:
     ```sh
@@ -69,10 +77,6 @@ To get a local copy up and running, follow these simple steps.
 2.  Install dependencies:
     ```sh
     bun install
-    ```
-3.  Link the package to use the CLI globally:
-    ```sh
-    bun link
     ```
 
 ## Usage

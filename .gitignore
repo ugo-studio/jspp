@@ -5,9 +5,9 @@ node_modules
 out
 dist
 *.tgz
-test/output/*
-my-code/*
-prelude-build/*
+test/output/
+my-code/
+prelude-build/
 
 # code coverage
 coverage
