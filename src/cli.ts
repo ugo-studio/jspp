@@ -1,12 +1,13 @@
+#!/usr/bin/env bun
 import fs from "fs/promises";
 import path from "path";
 
-import { Interpreter } from "../src";
+import { Interpreter } from "./index";
 
 async function main() {
     const args = process.argv.slice(2);
     if (args.length === 0) {
-        console.error("Usage: bun run scripts/run-js.ts <path-to-js-file>");
+        console.error("Usage: jspp <path-to-js-file>");
         process.exit(1);
     }
 

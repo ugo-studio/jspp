@@ -16,7 +16,8 @@ export class Interpreter {
         this.analyzer.analyze(ast);
         const cppCode = this.generator.generate(ast, this.analyzer);
         const preludePath = path.resolve(
-            process.cwd(),
+            __dirname,
+            "..",
             "src",
             "prelude",
         );

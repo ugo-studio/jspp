@@ -1,0 +1,25 @@
+# Source files (except prelude headers)
+/src/*
+!/src/prelude
+
+# Test files
+/test
+
+# Scripts
+/scripts
+
+# Config files
+.gitignore
+tsconfig.json
+bun.lockb
+
+# IDE / OS files
+.vscode/
+.idea/
+.DS_Store
+
+# Logs and temp files
+*.log
+*.tsbuildinfo
+coverage/
+my-code/

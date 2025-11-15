@@ -70,21 +70,17 @@ To get a local copy up and running, follow these simple steps.
     ```sh
     bun install
     ```
+3.  Link the package to use the CLI globally:
+    ```sh
+    bun link
+    ```
 
 ## Usage
 
-The primary way to use JSPP is to run the test suite. This will transpile all the JavaScript test cases in `test/cases/`, build the resulting C++ files, and run them.
+The primary way to use JSPP is via its command-line interface. This will transpile your `.js` file to C++, compile it, and execute the resulting binary.
 
 ```sh
-bun run test
-```
-
-### Running Your Own JavaScript Code
-
-You can also use the `code` script to interpret and run your own JavaScript files. This will transpile your `.js` file to C++, compile it, and execute the resulting binary.
-
-```sh
-bun run code <path-to-your-js-file>
+jspp <path-to-your-js-file>
 ```
 
 **Example:**
@@ -92,10 +88,16 @@ bun run code <path-to-your-js-file>
 To run a sample JavaScript file located at `my-code/hello.js`:
 
 ```sh
-bun run dev my-code/hello.js
+jspp my-code/hello.js
 ```
 
-The transpiled C++ file and executable will be generated in a temporary `temp_run` directory and cleaned up after execution.
+The transpiled C++ file and executable will be generated in the same directory as the input file and cleaned up after execution.
+
+You can also run the test suite, which will transpile all the JavaScript test cases in `test/cases/`, build the resulting C++ files, and run them.
+
+```sh
+bun run test
+```
 
 ## Roadmap
 
