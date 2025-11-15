@@ -20,7 +20,10 @@ async function main() {
     try {
         const jsCode = await fs.readFile(jsFilePath, "utf-8");
         const interpreter = new Interpreter();
+
+        console.time(`Generated C++ code ${cppFilePath}...`);
         const { cppCode, preludePath } = interpreter.interpret(jsCode);
+        console.timeEnd(`Generated C++ code ${cppFilePath}...`);
 
         await fs.mkdir(outputDir, { recursive: true });
         await fs.writeFile(cppFilePath, cppCode);
@@ -45,7 +48,7 @@ async function main() {
         });
 
         if (compile.exitCode !== 0) {
-            console.error(`Compilation failed for ${jsFileName}.js`);
+            console.error(`Compilation failed for ${cppFilePath}`);
             process.exit(1);
         }
 
@@ -59,11 +62,11 @@ async function main() {
         console.log("\x1b[32m\n------end--------\x1b[0m");
 
         if (run.exitCode !== 0) {
-            console.error(`Execution failed for ${jsFileName}.js`);
+            console.error(`Execution failed for ${exeFilePath}`);
             process.exit(1);
         }
 
-        console.log(`Successfully ran ${jsFileName}.js`);
+        console.log(`Successfully ran ${exeFilePath}`);
     } catch (error: any) {
         console.error(`Error: ${error.message}`);
         process.exit(1);
