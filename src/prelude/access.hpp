@@ -3,6 +3,7 @@
 #include "types.hpp"
 #include "values/function.hpp"
 #include "error.hpp"
+#include <ranges>
 
 namespace jspp
 {
@@ -42,5 +43,44 @@ namespace jspp
             return *var;
         }
 
+        inline std::vector<std::string> get_object_keys(const AnyValue &obj)
+        {
+            std::vector<std::string> keys;
+
+            if (obj.is_object())
+            {
+                auto ptr = obj.as_object();
+                for (const auto &pair : ptr->props)
+                {
+                    keys.push_back(pair.first);
+                }
+            }
+            if (obj.is_function())
+            {
+                auto ptr = obj.as_function();
+                for (const auto &pair : ptr->props)
+                {
+                    keys.push_back(pair.first);
+                }
+            }
+            if (obj.is_array())
+            {
+                auto len = obj.as_array()->length;
+                for (auto i = 0; i < len; ++i)
+                {
+                    keys.push_back(std::to_string(i));
+                }
+            }
+            if (obj.is_string())
+            {
+                auto len = obj.as_string()->length();
+                for (auto i = 0; i < len; ++i)
+                {
+                    keys.push_back(std::to_string(i));
+                }
+            }
+
+            return keys;
+        }
     }
 }

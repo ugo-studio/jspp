@@ -249,7 +249,7 @@ export function visitForInStatement(
 ): string {
     const forIn = node as ts.ForInStatement;
 
-    let code = "";
+    let code = `${this.indent()}{\n`;
     this.indentationLevel++; // Enter a new scope for the for-in loop
     let varName = "";
 
@@ -277,9 +277,9 @@ export function visitForInStatement(
         })`;
     }
 
-    const keysVar = this.generateUniqueName("__keys_", new Set());
+    const keysVar = this.generateUniqueName("__keys_", new Set([varName]));
     code +=
-        `${this.indent()}{ std::vector<std::string> ${keysVar} = jspp::Access::get_object_keys(${derefExpr});\n`;
+        `${this.indent()}std::vector<std::string> ${keysVar} = jspp::Access::get_object_keys(${derefExpr});\n`;
     code += `${this.indent()}for (const auto& ${varName}_str : ${keysVar}) {\n`;
     this.indentationLevel++;
     code +=
