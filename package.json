@@ -1,6 +1,6 @@
 {
   "name": "@ugo-studio/jspp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A modern, experimental transpiler that converts JavaScript code into high-performance, standard C++23.",
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -10,8 +10,7 @@
   },
   "files": [
     "dist",
-    "src/prelude",
-    "prelude-build"
+    "src/prelude"
   ],
   "scripts": {
     "dev": "bun run src/cli.ts",

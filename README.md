@@ -54,7 +54,7 @@ The transpilation process is a classic three-stage pipeline:
 To use JSPP as a command-line tool, install it globally via npm:
 
 ```sh
-npm install -g  @ugo-studio/jspp
+npm i @ugo-studio/jspp -g
 ```
 
 ## For Developers
