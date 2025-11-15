@@ -18,14 +18,14 @@ This project serves as a deep dive into compiler design, language semantics, and
 JSPP currently supports a foundational set of JavaScript features:
 
 - **Dynamic Variables:** Declaration (`let`, `const` and `var`), assignment, and type changes at runtime.
-- **Primitive Types:** `undefined`, `null`, `boolean`, `number`, and `string`.
+- **Primitive Types:** `undefined`, `null`, `boolean`, `number`, `string`, `object` and `array`.
 - **Functions:**
   - Function declarations and arrow functions.
   - Correct hoisting for both variables and functions.
   - Closures with proper lexical scoping and lifetime management.
-- **Operators:** Basic arithmetic (`+`, `-`, `*`) and assignment (`=`).
+- **Operators:** All arithmetic (`+`, `-`, `*`) and assignment (`=`) operators.
 - **Control Flow:** `void` operator.
-- **Built-in APIs:** A `console` object with `log()`, `warn()`, and `error()` methods.
+- **Built-in APIs:** A `console` object with `log()`, `warn()`, `error()`, and `time()` methods.
 
 ## Reserved Keywords
 
@@ -45,7 +45,7 @@ The transpilation process is a classic three-stage pipeline:
 2.  **Analysis:** The `TypeAnalyzer` traverses the AST. While it doesn't perform traditional static type checking, it plays a crucial role in understanding the code's structure. It identifies scopes (global, function, block) and detects when variables are "captured" by closures.
 
 3.  **Code Generation:** The `CodeGenerator` performs a final traversal of the AST. It translates each node into its C++ equivalent.
-    - All variables are declared as `std::shared_ptr<AnyValue>` (where `AnyValue` is an alias for `std::any`). This approach elegantly mimics JavaScript's dynamic types and reference-based memory model.
+    - All variables are declared as `std::shared_ptr<AnyValue>` (where `AnyValue` is a Tagged Union for the dynamic types of JavaScript). This approach elegantly mimics JavaScript's dynamic types and reference-based memory model.
     - Closures are implemented as C++ lambdas that capture `shared_ptr`s by value, ensuring variable lifetimes are correctly extended beyond their original scope.
     - The entire script is wrapped into a single `main` function, with hoisting logic carefully replicated to ensure correct execution order.
 
