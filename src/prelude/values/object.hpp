@@ -8,7 +8,7 @@ namespace jspp
 
     struct JsObject
     {
-        std::unordered_map<std::string, AnyValue> props;
+        std::map<std::string, AnyValue> props;
 
         std::string to_std_string() const;
         AnyValue get_property(const std::string &key);

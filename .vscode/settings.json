@@ -47,7 +47,7 @@
         "tuple": "cpp",
         "type_traits": "cpp",
         "typeinfo": "cpp",
-        "unordered_map": "cpp",
+        "map": "cpp",
         "utility": "cpp",
         "variant": "cpp",
         "vector": "cpp",

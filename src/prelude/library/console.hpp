@@ -12,7 +12,7 @@
 #include <sstream>
 #include <iomanip>
 
-static std::unordered_map<std::string, std::chrono::steady_clock::time_point> timers = {};
+static std::map<std::string, std::chrono::steady_clock::time_point> timers = {};
 
 auto logFn = jspp::AnyValue::make_function([](const std::vector<jspp::AnyValue> &args)
                                            {

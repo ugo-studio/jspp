@@ -10,8 +10,8 @@ namespace jspp
     struct JsArray
     {
         std::vector<std::optional<AnyValue>> dense;                   // dense storage for small/contiguous indices
-        std::unordered_map<uint32_t, std::optional<AnyValue>> sparse; // sparse indices (very large indices)
-        std::unordered_map<std::string, AnyValue> props;              // non-index string properties
+        std::map<uint32_t, std::optional<AnyValue>> sparse; // sparse indices (very large indices)
+        std::map<std::string, AnyValue> props;              // non-index string properties
         uint64_t length = 0;
 
         JsArray() = default;

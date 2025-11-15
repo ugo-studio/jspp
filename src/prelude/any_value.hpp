@@ -11,7 +11,7 @@
 #include <memory>
 #include <utility>
 #include <string>
-#include <unordered_map>
+#include <map>
 #include <vector>
 #include <functional>
 #include <cmath>
@@ -294,7 +294,7 @@ namespace jspp
             new (&v.storage.str) std::unique_ptr<std::string>(std::make_unique<std::string>(raw_s));
             return v;
         }
-        static AnyValue make_object(const std::unordered_map<std::string, AnyValue> &props) noexcept
+        static AnyValue make_object(const std::map<std::string, AnyValue> &props) noexcept
         {
             AnyValue v;
             v.storage.type = JsType::Object;
