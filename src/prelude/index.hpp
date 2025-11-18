@@ -12,7 +12,7 @@
 
 #include "error.hpp"
 #include "descriptors.hpp"
-#include "js_value.hpp"
+#include "any_value.hpp"
 #include "error_helpers.hpp"
 
 #include "values/prototypes/string.hpp"

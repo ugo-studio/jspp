@@ -2,7 +2,7 @@
 
 #include "types.hpp"
 #include "values/generator.hpp"
-#include "js_value.hpp"
+#include "any_value.hpp"
 
 template <typename T>
 std::string jspp::JsGenerator<T>::to_std_string() const

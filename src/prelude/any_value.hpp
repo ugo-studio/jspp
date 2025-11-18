@@ -327,6 +327,21 @@ namespace jspp
             new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(call, name));
             return v;
         }
+        static AnyValue make_generator_function(const std::function<JsGenerator<AnyValue>(const std::vector<AnyValue> &)> &call, const std::string &name) noexcept
+        {
+            AnyValue v;
+            v.storage.type = JsType::Function;
+            new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>([&call](const std::vector<AnyValue> &args) -> AnyValue
+                                                                                               { return AnyValue::from_generator(call(args)); }, name));
+            return v;
+        }
+        static AnyValue from_generator(const JsGenerator<AnyValue> &gen) noexcept
+        {
+            AnyValue v;
+            v.storage.type = JsType::Generator;
+            new (&v.storage.function) std::shared_ptr<JsGenerator<AnyValue>>(std::make_shared<JsGenerator<AnyValue>>(gen));
+            return v;
+        }
         static AnyValue make_data_descriptor(const AnyValue &value, bool writable, bool enumerable, bool configurable) noexcept
         {
             AnyValue v;
@@ -335,9 +350,9 @@ namespace jspp
             return v;
         }
         static AnyValue make_accessor_descriptor(const std::optional<std::function<AnyValue(const std::vector<AnyValue> &)>> &get,
-                                                const std::optional<std::function<AnyValue(const std::vector<AnyValue> &)>> &set,
-                                                bool enumerable,
-                                                bool configurable) noexcept
+                                                 const std::optional<std::function<AnyValue(const std::vector<AnyValue> &)>> &set,
+                                                 bool enumerable,
+                                                 bool configurable) noexcept
         {
             AnyValue v;
             v.storage.type = JsType::AccessorDescriptor;

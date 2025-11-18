@@ -2,7 +2,7 @@
 
 #include "types.hpp"
 #include "values/function.hpp"
-#include "js_value.hpp"
+#include "any_value.hpp"
 
 std::string jspp::JsFunction::to_std_string() const
 {
