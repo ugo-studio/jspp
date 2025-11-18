@@ -3,7 +3,7 @@
 #include "types.hpp"
 #include "values/array.hpp"
 #include "error.hpp"
-#include "any_value.hpp"
+#include "js_value.hpp"
 #include "values/prototypes/array.hpp"
 
 std::string jspp::JsArray::to_std_string() const
@@ -16,7 +16,7 @@ std::string jspp::JsArray::to_std_string() const
     std::string result = "";
     for (uint64_t i = 0; i < length; ++i)
     {
-        std::optional<AnyValue> itemVal;
+        std::optional<JsValue> itemVal;
         if (i < dense.size())
         {
             itemVal = dense[i];
@@ -47,7 +47,7 @@ std::string jspp::JsArray::to_std_string() const
     return result;
 }
 
-jspp::AnyValue jspp::JsArray::get_property(const std::string &key)
+jspp::JsValue jspp::JsArray::get_property(const std::string &key)
 {
     if (
         !key.empty() && std::isdigit(static_cast<unsigned char>(key[0])) // Quick check: if the first character is not a digit, it can't be a standard index.
@@ -65,30 +65,30 @@ jspp::AnyValue jspp::JsArray::get_property(const std::string &key)
             auto proto_it = ArrayPrototypes::get(key, this);
             if (proto_it.has_value())
             {
-                return AnyValue::resolve_property_for_read(proto_it.value());
+                return JsValue::resolve_property_for_read(proto_it.value());
             }
             // not found
-            return AnyValue::make_undefined();
+            return JsValue::make_undefined();
         }
-        return AnyValue::resolve_property_for_read(it->second);
+        return JsValue::resolve_property_for_read(it->second);
     }
 }
 
-jspp::AnyValue jspp::JsArray::get_property(uint32_t idx)
+jspp::JsValue jspp::JsArray::get_property(uint32_t idx)
 {
     if (idx < dense.size())
     {
-        return AnyValue::resolve_property_for_read(dense[idx].value_or(AnyValue::make_undefined()));
+        return JsValue::resolve_property_for_read(dense[idx].value_or(JsValue::make_undefined()));
     }
     const auto &it = sparse.find(idx);
     if (it != sparse.end())
     {
-        return AnyValue::resolve_property_for_read(it->second.value_or(AnyValue::make_undefined()));
+        return JsValue::resolve_property_for_read(it->second.value_or(JsValue::make_undefined()));
     }
-    return AnyValue::make_undefined();
+    return JsValue::make_undefined();
 }
 
-jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const AnyValue &value)
+jspp::JsValue jspp::JsArray::set_property(const std::string &key, const JsValue &value)
 {
     if (
         !key.empty() && std::isdigit(static_cast<unsigned char>(key[0])) // Quick check: if the first character is not a digit, it can't be a standard index.
@@ -106,7 +106,7 @@ jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const AnyValu
             auto proto_value = proto_it.value();
             if (proto_value.is_accessor_descriptor())
             {
-                return AnyValue::resolve_property_for_write(proto_it.value(), value);
+                return JsValue::resolve_property_for_write(proto_it.value(), value);
             }
         }
 
@@ -114,7 +114,7 @@ jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const AnyValu
         auto it = props.find(key);
         if (it != props.end())
         {
-            return AnyValue::resolve_property_for_write(it->second, value);
+            return JsValue::resolve_property_for_write(it->second, value);
         }
         else
         {
@@ -124,7 +124,7 @@ jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const AnyValu
     }
 }
 
-jspp::AnyValue jspp::JsArray::set_property(uint32_t idx, const AnyValue &value)
+jspp::JsValue jspp::JsArray::set_property(uint32_t idx, const JsValue &value)
 {
     uint64_t newLen = static_cast<uint64_t>(idx) + 1;
     if (newLen > length)
@@ -135,9 +135,9 @@ jspp::AnyValue jspp::JsArray::set_property(uint32_t idx, const AnyValue &value)
     {
         if (!dense[idx].has_value())
         {
-            dense[idx] = AnyValue::make_undefined();
+            dense[idx] = JsValue::make_undefined();
         }
-        return AnyValue::resolve_property_for_write(dense[idx].value(), value);
+        return JsValue::resolve_property_for_write(dense[idx].value(), value);
     }
     else if (idx <= dense.size() + DENSE_GROW_THRESHOLD)
     {
@@ -152,9 +152,9 @@ jspp::AnyValue jspp::JsArray::set_property(uint32_t idx, const AnyValue &value)
         {
             if (!it->second.has_value())
             {
-                it->second = AnyValue::make_undefined();
+                it->second = JsValue::make_undefined();
             }
-            return AnyValue::resolve_property_for_write(it->second.value(), value);
+            return JsValue::resolve_property_for_write(it->second.value(), value);
         }
         else
         {

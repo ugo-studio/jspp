@@ -4,16 +4,16 @@
 
 namespace jspp
 {
-    class AnyValue;
+    class JsValue;
 
     struct JsFunction
     {
-        std::function<AnyValue(const std::vector<AnyValue> &)> call;
+        std::function<JsValue(const std::vector<JsValue> &)> call;
         std::string name;
-        std::unordered_map<std::string, AnyValue> props;
+        std::unordered_map<std::string, JsValue> props;
 
         std::string to_std_string() const;
-        AnyValue get_property(const std::string &key);
-        AnyValue set_property(const std::string &key, const AnyValue &value);
+        JsValue get_property(const std::string &key);
+        JsValue set_property(const std::string &key, const JsValue &value);
     };
 }

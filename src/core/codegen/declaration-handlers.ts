@@ -47,7 +47,7 @@ export function visitVariableDeclaration(
 
     if (isLetOrConst) {
         // If there's no initializer, it should be assigned undefined.
-        if (!initializer) return `*${name} = jspp::AnyValue::make_undefined()`;
+        if (!initializer) return `*${name} = jspp::JsValue::make_undefined()`;
         return `*${name}${initializer}`;
     }
 
@@ -62,7 +62,7 @@ export function visitVariableDeclaration(
     } else {
         const initValue = initializer
             ? initializer.substring(3)
-            : "jspp::AnyValue::make_undefined()";
-        return `auto ${name} = std::make_shared<jspp::AnyValue>(${initValue})`;
+            : "jspp::JsValue::make_undefined()";
+        return `auto ${name} = std::make_shared<jspp::JsValue>(${initValue})`;
     }
 }

@@ -5,11 +5,11 @@
 
 namespace jspp
 {
-    class AnyValue;
+    class JsValue;
 
     struct DataDescriptor
     {
-        std::shared_ptr<AnyValue> value;
+        std::shared_ptr<JsValue> value;
         bool writable = true;
         bool enumerable = false;
         bool configurable = true;
@@ -17,8 +17,8 @@ namespace jspp
 
     struct AccessorDescriptor
     {
-        std::optional<std::function<AnyValue(const std::vector<AnyValue> &)>> get; // getter = function or undefined
-        std::optional<std::function<AnyValue(const std::vector<AnyValue> &)>> set; // setter = function or undefined
+        std::optional<std::function<JsValue(const std::vector<JsValue> &)>> get; // getter = function or undefined
+        std::optional<std::function<JsValue(const std::vector<JsValue> &)>> set; // setter = function or undefined
         bool enumerable = false;
         bool configurable = true;
     };

@@ -30,22 +30,22 @@ namespace jspp
     struct DataDescriptor;
     struct AccessorDescriptor;
 
-    // Dynamic AnyValue
-    class AnyValue;
+    // Dynamic JsValue
+    class JsValue;
 
     // Custom runtime exception
     struct RuntimeError;
 
     // Arithemetic operators
-    inline AnyValue pow(const AnyValue &lhs, const AnyValue &rhs);
+    inline JsValue pow(const JsValue &lhs, const JsValue &rhs);
 
-    // AnyValue prototypes
+    // JsValue prototypes
     namespace StringPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key, const std::unique_ptr<std::string> &self);
+        inline std::optional<JsValue> get(const std::string &key, const std::unique_ptr<std::string> &self);
     }
     namespace ArrayPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key, JsArray *self);
+        inline std::optional<JsValue> get(const std::string &key, JsArray *self);
     }
 }
