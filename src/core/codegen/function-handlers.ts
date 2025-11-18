@@ -13,7 +13,7 @@ export function generateLambda(
     const argsName = this.generateUniqueName("__args_", declaredSymbols);
 
     let lambda =
-        `${capture}(const std::vector<jspp::JsValue>& ${argsName}) mutable -> jspp::JsValue `;
+        `${capture}(const std::vector<jspp::AnyValue>& ${argsName}) mutable -> jspp::AnyValue `;
 
     const visitContext: VisitContext = {
         isMainContext: false,
@@ -29,7 +29,7 @@ export function generateLambda(
                 const name = p.name.getText();
                 const defaultValue = p.initializer
                     ? this.visit(p.initializer, visitContext)
-                    : "jspp::JsValue::make_undefined()";
+                    : "jspp::AnyValue::make_undefined()";
                 paramExtraction +=
                     `${this.indent()}auto ${name} = ${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue};\n`;
             });
@@ -49,7 +49,7 @@ export function generateLambda(
                 const name = p.name.getText();
                 const defaultValue = p.initializer
                     ? this.visit(p.initializer, visitContext)
-                    : "jspp::JsValue::make_undefined()";
+                    : "jspp::AnyValue::make_undefined()";
                 lambda +=
                     `${this.indent()}auto ${name} = ${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue};\n`;
             });
@@ -65,14 +65,14 @@ export function generateLambda(
             lambda += `${this.indent()}}`;
         }
     } else {
-        lambda += "{ return jspp::JsValue::make_undefined(); }\n";
+        lambda += "{ return jspp::AnyValue::make_undefined(); }\n";
     }
 
-    const signature = `jspp::JsValue(const std::vector<jspp::JsValue>&)`;
+    const signature = `jspp::AnyValue(const std::vector<jspp::AnyValue>&)`;
     const callable = `std::function<${signature}>(${lambda})`;
 
     const funcName = node.name?.getText();
-    const fullExpression = `jspp::JsValue::make_function(${callable}, "${
+    const fullExpression = `jspp::AnyValue::make_function(${callable}, "${
         funcName || ""
     }")`;
 
@@ -112,10 +112,10 @@ export function visitFunctionExpression(
     const funcExpr = node as ts.FunctionExpression;
     if (funcExpr.name) {
         const funcName = funcExpr.name.getText();
-        let code = "([=]() -> jspp::JsValue {\n";
+        let code = "([=]() -> jspp::AnyValue {\n";
         this.indentationLevel++;
         code +=
-            `${this.indent()}auto ${funcName} = std::make_shared<jspp::JsValue>();\n`;
+            `${this.indent()}auto ${funcName} = std::make_shared<jspp::AnyValue>();\n`;
         const lambda = this.generateLambda(funcExpr, false, "[=]");
         code += `${this.indent()}*${funcName} = ${lambda};\n`;
         code += `${this.indent()}return *${funcName};\n`;

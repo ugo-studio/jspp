@@ -1,15 +1,17 @@
 #pragma once
 
 #include "types.hpp"
-#include "values/function.hpp"
+#include "values/generator.hpp"
 #include "js_value.hpp"
 
-std::string jspp::JsFunction::to_std_string() const
+template <typename T>
+std::string jspp::JsGenerator<T>::to_std_string() const
 {
-    return "function " + name + "() { [native code] }";
+    return "[object Generator]";
 }
 
-jspp::AnyValue jspp::JsFunction::get_property(const std::string &key)
+template <typename T>
+jspp::AnyValue jspp::JsGenerator<T>::get_property(const std::string &key)
 {
     auto it = props.find(key);
     if (it != props.end())
@@ -19,7 +21,8 @@ jspp::AnyValue jspp::JsFunction::get_property(const std::string &key)
     return jspp::AnyValue::make_undefined();
 }
 
-jspp::AnyValue jspp::JsFunction::set_property(const std::string &key, const AnyValue &value)
+template <typename T>
+jspp::AnyValue jspp::JsGenerator<T>::set_property(const std::string &key, const AnyValue &value)
 {
     auto it = props.find(key);
     if (it != props.end())

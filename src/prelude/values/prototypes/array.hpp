@@ -12,30 +12,29 @@ namespace jspp
 {
     namespace ArrayPrototypes
     {
-        inline std::optional<JsValue> get(const std::string &key, JsArray *self)
+        inline std::optional<AnyValue> get(const std::string &key, JsArray *self)
         {
-
             // --- toString() method ---
             if (key == "toString")
             {
-                return JsValue::make_function([&self](const std::vector<JsValue> &args) -> JsValue
-                                               { return JsValue::make_string(self->to_std_string()); },
-                                               key);
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &_) -> AnyValue
+                                              { return AnyValue::make_string(self->to_std_string()); },
+                                              key);
             }
 
             // --- length property ---
             if (key == "length")
             {
-                auto getter = [&self](const std::vector<JsValue> &args) -> JsValue
+                auto getter = [&self](const std::vector<AnyValue> &args) -> AnyValue
                 {
-                    return JsValue::make_number(self->length);
+                    return AnyValue::make_number(self->length);
                 };
 
-                auto setter = [&self](const std::vector<JsValue> &args) -> JsValue
+                auto setter = [&self](const std::vector<AnyValue> &args) -> AnyValue
                 {
                     if (args.empty())
                     {
-                        return JsValue::make_undefined();
+                        return AnyValue::make_undefined();
                     }
 
                     const auto &new_len_val = args[0];
@@ -70,36 +69,36 @@ namespace jspp
                     return new_len_val;
                 };
 
-                return JsValue::make_accessor_descriptor(getter,
-                                                          setter,
-                                                          false,
-                                                          false);
+                return AnyValue::make_accessor_descriptor(getter,
+                                                         setter,
+                                                         false,
+                                                         false);
             }
 
             // --- push() method ---
             if (key == "push")
             {
-                return JsValue::make_function([&self](const std::vector<JsValue> &args) -> JsValue
-                                               {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                              {
                                                                                            for (const auto &arg : args)
                                                                                            {
                                                                                                self->set_property(static_cast<uint32_t>(self->length), arg);
                                                                                            }
-                                                                                           return JsValue::make_number(self->length); },
-                                               key);
+                                                                                           return AnyValue::make_number(self->length); },
+                                              key);
             }
 
             // --- pop() method ---
             if (key == "pop")
             {
-                return JsValue::make_function([&self](const std::vector<JsValue> &args) -> JsValue
-                                               {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                              {
                                                                                            if (self->length == 0)
                                                                                            {
-                                                                                               return JsValue::make_undefined();
+                                                                                               return AnyValue::make_undefined();
                                                                                            }
                                                                                            uint64_t last_idx = self->length - 1;
-                                                                                           JsValue last_val = self->get_property(static_cast<uint32_t>(last_idx));
+                                                                                           AnyValue last_val = self->get_property(static_cast<uint32_t>(last_idx));
 
                                                                                            // Remove from dense
                                                                                            if (last_idx < self->dense.size())
@@ -111,19 +110,19 @@ namespace jspp
 
                                                                                            self->length--;
                                                                                            return last_val; },
-                                               key);
+                                              key);
             }
 
             // --- shift() method ---
             if (key == "shift")
             {
-                return JsValue::make_function([&self](const std::vector<JsValue> &args) -> JsValue
-                                               {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                              {
                                                                                            if (self->length == 0)
                                                                                            {
-                                                                                               return JsValue::make_undefined();
+                                                                                               return AnyValue::make_undefined();
                                                                                            }
-                                                                                           JsValue first_val = self->get_property(0u);
+                                                                                           AnyValue first_val = self->get_property(0u);
 
                                                                                            // Shift all elements to the left
                                                                                            for (uint64_t i = 0; i < self->length - 1; ++i)
@@ -142,18 +141,18 @@ namespace jspp
                                                                                            self->length--;
 
                                                                                            return first_val; },
-                                               key);
+                                              key);
             }
 
             // --- unshift() method ---
             if (key == "unshift")
             {
-                return JsValue::make_function([&self](const std::vector<JsValue> &args) -> JsValue
-                                               {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                              {
                                                                                              size_t args_count = args.size();
                                                                                              if (args_count == 0)
                                                                                              {
-                                                                                                 return JsValue::make_number(self->length);
+                                                                                                 return AnyValue::make_number(self->length);
                                                                                              }
 
                                                                                              // Shift existing elements to the right
@@ -168,15 +167,15 @@ namespace jspp
                                                                                                  self->set_property(static_cast<uint32_t>(i), args[i]);
                                                                                              }
 
-                                                                                             return JsValue::make_number(self->length); },
-                                               key);
+                                                                                             return AnyValue::make_number(self->length); },
+                                              key);
             }
 
             // --- join() method ---
             if (key == "join")
             {
-                return JsValue::make_function([&self](const std::vector<JsValue> &args) -> JsValue
-                                               {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                              {
                                                                                            std::string sep = ",";
                                                                                            if (!args.empty() && !args[0].is_undefined())
                                                                                            {
@@ -186,7 +185,7 @@ namespace jspp
                                                                                            std::string result = "";
                                                                                            for (uint64_t i = 0; i < self->length; ++i)
                                                                                            {
-                                                                                               JsValue item = self->get_property(static_cast<uint32_t>(i));
+                                                                                               AnyValue item = self->get_property(static_cast<uint32_t>(i));
                                                                                                if (!item.is_undefined() && !item.is_null())
                                                                                                {
                                                                                                    result += item.to_std_string();
@@ -196,15 +195,15 @@ namespace jspp
                                                                                                    result += sep;
                                                                                                }
                                                                                            }
-                                                                                           return JsValue::make_string(result); },
-                                               key);
+                                                                                           return AnyValue::make_string(result); },
+                                              key);
             }
 
             // --- forEach() method ---
             if (key == "forEach")
             {
-                return JsValue::make_function([&self](const std::vector<JsValue> &args) -> JsValue
-                                               {
+                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                                              {
                                                                                            if (args.empty() || !args[0].is_function())
                                                                                            {
                                                                                                throw RuntimeError::make_error("callback is not a function", "TypeError");
@@ -212,14 +211,14 @@ namespace jspp
                                                                                            auto callback = args[0].as_function();
                                                                                            for (uint64_t i = 0; i < self->length; ++i)
                                                                                            {
-                                                                                               JsValue val = self->get_property(static_cast<uint32_t>(i));
+                                                                                               AnyValue val = self->get_property(static_cast<uint32_t>(i));
                                                                                                if (!val.is_undefined())
                                                                                                { // forEach skips empty slots
-                                                                                                   callback->call({val, JsValue::make_number(i)});
+                                                                                                   callback->call({val, AnyValue::make_number(i)});
                                                                                                }
                                                                                            }
-                                                                                           return JsValue::make_undefined(); },
-                                               key);
+                                                                                           return AnyValue::make_undefined(); },
+                                              key);
             }
 
             return std::nullopt;

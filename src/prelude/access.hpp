@@ -10,7 +10,7 @@ namespace jspp
     namespace Access
     {
         // Helper function to check for TDZ and deref variables
-        inline const JsValue &deref(const std::shared_ptr<JsValue> &var, const std::string &name)
+        inline const AnyValue &deref(const std::shared_ptr<AnyValue> &var, const std::string &name)
         {
             if ((*var).is_uninitialized()) [[unlikely]]
             {
@@ -18,7 +18,7 @@ namespace jspp
             }
             return *var;
         }
-        inline JsValue &deref(std::shared_ptr<JsValue> &var, const std::string &name)
+        inline AnyValue &deref(std::shared_ptr<AnyValue> &var, const std::string &name)
         {
             if ((*var).is_uninitialized()) [[unlikely]]
             {
@@ -26,7 +26,7 @@ namespace jspp
             }
             return *var;
         }
-        inline const JsValue &deref(const std::unique_ptr<JsValue> &var, const std::string &name)
+        inline const AnyValue &deref(const std::unique_ptr<AnyValue> &var, const std::string &name)
         {
             if ((*var).is_uninitialized()) [[unlikely]]
             {
@@ -34,7 +34,7 @@ namespace jspp
             }
             return *var;
         }
-        inline JsValue &deref(std::unique_ptr<JsValue> &var, const std::string &name)
+        inline AnyValue &deref(std::unique_ptr<AnyValue> &var, const std::string &name)
         {
             if ((*var).is_uninitialized()) [[unlikely]]
             {
@@ -43,7 +43,7 @@ namespace jspp
             return *var;
         }
 
-        inline std::vector<std::string> get_object_keys(const JsValue &obj)
+        inline std::vector<std::string> get_object_keys(const AnyValue &obj)
         {
             std::vector<std::string> keys;
 

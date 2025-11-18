@@ -5,24 +5,25 @@
 
 namespace jspp
 {
-    class JsValue;
+    // Forward declaration of AnyValue
+    class AnyValue;
 
     struct JsArray
     {
-        std::vector<std::optional<JsValue>> dense;                   // dense storage for small/contiguous indices
-        std::unordered_map<uint32_t, std::optional<JsValue>> sparse; // sparse indices (very large indices)
-        std::unordered_map<std::string, JsValue> props;              // non-index string properties
+        std::vector<std::optional<AnyValue>> dense;                   // dense storage for small/contiguous indices
+        std::unordered_map<uint32_t, std::optional<AnyValue>> sparse; // sparse indices (very large indices)
+        std::unordered_map<std::string, AnyValue> props;              // non-index string properties
         uint64_t length = 0;
 
         JsArray() = default;
-        explicit JsArray(const std::vector<std::optional<JsValue>> &items) : dense(items), length(items.size()) {}
+        explicit JsArray(const std::vector<std::optional<AnyValue>> &items) : dense(items), length(items.size()) {}
 
         std::string to_std_string() const;
 
-        JsValue get_property(const std::string &key);
-        JsValue get_property(uint32_t idx);
-        JsValue set_property(const std::string &key, const JsValue &value);
-        JsValue set_property(uint32_t idx, const JsValue &value);
+        AnyValue get_property(const std::string &key);
+        AnyValue get_property(uint32_t idx);
+        AnyValue set_property(const std::string &key, const AnyValue &value);
+        AnyValue set_property(uint32_t idx, const AnyValue &value);
 
         static bool is_array_index(const std::string &s)
         {

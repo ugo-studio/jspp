@@ -32,9 +32,9 @@ namespace jspp
         }
 
         // Forward declarations
-        inline std::string to_log_string(const JsValue &val);
-        inline std::string to_log_string(const JsValue &val, std::unordered_set<const void *> &visited, int depth);
-        inline bool is_simple_value(const JsValue &val);
+        inline std::string to_log_string(const AnyValue &val);
+        inline std::string to_log_string(const AnyValue &val, std::unordered_set<const void *> &visited, int depth);
+        inline bool is_simple_value(const AnyValue &val);
 
         inline bool is_valid_js_identifier(const std::string &s)
         {
@@ -56,7 +56,7 @@ namespace jspp
             return true;
         }
 
-        inline bool is_simple_value(const JsValue &val)
+        inline bool is_simple_value(const AnyValue &val)
         {
             return val.is_undefined() || val.is_null() || val.is_uninitialized() ||
                    val.is_boolean() || val.is_number() || val.is_string();
@@ -71,13 +71,13 @@ namespace jspp
             return str;
         }
 
-        inline std::string to_log_string(const JsValue &val)
+        inline std::string to_log_string(const AnyValue &val)
         {
             std::unordered_set<const void *> visited;
             return to_log_string(val, visited, 0);
         }
 
-        inline std::string to_log_string(const JsValue &val, std::unordered_set<const void *> &visited, int depth)
+        inline std::string to_log_string(const AnyValue &val, std::unordered_set<const void *> &visited, int depth)
         {
             // Primitives and simple wrapped values
             if (val.is_uninitialized())
@@ -254,7 +254,7 @@ namespace jspp
                 {
                     for (size_t i = 0; i < item_count; ++i)
                     {
-                        std::optional<JsValue> itemVal;
+                        std::optional<AnyValue> itemVal;
                         if (i < arr->dense.size())
                         {
                             itemVal = arr->dense[i];
@@ -283,7 +283,7 @@ namespace jspp
 
                     for (size_t i = 0; i < item_count; ++i)
                     {
-                        std::optional<JsValue> itemVal;
+                        std::optional<AnyValue> itemVal;
                         if (i < arr->dense.size())
                         {
                             itemVal = arr->dense[i];
@@ -338,7 +338,7 @@ namespace jspp
 
                 for (size_t i = 0; i < items_to_show; ++i)
                 {
-                    std::optional<JsValue> itemVal;
+                    std::optional<AnyValue> itemVal;
                     if (i < arr->dense.size())
                     {
                         itemVal = arr->dense[i];

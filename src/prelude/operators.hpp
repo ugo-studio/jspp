@@ -11,7 +11,7 @@ namespace jspp
     namespace Operators_Private
     {
         // Implements the ToNumber abstract operation from ECMA-262.
-        inline double ToNumber(const JsValue &val)
+        inline double ToNumber(const AnyValue &val)
         {
             if (val.is_number())
                 return val.as_double();
@@ -48,7 +48,7 @@ namespace jspp
             return std::numeric_limits<double>::quiet_NaN();
         }
         // Implements the ToInt32 abstract operation from ECMA-262.
-        inline int32_t ToInt32(const JsValue &val)
+        inline int32_t ToInt32(const AnyValue &val)
         {
             double num = ToNumber(val);
 
@@ -66,189 +66,189 @@ namespace jspp
     }
 
     // --- BASIC ARITHEMETIC
-    inline JsValue operator+(const JsValue &lhs, const JsValue &rhs)
+    inline AnyValue operator+(const AnyValue &lhs, const AnyValue &rhs)
     {
         // Special case for addition: string concatenation has priority
         if (lhs.is_string() || rhs.is_string())
-            return JsValue::make_string(lhs.to_std_string() + rhs.to_std_string());
+            return AnyValue::make_string(lhs.to_std_string() + rhs.to_std_string());
         if (lhs.is_number() && rhs.is_number())
-            return JsValue::make_number(lhs.as_double() + rhs.as_double());
+            return AnyValue::make_number(lhs.as_double() + rhs.as_double());
         // Fallback to numeric conversion
-        return JsValue::make_number(Operators_Private::ToNumber(lhs) + Operators_Private::ToNumber(rhs));
+        return AnyValue::make_number(Operators_Private::ToNumber(lhs) + Operators_Private::ToNumber(rhs));
     }
-    inline JsValue operator-(const JsValue &lhs, const JsValue &rhs)
+    inline AnyValue operator-(const AnyValue &lhs, const AnyValue &rhs)
     {
-        return JsValue::make_number(Operators_Private::ToNumber(lhs) - Operators_Private::ToNumber(rhs));
+        return AnyValue::make_number(Operators_Private::ToNumber(lhs) - Operators_Private::ToNumber(rhs));
     }
-    inline JsValue operator*(const JsValue &lhs, const JsValue &rhs)
+    inline AnyValue operator*(const AnyValue &lhs, const AnyValue &rhs)
     {
-        return JsValue::make_number(Operators_Private::ToNumber(lhs) * Operators_Private::ToNumber(rhs));
+        return AnyValue::make_number(Operators_Private::ToNumber(lhs) * Operators_Private::ToNumber(rhs));
     }
-    inline JsValue operator/(const JsValue &lhs, const JsValue &rhs)
+    inline AnyValue operator/(const AnyValue &lhs, const AnyValue &rhs)
     {
-        return JsValue::make_number(Operators_Private::ToNumber(lhs) / Operators_Private::ToNumber(rhs));
+        return AnyValue::make_number(Operators_Private::ToNumber(lhs) / Operators_Private::ToNumber(rhs));
     }
-    inline JsValue operator%(const JsValue &lhs, const JsValue &rhs)
+    inline AnyValue operator%(const AnyValue &lhs, const AnyValue &rhs)
     {
-        return JsValue::make_number(std::fmod(Operators_Private::ToNumber(lhs), Operators_Private::ToNumber(rhs)));
+        return AnyValue::make_number(std::fmod(Operators_Private::ToNumber(lhs), Operators_Private::ToNumber(rhs)));
     }
 
     // --- UNARY OPERATORS
-    inline JsValue operator-(const JsValue &val)
+    inline AnyValue operator-(const AnyValue &val)
     {
-        return JsValue::make_number(-Operators_Private::ToNumber(val));
+        return AnyValue::make_number(-Operators_Private::ToNumber(val));
     }
-    inline JsValue operator~(const JsValue &val)
+    inline AnyValue operator~(const AnyValue &val)
     {
-        return JsValue::make_number(~Operators_Private::ToInt32(val));
+        return AnyValue::make_number(~Operators_Private::ToInt32(val));
     }
 
     // --- EXPONENTIATION
-    inline JsValue pow(const JsValue &lhs, const JsValue &rhs)
+    inline AnyValue pow(const AnyValue &lhs, const AnyValue &rhs)
     {
         double base = Operators_Private::ToNumber(lhs);
         double exp = Operators_Private::ToNumber(rhs);
-        return JsValue::make_number(std::pow(base, exp));
+        return AnyValue::make_number(std::pow(base, exp));
     }
 
     // --- COMPARISON OPERATORS
-    inline JsValue operator<(const JsValue &lhs, const JsValue &rhs)
+    inline AnyValue operator<(const AnyValue &lhs, const AnyValue &rhs)
     {
         // Simplified Abstract Relational Comparison
         if (lhs.is_string() && rhs.is_string())
-            return JsValue::make_boolean(*lhs.as_string() < *rhs.as_string());
+            return AnyValue::make_boolean(*lhs.as_string() < *rhs.as_string());
 
         double l = Operators_Private::ToNumber(lhs);
         double r = Operators_Private::ToNumber(rhs);
 
         if (std::isnan(l) || std::isnan(r))
-            return JsValue::make_boolean(false); // Comparison with NaN is false
+            return AnyValue::make_boolean(false); // Comparison with NaN is false
 
-        return JsValue::make_boolean(l < r);
+        return AnyValue::make_boolean(l < r);
     }
-    inline JsValue operator>(const JsValue &lhs, const JsValue &rhs)
+    inline AnyValue operator>(const AnyValue &lhs, const AnyValue &rhs)
     {
         return rhs < lhs;
     }
-    inline JsValue operator<=(const JsValue &lhs, const JsValue &rhs)
+    inline AnyValue operator<=(const AnyValue &lhs, const AnyValue &rhs)
     {
         // a <= b is equivalent to !(b < a)
-        JsValue result = rhs < lhs;
-        return JsValue::make_boolean(!result.as_boolean());
+        AnyValue result = rhs < lhs;
+        return AnyValue::make_boolean(!result.as_boolean());
     }
-    inline JsValue operator>=(const JsValue &lhs, const JsValue &rhs)
+    inline AnyValue operator>=(const AnyValue &lhs, const AnyValue &rhs)
     {
         // a >= b is equivalent to !(a < b)
-        JsValue result = lhs < rhs;
-        return JsValue::make_boolean(!result.as_boolean());
+        AnyValue result = lhs < rhs;
+        return AnyValue::make_boolean(!result.as_boolean());
     }
-    inline JsValue operator==(const JsValue &lhs, const JsValue &rhs)
+    inline AnyValue operator==(const AnyValue &lhs, const AnyValue &rhs)
     {
-        return JsValue::make_boolean(lhs.is_equal_to(rhs));
+        return AnyValue::make_boolean(lhs.is_equal_to(rhs));
     }
-    inline JsValue operator!=(const JsValue &lhs, const JsValue &rhs)
+    inline AnyValue operator!=(const AnyValue &lhs, const AnyValue &rhs)
     {
-        return JsValue::make_boolean(!lhs.is_equal_to(rhs));
+        return AnyValue::make_boolean(!lhs.is_equal_to(rhs));
     }
 
     // --- BITWISE OPERATORS
-    inline JsValue operator^(const JsValue &lhs, const JsValue &rhs)
+    inline AnyValue operator^(const AnyValue &lhs, const AnyValue &rhs)
     {
-        return JsValue::make_number(Operators_Private::ToInt32(lhs) ^ Operators_Private::ToInt32(rhs));
+        return AnyValue::make_number(Operators_Private::ToInt32(lhs) ^ Operators_Private::ToInt32(rhs));
     }
-    inline JsValue operator&(const JsValue &lhs, const JsValue &rhs)
+    inline AnyValue operator&(const AnyValue &lhs, const AnyValue &rhs)
     {
-        return JsValue::make_number(Operators_Private::ToInt32(lhs) & Operators_Private::ToInt32(rhs));
+        return AnyValue::make_number(Operators_Private::ToInt32(lhs) & Operators_Private::ToInt32(rhs));
     }
-    inline JsValue operator|(const JsValue &lhs, const JsValue &rhs)
+    inline AnyValue operator|(const AnyValue &lhs, const AnyValue &rhs)
     {
-        return JsValue::make_number(Operators_Private::ToInt32(lhs) | Operators_Private::ToInt32(rhs));
+        return AnyValue::make_number(Operators_Private::ToInt32(lhs) | Operators_Private::ToInt32(rhs));
     }
 
     // --- SHIFT OPERATORS
-    inline JsValue operator<<(const JsValue &lhs, const JsValue &rhs)
+    inline AnyValue operator<<(const AnyValue &lhs, const AnyValue &rhs)
     {
         // The right operand is treated as an unsigned 32-bit integer, and only the lower 5 bits are used.
-        return JsValue::make_number(Operators_Private::ToInt32(lhs) << (Operators_Private::ToInt32(rhs) & 0x1F));
+        return AnyValue::make_number(Operators_Private::ToInt32(lhs) << (Operators_Private::ToInt32(rhs) & 0x1F));
     }
-    inline JsValue operator>>(const JsValue &lhs, const JsValue &rhs)
+    inline AnyValue operator>>(const AnyValue &lhs, const AnyValue &rhs)
     {
-        return JsValue::make_number(Operators_Private::ToInt32(lhs) >> (Operators_Private::ToInt32(rhs) & 0x1F));
+        return AnyValue::make_number(Operators_Private::ToInt32(lhs) >> (Operators_Private::ToInt32(rhs) & 0x1F));
     }
 
     // --- INCREMENT / DECREMENT
-    inline JsValue &operator++(JsValue &val) // pre-increment
+    inline AnyValue &operator++(AnyValue &val) // pre-increment
     {
         double num = Operators_Private::ToNumber(val);
-        val = JsValue::make_number(num + 1.0);
+        val = AnyValue::make_number(num + 1.0);
         return val;
     }
-    inline JsValue operator++(JsValue &val, int) // post-increment
+    inline AnyValue operator++(AnyValue &val, int) // post-increment
     {
-        JsValue old = JsValue::make_number(Operators_Private::ToNumber(val));
+        AnyValue old = AnyValue::make_number(Operators_Private::ToNumber(val));
         ++val;
         return old;
     }
-    inline JsValue &operator--(JsValue &val) // pre-decrement
+    inline AnyValue &operator--(AnyValue &val) // pre-decrement
     {
         double num = Operators_Private::ToNumber(val);
-        val = JsValue::make_number(num - 1.0);
+        val = AnyValue::make_number(num - 1.0);
         return val;
     }
-    inline JsValue operator--(JsValue &val, int) // post-decrement
+    inline AnyValue operator--(AnyValue &val, int) // post-decrement
     {
-        JsValue old = JsValue::make_number(Operators_Private::ToNumber(val));
+        AnyValue old = AnyValue::make_number(Operators_Private::ToNumber(val));
         --val;
         return old;
     }
 
     // --- COMPOUND ASSIGNMENT
-    inline JsValue &operator+=(JsValue &lhs, const JsValue &rhs)
+    inline AnyValue &operator+=(AnyValue &lhs, const AnyValue &rhs)
     {
         lhs = lhs + rhs;
         return lhs;
     }
-    inline JsValue &operator-=(JsValue &lhs, const JsValue &rhs)
+    inline AnyValue &operator-=(AnyValue &lhs, const AnyValue &rhs)
     {
         lhs = lhs - rhs;
         return lhs;
     }
-    inline JsValue &operator*=(JsValue &lhs, const JsValue &rhs)
+    inline AnyValue &operator*=(AnyValue &lhs, const AnyValue &rhs)
     {
         lhs = lhs * rhs;
         return lhs;
     }
-    inline JsValue &operator/=(JsValue &lhs, const JsValue &rhs)
+    inline AnyValue &operator/=(AnyValue &lhs, const AnyValue &rhs)
     {
         lhs = lhs / rhs;
         return lhs;
     }
-    inline JsValue &operator%=(JsValue &lhs, const JsValue &rhs)
+    inline AnyValue &operator%=(AnyValue &lhs, const AnyValue &rhs)
     {
         lhs = lhs % rhs;
         return lhs;
     }
-    inline JsValue &operator^=(JsValue &lhs, const JsValue &rhs)
+    inline AnyValue &operator^=(AnyValue &lhs, const AnyValue &rhs)
     {
         lhs = lhs ^ rhs;
         return lhs;
     }
-    inline JsValue &operator&=(JsValue &lhs, const JsValue &rhs)
+    inline AnyValue &operator&=(AnyValue &lhs, const AnyValue &rhs)
     {
         lhs = lhs & rhs;
         return lhs;
     }
-    inline JsValue &operator|=(JsValue &lhs, const JsValue &rhs)
+    inline AnyValue &operator|=(AnyValue &lhs, const AnyValue &rhs)
     {
         lhs = lhs | rhs;
         return lhs;
     }
-    inline JsValue &operator<<=(JsValue &lhs, const JsValue &rhs)
+    inline AnyValue &operator<<=(AnyValue &lhs, const AnyValue &rhs)
     {
         lhs = lhs << rhs;
         return lhs;
     }
-    inline JsValue &operator>>=(JsValue &lhs, const JsValue &rhs)
+    inline AnyValue &operator>>=(AnyValue &lhs, const AnyValue &rhs)
     {
         lhs = lhs >> rhs;
         return lhs;

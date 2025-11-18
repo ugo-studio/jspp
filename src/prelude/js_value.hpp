@@ -21,6 +21,7 @@
 #include "values/object.hpp"
 #include "values/array.hpp"
 #include "values/function.hpp"
+#include "values/generator.hpp"
 #include "error.hpp"
 #include "descriptors.hpp"
 
@@ -37,8 +38,9 @@ namespace jspp
         Object = 6,
         Array = 7,
         Function = 8,
-        DataDescriptor = 9,
-        AccessorDescriptor = 10,
+        Generator = 9,
+        DataDescriptor = 10,
+        AccessorDescriptor = 11,
     };
 
     // Tagged storage with a union for payload
@@ -56,6 +58,7 @@ namespace jspp
             std::shared_ptr<JsObject> object;
             std::shared_ptr<JsArray> array;
             std::shared_ptr<JsFunction> function;
+            std::shared_ptr<JsGenerator<AnyValue>> generator;
             std::shared_ptr<DataDescriptor> data_desc;
             std::shared_ptr<AccessorDescriptor> accessor_desc;
         };
@@ -64,7 +67,7 @@ namespace jspp
         ~TaggedValue() {}
     };
 
-    class JsValue
+    class AnyValue
     {
     private:
         TaggedValue storage;
@@ -85,6 +88,9 @@ namespace jspp
             case JsType::Function:
                 storage.function.~shared_ptr();
                 break;
+            case JsType::Generator:
+                storage.generator.~shared_ptr();
+                break;
             case JsType::DataDescriptor:
                 storage.data_desc.~shared_ptr();
                 break;
@@ -103,7 +109,7 @@ namespace jspp
             storage.undefined = JsUndefined{};
         }
 
-        void move_from(JsValue &other) noexcept
+        void move_from(AnyValue &other) noexcept
         {
             storage.type = other.storage.type;
             switch (other.storage.type)
@@ -135,6 +141,9 @@ namespace jspp
             case JsType::Function:
                 new (&storage.function) std::shared_ptr<JsFunction>(std::move(other.storage.function));
                 break;
+            case JsType::Generator:
+                new (&storage.generator) std::shared_ptr<JsGenerator<AnyValue>>(std::move(other.storage.generator));
+                break;
             case JsType::DataDescriptor:
                 new (&storage.data_desc) std::shared_ptr<DataDescriptor>(std::move(other.storage.data_desc));
                 break;
@@ -144,7 +153,7 @@ namespace jspp
             }
         }
 
-        void copy_from(const JsValue &other)
+        void copy_from(const AnyValue &other)
         {
             storage.type = other.storage.type;
             switch (other.storage.type)
@@ -176,6 +185,9 @@ namespace jspp
             case JsType::Function:
                 new (&storage.function) std::shared_ptr<JsFunction>(other.storage.function); // shallow copy
                 break;
+            case JsType::Generator:
+                new (&storage.generator) std::shared_ptr<JsGenerator<AnyValue>>(other.storage.generator); // shallow copy
+                break;
             case JsType::DataDescriptor:
                 new (&storage.data_desc) std::shared_ptr<DataDescriptor>(other.storage.data_desc); // shallow copy
                 break;
@@ -187,26 +199,26 @@ namespace jspp
 
     public:
         // default ctor (Undefined)
-        JsValue() noexcept
+        AnyValue() noexcept
         {
             storage.type = JsType::Undefined;
             storage.undefined = JsUndefined{};
         }
 
         // 1. Destructor
-        ~JsValue() noexcept
+        ~AnyValue() noexcept
         {
             destroy_value();
         }
 
         // 2. Copy Constructor (deep copy)
-        JsValue(const JsValue &other)
+        AnyValue(const AnyValue &other)
         {
             copy_from(other);
         }
 
         // 3. Copy Assignment Operator
-        JsValue &operator=(const JsValue &other)
+        AnyValue &operator=(const AnyValue &other)
         {
             if (this != &other)
             {
@@ -217,7 +229,7 @@ namespace jspp
         }
 
         // 4. Move Constructor
-        JsValue(JsValue &&other) noexcept
+        AnyValue(AnyValue &&other) noexcept
         {
             storage.type = JsType::Undefined;
             storage.undefined = JsUndefined{};
@@ -226,7 +238,7 @@ namespace jspp
         }
 
         // 5. Move Assignment Operator
-        JsValue &operator=(JsValue &&other) noexcept
+        AnyValue &operator=(AnyValue &&other) noexcept
         {
             if (this != &other)
             {
@@ -237,104 +249,104 @@ namespace jspp
             return *this;
         }
 
-        friend void swap(JsValue &a, JsValue &b) noexcept
+        friend void swap(AnyValue &a, AnyValue &b) noexcept
         {
-            JsValue tmp(std::move(a));
+            AnyValue tmp(std::move(a));
             a = std::move(b);
             b = std::move(tmp);
         }
 
         // factories -------------------------------------------------------
-        static JsValue make_number(double d) noexcept
+        static AnyValue make_number(double d) noexcept
         {
-            JsValue v;
+            AnyValue v;
             v.storage.type = JsType::Number;
             v.storage.number = d;
             return v;
         }
-        static JsValue make_nan() noexcept
+        static AnyValue make_nan() noexcept
         {
-            JsValue v;
+            AnyValue v;
             v.storage.type = JsType::Number;
             v.storage.number = std::numeric_limits<double>::quiet_NaN();
             return v;
         }
-        static JsValue make_uninitialized() noexcept
+        static AnyValue make_uninitialized() noexcept
         {
-            JsValue v;
+            AnyValue v;
             v.storage.type = JsType::Uninitialized;
             v.storage.uninitialized = JsUninitialized{};
             return v;
         }
-        static JsValue make_undefined() noexcept
+        static AnyValue make_undefined() noexcept
         {
-            JsValue v;
+            AnyValue v;
             v.storage.type = JsType::Undefined;
             v.storage.undefined = JsUndefined{};
             return v;
         }
-        static JsValue make_null() noexcept
+        static AnyValue make_null() noexcept
         {
-            JsValue v;
+            AnyValue v;
             v.storage.type = JsType::Null;
             v.storage.null = JsNull{};
             return v;
         }
-        static JsValue make_boolean(bool b) noexcept
+        static AnyValue make_boolean(bool b) noexcept
         {
-            JsValue v;
+            AnyValue v;
             v.storage.type = JsType::Boolean;
             v.storage.boolean = b;
             return v;
         }
-        static JsValue make_string(const std::string &raw_s) noexcept
+        static AnyValue make_string(const std::string &raw_s) noexcept
         {
-            JsValue v;
+            AnyValue v;
             v.storage.type = JsType::String;
             new (&v.storage.str) std::unique_ptr<std::string>(std::make_unique<std::string>(raw_s));
             return v;
         }
-        static JsValue make_object(const std::map<std::string, JsValue> &props) noexcept
+        static AnyValue make_object(const std::map<std::string, AnyValue> &props) noexcept
         {
-            JsValue v;
+            AnyValue v;
             v.storage.type = JsType::Object;
             new (&v.storage.object) std::shared_ptr<JsObject>(std::make_shared<JsObject>(props));
             return v;
         }
-        static JsValue make_array(const std::vector<std::optional<JsValue>> &dense) noexcept
+        static AnyValue make_array(const std::vector<std::optional<AnyValue>> &dense) noexcept
         {
-            JsValue v;
+            AnyValue v;
             v.storage.type = JsType::Array;
             new (&v.storage.array) std::shared_ptr<JsArray>(std::make_shared<JsArray>(dense));
             return v;
         }
-        static JsValue make_function(const std::function<JsValue(const std::vector<JsValue> &)> &call, const std::string &name) noexcept
+        static AnyValue make_function(const std::function<AnyValue(const std::vector<AnyValue> &)> &call, const std::string &name) noexcept
         {
-            JsValue v;
+            AnyValue v;
             v.storage.type = JsType::Function;
             new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(call, name));
             return v;
         }
-        static JsValue make_data_descriptor(const JsValue &value, bool writable, bool enumerable, bool configurable) noexcept
+        static AnyValue make_data_descriptor(const AnyValue &value, bool writable, bool enumerable, bool configurable) noexcept
         {
-            JsValue v;
+            AnyValue v;
             v.storage.type = JsType::DataDescriptor;
-            new (&v.storage.data_desc) std::shared_ptr<DataDescriptor>(std::make_shared<DataDescriptor>(std::make_shared<JsValue>(value), writable, enumerable, configurable));
+            new (&v.storage.data_desc) std::shared_ptr<DataDescriptor>(std::make_shared<DataDescriptor>(std::make_shared<AnyValue>(value), writable, enumerable, configurable));
             return v;
         }
-        static JsValue make_accessor_descriptor(const std::optional<std::function<JsValue(const std::vector<JsValue> &)>> &get,
-                                                 const std::optional<std::function<JsValue(const std::vector<JsValue> &)>> &set,
-                                                 bool enumerable,
-                                                 bool configurable) noexcept
+        static AnyValue make_accessor_descriptor(const std::optional<std::function<AnyValue(const std::vector<AnyValue> &)>> &get,
+                                                const std::optional<std::function<AnyValue(const std::vector<AnyValue> &)>> &set,
+                                                bool enumerable,
+                                                bool configurable) noexcept
         {
-            JsValue v;
+            AnyValue v;
             v.storage.type = JsType::AccessorDescriptor;
             new (&v.storage.accessor_desc) std::shared_ptr<AccessorDescriptor>(std::make_shared<AccessorDescriptor>(get, set, enumerable, configurable));
             return v;
         }
 
         // property resolution helpers ---------------------------------------
-        static JsValue resolve_property_for_read(const JsValue &val) noexcept
+        static AnyValue resolve_property_for_read(const AnyValue &val) noexcept
         {
             switch (val.storage.type)
             {
@@ -348,7 +360,7 @@ namespace jspp
                     return val.storage.accessor_desc->get.value()({});
                 else
                 {
-                    static JsValue undefined = JsValue{};
+                    static AnyValue undefined = AnyValue{};
                     return undefined;
                 }
             }
@@ -358,7 +370,7 @@ namespace jspp
             }
             }
         }
-        static JsValue resolve_property_for_write(JsValue &val, const JsValue &new_val)
+        static AnyValue resolve_property_for_write(AnyValue &val, const AnyValue &new_val)
         {
             switch (val.storage.type)
             {
@@ -444,7 +456,7 @@ namespace jspp
         }
 
         // --- PROPERTY ACCESS OPERATORS
-        JsValue get_own_property(const std::string &key)
+        AnyValue get_own_property(const std::string &key)
         {
             switch (storage.type)
             {
@@ -474,10 +486,10 @@ namespace jspp
             case JsType::Null:
                 throw RuntimeError::make_error("Cannot read properties of null (reading '" + key + "')", "TypeError");
             default:
-                return JsValue::make_undefined();
+                return AnyValue::make_undefined();
             }
         }
-        JsValue get_own_property(uint32_t idx) noexcept
+        AnyValue get_own_property(uint32_t idx) noexcept
         {
             switch (storage.type)
             {
@@ -487,22 +499,22 @@ namespace jspp
             {
                 if (idx < storage.str->length())
                 {
-                    return JsValue::make_string(std::string(1, (*storage.str)[idx]));
+                    return AnyValue::make_string(std::string(1, (*storage.str)[idx]));
                 }
-                return JsValue::make_undefined();
+                return AnyValue::make_undefined();
             }
             default:
                 return get_own_property(std::to_string(idx));
             }
         }
-        JsValue get_own_property(const JsValue &key) noexcept
+        AnyValue get_own_property(const AnyValue &key) noexcept
         {
             if (key.storage.type == JsType::Number && storage.type == JsType::Array)
                 return storage.array->get_property(key.storage.number);
             return get_own_property(key.to_std_string());
         }
         // for setting values
-        JsValue set_own_property(const std::string &key, const JsValue &value)
+        AnyValue set_own_property(const std::string &key, const AnyValue &value)
         {
             switch (storage.type)
             {
@@ -520,7 +532,7 @@ namespace jspp
                 return value;
             }
         }
-        JsValue set_own_property(uint32_t idx, const JsValue &value)
+        AnyValue set_own_property(uint32_t idx, const AnyValue &value)
         {
             if (storage.type == JsType::Array)
             {
@@ -528,7 +540,7 @@ namespace jspp
             }
             return set_own_property(std::to_string(idx), value);
         }
-        JsValue set_own_property(const JsValue &key, const JsValue &value)
+        AnyValue set_own_property(const AnyValue &key, const AnyValue &value)
         {
             if (key.storage.type == JsType::Number && storage.type == JsType::Array)
             {
@@ -552,7 +564,7 @@ namespace jspp
                 return true;
             }
         }
-        const bool is_strictly_equal_to(const JsValue &other) const noexcept
+        const bool is_strictly_equal_to(const AnyValue &other) const noexcept
         {
             if (storage.type == other.storage.type)
             {
@@ -580,7 +592,7 @@ namespace jspp
             }
             return false;
         }
-        const bool is_equal_to(const JsValue &other) const noexcept
+        const bool is_equal_to(const AnyValue &other) const noexcept
         {
             // Implements JavaScript's Abstract Equality Comparison Algorithm (==)
             // Step 1: If types are the same, use strict equality (===)
@@ -637,12 +649,12 @@ namespace jspp
             if (is_boolean())
             {
                 // Convert boolean to number and re-compare
-                return JsValue::make_number(as_boolean() ? 1.0 : 0.0).is_equal_to(other);
+                return AnyValue::make_number(as_boolean() ? 1.0 : 0.0).is_equal_to(other);
             }
             if (other.is_boolean())
             {
                 // Convert boolean to number and re-compare
-                return is_equal_to(JsValue::make_number(other.as_boolean() ? 1.0 : 0.0));
+                return is_equal_to(AnyValue::make_number(other.as_boolean() ? 1.0 : 0.0));
             }
             // Step 8 & 9: object == (string or number)
             if ((other.is_object() || other.is_array() || other.is_function()) && (is_string() || is_number()))
@@ -654,33 +666,33 @@ namespace jspp
             {
                 // Convert object to primitive (string) and re-compare.
                 // This is a simplification of JS's ToPrimitive which would try valueOf() first.
-                return JsValue::make_string(to_std_string()).is_equal_to(other);
+                return AnyValue::make_string(to_std_string()).is_equal_to(other);
             }
             // Step 10: Parse datacriptor or accessor descriptor to primitive and re-compare
             if (is_data_descriptor() || is_accessor_descriptor())
             {
-                JsValue prim = resolve_property_for_read(*this);
+                AnyValue prim = resolve_property_for_read(*this);
                 return prim.is_equal_to(other);
             }
             // Step 11: All other cases (e.g., object == null) are false.
             return false;
         }
 
-        const JsValue is_strictly_equal_to_primitive(const JsValue &other) const noexcept
+        const AnyValue is_strictly_equal_to_primitive(const AnyValue &other) const noexcept
         {
-            return JsValue::make_boolean(is_strictly_equal_to(other));
+            return AnyValue::make_boolean(is_strictly_equal_to(other));
         }
-        const JsValue is_equal_to_primitive(const JsValue &other) const noexcept
+        const AnyValue is_equal_to_primitive(const AnyValue &other) const noexcept
         {
-            return JsValue::make_boolean(is_equal_to(other));
+            return AnyValue::make_boolean(is_equal_to(other));
         }
-        const JsValue not_strictly_equal_to_primitive(const JsValue &other) const noexcept
+        const AnyValue not_strictly_equal_to_primitive(const AnyValue &other) const noexcept
         {
-            return JsValue::make_boolean(!is_strictly_equal_to(other));
+            return AnyValue::make_boolean(!is_strictly_equal_to(other));
         }
-        const JsValue not_equal_to_primitive(const JsValue &other) const noexcept
+        const AnyValue not_equal_to_primitive(const AnyValue &other) const noexcept
         {
-            return JsValue::make_boolean(!is_equal_to(other));
+            return AnyValue::make_boolean(!is_equal_to(other));
         }
 
         const std::string to_std_string() const noexcept

@@ -8,17 +8,23 @@
 #include "values/object.hpp"
 #include "values/array.hpp"
 #include "values/function.hpp"
+#include "values/generator.hpp"
+
 #include "error.hpp"
 #include "descriptors.hpp"
 #include "js_value.hpp"
 #include "error_helpers.hpp"
+
 #include "values/prototypes/string.hpp"
 #include "values/prototypes/object.hpp"
 #include "values/prototypes/array.hpp"
 #include "values/prototypes/function.hpp"
+#include "values/prototypes/generator.hpp"
+
 #include "values/helpers/object.hpp"
 #include "values/helpers/array.hpp"
 #include "values/helpers/function.hpp"
+#include "values/helpers/generator.hpp"
 
 // helpers
 #include "operators.hpp"

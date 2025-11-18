@@ -18,7 +18,7 @@
 // JSPP standard library
 namespace jspp
 {
-    // Forward declarations
+    // Js value forward declarations
     struct JsUndefined;     // cannot set property
     struct JsNull;          // cannot set property
     struct JsUninitialized; // cannot set property
@@ -26,26 +26,33 @@ namespace jspp
     struct JsArray;         // can set property
     struct JsFunction;      // can set property
 
+    template <typename T>
+    class JsGenerator; // can set property
+
     // Object property configuration forward declarations
     struct DataDescriptor;
     struct AccessorDescriptor;
 
-    // Dynamic JsValue
-    class JsValue;
-
     // Custom runtime exception
     struct RuntimeError;
 
-    // Arithemetic operators
-    inline JsValue pow(const JsValue &lhs, const JsValue &rhs);
+    // Dynamic AnyValue
+    class AnyValue;
 
-    // JsValue prototypes
+    // Arithemetic operators
+    inline AnyValue pow(const AnyValue &lhs, const AnyValue &rhs);
+
+    // AnyValue prototypes
     namespace StringPrototypes
     {
-        inline std::optional<JsValue> get(const std::string &key, const std::unique_ptr<std::string> &self);
+        inline std::optional<AnyValue> get(const std::string &key, const std::unique_ptr<std::string> &self);
     }
     namespace ArrayPrototypes
     {
-        inline std::optional<JsValue> get(const std::string &key, JsArray *self);
+        inline std::optional<AnyValue> get(const std::string &key, JsArray *self);
+    }
+    namespace GeneratorPrototypes
+    {
+        inline std::optional<AnyValue> get(const std::string &key, JsArray *self);
     }
 }
