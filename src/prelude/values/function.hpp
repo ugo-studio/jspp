@@ -10,7 +10,7 @@ namespace jspp
     {
         std::function<AnyValue(const std::vector<AnyValue> &)> call;
         std::string name;
-        std::map<std::string, AnyValue> props;
+        std::unordered_map<std::string, AnyValue> props;
 
         std::string to_std_string() const;
         AnyValue get_property(const std::string &key);

@@ -7,6 +7,7 @@
 #include <functional>
 #include <memory>
 #include <map>
+#include <unordered_map>
 #include <algorithm>
 #include <cctype>
 #include <cstring>
