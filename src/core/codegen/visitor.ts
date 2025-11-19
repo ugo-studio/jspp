@@ -36,7 +36,9 @@ import {
 } from "./literal-handlers";
 import {
   visitBlock,
+  visitBreakStatement,
   visitCatchClause,
+  visitContinueStatement,
   visitExpressionStatement,
   visitForInStatement,
   visitForOfStatement,
@@ -47,6 +49,7 @@ import {
   visitThrowStatement,
   visitTryStatement,
   visitVariableStatement,
+  visitYieldExpression,
 } from "./statement-handlers";
 
 export interface VisitContext {
@@ -66,8 +69,6 @@ export function visit(
     node: Node,
     context: VisitContext,
 ): string {
-    console.log(context.isInsideGeneratorFunction, ts.SyntaxKind[node.kind]);
-
     if (ts.isFunctionDeclaration(node)) {
         return visitFunctionDeclaration.call(this, node, context);
     }
@@ -135,6 +136,18 @@ export function visit(
             return visitForOfStatement.call(
                 this,
                 node as ts.ForOfStatement,
+                context,
+            );
+        case ts.SyntaxKind.BreakStatement:
+            return visitBreakStatement.call(
+                this,
+                node as ts.BreakStatement,
+                context,
+            );
+        case ts.SyntaxKind.ContinueStatement:
+            return visitContinueStatement.call(
+                this,
+                node as ts.ContinueStatement,
                 context,
             );
         case ts.SyntaxKind.IfStatement:
@@ -205,7 +218,13 @@ export function visit(
                 node as ts.CallExpression,
                 context,
             );
-        case ts.SyntaxKind.ReturnStatement:
+        case ts.SyntaxKind.YieldExpression:
+            return visitYieldExpression.call(
+                this,
+                node as ts.YieldExpression,
+                context,
+            );
+        case ts.SyntaxKind.YieldExpression:
             return visitReturnStatement.call(
                 this,
                 node as ts.ReturnStatement,

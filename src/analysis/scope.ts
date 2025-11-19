@@ -1,6 +1,6 @@
 import type { TypeInfo } from "./typeAnalyzer";
 
-const RESERVED_KEYWORDS = ["std", "jspp"];
+const RESERVED_KEYWORDS = ["std", "jspp", "co_yield", "co_return"];
 
 // Represents a single scope (e.g., a function body or a block statement)
 export class Scope {

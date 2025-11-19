@@ -343,6 +343,22 @@ export function visitForOfStatement(
     return code;
 }
 
+export function visitBreakStatement(
+    this: CodeGenerator,
+    node: ts.BreakStatement,
+    context: VisitContext,
+): string {
+    return "break;";
+}
+
+export function visitContinueStatement(
+    this: CodeGenerator,
+    node: ts.ContinueStatement,
+    context: VisitContext,
+): string {
+    return "continue;";
+}
+
 export function visitIfStatement(
     this: CodeGenerator,
     node: ts.IfStatement,
@@ -559,6 +575,41 @@ export function visitCatchClause(
         code += `${this.indent()}}\n`;
         return code;
     }
+}
+
+export function visitYieldExpression(
+    this: CodeGenerator,
+    node: ts.YieldExpression,
+    context: VisitContext,
+): string {
+    if (node.expression) {
+        const expr = node.expression;
+        const exprText = this.visit(expr, context);
+        if (ts.isIdentifier(expr)) {
+            const scope = this.getScopeForNode(expr);
+            const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                expr.text,
+                scope,
+            );
+            if (!typeInfo) {
+                return `${this.indent()}jspp::RuntimeError::throw_unresolved_reference_error(${
+                    this.getJsVarName(expr)
+                })\n`; // THROWS, not returns
+            }
+            if (
+                typeInfo &&
+                !typeInfo.isParameter &&
+                !typeInfo.isBuiltin
+            ) {
+                return `${this.indent()}co_yield jspp::Access::deref(${exprText}, ${
+                    this.getJsVarName(expr)
+                })`;
+            }
+        }
+        return `${this.indent()}co_yield ${exprText}`;
+    }
+
+    return `${this.indent()}co_yield jspp::AnyValue::make_undefined()`;
 }
 
 export function visitReturnStatement(

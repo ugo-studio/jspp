@@ -482,11 +482,13 @@ namespace jspp
             switch (storage.type)
             {
             case JsType::Object:
-                return as_object()->get_property(key);
+                return storage.object->get_property(key);
             case JsType::Array:
-                return as_array()->get_property(key);
+                return storage.array->get_property(key);
             case JsType::Function:
-                return as_function()->get_property(key);
+                return storage.function->get_property(key);
+            case JsType::Generator:
+                return storage.generator->get_property(key);
             case JsType::String:
             {
                 // Check for prototype methods
@@ -515,7 +517,7 @@ namespace jspp
             switch (storage.type)
             {
             case JsType::Array:
-                return as_array()->get_property(idx);
+                return storage.array->get_property(idx);
             case JsType::String: // Handle character access by index (e.g., "abc"[1])
             {
                 if (idx < storage.str->length())
@@ -540,11 +542,11 @@ namespace jspp
             switch (storage.type)
             {
             case JsType::Object:
-                return as_object()->set_property(key, value);
+                return storage.object->set_property(key, value);
             case JsType::Array:
-                return as_array()->set_property(key, value);
+                return storage.array->set_property(key, value);
             case JsType::Function:
-                return as_function()->set_property(key, value);
+                return storage.function->set_property(key, value);
             case JsType::Undefined:
                 throw RuntimeError::make_error("Cannot set properties of undefined (setting '" + key + "')", "TypeError");
             case JsType::Null:
@@ -557,7 +559,7 @@ namespace jspp
         {
             if (storage.type == JsType::Array)
             {
-                return as_array()->set_property(idx, value);
+                return storage.array->set_property(idx, value);
             }
             return set_own_property(std::to_string(idx), value);
         }

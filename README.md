@@ -33,6 +33,8 @@ JSPP reserves certain keywords to avoid conflicts with the generated C++ code an
 
 - `std`: Reserved to prevent conflicts with the C++ standard library namespace.
 - `jspp`: Reserved for internal use by the JSPP transpiler.
+- `co_yield`: Reserved to prevent conflicts with the c++ generator functions.
+- `co_return`: Reserved to prevent conflicts with the c++ generator functions.
 
 Using these keywords as variable names will result in a `SyntaxError`.
 
