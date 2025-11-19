@@ -2,6 +2,7 @@ import ts from "typescript";
 
 import { Scope } from "../../analysis/scope";
 import { CodeGenerator } from "./";
+import type { VisitContext } from "./visitor";
 
 const BUILTIN_OBJECTS = new Set([
     "global",
@@ -100,4 +101,20 @@ export function escapeString(this: CodeGenerator, str: string): string {
 
 export function getJsVarName(this: CodeGenerator, node: ts.Identifier): string {
     return `"${node.text}"`;
+}
+
+export function getReturnCmd(
+    this: CodeGenerator,
+    context: Partial<VisitContext>,
+) {
+    return context.isInsideGeneratorFunction ? "co_return" : "return";
+}
+
+export function isGeneratorFunction(node: ts.Node): boolean {
+    return (
+        (ts.isFunctionDeclaration(node) ||
+            ts.isFunctionExpression(node) ||
+            ts.isMethodDeclaration(node)) &&
+        !!node.asteriskToken // generator indicator
+    );
 }

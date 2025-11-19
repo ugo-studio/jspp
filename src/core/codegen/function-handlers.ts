@@ -12,8 +12,16 @@ export function generateLambda(
     const declaredSymbols = this.getDeclaredSymbols(node);
     const argsName = this.generateUniqueName("__args_", declaredSymbols);
 
+    const isInsideGeneratorFunction = this.isGeneratorFunction(node);
+    const returnCmd = this.getReturnCmd({
+        isInsideGeneratorFunction: isInsideGeneratorFunction,
+    });
+    const funcReturnType = isInsideGeneratorFunction
+        ? "jspp::JsGenerator<jspp::AnyValue>"
+        : "jspp::AnyValue";
+
     let lambda =
-        `${capture}(const std::vector<jspp::AnyValue>& ${argsName}) mutable -> jspp::AnyValue `;
+        `${capture}(const std::vector<jspp::AnyValue>& ${argsName}) mutable -> ${funcReturnType} `;
 
     const visitContext: VisitContext = {
         isMainContext: false,
@@ -39,6 +47,7 @@ export function generateLambda(
                 isMainContext: false,
                 isInsideFunction: true,
                 isFunctionBody: true,
+                isInsideGeneratorFunction: isInsideGeneratorFunction,
             });
             // The block visitor already adds braces, so we need to inject the param extraction.
             lambda += "{\n" + paramExtraction + blockContent.substring(2);
@@ -53,7 +62,7 @@ export function generateLambda(
                 lambda +=
                     `${this.indent()}auto ${name} = ${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue};\n`;
             });
-            lambda += `${this.indent()}return ${
+            lambda += `${this.indent()}${returnCmd} ${
                 this.visit(node.body, {
                     isMainContext: false,
                     isInsideFunction: true,
@@ -65,16 +74,28 @@ export function generateLambda(
             lambda += `${this.indent()}}`;
         }
     } else {
-        lambda += "{ return jspp::AnyValue::make_undefined(); }\n";
+        lambda += `{ ${returnCmd} jspp::AnyValue::make_undefined(); }\n`;
     }
 
-    const signature = `jspp::AnyValue(const std::vector<jspp::AnyValue>&)`;
-    const callable = `std::function<${signature}>(${lambda})`;
+    let signature = "";
+    let callable = "";
+    let method = "";
+
+    // Handle generator function
+    if (isInsideGeneratorFunction) {
+        signature =
+            "jspp::JsGenerator<jspp::AnyValue>(const std::vector<jspp::AnyValue>&)";
+        callable = `std::function<${signature}>(${lambda})`;
+        method = `jspp::AnyValue::make_generator_function`;
+    } // Handle normal function
+    else {
+        signature = `jspp::AnyValue(const std::vector<jspp::AnyValue>&)`;
+        callable = `std::function<${signature}>(${lambda})`;
+        method = `jspp::AnyValue::make_function`;
+    }
 
     const funcName = node.name?.getText();
-    const fullExpression = `jspp::AnyValue::make_function(${callable}, "${
-        funcName || ""
-    }")`;
+    const fullExpression = `${method}(${callable}, "${funcName || ""}")`;
 
     if (ts.isFunctionDeclaration(node) && !isAssignment && funcName) {
         return `${this.indent()}auto ${funcName} = ${fullExpression};\n`;

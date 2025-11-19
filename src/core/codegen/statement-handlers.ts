@@ -160,8 +160,9 @@ export function visitBlock(
     if (context.isFunctionBody) {
         const lastStatement = block.statements[block.statements.length - 1];
         if (!lastStatement || !ts.isReturnStatement(lastStatement)) {
-            code +=
-                `${this.indent()}return jspp::AnyValue::make_undefined();\n`;
+            code += `${this.indent()}${
+                this.getReturnCmd(context)
+            } jspp::AnyValue::make_undefined();\n`;
         }
     }
 
@@ -469,7 +470,9 @@ export function visitTryStatement(
             code += `${this.indent()}catch (...) { throw; }\n`;
         }
 
-        code += `${this.indent()}return jspp::AnyValue::make_undefined();\n`;
+        code += `${this.indent()}${
+            this.getReturnCmd(context)
+        } jspp::AnyValue::make_undefined();\n`;
 
         this.indentationLevel--;
         code += `${this.indent()}})();\n`;
@@ -568,6 +571,7 @@ export function visitReturnStatement(
     }
 
     const returnStmt = node as ts.ReturnStatement;
+    const returnCmd = this.getReturnCmd(context);
 
     if (context.isInsideTryCatchLambda && context.hasReturnedFlag) {
         let returnCode = `${this.indent()}${context.hasReturnedFlag} = true;\n`;
@@ -592,18 +596,18 @@ export function visitReturnStatement(
                     !typeInfo.isBuiltin
                 ) {
                     returnCode +=
-                        `${this.indent()}return jspp::Access::deref(${exprText}, ${
+                        `${this.indent()}${returnCmd} jspp::Access::deref(${exprText}, ${
                             this.getJsVarName(expr)
                         });\n`;
                 } else {
-                    returnCode += `${this.indent()}return ${exprText};\n`;
+                    returnCode += `${this.indent()}${returnCmd} ${exprText};\n`;
                 }
             } else {
-                returnCode += `${this.indent()}return ${exprText};\n`;
+                returnCode += `${this.indent()}${returnCmd} ${exprText};\n`;
             }
         } else {
             returnCode +=
-                `${this.indent()}return jspp::AnyValue::make_undefined();\n`;
+                `${this.indent()}${returnCmd} jspp::AnyValue::make_undefined();\n`;
         }
         return returnCode;
     }
@@ -627,12 +631,12 @@ export function visitReturnStatement(
                 !typeInfo.isParameter &&
                 !typeInfo.isBuiltin
             ) {
-                return `${this.indent()}return jspp::Access::deref(${exprText}, ${
+                return `${this.indent()}${returnCmd} jspp::Access::deref(${exprText}, ${
                     this.getJsVarName(expr)
                 });\n`;
             }
         }
-        return `${this.indent()}return ${exprText};\n`;
+        return `${this.indent()}${returnCmd} ${exprText};\n`;
     }
-    return `${this.indent()}return jspp::AnyValue::make_undefined();\n`;
+    return `${this.indent()}${returnCmd} jspp::AnyValue::make_undefined();\n`;
 }

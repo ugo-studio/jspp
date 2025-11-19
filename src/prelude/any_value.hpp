@@ -15,6 +15,7 @@
 #include <vector>
 #include <functional>
 #include <cmath>
+#include <optional>
 
 #include "types.hpp"
 #include "values/non_values.hpp"
@@ -327,19 +328,15 @@ namespace jspp
             new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(call, name));
             return v;
         }
-        static AnyValue make_generator_function(const std::function<JsGenerator<AnyValue>(const std::vector<AnyValue> &)> &call, const std::string &name) noexcept
+        template <typename Callable>
+        static AnyValue make_generator_function(Callable &&call, const std::string &name) noexcept
         {
             AnyValue v;
             v.storage.type = JsType::Function;
-            new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>([&call](const std::vector<AnyValue> &args) -> AnyValue
-                                                                                               { return AnyValue::from_generator(call(args)); }, name));
-            return v;
-        }
-        static AnyValue from_generator(const JsGenerator<AnyValue> &gen) noexcept
-        {
-            AnyValue v;
-            v.storage.type = JsType::Generator;
-            new (&v.storage.function) std::shared_ptr<JsGenerator<AnyValue>>(std::make_shared<JsGenerator<AnyValue>>(gen));
+            new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(
+                [func = std::forward<Callable>(call)](const std::vector<AnyValue> &args) mutable -> AnyValue
+                { return AnyValue::from_generator(func(args)); },
+                name));
             return v;
         }
         static AnyValue make_data_descriptor(const AnyValue &value, bool writable, bool enumerable, bool configurable) noexcept
@@ -357,6 +354,14 @@ namespace jspp
             AnyValue v;
             v.storage.type = JsType::AccessorDescriptor;
             new (&v.storage.accessor_desc) std::shared_ptr<AccessorDescriptor>(std::make_shared<AccessorDescriptor>(get, set, enumerable, configurable));
+            return v;
+        }
+
+        static AnyValue from_generator(JsGenerator<AnyValue> &&generator) noexcept
+        {
+            AnyValue v;
+            v.storage.type = JsType::Generator;
+            new (&v.storage.generator) std::shared_ptr<JsGenerator<AnyValue>>(std::make_shared<JsGenerator<AnyValue>>(std::move(generator)));
             return v;
         }
 
@@ -420,6 +425,7 @@ namespace jspp
         bool is_object() const noexcept { return storage.type == JsType::Object; }
         bool is_array() const noexcept { return storage.type == JsType::Array; }
         bool is_function() const noexcept { return storage.type == JsType::Function; }
+        bool is_generator() const noexcept { return storage.type == JsType::Generator; }
         bool is_boolean() const noexcept { return storage.type == JsType::Boolean; }
         bool is_null() const noexcept { return storage.type == JsType::Null; }
         bool is_undefined() const noexcept { return storage.type == JsType::Undefined; }
@@ -453,11 +459,11 @@ namespace jspp
             assert(is_array());
             return storage.array.get();
         }
-        JsFunction *as_function(const std::string &expression = "") const
+        JsFunction *as_function(const std::optional<std::string> &expression = std::nullopt) const
         {
             if (is_function())
                 return storage.function.get();
-            throw RuntimeError::make_error(expression + " is not a function", "TypeError");
+            throw RuntimeError::make_error(expression.value_or(to_std_string()) + " is not a function", "TypeError");
         }
         DataDescriptor *as_data_descriptor() const noexcept
         {
@@ -728,6 +734,8 @@ namespace jspp
                 return storage.array->to_std_string();
             case JsType::Function:
                 return storage.function->to_std_string();
+            case JsType::Generator:
+                return storage.generator->to_std_string();
             case JsType::DataDescriptor:
                 return storage.data_desc->value->to_std_string();
             case JsType::AccessorDescriptor:

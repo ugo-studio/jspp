@@ -7,9 +7,11 @@ import {
   generateUniqueName,
   getDeclaredSymbols,
   getJsVarName,
+  getReturnCmd,
   getScopeForNode,
   indent,
   isBuiltinObject,
+  isGeneratorFunction,
 } from "./helpers";
 import { visit } from "./visitor";
 
@@ -31,7 +33,9 @@ export class CodeGenerator {
     public indent = indent;
     public escapeString = escapeString;
     public getJsVarName = getJsVarName;
+    public getReturnCmd = getReturnCmd;
     public isBuiltinObject = isBuiltinObject;
+    public isGeneratorFunction = isGeneratorFunction;
 
     // function handlers
     public generateLambda = generateLambda;

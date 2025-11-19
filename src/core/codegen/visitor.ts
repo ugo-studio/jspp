@@ -56,6 +56,7 @@ export interface VisitContext {
     isAssignmentOnly?: boolean;
     exceptionName?: string;
     isInsideTryCatchLambda?: boolean;
+    isInsideGeneratorFunction?: boolean;
     hasReturnedFlag?: string;
     isPropertyNameAccess?: boolean;
 }
@@ -65,6 +66,8 @@ export function visit(
     node: Node,
     context: VisitContext,
 ): string {
+    console.log(context.isInsideGeneratorFunction, ts.SyntaxKind[node.kind]);
+
     if (ts.isFunctionDeclaration(node)) {
         return visitFunctionDeclaration.call(this, node, context);
     }
