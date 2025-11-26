@@ -1,18 +1,12 @@
 import ts from "typescript";
 
-import { Scope } from "../../analysis/scope";
+import { BUILTIN_OBJECTS, Scope } from "../../analysis/scope";
+import type { TypeAnalyzer } from "../../analysis/typeAnalyzer";
 import { CodeGenerator } from "./";
 import type { VisitContext } from "./visitor";
 
-const BUILTIN_OBJECTS = new Set([
-    "global",
-    "globalThis",
-    "console",
-    "Symbol",
-]);
-
 export function isBuiltinObject(
-    this: CodeGenerator,
+    this: CodeGenerator | TypeAnalyzer,
     node: ts.Identifier,
 ): boolean {
     return BUILTIN_OBJECTS.has(node.text);

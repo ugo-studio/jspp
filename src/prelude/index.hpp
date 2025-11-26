@@ -33,3 +33,4 @@
 
 // js standard libraries
 #include "library/console.hpp"
+#include "library/performance.hpp"

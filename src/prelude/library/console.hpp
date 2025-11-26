@@ -1,6 +1,6 @@
 #pragma once
 
-#include "chrono"
+#include <chrono>
 #include "types.hpp"
 #include "values/non_values.hpp"
 #include "values/object.hpp"
@@ -23,7 +23,7 @@ auto logFn = jspp::AnyValue::make_function([](const std::vector<jspp::AnyValue> 
                                                        std::cout << " ";
                                                }
                                                std::cout << "\n";
-                                               return jspp::AnyValue::make_undefined(); }, "");
+                                               return jspp::AnyValue::make_undefined(); }, "log");
 auto warnFn = jspp::AnyValue::make_function([](const std::vector<jspp::AnyValue> &args)
                                             {
                                                 std::cerr << "\033[33m";
@@ -34,7 +34,7 @@ auto warnFn = jspp::AnyValue::make_function([](const std::vector<jspp::AnyValue>
                                                         std::cout << " ";
                                                 }
                                                 std::cerr << "\033[0m" << "\n"; // reset
-                                                return jspp::AnyValue::make_undefined(); }, "");
+                                                return jspp::AnyValue::make_undefined(); }, "warn");
 auto errorFn = jspp::AnyValue::make_function([](const std::vector<jspp::AnyValue> &args)
                                              {
                                                  std::cerr << "\033[31m";
@@ -45,13 +45,13 @@ auto errorFn = jspp::AnyValue::make_function([](const std::vector<jspp::AnyValue
                                                          std::cout << " ";
                                                  }
                                                  std::cerr << "\033[0m" << "\n"; // reset
-                                                 return jspp::AnyValue::make_undefined(); }, "");
+                                                 return jspp::AnyValue::make_undefined(); }, "error");
 auto timeFn = jspp::AnyValue::make_function([](const std::vector<jspp::AnyValue> &args)
                                             {
                                                 auto start = std::chrono::steady_clock::now(); // capture immediately
                                                 auto key_str = args.size() > 0 ? args[0].to_std_string() : "default";
                                                 timers[key_str] = start;
-                                                return jspp::AnyValue::make_undefined(); }, "");
+                                                return jspp::AnyValue::make_undefined(); }, "time");
 
 // helper to format duration in ms -> ms/s/m/h with nice precision
 static auto format_duration = [](double ms) -> std::string
@@ -100,7 +100,7 @@ auto timeEndFn = jspp::AnyValue::make_function([](const std::vector<jspp::AnyVal
                                                    {
                                                        std::cout << "Timer '" << key_str << "' does not exist." << "\n";
                                                    }
-                                                   return jspp::AnyValue::make_undefined(); }, "");
+                                                   return jspp::AnyValue::make_undefined(); }, "timeEnd");
 
 inline auto console = jspp::AnyValue::make_object({
     {"log", logFn},

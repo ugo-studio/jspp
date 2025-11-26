@@ -1,6 +1,18 @@
 import type { TypeInfo } from "./typeAnalyzer";
 
-const RESERVED_KEYWORDS = ["std", "jspp", "co_yield", "co_return"];
+export const RESERVED_KEYWORDS = new Set([
+    "std",
+    "jspp",
+    "co_yield",
+    "co_return",
+]);
+export const BUILTIN_OBJECTS = new Set([
+    "global",
+    "globalThis",
+    "console",
+    "performance",
+    "Symbol",
+]);
 
 // Represents a single scope (e.g., a function body or a block statement)
 export class Scope {
@@ -35,16 +47,14 @@ export class ScopeManager {
         const rootScope = new Scope(null); // The global scope
         this.currentScope = rootScope;
         this.allScopes.push(rootScope); // Add the root scope to our list
-        this.define("undefined", {
-            type: "undefined",
-            isConst: true,
-            isBuiltin: true,
-        });
-        this.define("null", {
-            type: "null",
-            isConst: true,
-            isBuiltin: true,
-        });
+
+        for (const object of BUILTIN_OBJECTS) {
+            this.define(object, {
+                type: object,
+                isConst: false,
+                isBuiltin: true,
+            });
+        }
     }
 
     // Enters a new, nested scope.

@@ -1,6 +1,7 @@
 import * as ts from "typescript";
 
 import type { Node, Visitor } from "../ast/types";
+import { isBuiltinObject } from "../core/codegen/helpers";
 import { Traverser } from "../core/traverser";
 import { Scope, ScopeManager } from "./scope";
 
@@ -82,7 +83,8 @@ export class TypeAnalyzer {
                         if (varDecl) {
                             const name = varDecl.name.getText();
                             const isConst =
-                                (varDecl.parent.flags & ts.NodeFlags.Const) !== 0;
+                                (varDecl.parent.flags & ts.NodeFlags.Const) !==
+                                    0;
                             const typeInfo: TypeInfo = {
                                 type: "string", // Keys are always strings
                                 declaration: varDecl,
@@ -245,9 +247,7 @@ export class TypeAnalyzer {
             Identifier: {
                 enter: (node, parent) => {
                     if (ts.isIdentifier(node)) {
-                        if (node.text === "console") {
-                            return;
-                        }
+                        if (isBuiltinObject.call(this, node)) return;
 
                         const currentFuncNode =
                             this.functionStack[this.functionStack.length - 1];

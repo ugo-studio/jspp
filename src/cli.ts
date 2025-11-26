@@ -32,13 +32,13 @@ async function main() {
         const compile = Bun.spawnSync({
             cmd: [
                 "g++",
-                "-std=c++20",
+                "-std=c++23",
                 cppFilePath,
                 "-o",
                 exeFilePath,
                 "-I",
                 preludePath,
-                "-O2",
+                "-O3",
                 "-DNDEBUG",
                 // "-include",
                 // path.join(process.cwd(), "prelude-build", "index.hpp"),
