@@ -25,6 +25,20 @@ namespace jspp
                                                key);
             }
 
+            // --- [Symbol.iterator]() method ---
+            if (key == WellKnownSymbols::iterator)
+            {
+                return jspp::AnyValue::make_generator_function(std::function<JsGenerator<AnyValue>(const std::vector<AnyValue> &)>([&self](const std::vector<AnyValue> &) mutable -> JsGenerator<AnyValue>
+                                                                                                                                   {
+                                                                size_t strLength = self->length();
+                                                                for (size_t idx = 0; idx < strLength; idx++)
+                                                                {
+                                                                    co_yield AnyValue::make_string(std::string(1, (*self)[idx]));
+                                                                }
+                                                                co_return AnyValue::make_undefined(); }),
+                                                               key);
+            }
+
             // --- length property ---
             if (key == "length")
             {

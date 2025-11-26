@@ -18,8 +18,33 @@ namespace jspp
             if (key == "toString")
             {
                 return AnyValue::make_function([&self](const std::vector<AnyValue> &_) -> AnyValue
-                                              { return AnyValue::make_string(self->to_std_string()); },
-                                              key);
+                                               { return AnyValue::make_string(self->to_std_string()); },
+                                               key);
+            }
+
+            // --- [Symbol.iterator]() method ---
+            if (key == WellKnownSymbols::iterator)
+            {
+                return jspp::AnyValue::make_generator_function(std::function<JsGenerator<AnyValue>(const std::vector<AnyValue> &)>([&self](const std::vector<AnyValue> &) mutable -> JsGenerator<AnyValue>
+                                                                                                                                   {
+                                                                size_t denseSize = self->dense.size();
+                                                                
+                                                                for (size_t idx = 0; idx < self->length; idx++)
+                                                                {
+                                                                    if (idx < denseSize){
+                                                                    co_yield self->dense[idx].value_or(AnyValue::make_undefined());
+                                                                    }
+                                                                    else {
+                                                                    const auto &it = self->sparse.find(idx);
+                                                                    if (it != self->sparse.end())
+                                                                    {
+                                                                        co_yield it->second.value_or(AnyValue::make_undefined());
+                                                                    }
+                                                                    }
+                                                                }
+
+                                                                co_return AnyValue::make_undefined(); }),
+                                                               key);
             }
 
             // --- length property ---
@@ -70,29 +95,29 @@ namespace jspp
                 };
 
                 return AnyValue::make_accessor_descriptor(getter,
-                                                         setter,
-                                                         false,
-                                                         false);
+                                                          setter,
+                                                          false,
+                                                          false);
             }
 
             // --- push() method ---
             if (key == "push")
             {
                 return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
-                                              {
+                                               {
                                                                                            for (const auto &arg : args)
                                                                                            {
                                                                                                self->set_property(static_cast<uint32_t>(self->length), arg);
                                                                                            }
                                                                                            return AnyValue::make_number(self->length); },
-                                              key);
+                                               key);
             }
 
             // --- pop() method ---
             if (key == "pop")
             {
                 return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
-                                              {
+                                               {
                                                                                            if (self->length == 0)
                                                                                            {
                                                                                                return AnyValue::make_undefined();
@@ -110,14 +135,14 @@ namespace jspp
 
                                                                                            self->length--;
                                                                                            return last_val; },
-                                              key);
+                                               key);
             }
 
             // --- shift() method ---
             if (key == "shift")
             {
                 return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
-                                              {
+                                               {
                                                                                            if (self->length == 0)
                                                                                            {
                                                                                                return AnyValue::make_undefined();
@@ -141,14 +166,14 @@ namespace jspp
                                                                                            self->length--;
 
                                                                                            return first_val; },
-                                              key);
+                                               key);
             }
 
             // --- unshift() method ---
             if (key == "unshift")
             {
                 return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
-                                              {
+                                               {
                                                                                              size_t args_count = args.size();
                                                                                              if (args_count == 0)
                                                                                              {
@@ -168,14 +193,14 @@ namespace jspp
                                                                                              }
 
                                                                                              return AnyValue::make_number(self->length); },
-                                              key);
+                                               key);
             }
 
             // --- join() method ---
             if (key == "join")
             {
                 return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
-                                              {
+                                               {
                                                                                            std::string sep = ",";
                                                                                            if (!args.empty() && !args[0].is_undefined())
                                                                                            {
@@ -196,14 +221,14 @@ namespace jspp
                                                                                                }
                                                                                            }
                                                                                            return AnyValue::make_string(result); },
-                                              key);
+                                               key);
             }
 
             // --- forEach() method ---
             if (key == "forEach")
             {
                 return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
-                                              {
+                                               {
                                                                                            if (args.empty() || !args[0].is_function())
                                                                                            {
                                                                                                throw RuntimeError::make_error("callback is not a function", "TypeError");
@@ -218,7 +243,7 @@ namespace jspp
                                                                                                }
                                                                                            }
                                                                                            return AnyValue::make_undefined(); },
-                                              key);
+                                               key);
             }
 
             return std::nullopt;

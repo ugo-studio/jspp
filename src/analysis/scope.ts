@@ -1,17 +1,17 @@
 import type { TypeInfo } from "./typeAnalyzer";
 
 export const RESERVED_KEYWORDS = new Set([
-    "std",
     "jspp",
+    "std",
     "co_yield",
     "co_return",
 ]);
 export const BUILTIN_OBJECTS = new Set([
-    "global",
-    "globalThis",
+    "Symbol",
     "console",
     "performance",
-    "Symbol",
+    "global",
+    "globalThis",
 ]);
 
 // Represents a single scope (e.g., a function body or a block statement)

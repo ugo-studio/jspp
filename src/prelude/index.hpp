@@ -32,5 +32,6 @@
 #include "log_string.hpp"
 
 // js standard libraries
+#include "library/symbol.hpp"
 #include "library/console.hpp"
 #include "library/performance.hpp"
