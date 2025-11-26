@@ -224,7 +224,7 @@ export function visit(
                 node as ts.YieldExpression,
                 context,
             );
-        case ts.SyntaxKind.YieldExpression:
+        case ts.SyntaxKind.ReturnStatement:
             return visitReturnStatement.call(
                 this,
                 node as ts.ReturnStatement,

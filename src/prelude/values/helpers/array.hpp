@@ -100,14 +100,11 @@ jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const AnyValu
     else
     {
         // set prototype property if accessor descriptor
-        auto proto_it = ArrayPrototypes::get(key, this);
-        if (proto_it.has_value())
+        auto proto_val_opt = ArrayPrototypes::get(key, this);
+        if (proto_val_opt.has_value())
         {
-            auto proto_value = proto_it.value();
-            if (proto_value.is_accessor_descriptor())
-            {
-                return AnyValue::resolve_property_for_write(proto_it.value(), value);
-            }
+            auto proto_value = proto_val_opt.value();
+            return AnyValue::resolve_property_for_write(proto_value, value);
         }
 
         // set own property
