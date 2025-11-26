@@ -9,7 +9,7 @@ export function isBuiltinObject(
     this: CodeGenerator | TypeAnalyzer,
     node: ts.Identifier,
 ): boolean {
-    return BUILTIN_OBJECTS.has(node.text);
+    return BUILTIN_OBJECTS.values().some((obj) => obj.name === node.text);
 }
 
 export function getDeclaredSymbols(

@@ -7,11 +7,13 @@ export const RESERVED_KEYWORDS = new Set([
     "co_return",
 ]);
 export const BUILTIN_OBJECTS = new Set([
-    "Symbol",
-    "console",
-    "performance",
-    "global",
-    "globalThis",
+    { name: "undefined", isConst: true },
+    { name: "null", isConst: true },
+    { name: "Symbol", isConst: false },
+    { name: "console", isConst: false },
+    { name: "performance", isConst: false },
+    { name: "global", isConst: false },
+    { name: "globalThis", isConst: false },
 ]);
 
 // Represents a single scope (e.g., a function body or a block statement)
@@ -48,10 +50,10 @@ export class ScopeManager {
         this.currentScope = rootScope;
         this.allScopes.push(rootScope); // Add the root scope to our list
 
-        for (const object of BUILTIN_OBJECTS) {
-            this.define(object, {
-                type: object,
-                isConst: false,
+        for (const { name, isConst } of BUILTIN_OBJECTS) {
+            this.define(name, {
+                type: name,
+                isConst: isConst,
                 isBuiltin: true,
             });
         }
