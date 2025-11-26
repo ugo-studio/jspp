@@ -25,6 +25,7 @@ namespace jspp
     struct JsObject;        // can set property
     struct JsArray;         // can set property
     struct JsFunction;      // can set property
+    struct JsSymbol;        // can set property (but usually doesn't have own props)
 
     template <typename T>
     class JsGenerator; // can set property
@@ -53,10 +54,14 @@ namespace jspp
     }
     namespace FunctionPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key, JsArray *self);
+        inline std::optional<AnyValue> get(const std::string &key, JsFunction *self);
     }
     namespace GeneratorPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key, JsArray *self);
+        inline std::optional<AnyValue> get(const std::string &key, JsGenerator<AnyValue> *self);
+    }
+    namespace SymbolPrototypes
+    {
+        inline std::optional<AnyValue> get(const std::string &key, JsSymbol *self);
     }
 }

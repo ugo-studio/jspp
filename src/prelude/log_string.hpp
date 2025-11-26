@@ -26,6 +26,7 @@ namespace jspp
             const std::string RESET = "\033[0m";
             const std::string GREEN = "\033[32m";
             const std::string YELLOW = "\033[33m";
+            const std::string BLUE = "\033[94m";
             const std::string CYAN = "\033[36m";
             const std::string MAGENTA = "\033[35m";
             const std::string BRIGHT_BLACK = "\033[90m"; // Grey
@@ -90,6 +91,8 @@ namespace jspp
                 return Color::YELLOW + std::string(val.as_boolean() ? "true" : "false") + Color::RESET;
             if (val.is_number())
                 return Color::YELLOW + val.to_std_string() + Color::RESET;
+            if (val.is_symbol())
+                return Color::BLUE + val.to_std_string() + Color::RESET;
             if (val.is_string())
             {
                 const std::string &s = *val.as_string();
@@ -137,12 +140,12 @@ namespace jspp
                 auto obj = val.as_object();
 
                 // If custom toString exists on the object, prefer it
-                auto itToString = obj->props.find(jspp::WellKnownSymbols::toString);
+                auto itToString = obj->props.find(jspp::WellKnownSymbols::toString->key);
                 if (itToString != obj->props.end() && itToString->second.is_function())
                 {
                     try
                     {
-                        auto result = itToString->second.as_function("toString")->call({});
+                        auto result = itToString->second.as_function()->call({});
                         return to_log_string(result, visited, depth);
                     }
                     catch (...)
@@ -230,12 +233,12 @@ namespace jspp
                 size_t item_count = static_cast<size_t>(arr->length);
 
                 // If custom toString exists on the object, prefer it
-                auto itToString = arr->props.find(jspp::WellKnownSymbols::toString);
+                auto itToString = arr->props.find(jspp::WellKnownSymbols::toString->key);
                 if (depth > 0 && itToString != arr->props.end() && itToString->second.is_function())
                 {
                     try
                     {
-                        auto result = itToString->second.as_function("toString")->call({});
+                        auto result = itToString->second.as_function()->call({});
                         return to_log_string(result, visited, depth);
                     }
                     catch (...)

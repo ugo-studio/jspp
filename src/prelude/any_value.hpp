@@ -23,8 +23,10 @@
 #include "values/array.hpp"
 #include "values/function.hpp"
 #include "values/generator.hpp"
+#include "values/symbol.hpp"
 #include "error.hpp"
 #include "descriptors.hpp"
+#include "well_known_symbols.hpp"
 
 namespace jspp
 {
@@ -40,8 +42,9 @@ namespace jspp
         Array = 7,
         Function = 8,
         Generator = 9,
-        DataDescriptor = 10,
-        AccessorDescriptor = 11,
+        Symbol = 10,
+        DataDescriptor = 11,
+        AccessorDescriptor = 12,
     };
 
     // Tagged storage with a union for payload
@@ -60,6 +63,7 @@ namespace jspp
             std::shared_ptr<JsArray> array;
             std::shared_ptr<JsFunction> function;
             std::shared_ptr<JsGenerator<AnyValue>> generator;
+            std::shared_ptr<JsSymbol> symbol;
             std::shared_ptr<DataDescriptor> data_desc;
             std::shared_ptr<AccessorDescriptor> accessor_desc;
         };
@@ -91,6 +95,9 @@ namespace jspp
                 break;
             case JsType::Generator:
                 storage.generator.~shared_ptr();
+                break;
+            case JsType::Symbol:
+                storage.symbol.~shared_ptr();
                 break;
             case JsType::DataDescriptor:
                 storage.data_desc.~shared_ptr();
@@ -145,6 +152,9 @@ namespace jspp
             case JsType::Generator:
                 new (&storage.generator) std::shared_ptr<JsGenerator<AnyValue>>(std::move(other.storage.generator));
                 break;
+            case JsType::Symbol:
+                new (&storage.symbol) std::shared_ptr<JsSymbol>(std::move(other.storage.symbol));
+                break;
             case JsType::DataDescriptor:
                 new (&storage.data_desc) std::shared_ptr<DataDescriptor>(std::move(other.storage.data_desc));
                 break;
@@ -188,6 +198,9 @@ namespace jspp
                 break;
             case JsType::Generator:
                 new (&storage.generator) std::shared_ptr<JsGenerator<AnyValue>>(other.storage.generator); // shallow copy
+                break;
+            case JsType::Symbol:
+                new (&storage.symbol) std::shared_ptr<JsSymbol>(other.storage.symbol); // shallow copy (shared)
                 break;
             case JsType::DataDescriptor:
                 new (&storage.data_desc) std::shared_ptr<DataDescriptor>(other.storage.data_desc); // shallow copy
@@ -339,6 +352,23 @@ namespace jspp
                 name));
             return v;
         }
+        // Creates a new unique Symbol
+        static AnyValue make_symbol(const std::string &description = "") noexcept
+        {
+            AnyValue v;
+            v.storage.type = JsType::Symbol;
+            new (&v.storage.symbol) std::shared_ptr<JsSymbol>(std::make_shared<JsSymbol>(description));
+            return v;
+        }
+        // Wraps an existing Symbol pointer (e.g. from the registry)
+        static AnyValue from_symbol(std::shared_ptr<JsSymbol> sym) noexcept
+        {
+            AnyValue v;
+            v.storage.type = JsType::Symbol;
+            new (&v.storage.symbol) std::shared_ptr<JsSymbol>(std::move(sym));
+            return v;
+        }
+
         static AnyValue make_data_descriptor(const AnyValue &value, bool writable, bool enumerable, bool configurable) noexcept
         {
             AnyValue v;
@@ -427,6 +457,7 @@ namespace jspp
         bool is_function() const noexcept { return storage.type == JsType::Function; }
         bool is_generator() const noexcept { return storage.type == JsType::Generator; }
         bool is_boolean() const noexcept { return storage.type == JsType::Boolean; }
+        bool is_symbol() const noexcept { return storage.type == JsType::Symbol; }
         bool is_null() const noexcept { return storage.type == JsType::Null; }
         bool is_undefined() const noexcept { return storage.type == JsType::Undefined; }
         bool is_uninitialized() const noexcept { return storage.type == JsType::Uninitialized; }
@@ -465,6 +496,11 @@ namespace jspp
                 return storage.function.get();
             throw RuntimeError::make_error(expression.value_or(to_std_string()) + " is not a function", "TypeError");
         }
+        JsSymbol *as_symbol() const noexcept
+        {
+            assert(is_symbol());
+            return storage.symbol.get();
+        }
         DataDescriptor *as_data_descriptor() const noexcept
         {
             assert(is_data_descriptor());
@@ -489,6 +525,8 @@ namespace jspp
                 return storage.function->get_property(key);
             case JsType::Generator:
                 return storage.generator->get_property(key);
+            case JsType::Symbol:
+                return storage.symbol->get_property(key);
             case JsType::String:
             {
                 // Check for prototype methods
@@ -534,6 +572,11 @@ namespace jspp
         {
             if (key.storage.type == JsType::Number && storage.type == JsType::Array)
                 return storage.array->get_property(key.storage.number);
+
+            // If the key is a Symbol, use its internal key string
+            if (key.storage.type == JsType::Symbol)
+                return get_own_property(key.storage.symbol->key);
+
             return get_own_property(key.to_std_string());
         }
         // for setting values
@@ -569,6 +612,11 @@ namespace jspp
             {
                 return storage.array->set_property(key.storage.number, value);
             }
+
+            // If the key is a Symbol, use its internal key string
+            if (key.storage.type == JsType::Symbol)
+                return set_own_property(key.storage.symbol->key, value);
+
             return set_own_property(key.to_std_string(), value);
         }
 
@@ -605,6 +653,9 @@ namespace jspp
                     return (storage.object == other.storage.object);
                 case JsType::Function:
                     return (storage.function == other.storage.function);
+                case JsType::Symbol:
+                    // Symbols are unique by reference/pointer identity
+                    return (storage.symbol == other.storage.symbol);
                 case JsType::DataDescriptor:
                     return (resolve_property_for_read(*this).is_strictly_equal_to(resolve_property_for_read(other)));
                 case JsType::AccessorDescriptor:
@@ -679,17 +730,17 @@ namespace jspp
                 // Convert boolean to number and re-compare
                 return is_equal_to(AnyValue::make_number(other.as_boolean() ? 1.0 : 0.0));
             }
-            // Step 8 & 9: object == (string or number)
-            if ((other.is_object() || other.is_array() || other.is_function()) && (is_string() || is_number()))
-            {
-                // Delegate to the other operand to avoid code duplication
-                return other.is_equal_to(*this);
-            }
-            if ((is_object() || is_array() || is_function()) && (other.is_string() || other.is_number()))
+            // Step 8 & 9: object == (string or number or symbol)
+            // Simplified: Objects convert to primitives.
+            if ((is_object() || is_array() || is_function()) && (other.is_string() || other.is_number() || other.is_symbol()))
             {
                 // Convert object to primitive (string) and re-compare.
-                // This is a simplification of JS's ToPrimitive which would try valueOf() first.
+                // This is a simplification of JS's ToPrimitive.
                 return AnyValue::make_string(to_std_string()).is_equal_to(other);
+            }
+            if ((other.is_object() || other.is_array() || other.is_function()) && (is_string() || is_number() || is_symbol()))
+            {
+                return other.is_equal_to(*this);
             }
             // Step 10: Parse datacriptor or accessor descriptor to primitive and re-compare
             if (is_data_descriptor() || is_accessor_descriptor())
@@ -738,6 +789,8 @@ namespace jspp
                 return storage.function->to_std_string();
             case JsType::Generator:
                 return storage.generator->to_std_string();
+            case JsType::Symbol:
+                return storage.symbol->to_std_string();
             case JsType::DataDescriptor:
                 return storage.data_desc->value->to_std_string();
             case JsType::AccessorDescriptor:

@@ -2,6 +2,7 @@
 
 #include "types.hpp"
 #include "values/function.hpp"
+#include "values/symbol.hpp"
 #include "error.hpp"
 #include <ranges>
 
@@ -52,7 +53,8 @@ namespace jspp
                 auto ptr = obj.as_object();
                 for (const auto &pair : ptr->props)
                 {
-                    keys.push_back(pair.first);
+                    if (!JsSymbol::is_internal_key(pair.first))
+                        keys.push_back(pair.first);
                 }
             }
             if (obj.is_function())
@@ -60,7 +62,8 @@ namespace jspp
                 auto ptr = obj.as_function();
                 for (const auto &pair : ptr->props)
                 {
-                    keys.push_back(pair.first);
+                    if (!JsSymbol::is_internal_key(pair.first))
+                        keys.push_back(pair.first);
                 }
             }
             if (obj.is_array())

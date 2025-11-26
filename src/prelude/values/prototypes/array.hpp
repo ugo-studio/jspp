@@ -15,7 +15,7 @@ namespace jspp
         inline std::optional<AnyValue> get(const std::string &key, JsArray *self)
         {
             // --- toString() method ---
-            if (key == "toString")
+            if (key == "toString" || key == WellKnownSymbols::toString->key)
             {
                 return AnyValue::make_function([&self](const std::vector<AnyValue> &_) -> AnyValue
                                                { return AnyValue::make_string(self->to_std_string()); },
@@ -23,7 +23,7 @@ namespace jspp
             }
 
             // --- [Symbol.iterator]() method ---
-            if (key == WellKnownSymbols::iterator)
+            if (key == WellKnownSymbols::iterator->key)
             {
                 return jspp::AnyValue::make_generator_function(std::function<JsGenerator<AnyValue>(const std::vector<AnyValue> &)>([&self](const std::vector<AnyValue> &) mutable -> JsGenerator<AnyValue>
                                                                                                                                    {
