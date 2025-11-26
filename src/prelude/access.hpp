@@ -82,5 +82,9 @@ namespace jspp
 
             return keys;
         }
+        inline std::vector<std::string> get_object_values(const AnyValue &obj)
+        {
+            return {};
+        }
     }
 }

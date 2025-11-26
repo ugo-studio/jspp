@@ -77,30 +77,11 @@ namespace jspp
                 handle.destroy();
         }
 
-        NextResult next()
-        {
-            // If the generator is already finished or invalid, return {undefined, true}
-            if (!handle || handle.done())
-                return {std::nullopt, true};
-
-            // Resume execution until next co_yield or co_return
-            handle.resume();
-
-            if (handle.promise().exception_)
-            {
-                std::rethrow_exception(handle.promise().exception_);
-            }
-
-            // If handle.done() is TRUE, we hit co_return (value: X, done: true)
-            // If handle.done() is FALSE, we hit co_yield (value: X, done: false)
-            bool is_done = handle.done();
-
-            return {std::move(handle.promise().current_value), is_done};
-        }
-
         std::unordered_map<std::string, AnyValue> props;
 
         std::string to_std_string() const;
+        NextResult next();
+        std::vector<std::optional<T>> to_vector();
         AnyValue get_property(const std::string &key);
         AnyValue set_property(const std::string &key, const AnyValue &value);
     };

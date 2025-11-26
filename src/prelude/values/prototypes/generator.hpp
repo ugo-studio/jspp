@@ -15,35 +15,24 @@ namespace jspp
             // --- toString() method ---
             if (key == "toString")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &) -> AnyValue
                                                { return AnyValue::make_string(self->to_std_string()); },
                                                key);
             }
             // --- next() method ---
             if (key == "next")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &) -> AnyValue
                                                {
-                                                auto result = self->next();
-                                                return AnyValue::make_object({{"value",result.value.value_or(AnyValue::make_undefined())},{"done",AnyValue::make_boolean(result.done)}}); },
+                                                auto res = self->next();
+                                                return AnyValue::make_object({{"value",res.value.value_or(AnyValue::make_undefined())},{"done",AnyValue::make_boolean(res.done)},}); },
                                                key);
             }
             // --- toArray() method ---
             if (key == "toArray")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &) -> AnyValue
-                                               {
-                                                   std::vector<std::optional<AnyValue>> result;
-                                                   while (true)
-                                                   {
-                                                       auto next = self->next();
-                                                       if (next.done)
-                                                       {
-                                                           break;
-                                                       }
-                                                       result.push_back(next.value.value_or(AnyValue::make_undefined()));
-                                                   }
-                                                   return AnyValue::make_array(result); },
+                return AnyValue::make_function([self](const std::vector<AnyValue> &) -> AnyValue
+                                               { return AnyValue::make_array(self->to_vector()); },
                                                key);
             }
 

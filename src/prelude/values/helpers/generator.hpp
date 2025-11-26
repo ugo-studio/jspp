@@ -11,6 +11,44 @@ std::string jspp::JsGenerator<T>::to_std_string() const
 }
 
 template <typename T>
+jspp::JsGenerator<T>::NextResult jspp::JsGenerator<T>::next()
+{
+    // If the generator is already finished or invalid, return {undefined, true}
+    if (!handle || handle.done())
+        return {std::nullopt, true};
+
+    // Resume execution until next co_yield or co_return
+    handle.resume();
+
+    if (handle.promise().exception_)
+    {
+        std::rethrow_exception(handle.promise().exception_);
+    }
+
+    // If handle.done() is TRUE, we hit co_return (value: X, done: true)
+    // If handle.done() is FALSE, we hit co_yield (value: X, done: false)
+    bool is_done = handle.done();
+
+    return {std::move(handle.promise().current_value), is_done};
+}
+
+template <typename T>
+std::vector<std::optional<T>> jspp::JsGenerator<T>::to_vector()
+{
+    std::vector<std::optional<AnyValue>> result;
+    while (true)
+    {
+        auto next = this->next();
+        if (next.done)
+        {
+            break;
+        }
+        result.push_back(next.value);
+    }
+    return result;
+}
+
+template <typename T>
 jspp::AnyValue jspp::JsGenerator<T>::get_property(const std::string &key)
 {
     auto it = props.find(key);
