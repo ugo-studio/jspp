@@ -6,6 +6,7 @@
 
 namespace jspp
 {
+    // Forward declaration of AnyValue
     class AnyValue;
 
     struct JsString
