@@ -488,10 +488,10 @@ namespace jspp
             assert(is_symbol());
             return storage.symbol.get();
         }
-        JsIterator<AnyValue> *as_iterator() const noexcept
+        std::shared_ptr<JsIterator<AnyValue>> as_iterator_shared() const
         {
             assert(is_iterator());
-            return storage.iterator.get();
+            return storage.iterator; // Returns the shared_ptr, incrementing ref count
         }
         DataDescriptor *as_data_descriptor() const noexcept
         {
@@ -505,7 +505,7 @@ namespace jspp
         }
 
         // --- PROPERTY ACCESS OPERATORS
-        AnyValue get_own_property(const std::string &key)
+        AnyValue get_own_property(const std::string &key) const
         {
             switch (storage.type)
             {
@@ -542,7 +542,7 @@ namespace jspp
                 return AnyValue::make_undefined();
             }
         }
-        AnyValue get_own_property(uint32_t idx) noexcept
+        AnyValue get_own_property(uint32_t idx) const noexcept
         {
             switch (storage.type)
             {
@@ -560,7 +560,7 @@ namespace jspp
                 return get_own_property(std::to_string(idx));
             }
         }
-        AnyValue get_own_property(const AnyValue &key) noexcept
+        AnyValue get_own_property(const AnyValue &key) const noexcept
         {
             if (key.storage.type == JsType::Number && storage.type == JsType::Array)
                 return storage.array->get_property(key.storage.number);
@@ -572,7 +572,7 @@ namespace jspp
             return get_own_property(key.to_std_string());
         }
         // for setting values
-        AnyValue set_own_property(const std::string &key, const AnyValue &value)
+        AnyValue set_own_property(const std::string &key, const AnyValue &value) const
         {
             switch (storage.type)
             {
@@ -590,7 +590,7 @@ namespace jspp
                 return value;
             }
         }
-        AnyValue set_own_property(uint32_t idx, const AnyValue &value)
+        AnyValue set_own_property(uint32_t idx, const AnyValue &value) const
         {
             if (storage.type == JsType::Array)
             {
@@ -598,7 +598,7 @@ namespace jspp
             }
             return set_own_property(std::to_string(idx), value);
         }
-        AnyValue set_own_property(const AnyValue &key, const AnyValue &value)
+        AnyValue set_own_property(const AnyValue &key, const AnyValue &value) const
         {
             if (key.storage.type == JsType::Number && storage.type == JsType::Array)
             {

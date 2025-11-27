@@ -9,6 +9,10 @@
 
 std::string jspp::JsFunction::to_std_string() const
 {
+    if (is_generator())
+    {
+        return "function* " + name + "() { [native code] }";
+    }
     return "function " + name + "() { [native code] }";
 }
 

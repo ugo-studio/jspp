@@ -19,6 +19,19 @@ namespace jspp
                                                { return AnyValue::make_string(self->to_std_string()); },
                                                key);
             }
+            // --- [Symbol.iterator]() method ---
+            if (key == WellKnownSymbols::iterator->key)
+            {
+                return jspp::AnyValue::make_function(
+                    std::function<JsIterator<AnyValue>(const std::vector<AnyValue> &)>([self](const std::vector<AnyValue> &) mutable -> JsIterator<AnyValue>
+                                                                                       { 
+                                                                                        while (true){
+                                                                                            auto res = self->next();
+                                                                                            if (res.done){break;}
+                                                                                            co_yield res.value;
+                                                                                        } }),
+                    key);
+            }
             // --- next() method ---
             if (key == "next")
             {

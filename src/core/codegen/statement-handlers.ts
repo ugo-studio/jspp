@@ -312,35 +312,38 @@ export function visitForOfStatement(
             varName = decl.name.getText();
             // Declare the shared_ptr before the loop
             code +=
-                `${this.indent()}auto ${varName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+                `${this.indent()}{ auto ${varName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
         }
     } else if (ts.isIdentifier(forOf.initializer)) {
         varName = forOf.initializer.getText();
         // Assume it's already declared in an outer scope, just assign to it.
         // No explicit declaration here.
+        code += `${this.indent()}{\n`;
     }
 
     const iterableExpr = this.visit(forOf.expression, context);
-    // const derefIterable = `jspp::Access::deref(${iterableExpr}, ${
-    //     this.getJsVarName(forOf.expression as ts.Identifier)
-    // })`;
-    const iteratorPtr = this.generateUniqueName("__iterator_ptr_", new Set());
-    const nextRes = this.generateUniqueName("__next_res__", new Set());
+    const derefIterable = ts.isIdentifier(forOf.expression)
+        ? `jspp::Access::deref(${iterableExpr}, ${
+            this.getJsVarName(forOf.expression as ts.Identifier)
+        })`
+        : iterableExpr;
+    const iteratorPtr = this.generateUniqueName("__iter_ptr_", new Set());
+    const nextRes = this.generateUniqueName("__res__", new Set());
 
     code +=
-        `${this.indent()}{ auto ${iteratorPtr} = jspp::Access::get_object_values(${iterableExpr});\n`;
-    code += `${this.indent()}while (true) {\n`;
-    this.indentationLevel++;
+        `${this.indent()}auto ${iteratorPtr} = jspp::Access::get_object_values(${derefIterable});\n`;
     code += `${this.indent()}auto ${nextRes} = ${iteratorPtr}->next();\n`;
-    code += `${this.indent()}if (${nextRes}.done) { break; }\n`;
+    code += `${this.indent()}while (!${nextRes}.done) {\n`;
+    this.indentationLevel++;
     code +=
-        `${this.indent()}{ *${varName} = ${nextRes}.value.value_or(jspp::AnyValue::make_undefined());\n`;
+        `${this.indent()}*${varName} = ${nextRes}.value.value_or(jspp::AnyValue::make_undefined());\n`;
     code += this.visit(forOf.statement, {
         ...context,
         isFunctionBody: false,
     });
+    code += `${this.indent()}${nextRes} = ${iteratorPtr}->next();\n`;
     this.indentationLevel--;
-    code += `${this.indent()}}}}\n`;
+    code += `${this.indent()}}}\n`;
     this.indentationLevel--; // Exit the scope for the for-of loop
 
     return code;

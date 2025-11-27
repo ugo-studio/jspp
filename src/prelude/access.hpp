@@ -87,17 +87,13 @@ namespace jspp
 
             return keys;
         }
-        inline JsIterator<AnyValue> *get_object_values(const AnyValue &obj)
+        inline std::shared_ptr<JsIterator<AnyValue>> get_object_values(const AnyValue &obj)
         {
-            // auto generatorFunc = obj.get_own_property(WellKnownSymbols::iterator->key);
-            // if (generatorFunc.is_function())
-            // {
-            //     auto it = generatorFunc.as_function()->call({});
-            //     if (it.is_iterator())
-            //     {
-            //         return it.as_iterator();
-            //     }
-            // }
+            auto generator = obj.get_own_property(WellKnownSymbols::iterator->key);
+            if (generator.is_generator())
+            {
+                return generator.as_function()->call({}).as_iterator_shared();
+            }
             throw RuntimeError::make_error("#<object> is not iterable", "TypeError");
         }
     }
