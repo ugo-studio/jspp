@@ -25,8 +25,9 @@ namespace jspp
             // --- [Symbol.iterator]() method ---
             if (key == WellKnownSymbols::iterator->key)
             {
-                return jspp::AnyValue::make_function(std::function<JsIterator<AnyValue>(const std::vector<AnyValue> &)>([self](const std::vector<AnyValue> &) mutable -> JsIterator<AnyValue>
-                                                                                                                        {
+                return jspp::AnyValue::make_function(
+                    std::function<JsIterator<AnyValue>(const std::vector<AnyValue> &)>([self](const std::vector<AnyValue> &) mutable -> JsIterator<AnyValue>
+                                                                                       {
                                                                 size_t denseSize = self->dense.size();
                                                                 
                                                                 for (size_t idx = 0; idx < self->length; idx++)
@@ -44,7 +45,7 @@ namespace jspp
                                                                 }
 
                                                                 co_return AnyValue::make_undefined(); }),
-                                                     key);
+                    key);
             }
 
             // --- length property ---

@@ -327,11 +327,16 @@ export function visitForOfStatement(
             this.getJsVarName(forOf.expression as ts.Identifier)
         })`
         : iterableExpr;
+    const iteratorFn = this.generateUniqueName("__iter_fn_", new Set());
     const iteratorPtr = this.generateUniqueName("__iter_ptr_", new Set());
     const nextRes = this.generateUniqueName("__res__", new Set());
 
     code +=
-        `${this.indent()}auto ${iteratorPtr} = jspp::Access::get_object_values(${derefIterable});\n`;
+        `${this.indent()}auto ${iteratorFn} = ${derefIterable}.get_own_property(Symbol.get_own_property("iterator"));\n`;
+    code +=
+        `${this.indent()}if (!${iteratorFn}.is_generator()) { throw jspp::RuntimeError::make_error("${iterableExpr} is not iterable", "TypeError"); }\n`;
+    code +=
+        `${this.indent()}auto ${iteratorPtr} = ${iteratorFn}.as_function()->call({}).as_iterator();\n`;
     code += `${this.indent()}auto ${nextRes} = ${iteratorPtr}->next();\n`;
     code += `${this.indent()}while (!${nextRes}.done) {\n`;
     this.indentationLevel++;

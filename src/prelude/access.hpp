@@ -87,14 +87,5 @@ namespace jspp
 
             return keys;
         }
-        inline std::shared_ptr<JsIterator<AnyValue>> get_object_values(const AnyValue &obj)
-        {
-            auto generator = obj.get_own_property(WellKnownSymbols::iterator->key);
-            if (generator.is_generator())
-            {
-                return generator.as_function()->call({}).as_iterator_shared();
-            }
-            throw RuntimeError::make_error("#<object> is not iterable", "TypeError");
-        }
     }
 }

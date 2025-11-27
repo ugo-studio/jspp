@@ -488,7 +488,7 @@ namespace jspp
             assert(is_symbol());
             return storage.symbol.get();
         }
-        std::shared_ptr<JsIterator<AnyValue>> as_iterator_shared() const
+        std::shared_ptr<JsIterator<AnyValue>> as_iterator() const
         {
             assert(is_iterator());
             return storage.iterator; // Returns the shared_ptr, incrementing ref count
