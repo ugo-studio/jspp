@@ -380,6 +380,13 @@ namespace jspp
             new (&v.storage.iterator) std::shared_ptr<JsIterator<AnyValue>>(std::make_shared<JsIterator<AnyValue>>(std::move(iterator)));
             return v;
         }
+        static AnyValue from_iterator_ref(JsIterator<AnyValue> *iterator) noexcept
+        {
+            AnyValue v;
+            v.storage.type = JsType::Iterator;
+            new (&v.storage.iterator) std::shared_ptr<JsIterator<AnyValue>>(iterator, [](JsIterator<AnyValue> *) {});
+            return v;
+        }
 
         // property resolution helpers ---------------------------------------
         static AnyValue resolve_property_for_read(const AnyValue &val) noexcept

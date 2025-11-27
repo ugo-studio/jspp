@@ -22,15 +22,17 @@ namespace jspp
             // --- [Symbol.iterator]() method ---
             if (key == WellKnownSymbols::iterator->key)
             {
-                return jspp::AnyValue::make_function(
-                    std::function<JsIterator<AnyValue>(const std::vector<AnyValue> &)>([self](const std::vector<AnyValue> &) mutable -> JsIterator<AnyValue>
-                                                                                       { 
-                                                                                        while (true){
-                                                                                            auto res = self->next();
-                                                                                            if (res.done){break;}
-                                                                                            co_yield res.value;
-                                                                                        } }),
-                    key);
+                return AnyValue::make_function([self](const std::vector<AnyValue> &) -> AnyValue
+                                               {
+                                                   // An iterator's iterator is itself.
+                                                   // We need to return an AnyValue that holds a shared_ptr to this JsIterator.
+                                                   // Since we only have a raw pointer `self`, we can't directly make a new shared_ptr.
+                                                   // We'll return an AnyValue wrapping the raw pointer for now.
+                                                   // This relies on the calling context to manage lifetime, which is true for `for-of`.
+                                                   // A better solution might involve passing a shared_ptr to `self` into the prototype getters.
+                                                   // For now, let's assume the object containing the iterator is alive.
+                                                   return AnyValue::from_iterator_ref(self); },
+                                               key);
             }
             // --- next() method ---
             if (key == "next")

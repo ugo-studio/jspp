@@ -28,7 +28,7 @@ namespace jspp
             // --- [Symbol.iterator]() method ---
             if (key == WellKnownSymbols::iterator->key)
             {
-                return jspp::AnyValue::make_function(std::function<JsIterator<AnyValue>(const std::vector<AnyValue> &)>([self](const std::vector<AnyValue> &) mutable -> JsIterator<AnyValue>
+                return jspp::AnyValue::make_function(std::function<JsIterator<AnyValue>(const std::vector<AnyValue> &)>([self](const std::vector<AnyValue> &) -> JsIterator<AnyValue>
                                                                                                                         {
                                                                 size_t strLength = self->length();
                                                                 for (size_t idx = 0; idx < strLength; idx++)

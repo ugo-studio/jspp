@@ -26,7 +26,7 @@ namespace jspp
             if (key == WellKnownSymbols::iterator->key)
             {
                 return jspp::AnyValue::make_function(
-                    std::function<JsIterator<AnyValue>(const std::vector<AnyValue> &)>([self](const std::vector<AnyValue> &) mutable -> JsIterator<AnyValue>
+                    std::function<JsIterator<AnyValue>(const std::vector<AnyValue> &)>([self](const std::vector<AnyValue> &) -> JsIterator<AnyValue>
                                                                                        {
                                                                 size_t denseSize = self->dense.size();
                                                                 
