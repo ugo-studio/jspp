@@ -321,23 +321,26 @@ export function visitForOfStatement(
     }
 
     const iterableExpr = this.visit(forOf.expression, context);
-    const derefIterable = `jspp::Access::deref(${iterableExpr}, ${
-        this.getJsVarName(forOf.expression as ts.Identifier)
-    })`;
-    const arrayPtr = this.generateUniqueName("__array_ptr_", new Set());
+    // const derefIterable = `jspp::Access::deref(${iterableExpr}, ${
+    //     this.getJsVarName(forOf.expression as ts.Identifier)
+    // })`;
+    const iteratorPtr = this.generateUniqueName("__iterator_ptr_", new Set());
+    const nextRes = this.generateUniqueName("__next_res__", new Set());
 
     code +=
-        `${this.indent()}{ auto ${arrayPtr} = std::any_cast<std::shared_ptr<jspp::JsArray>>(${derefIterable});\n`;
-    code +=
-        `${this.indent()}for (const auto& ${varName}_val : ${arrayPtr}->items) {\n`;
+        `${this.indent()}{ auto ${iteratorPtr} = jspp::Access::get_object_values(${iterableExpr});\n`;
+    code += `${this.indent()}while (true) {\n`;
     this.indentationLevel++;
-    code += `${this.indent()}*${varName} = ${varName}_val;\n`;
+    code += `${this.indent()}auto ${nextRes} = ${iteratorPtr}->next();\n`;
+    code += `${this.indent()}if (${nextRes}.done) { break; }\n`;
+    code +=
+        `${this.indent()}{ *${varName} = ${nextRes}.value.value_or(jspp::AnyValue::make_undefined());\n`;
     code += this.visit(forOf.statement, {
         ...context,
         isFunctionBody: false,
     });
     this.indentationLevel--;
-    code += `${this.indent()}}}\n`;
+    code += `${this.indent()}}}}\n`;
     this.indentationLevel--; // Exit the scope for the for-of loop
 
     return code;

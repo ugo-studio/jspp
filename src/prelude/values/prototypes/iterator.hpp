@@ -1,16 +1,16 @@
 #pragma once
 
 #include "types.hpp"
-#include "values/generator.hpp"
+#include "values/iterator.hpp"
 #include "any_value.hpp"
 #include "error.hpp"
 #include "operators.hpp"
 
 namespace jspp
 {
-    namespace GeneratorPrototypes
+    namespace IteratorPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key, JsGenerator<AnyValue> *self)
+        inline std::optional<AnyValue> get(const std::string &key, JsIterator<AnyValue> *self)
         {
             // --- toString() method ---
             if (key == "toString" || key == WellKnownSymbols::toString->key)

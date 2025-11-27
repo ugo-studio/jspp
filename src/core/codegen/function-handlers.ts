@@ -17,7 +17,7 @@ export function generateLambda(
         isInsideGeneratorFunction: isInsideGeneratorFunction,
     });
     const funcReturnType = isInsideGeneratorFunction
-        ? "jspp::JsGenerator<jspp::AnyValue>"
+        ? "jspp::JsIterator<jspp::AnyValue>"
         : "jspp::AnyValue";
 
     let lambda =
@@ -84,9 +84,9 @@ export function generateLambda(
     // Handle generator function
     if (isInsideGeneratorFunction) {
         signature =
-            "jspp::JsGenerator<jspp::AnyValue>(const std::vector<jspp::AnyValue>&)";
+            "jspp::JsIterator<jspp::AnyValue>(const std::vector<jspp::AnyValue>&)";
         callable = `std::function<${signature}>(${lambda})`;
-        method = `jspp::AnyValue::make_generator_function`;
+        method = `jspp::AnyValue::make_function`;
     } // Handle normal function
     else {
         signature = `jspp::AnyValue(const std::vector<jspp::AnyValue>&)`;

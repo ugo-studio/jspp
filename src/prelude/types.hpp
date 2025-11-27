@@ -28,7 +28,7 @@ namespace jspp
     struct JsSymbol;        // can set property (but usually doesn't have own props)
 
     template <typename T>
-    class JsGenerator; // can set property
+    class JsIterator; // can set property
 
     // Object property configuration forward declarations
     struct DataDescriptor;
@@ -46,7 +46,7 @@ namespace jspp
     // AnyValue prototypes
     namespace StringPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key, const std::unique_ptr<std::string> &self);
+        inline std::optional<AnyValue> get(const std::string &key, std::string *self);
     }
     namespace ArrayPrototypes
     {
@@ -56,9 +56,9 @@ namespace jspp
     {
         inline std::optional<AnyValue> get(const std::string &key, JsFunction *self);
     }
-    namespace GeneratorPrototypes
+    namespace IteratorPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key, JsGenerator<AnyValue> *self);
+        inline std::optional<AnyValue> get(const std::string &key, JsIterator<AnyValue> *self);
     }
     namespace SymbolPrototypes
     {

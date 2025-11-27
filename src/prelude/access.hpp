@@ -1,9 +1,11 @@
 #pragma once
 
 #include "types.hpp"
+#include "well_known_symbols.hpp"
 #include "values/function.hpp"
 #include "values/symbol.hpp"
 #include "error.hpp"
+#include "any_value.hpp"
 #include <ranges>
 
 namespace jspp
@@ -85,9 +87,18 @@ namespace jspp
 
             return keys;
         }
-        inline std::vector<std::string> get_object_values(const AnyValue &obj)
+        inline JsIterator<AnyValue> *get_object_values(const AnyValue &obj)
         {
-            return {};
+            // auto generatorFunc = obj.get_own_property(WellKnownSymbols::iterator->key);
+            // if (generatorFunc.is_function())
+            // {
+            //     auto it = generatorFunc.as_function()->call({});
+            //     if (it.is_iterator())
+            //     {
+            //         return it.as_iterator();
+            //     }
+            // }
+            throw RuntimeError::make_error("#<object> is not iterable", "TypeError");
         }
     }
 }

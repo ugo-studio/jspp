@@ -22,7 +22,7 @@
 #include "values/object.hpp"
 #include "values/array.hpp"
 #include "values/function.hpp"
-#include "values/generator.hpp"
+#include "values/iterator.hpp"
 #include "values/symbol.hpp"
 #include "error.hpp"
 #include "descriptors.hpp"
@@ -41,7 +41,7 @@ namespace jspp
         Object = 6,
         Array = 7,
         Function = 8,
-        Generator = 9,
+        Iterator = 9,
         Symbol = 10,
         DataDescriptor = 11,
         AccessorDescriptor = 12,
@@ -62,7 +62,7 @@ namespace jspp
             std::shared_ptr<JsObject> object;
             std::shared_ptr<JsArray> array;
             std::shared_ptr<JsFunction> function;
-            std::shared_ptr<JsGenerator<AnyValue>> generator;
+            std::shared_ptr<JsIterator<AnyValue>> iterator;
             std::shared_ptr<JsSymbol> symbol;
             std::shared_ptr<DataDescriptor> data_desc;
             std::shared_ptr<AccessorDescriptor> accessor_desc;
@@ -93,8 +93,8 @@ namespace jspp
             case JsType::Function:
                 storage.function.~shared_ptr();
                 break;
-            case JsType::Generator:
-                storage.generator.~shared_ptr();
+            case JsType::Iterator:
+                storage.iterator.~shared_ptr();
                 break;
             case JsType::Symbol:
                 storage.symbol.~shared_ptr();
@@ -149,8 +149,8 @@ namespace jspp
             case JsType::Function:
                 new (&storage.function) std::shared_ptr<JsFunction>(std::move(other.storage.function));
                 break;
-            case JsType::Generator:
-                new (&storage.generator) std::shared_ptr<JsGenerator<AnyValue>>(std::move(other.storage.generator));
+            case JsType::Iterator:
+                new (&storage.iterator) std::shared_ptr<JsIterator<AnyValue>>(std::move(other.storage.iterator));
                 break;
             case JsType::Symbol:
                 new (&storage.symbol) std::shared_ptr<JsSymbol>(std::move(other.storage.symbol));
@@ -196,8 +196,8 @@ namespace jspp
             case JsType::Function:
                 new (&storage.function) std::shared_ptr<JsFunction>(other.storage.function); // shallow copy
                 break;
-            case JsType::Generator:
-                new (&storage.generator) std::shared_ptr<JsGenerator<AnyValue>>(other.storage.generator); // shallow copy
+            case JsType::Iterator:
+                new (&storage.iterator) std::shared_ptr<JsIterator<AnyValue>>(other.storage.iterator); // shallow copy
                 break;
             case JsType::Symbol:
                 new (&storage.symbol) std::shared_ptr<JsSymbol>(other.storage.symbol); // shallow copy (shared)
@@ -334,25 +334,13 @@ namespace jspp
             new (&v.storage.array) std::shared_ptr<JsArray>(std::make_shared<JsArray>(dense));
             return v;
         }
-        static AnyValue make_function(const std::function<AnyValue(const std::vector<AnyValue> &)> &call, const std::string &name) noexcept
+        static AnyValue make_function(const JsFunctionCallable &call, const std::string &name) noexcept
         {
             AnyValue v;
             v.storage.type = JsType::Function;
             new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(call, name));
             return v;
         }
-        template <typename Callable>
-        static AnyValue make_generator_function(Callable &&call, const std::string &name) noexcept
-        {
-            AnyValue v;
-            v.storage.type = JsType::Function;
-            new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(
-                [func = std::forward<Callable>(call)](const std::vector<AnyValue> &args) mutable -> AnyValue
-                { return AnyValue::from_generator(func(args)); },
-                name));
-            return v;
-        }
-        // Creates a new unique Symbol
         static AnyValue make_symbol(const std::string &description = "") noexcept
         {
             AnyValue v;
@@ -360,15 +348,6 @@ namespace jspp
             new (&v.storage.symbol) std::shared_ptr<JsSymbol>(std::make_shared<JsSymbol>(description));
             return v;
         }
-        // Wraps an existing Symbol pointer (e.g. from the registry)
-        static AnyValue from_symbol(std::shared_ptr<JsSymbol> sym) noexcept
-        {
-            AnyValue v;
-            v.storage.type = JsType::Symbol;
-            new (&v.storage.symbol) std::shared_ptr<JsSymbol>(std::move(sym));
-            return v;
-        }
-
         static AnyValue make_data_descriptor(const AnyValue &value, bool writable, bool enumerable, bool configurable) noexcept
         {
             AnyValue v;
@@ -387,11 +366,18 @@ namespace jspp
             return v;
         }
 
-        static AnyValue from_generator(JsGenerator<AnyValue> &&generator) noexcept
+        static AnyValue from_symbol(std::shared_ptr<JsSymbol> sym) noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::Generator;
-            new (&v.storage.generator) std::shared_ptr<JsGenerator<AnyValue>>(std::make_shared<JsGenerator<AnyValue>>(std::move(generator)));
+            v.storage.type = JsType::Symbol;
+            new (&v.storage.symbol) std::shared_ptr<JsSymbol>(std::move(sym));
+            return v;
+        }
+        static AnyValue from_iterator(JsIterator<AnyValue> &&iterator) noexcept
+        {
+            AnyValue v;
+            v.storage.type = JsType::Iterator;
+            new (&v.storage.iterator) std::shared_ptr<JsIterator<AnyValue>>(std::make_shared<JsIterator<AnyValue>>(std::move(iterator)));
             return v;
         }
 
@@ -455,7 +441,7 @@ namespace jspp
         bool is_object() const noexcept { return storage.type == JsType::Object; }
         bool is_array() const noexcept { return storage.type == JsType::Array; }
         bool is_function() const noexcept { return storage.type == JsType::Function; }
-        bool is_generator() const noexcept { return storage.type == JsType::Generator; }
+        bool is_iterator() const noexcept { return storage.type == JsType::Iterator; }
         bool is_boolean() const noexcept { return storage.type == JsType::Boolean; }
         bool is_symbol() const noexcept { return storage.type == JsType::Symbol; }
         bool is_null() const noexcept { return storage.type == JsType::Null; }
@@ -463,6 +449,7 @@ namespace jspp
         bool is_uninitialized() const noexcept { return storage.type == JsType::Uninitialized; }
         bool is_data_descriptor() const noexcept { return storage.type == JsType::DataDescriptor; }
         bool is_accessor_descriptor() const noexcept { return storage.type == JsType::AccessorDescriptor; }
+        bool is_generator() const noexcept { return storage.type == JsType::Function && storage.function->is_generator(); }
 
         // --- TYPE CASTERS
         double as_double() const noexcept
@@ -501,6 +488,11 @@ namespace jspp
             assert(is_symbol());
             return storage.symbol.get();
         }
+        JsIterator<AnyValue> *as_iterator() const noexcept
+        {
+            assert(is_iterator());
+            return storage.iterator.get();
+        }
         DataDescriptor *as_data_descriptor() const noexcept
         {
             assert(is_data_descriptor());
@@ -523,14 +515,14 @@ namespace jspp
                 return storage.array->get_property(key);
             case JsType::Function:
                 return storage.function->get_property(key);
-            case JsType::Generator:
-                return storage.generator->get_property(key);
+            case JsType::Iterator:
+                return storage.iterator->get_property(key);
             case JsType::Symbol:
                 return storage.symbol->get_property(key);
             case JsType::String:
             {
                 // Check for prototype methods
-                auto proto_fn = StringPrototypes::get(key, this->storage.str);
+                auto proto_fn = StringPrototypes::get(key, this->storage.str.get());
                 if (proto_fn.has_value())
                 {
                     return resolve_property_for_read(proto_fn.value());
@@ -631,6 +623,12 @@ namespace jspp
                 return storage.number != 0.0;
             case JsType::String:
                 return !storage.str->empty();
+            case JsType::Undefined:
+                return false;
+            case JsType::Null:
+                return false;
+            case JsType::Uninitialized:
+                return false;
             default:
                 return true;
             }
@@ -787,8 +785,8 @@ namespace jspp
                 return storage.array->to_std_string();
             case JsType::Function:
                 return storage.function->to_std_string();
-            case JsType::Generator:
-                return storage.generator->to_std_string();
+            case JsType::Iterator:
+                return storage.iterator->to_std_string();
             case JsType::Symbol:
                 return storage.symbol->to_std_string();
             case JsType::DataDescriptor:

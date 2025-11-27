@@ -15,12 +15,12 @@ namespace jspp
     {
         // This function retrieves a prototype method for a given string instance.
         // It captures the string instance to act as the 'this' context for the method.
-        inline std::optional<AnyValue> get(const std::string &key, const std::unique_ptr<std::string> &self)
+        inline std::optional<AnyValue> get(const std::string &key, std::string *self)
         {
             // --- toString() & valueOf() ---
             if (key == "toString" || key == WellKnownSymbols::toString->key || key == "valueOf")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                { return AnyValue::make_string(*self); },
                                                key);
             }
@@ -28,23 +28,23 @@ namespace jspp
             // --- [Symbol.iterator]() method ---
             if (key == WellKnownSymbols::iterator->key)
             {
-                return jspp::AnyValue::make_generator_function(std::function<JsGenerator<AnyValue>(const std::vector<AnyValue> &)>([&self](const std::vector<AnyValue> &) mutable -> JsGenerator<AnyValue>
-                                                                                                                                   {
+                return jspp::AnyValue::make_function(std::function<JsIterator<AnyValue>(const std::vector<AnyValue> &)>([self](const std::vector<AnyValue> &) mutable -> JsIterator<AnyValue>
+                                                                                                                        {
                                                                 size_t strLength = self->length();
                                                                 for (size_t idx = 0; idx < strLength; idx++)
                                                                 {
                                                                     co_yield AnyValue::make_string(std::string(1, (*self)[idx]));
                                                                 }
                                                                 co_return AnyValue::make_undefined(); }),
-                                                               key);
+                                                     key);
             }
 
             // --- length property ---
             if (key == "length")
             {
-                return AnyValue::make_accessor_descriptor([&self](const std::vector<AnyValue>) -> AnyValue
+                return AnyValue::make_accessor_descriptor([self](const std::vector<AnyValue>) -> AnyValue
                                                           { return AnyValue::make_number(self->length()); },
-                                                          [&self](const std::vector<AnyValue>) -> AnyValue
+                                                          [self](const std::vector<AnyValue>) -> AnyValue
                                                           { return AnyValue::make_undefined(); },
                                                           false,
                                                           false);
@@ -53,7 +53,7 @@ namespace jspp
             // --- charAt(pos) ---
             if (key == "charAt")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                     double pos = args.empty() ? 0 : Operators_Private::ToNumber(args[0]);
                     int index = static_cast<int>(pos);
@@ -67,7 +67,7 @@ namespace jspp
             // --- concat(str1, str2, ...) ---
             if (key == "concat")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                     std::string result = *self;
                     for (const auto& arg : args)
@@ -81,7 +81,7 @@ namespace jspp
             // --- endsWith(searchString, endPosition) ---
             if (key == "endsWith")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                     if(args.empty()) return AnyValue::make_boolean(false);
                     std::string search = args[0].to_std_string();
@@ -97,7 +97,7 @@ namespace jspp
             // --- includes(searchString, position) ---
             if (key == "includes")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                     if(args.empty()) return AnyValue::make_boolean(false);
                     std::string search = args[0].to_std_string();
@@ -110,7 +110,7 @@ namespace jspp
             // --- indexOf(searchString, position) ---
             if (key == "indexOf")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                     if (args.empty()) return AnyValue::make_number(-1);
                     std::string search = args[0].to_std_string();
@@ -123,7 +123,7 @@ namespace jspp
             // --- lastIndexOf(searchString, position) ---
             if (key == "lastIndexOf")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                     if (args.empty()) return AnyValue::make_number(-1);
                     std::string search = args[0].to_std_string();
@@ -136,7 +136,7 @@ namespace jspp
             // --- padEnd(targetLength, padString) ---
             if (key == "padEnd")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                     size_t target_length = args.empty() ? 0 : static_cast<size_t>(Operators_Private::ToNumber(args[0]));
                     if (self->length() >= target_length) return AnyValue::make_string(*self);
@@ -153,7 +153,7 @@ namespace jspp
             // --- padStart(targetLength, padString) ---
             if (key == "padStart")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                     size_t target_length = args.empty() ? 0 : static_cast<size_t>(Operators_Private::ToNumber(args[0]));
                     if (self->length() >= target_length) return AnyValue::make_string(*self);
@@ -170,7 +170,7 @@ namespace jspp
             // --- repeat(count) ---
             if (key == "repeat")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                     double count = args.empty() ? 0 : Operators_Private::ToNumber(args[0]);
                     if (count < 0) {
@@ -189,7 +189,7 @@ namespace jspp
             // --- replace(substr, newSubstr) ---
             if (key == "replace")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                     if (args.size() < 2) return AnyValue::make_string(*self);
                     std::string search = args[0].to_std_string();
@@ -207,7 +207,7 @@ namespace jspp
             // --- replaceAll(substr, newSubstr) ---
             if (key == "replaceAll")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                     if (args.size() < 2) return AnyValue::make_string(*self);
                     std::string search = args[0].to_std_string();
@@ -227,7 +227,7 @@ namespace jspp
             // --- slice(beginIndex, endIndex) ---
             if (key == "slice")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                     int len = self->length();
                     int start = args.empty() ? 0 : Operators_Private::ToInt32(args[0]);
@@ -247,7 +247,7 @@ namespace jspp
             // --- split(separator) ---
             if (key == "split")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                     std::string separator = (args.empty() || args[0].is_undefined()) ? "" : args[0].to_std_string();
                     std::vector<std::optional<AnyValue>> result_vec;
@@ -272,7 +272,7 @@ namespace jspp
             // --- startsWith(searchString, position) ---
             if (key == "startsWith")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                     if(args.empty()) return AnyValue::make_boolean(false);
                     std::string search = args[0].to_std_string();
@@ -286,7 +286,7 @@ namespace jspp
             // --- substring(indexStart, indexEnd) ---
             if (key == "substring")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                     int len = self->length();
                     int start = args.empty() ? 0 : Operators_Private::ToInt32(args[0]);
@@ -307,7 +307,7 @@ namespace jspp
             // --- toLowerCase() ---
             if (key == "toLowerCase")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                     std::string result = *self;
                     std::transform(result.begin(), result.end(), result.begin(),
@@ -319,7 +319,7 @@ namespace jspp
             // --- toUpperCase() ---
             if (key == "toUpperCase")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                     std::string result = *self;
                     std::transform(result.begin(), result.end(), result.begin(),
@@ -331,7 +331,7 @@ namespace jspp
             // --- trim() ---
             if (key == "trim")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                     const char* whitespace = " \t\n\r\f\v";
                     std::string result = *self;
@@ -344,7 +344,7 @@ namespace jspp
             // --- trimEnd() ---
             if (key == "trimEnd")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                     const char* whitespace = " \t\n\r\f\v";
                     std::string result = *self;
@@ -356,7 +356,7 @@ namespace jspp
             // --- trimStart() ---
             if (key == "trimStart")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                     const char* whitespace = " \t\n\r\f\v";
                     std::string result = *self;

@@ -1,17 +1,17 @@
 #pragma once
 
 #include "types.hpp"
-#include "values/generator.hpp"
+#include "values/iterator.hpp"
 #include "any_value.hpp"
 
 template <typename T>
-std::string jspp::JsGenerator<T>::to_std_string() const
+std::string jspp::JsIterator<T>::to_std_string() const
 {
     return "[object Generator]";
 }
 
 template <typename T>
-jspp::JsGenerator<T>::NextResult jspp::JsGenerator<T>::next()
+jspp::JsIterator<T>::NextResult jspp::JsIterator<T>::next()
 {
     // If the generator is already finished or invalid, return {undefined, true}
     if (!handle || handle.done())
@@ -33,7 +33,7 @@ jspp::JsGenerator<T>::NextResult jspp::JsGenerator<T>::next()
 }
 
 template <typename T>
-std::vector<std::optional<T>> jspp::JsGenerator<T>::to_vector()
+std::vector<std::optional<T>> jspp::JsIterator<T>::to_vector()
 {
     std::vector<std::optional<AnyValue>> result;
     while (true)
@@ -49,7 +49,7 @@ std::vector<std::optional<T>> jspp::JsGenerator<T>::to_vector()
 }
 
 template <typename T>
-jspp::AnyValue jspp::JsGenerator<T>::get_property(const std::string &key)
+jspp::AnyValue jspp::JsIterator<T>::get_property(const std::string &key)
 {
     auto it = props.find(key);
     if (it == props.end())
@@ -57,7 +57,7 @@ jspp::AnyValue jspp::JsGenerator<T>::get_property(const std::string &key)
         // check prototype
         if constexpr (std::is_same_v<T, AnyValue>)
         {
-            auto proto_it = GeneratorPrototypes::get(key, this);
+            auto proto_it = IteratorPrototypes::get(key, this);
             if (proto_it.has_value())
             {
                 return AnyValue::resolve_property_for_read(proto_it.value());
@@ -71,12 +71,12 @@ jspp::AnyValue jspp::JsGenerator<T>::get_property(const std::string &key)
 }
 
 template <typename T>
-jspp::AnyValue jspp::JsGenerator<T>::set_property(const std::string &key, const AnyValue &value)
+jspp::AnyValue jspp::JsIterator<T>::set_property(const std::string &key, const AnyValue &value)
 {
     // set prototype property if accessor descriptor
     if constexpr (std::is_same_v<T, AnyValue>)
     {
-        auto proto_it = GeneratorPrototypes::get(key, this);
+        auto proto_it = IteratorPrototypes::get(key, this);
         if (proto_it.has_value())
         {
             auto proto_value = proto_it.value();

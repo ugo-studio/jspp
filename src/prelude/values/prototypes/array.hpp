@@ -17,7 +17,7 @@ namespace jspp
             // --- toString() method ---
             if (key == "toString" || key == WellKnownSymbols::toString->key)
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &_) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &_) -> AnyValue
                                                { return AnyValue::make_string(self->to_std_string()); },
                                                key);
             }
@@ -25,8 +25,8 @@ namespace jspp
             // --- [Symbol.iterator]() method ---
             if (key == WellKnownSymbols::iterator->key)
             {
-                return jspp::AnyValue::make_generator_function(std::function<JsGenerator<AnyValue>(const std::vector<AnyValue> &)>([&self](const std::vector<AnyValue> &) mutable -> JsGenerator<AnyValue>
-                                                                                                                                   {
+                return jspp::AnyValue::make_function(std::function<JsIterator<AnyValue>(const std::vector<AnyValue> &)>([self](const std::vector<AnyValue> &) mutable -> JsIterator<AnyValue>
+                                                                                                                        {
                                                                 size_t denseSize = self->dense.size();
                                                                 
                                                                 for (size_t idx = 0; idx < self->length; idx++)
@@ -44,18 +44,18 @@ namespace jspp
                                                                 }
 
                                                                 co_return AnyValue::make_undefined(); }),
-                                                               key);
+                                                     key);
             }
 
             // --- length property ---
             if (key == "length")
             {
-                auto getter = [&self](const std::vector<AnyValue> &args) -> AnyValue
+                auto getter = [self](const std::vector<AnyValue> &args) -> AnyValue
                 {
                     return AnyValue::make_number(self->length);
                 };
 
-                auto setter = [&self](const std::vector<AnyValue> &args) -> AnyValue
+                auto setter = [self](const std::vector<AnyValue> &args) -> AnyValue
                 {
                     if (args.empty())
                     {
@@ -103,7 +103,7 @@ namespace jspp
             // --- push() method ---
             if (key == "push")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                                                                                            for (const auto &arg : args)
                                                                                            {
@@ -116,7 +116,7 @@ namespace jspp
             // --- pop() method ---
             if (key == "pop")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                                                                                            if (self->length == 0)
                                                                                            {
@@ -141,7 +141,7 @@ namespace jspp
             // --- shift() method ---
             if (key == "shift")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                                                                                            if (self->length == 0)
                                                                                            {
@@ -172,7 +172,7 @@ namespace jspp
             // --- unshift() method ---
             if (key == "unshift")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                                                                                              size_t args_count = args.size();
                                                                                              if (args_count == 0)
@@ -199,7 +199,7 @@ namespace jspp
             // --- join() method ---
             if (key == "join")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                                                                                            std::string sep = ",";
                                                                                            if (!args.empty() && !args[0].is_undefined())
@@ -227,7 +227,7 @@ namespace jspp
             // --- forEach() method ---
             if (key == "forEach")
             {
-                return AnyValue::make_function([&self](const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
                                                                                            if (args.empty() || !args[0].is_function())
                                                                                            {

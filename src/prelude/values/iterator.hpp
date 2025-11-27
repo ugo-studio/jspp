@@ -13,7 +13,7 @@ namespace jspp
     class AnyValue;
 
     template <typename T>
-    class JsGenerator
+    class JsIterator
     {
     public:
         struct NextResult
@@ -26,9 +26,9 @@ namespace jspp
             std::optional<T> current_value;
             std::exception_ptr exception_;
 
-            JsGenerator get_return_object()
+            JsIterator get_return_object()
             {
-                return JsGenerator{
+                return JsIterator{
                     std::coroutine_handle<promise_type>::from_promise(*this)};
             }
 
@@ -64,14 +64,14 @@ namespace jspp
         using handle_type = std::coroutine_handle<promise_type>;
         handle_type handle;
 
-        explicit JsGenerator(handle_type h) : handle(h) {}
-        JsGenerator(JsGenerator &&other) noexcept : handle(std::exchange(other.handle, nullptr)) {}
+        explicit JsIterator(handle_type h) : handle(h) {}
+        JsIterator(JsIterator &&other) noexcept : handle(std::exchange(other.handle, nullptr)) {}
 
         // Delete copy constructor/assignment to ensure unique ownership of the handle
-        JsGenerator(const JsGenerator &) = delete;
-        JsGenerator &operator=(const JsGenerator &) = delete;
+        JsIterator(const JsIterator &) = delete;
+        JsIterator &operator=(const JsIterator &) = delete;
 
-        ~JsGenerator()
+        ~JsIterator()
         {
             if (handle)
                 handle.destroy();

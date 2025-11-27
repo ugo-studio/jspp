@@ -9,7 +9,7 @@
 #include "values/object.hpp"
 #include "values/array.hpp"
 #include "values/function.hpp"
-#include "values/generator.hpp"
+#include "values/iterator.hpp"
 
 #include "error.hpp"
 #include "descriptors.hpp"
@@ -21,13 +21,13 @@
 #include "values/prototypes/object.hpp"
 #include "values/prototypes/array.hpp"
 #include "values/prototypes/function.hpp"
-#include "values/prototypes/generator.hpp"
+#include "values/prototypes/iterator.hpp"
 
 #include "values/helpers/symbol.hpp"
 #include "values/helpers/object.hpp"
 #include "values/helpers/array.hpp"
 #include "values/helpers/function.hpp"
-#include "values/helpers/generator.hpp"
+#include "values/helpers/iterator.hpp"
 
 // helpers
 #include "operators.hpp"

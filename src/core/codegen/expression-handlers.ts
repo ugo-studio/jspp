@@ -8,7 +8,9 @@ function visitObjectPropertyName(
     node: ts.PropertyName,
     context: VisitContext,
 ): string {
-    if (ts.isStringLiteral(node)) {
+    if (ts.isNumericLiteral(node)) {
+        return node.getText();
+    } else if (ts.isStringLiteral(node)) {
         return `"${
             node.getText().substring(
                 1,
@@ -25,11 +27,11 @@ function visitObjectPropertyName(
             : this.visit(node.expression, context);
         name += ".to_std_string()";
         return name;
+    } else if (context.isPropertyNameAccess) {
+        return this.visit(node, context);
+    } else {
+        return `"${node.getText()}"`;
     }
-
-    return context.isPropertyNameAccess
-        ? node.getText()
-        : `"${node.getText()}"`;
 }
 
 export function visitObjectLiteralExpression(
@@ -166,7 +168,6 @@ export function visitPropertyAccessExpression(
     }
 
     return `${finalExpr}.get_own_property("${propName}")`;
-    // return `${finalExpr}["${propName}"]`;
 }
 
 export function visitElementAccessExpression(
@@ -237,7 +238,6 @@ export function visitElementAccessExpression(
     }
 
     return `${finalExpr}.get_own_property(${argText})`;
-    // return `${finalExpr}[${argText}]`;
 }
 
 export function visitBinaryExpression(
