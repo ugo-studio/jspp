@@ -23,7 +23,7 @@ namespace jspp
                 return val.as_boolean() ? 1.0 : 0.0;
             if (val.is_string())
             {
-                const std::string &s = *val.as_string();
+                const std::string &s = val.as_string()->value;
                 // JS considers empty or whitespace-only strings as 0.
                 if (s.empty() || std::all_of(s.begin(), s.end(), isspace))
                     return 0.0;
@@ -116,7 +116,7 @@ namespace jspp
     {
         // Simplified Abstract Relational Comparison
         if (lhs.is_string() && rhs.is_string())
-            return AnyValue::make_boolean(*lhs.as_string() < *rhs.as_string());
+            return AnyValue::make_boolean(lhs.as_string()->value < rhs.as_string()->value);
 
         double l = Operators_Private::ToNumber(lhs);
         double r = Operators_Private::ToNumber(rhs);

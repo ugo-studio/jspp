@@ -58,7 +58,7 @@ namespace jspp
             JsUninitialized uninitialized;
             bool boolean;
             double number;
-            std::unique_ptr<std::string> str;
+            std::shared_ptr<JsString> str;
             std::shared_ptr<JsObject> object;
             std::shared_ptr<JsArray> array;
             std::shared_ptr<JsFunction> function;
@@ -82,7 +82,7 @@ namespace jspp
             switch (storage.type)
             {
             case JsType::String:
-                storage.str.~unique_ptr();
+                storage.str.~shared_ptr();
                 break;
             case JsType::Object:
                 storage.object.~shared_ptr();
@@ -138,7 +138,7 @@ namespace jspp
                 storage.number = other.storage.number;
                 break;
             case JsType::String:
-                new (&storage.str) std::unique_ptr<std::string>(std::move(other.storage.str));
+                new (&storage.str) std::shared_ptr<JsString>(std::move(other.storage.str));
                 break;
             case JsType::Object:
                 new (&storage.object) std::shared_ptr<JsObject>(std::move(other.storage.object));
@@ -185,7 +185,7 @@ namespace jspp
                 storage.number = other.storage.number;
                 break;
             case JsType::String:
-                new (&storage.str) std::unique_ptr<std::string>(std::make_unique<std::string>(*other.storage.str));
+                new (&storage.str) std::shared_ptr<JsString>(std::make_shared<JsString>(*other.storage.str));
                 break;
             case JsType::Object:
                 new (&storage.object) std::shared_ptr<JsObject>(other.storage.object); // shallow copy
@@ -317,7 +317,7 @@ namespace jspp
         {
             AnyValue v;
             v.storage.type = JsType::String;
-            new (&v.storage.str) std::unique_ptr<std::string>(std::make_unique<std::string>(raw_s));
+            new (&v.storage.str) std::shared_ptr<JsString>(std::make_shared<JsString>(raw_s));
             return v;
         }
         static AnyValue make_object(const std::map<std::string, AnyValue> &props) noexcept
@@ -378,6 +378,13 @@ namespace jspp
             AnyValue v;
             v.storage.type = JsType::Symbol;
             new (&v.storage.symbol) std::shared_ptr<JsSymbol>(std::move(sym));
+            return v;
+        }
+        static AnyValue from_string(std::shared_ptr<JsString> str) noexcept
+        {
+            AnyValue v;
+            v.storage.type = JsType::String;
+            new (&v.storage.str) std::shared_ptr<JsString>(std::move(str));
             return v;
         }
         static AnyValue from_iterator(JsIterator<AnyValue> &&iterator) noexcept
@@ -476,7 +483,7 @@ namespace jspp
             assert(is_boolean());
             return storage.boolean;
         }
-        std::string *as_string() const noexcept
+        JsString *as_string() const noexcept
         {
             assert(is_string());
             return storage.str.get();
@@ -534,20 +541,7 @@ namespace jspp
             case JsType::Symbol:
                 return storage.symbol->get_property(key);
             case JsType::String:
-            {
-                // Check for prototype methods
-                auto proto_fn = StringPrototypes::get(key, this->storage.str.get());
-                if (proto_fn.has_value())
-                {
-                    return resolve_property_for_read(proto_fn.value());
-                }
-                // Handle character access by string index (e.g., "abc"["1"])
-                if (JsArray::is_array_index(key))
-                {
-                    uint32_t idx = static_cast<uint32_t>(std::stoull(key));
-                    return get_own_property(idx);
-                }
-            }
+                return storage.str->get_property(key);
             case JsType::Undefined:
                 throw RuntimeError::make_error("Cannot read properties of undefined (reading '" + key + "')", "TypeError");
             case JsType::Null:
@@ -562,14 +556,8 @@ namespace jspp
             {
             case JsType::Array:
                 return storage.array->get_property(idx);
-            case JsType::String: // Handle character access by index (e.g., "abc"[1])
-            {
-                if (idx < storage.str->length())
-                {
-                    return AnyValue::make_string(std::string(1, (*storage.str)[idx]));
-                }
-                return AnyValue::make_undefined();
-            }
+            case JsType::String:
+                return storage.str->get_property(idx);
             default:
                 return get_own_property(std::to_string(idx));
             }
@@ -578,6 +566,8 @@ namespace jspp
         {
             if (key.storage.type == JsType::Number && storage.type == JsType::Array)
                 return storage.array->get_property(key.storage.number);
+            if (key.storage.type == JsType::Number && storage.type == JsType::String)
+                return storage.str->get_property(key.storage.number);
 
             // If the key is a Symbol, use its internal key string
             if (key.storage.type == JsType::Symbol)
@@ -636,7 +626,7 @@ namespace jspp
             case JsType::Number:
                 return storage.number != 0.0;
             case JsType::String:
-                return !storage.str->empty();
+                return !storage.str->value.empty();
             case JsType::Undefined:
                 return false;
             case JsType::Null:
@@ -658,7 +648,7 @@ namespace jspp
                 case JsType::Number:
                     return storage.number == other.storage.number;
                 case JsType::String:
-                    return (*storage.str.get() == *other.storage.str.get());
+                    return (storage.str->value == other.storage.str->value);
                 case JsType::Array:
                     return (storage.array == other.storage.array);
                 case JsType::Object:
@@ -698,7 +688,7 @@ namespace jspp
                 double num_other;
                 try
                 {
-                    const std::string &s = *other.as_string();
+                    const std::string &s = other.as_string()->value;
                     // JS considers empty string or whitespace-only string to be 0
                     if (s.empty() || std::all_of(s.begin(), s.end(), [](unsigned char c)
                                                  { return std::isspace(c); }))
@@ -792,7 +782,7 @@ namespace jspp
             case JsType::Boolean:
                 return storage.boolean ? "true" : "false";
             case JsType::String:
-                return *storage.str.get();
+                return storage.str->to_std_string();
             case JsType::Object:
                 return storage.object->to_std_string();
             case JsType::Array:

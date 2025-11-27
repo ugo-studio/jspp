@@ -78,7 +78,7 @@ namespace jspp
             }
             if (obj.is_string())
             {
-                auto len = obj.as_string()->length();
+                auto len = obj.as_string()->value.length();
                 for (auto i = 0; i < len; ++i)
                 {
                     keys.push_back(std::to_string(i));

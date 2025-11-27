@@ -10,6 +10,7 @@
 #include "values/array.hpp"
 #include "values/function.hpp"
 #include "values/iterator.hpp"
+#include "values/string.hpp"
 
 #include "error.hpp"
 #include "descriptors.hpp"
@@ -28,6 +29,7 @@
 #include "values/helpers/array.hpp"
 #include "values/helpers/function.hpp"
 #include "values/helpers/iterator.hpp"
+#include "values/helpers/string.hpp"
 
 // helpers
 #include "operators.hpp"

@@ -22,6 +22,7 @@ namespace jspp
     struct JsUndefined;     // cannot set property
     struct JsNull;          // cannot set property
     struct JsUninitialized; // cannot set property
+    struct JsString;        // can set property
     struct JsObject;        // can set property
     struct JsArray;         // can set property
     struct JsFunction;      // can set property
@@ -46,7 +47,7 @@ namespace jspp
     // AnyValue prototypes
     namespace StringPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key, std::string *self);
+        inline std::optional<AnyValue> get(const std::string &key, JsString *self);
     }
     namespace ArrayPrototypes
     {

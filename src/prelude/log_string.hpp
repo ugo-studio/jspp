@@ -95,7 +95,7 @@ namespace jspp
                 return Color::BLUE + val.to_std_string() + Color::RESET;
             if (val.is_string())
             {
-                const std::string &s = *val.as_string();
+                const std::string &s = val.as_string()->value;
                 if (depth == 0)
                     return truncate_string(s);
                 return Color::GREEN + std::string("\"") + truncate_string(s) + "\"" + Color::RESET;
