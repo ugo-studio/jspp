@@ -15,6 +15,7 @@
 #include "error.hpp"
 #include "descriptors.hpp"
 #include "any_value.hpp"
+#include "any_value_helpers.hpp"
 #include "error_helpers.hpp"
 
 #include "values/prototypes/symbol.hpp"
