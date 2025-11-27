@@ -47,6 +47,16 @@ std::string jspp::JsArray::to_std_string() const
     return result;
 }
 
+jspp::JsIterator<jspp::AnyValue> jspp::JsArray::get_iterator()
+{
+    for (uint64_t idx = 0; idx < length; ++idx)
+    {
+        co_yield get_property(static_cast<uint32_t>(idx));
+    }
+
+    co_return AnyValue::make_undefined();
+}
+
 jspp::AnyValue jspp::JsArray::get_property(const std::string &key)
 {
     if (

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <variant>
 #include "types.hpp"
 
 namespace jspp
@@ -16,10 +15,32 @@ namespace jspp
         JsFunctionCallable callable;
         std::string name;
         std::unordered_map<std::string, AnyValue> props;
+        bool is_generator;
 
-        bool is_generator() const
+        // ---- Constructor A: infer is_generator using index() ----
+        JsFunction(const JsFunctionCallable &c,
+                   std::string n = {},
+                   std::unordered_map<std::string, AnyValue> p = {})
+            : callable(c),
+              name(std::move(n)),
+              props(std::move(p)),
+              is_generator(callable.index() == 1) // 1 = generator
         {
-            return callable.index() == 1;
+        }
+
+        // ---- Constructor B: explicitly set is_generator ----
+        JsFunction(const JsFunctionCallable &c,
+                   bool is_gen,
+                   std::string n = {},
+                   std::unordered_map<std::string, AnyValue> p = {})
+            : callable(c),
+              name(std::move(n)),
+              props(std::move(p)),
+              is_generator(is_gen)
+        {
+            // Optional debug check (no RTTI, no variant visitation):
+            // if (callable.index() == 1 && !is_gen) { ... }
+            // if (callable.index() == 0 && is_gen) { ... }
         }
 
         std::string to_std_string() const;

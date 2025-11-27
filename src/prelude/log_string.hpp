@@ -103,7 +103,7 @@ namespace jspp
             if (val.is_function())
             {
                 auto fn = val.as_function();
-                auto type_part = fn->is_generator() ? "GeneratorFunction" : "Function";
+                auto type_part = fn->is_generator ? "GeneratorFunction" : "Function";
                 auto name_part = fn->name.size() > 0 ? ": " + fn->name : "";
                 return Color::CYAN + "[" + type_part + name_part + "]" + Color::RESET;
             }

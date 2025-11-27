@@ -25,27 +25,9 @@ namespace jspp
             // --- [Symbol.iterator]() method ---
             if (key == WellKnownSymbols::iterator->key)
             {
-                return jspp::AnyValue::make_function(
-                    std::function<JsIterator<AnyValue>(const std::vector<AnyValue> &)>([self](const std::vector<AnyValue> &) -> JsIterator<AnyValue>
-                                                                                       {
-                                                                size_t denseSize = self->dense.size();
-                                                                
-                                                                for (size_t idx = 0; idx < self->length; idx++)
-                                                                {
-                                                                    if (idx < denseSize){
-                                                                    co_yield self->dense[idx].value_or(AnyValue::make_undefined());
-                                                                    }
-                                                                    else {
-                                                                    const auto &it = self->sparse.find(idx);
-                                                                    if (it != self->sparse.end())
-                                                                    {
-                                                                        co_yield it->second.value_or(AnyValue::make_undefined());
-                                                                    }
-                                                                    }
-                                                                }
-
-                                                                co_return AnyValue::make_undefined(); }),
-                    key);
+                return AnyValue::make_generator([self](const std::vector<AnyValue> &_) -> AnyValue
+                                                { return AnyValue::from_iterator(self->get_iterator()); },
+                                                key);
             }
 
             // --- length property ---

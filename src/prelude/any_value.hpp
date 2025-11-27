@@ -341,6 +341,13 @@ namespace jspp
             new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(call, name));
             return v;
         }
+        static AnyValue make_generator(const JsFunctionCallable &call, const std::string &name) noexcept
+        {
+            AnyValue v;
+            v.storage.type = JsType::Function;
+            new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(call, true, name));
+            return v;
+        }
         static AnyValue make_symbol(const std::string &description = "") noexcept
         {
             AnyValue v;
@@ -456,7 +463,7 @@ namespace jspp
         bool is_uninitialized() const noexcept { return storage.type == JsType::Uninitialized; }
         bool is_data_descriptor() const noexcept { return storage.type == JsType::DataDescriptor; }
         bool is_accessor_descriptor() const noexcept { return storage.type == JsType::AccessorDescriptor; }
-        bool is_generator() const noexcept { return storage.type == JsType::Function && storage.function->is_generator(); }
+        bool is_generator() const noexcept { return storage.type == JsType::Function && storage.function->is_generator; }
 
         // --- TYPE CASTERS
         double as_double() const noexcept

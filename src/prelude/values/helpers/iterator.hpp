@@ -29,7 +29,7 @@ jspp::JsIterator<T>::NextResult jspp::JsIterator<T>::next()
     // If handle.done() is FALSE, we hit co_yield (value: X, done: false)
     bool is_done = handle.done();
 
-    return {std::move(handle.promise().current_value), is_done};
+    return {handle.promise().current_value, is_done};
 }
 
 template <typename T>
