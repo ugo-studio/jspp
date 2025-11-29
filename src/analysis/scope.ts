@@ -19,6 +19,7 @@ export const BUILTIN_OBJECTS = new Set([
 // Represents a single scope (e.g., a function body or a block statement)
 export class Scope {
     public readonly symbols = new Map<string, TypeInfo>();
+    public readonly children: Scope[] = [];
     constructor(public readonly parent: Scope | null) {}
 
     // Defines a variable in this scope.
@@ -62,6 +63,7 @@ export class ScopeManager {
     // Enters a new, nested scope.
     enterScope() {
         const newScope = new Scope(this.currentScope);
+        this.currentScope.children.push(newScope);
         this.currentScope = newScope;
         this.allScopes.push(newScope); // Add every new scope to the list
     }

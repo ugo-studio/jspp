@@ -12,8 +12,8 @@ namespace jspp
 {
     namespace Access
     {
-        // Helper function to check for TDZ and deref variables
-        inline const AnyValue &deref(const std::shared_ptr<AnyValue> &var, const std::string &name)
+        // Helper function to check for TDZ and deref heap-allocated variables
+        inline const AnyValue &deref_ptr(const std::shared_ptr<AnyValue> &var, const std::string &name)
         {
             if ((*var).is_uninitialized()) [[unlikely]]
             {
@@ -21,7 +21,7 @@ namespace jspp
             }
             return *var;
         }
-        inline AnyValue &deref(std::shared_ptr<AnyValue> &var, const std::string &name)
+        inline AnyValue &deref_ptr(std::shared_ptr<AnyValue> &var, const std::string &name)
         {
             if ((*var).is_uninitialized()) [[unlikely]]
             {
@@ -29,7 +29,7 @@ namespace jspp
             }
             return *var;
         }
-        inline const AnyValue &deref(const std::unique_ptr<AnyValue> &var, const std::string &name)
+        inline const AnyValue &deref_ptr(const std::unique_ptr<AnyValue> &var, const std::string &name)
         {
             if ((*var).is_uninitialized()) [[unlikely]]
             {
@@ -37,13 +37,31 @@ namespace jspp
             }
             return *var;
         }
-        inline AnyValue &deref(std::unique_ptr<AnyValue> &var, const std::string &name)
+        inline AnyValue &deref_ptr(std::unique_ptr<AnyValue> &var, const std::string &name)
         {
             if ((*var).is_uninitialized()) [[unlikely]]
             {
                 RuntimeError::throw_uninitialized_reference_error(name);
             }
             return *var;
+        }
+
+        // Helper function to check for TDZ on stack-allocated variables
+        inline const AnyValue &deref_stack(const AnyValue &var, const std::string &name)
+        {
+            if (var.is_uninitialized()) [[unlikely]]
+            {
+                RuntimeError::throw_uninitialized_reference_error(name);
+            }
+            return var;
+        }
+        inline AnyValue &deref_stack(AnyValue &var, const std::string &name)
+        {
+            if (var.is_uninitialized()) [[unlikely]]
+            {
+                RuntimeError::throw_uninitialized_reference_error(name);
+            }
+            return var;
         }
 
         inline std::vector<std::string> get_object_keys(const AnyValue &obj)

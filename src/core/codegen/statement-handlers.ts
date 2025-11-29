@@ -35,14 +35,26 @@ export function visitSourceFile(
             return;
         }
         hoistedSymbols.add(name);
+
+        const scope = this.getScopeForNode(decl);
+        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+            name,
+            scope,
+        )!;
+
         const isLetOrConst =
             (decl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !==
                 0;
         const initializer = isLetOrConst
             ? "jspp::AnyValue::make_uninitialized()"
             : "jspp::AnyValue::make_undefined()";
-        code +=
-            `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;
+
+        if (typeInfo.needsHeapAllocation) {
+            code +=
+                `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;
+        } else {
+            code += `${this.indent()}jspp::AnyValue ${name} = ${initializer};\n`;
+        }
     });
 
     // 2. Assign all hoisted functions first
@@ -114,14 +126,25 @@ export function visitBlock(
             return;
         }
         hoistedSymbols.add(name);
+
+        const scope = this.getScopeForNode(decl);
+        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+            name,
+            scope,
+        )!;
+
         const isLetOrConst =
             (decl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !==
                 0;
         const initializer = isLetOrConst
             ? "jspp::AnyValue::make_uninitialized()"
             : "jspp::AnyValue::make_undefined()";
-        code +=
-            `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;
+        if (typeInfo.needsHeapAllocation) {
+            code +=
+                `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;
+        } else {
+            code += `${this.indent()}jspp::AnyValue ${name} = ${initializer};\n`;
+        }
     });
 
     // 2. Assign all hoisted functions first
@@ -210,8 +233,19 @@ export function visitForStatement(
                     const initValue = decl.initializer
                         ? this.visit(decl.initializer, context)
                         : "jspp::AnyValue::make_undefined()";
-                    initializerCode =
-                        `auto ${name} = std::make_unique<jspp::AnyValue>(${initValue})`;
+
+                    const scope = this.getScopeForNode(decl);
+                    const typeInfo =
+                        this.typeAnalyzer.scopeManager.lookupFromScope(
+                            name,
+                            scope,
+                        )!;
+
+                    if (typeInfo.needsHeapAllocation) {
+                        initializerCode = `auto ${name} = std::make_shared<jspp::AnyValue>(${initValue})`;
+                    } else {
+                        initializerCode = `jspp::AnyValue ${name} = ${initValue}`;
+                    }
                 }
             } else {
                 // For 'var', it's already hoisted, so this is an assignment.
@@ -253,19 +287,37 @@ export function visitForInStatement(
     let code = `${this.indent()}{\n`;
     this.indentationLevel++; // Enter a new scope for the for-in loop
     let varName = "";
+    let assignmentTarget = "";
 
     if (ts.isVariableDeclarationList(forIn.initializer)) {
         const decl = forIn.initializer.declarations[0];
         if (decl) {
             varName = decl.name.getText();
-            // Declare the shared_ptr before the loop
-            code +=
-                `${this.indent()}auto ${varName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+            const scope = this.getScopeForNode(decl);
+            const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                varName,
+                scope,
+            )!;
+            if (typeInfo.needsHeapAllocation) {
+                code +=
+                    `${this.indent()}auto ${varName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+                assignmentTarget = `*${varName}`;
+            } else {
+                code +=
+                    `${this.indent()}jspp::AnyValue ${varName} = jspp::AnyValue::make_undefined();\n`;
+                assignmentTarget = varName;
+            }
         }
     } else if (ts.isIdentifier(forIn.initializer)) {
         varName = forIn.initializer.getText();
-        // Assume it's already declared in an outer scope, just assign to it.
-        // No explicit declaration here.
+        const scope = this.getScopeForNode(forIn.initializer);
+        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+            varName,
+            scope,
+        )!;
+        assignmentTarget = typeInfo.needsHeapAllocation
+            ? `*${varName}`
+            : varName;
     }
 
     const expr = forIn.expression;
@@ -273,7 +325,16 @@ export function visitForInStatement(
 
     let derefExpr = exprText;
     if (ts.isIdentifier(expr)) {
-        derefExpr = this.getDerefCode(exprText, this.getJsVarName(expr));
+        const scope = this.getScopeForNode(expr);
+        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+            expr.getText(),
+            scope,
+        )!;
+        derefExpr = this.getDerefCode(
+            exprText,
+            this.getJsVarName(expr),
+            typeInfo,
+        );
     }
 
     const keysVar = this.generateUniqueName("__keys_", new Set([varName]));
@@ -282,7 +343,7 @@ export function visitForInStatement(
     code += `${this.indent()}for (const auto& ${varName}_str : ${keysVar}) {\n`;
     this.indentationLevel++;
     code +=
-        `${this.indent()}*${varName} = jspp::AnyValue::make_string(${varName}_str);\n`;
+        `${this.indent()}${assignmentTarget} = jspp::AnyValue::make_string(${varName}_str);\n`;
     code += this.visit(forIn.statement, {
         ...context,
         isFunctionBody: false,
@@ -303,39 +364,65 @@ export function visitForOfStatement(
     let code = "";
     this.indentationLevel++; // Enter a new scope for the for-of loop
     let elemName = "";
+    let assignmentTarget = "";
 
     if (ts.isVariableDeclarationList(forOf.initializer)) {
         const decl = forOf.initializer.declarations[0];
         if (decl) {
             elemName = decl.name.getText();
-            // Declare the shared_ptr before the loop
-            code +=
-                `${this.indent()}{ auto ${elemName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+            code += `${this.indent()}{\n`;
+            const scope = this.getScopeForNode(decl);
+            const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                elemName,
+                scope,
+            )!;
+            if (typeInfo.needsHeapAllocation) {
+                code +=
+                    `${this.indent()}auto ${elemName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+                assignmentTarget = `*${elemName}`;
+            } else {
+                code +=
+                    `${this.indent()}jspp::AnyValue ${elemName} = jspp::AnyValue::make_undefined();\n`;
+                assignmentTarget = elemName;
+            }
         }
     } else if (ts.isIdentifier(forOf.initializer)) {
         elemName = forOf.initializer.getText();
-        // Assume it's already declared in an outer scope, just assign to it.
-        // No explicit declaration here.
+        const scope = this.getScopeForNode(forOf.initializer);
+        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+            elemName,
+            scope,
+        )!;
+        assignmentTarget = typeInfo.needsHeapAllocation
+            ? `*${elemName}`
+            : elemName;
         code += `${this.indent()}{\n`;
     }
 
     const iterableExpr = this.visit(forOf.expression, context);
-    const varName = this.getJsVarName(forOf.expression as ts.Identifier);
-    const derefIterable = ts.isIdentifier(forOf.expression)
-        ? this.getDerefCode(iterableExpr, varName)
-        : iterableExpr;
+    let derefIterable = iterableExpr;
+    if (ts.isIdentifier(forOf.expression)) {
+        const scope = this.getScopeForNode(forOf.expression);
+        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+            forOf.expression.getText(),
+            scope,
+        )!;
+        const varName = this.getJsVarName(forOf.expression as ts.Identifier);
+        derefIterable = this.getDerefCode(iterableExpr, varName, typeInfo);
+    }
 
     const declaredSymbols = this.getDeclaredSymbols(forOf.statement);
     const iteratorPtr = this.generateUniqueName("__iter_ptr_", declaredSymbols);
     const nextRes = this.generateUniqueName("__res__", declaredSymbols);
 
+    const varName = this.getJsVarName(forOf.expression as ts.Identifier);
     code +=
         `${this.indent()}auto ${iteratorPtr} = jspp::Access::get_object_value_iterator(${derefIterable}, ${varName}).as_iterator();\n`;
     code += `${this.indent()}auto ${nextRes} = ${iteratorPtr}->next();\n`;
     code += `${this.indent()}while (!${nextRes}.done) {\n`;
     this.indentationLevel++;
     code +=
-        `${this.indent()}*${elemName} = ${nextRes}.value.value_or(jspp::AnyValue::make_undefined());\n`;
+        `${this.indent()}${assignmentTarget} = ${nextRes}.value.value_or(jspp::AnyValue::make_undefined());\n`;
     code += this.visit(forOf.statement, {
         ...context,
         isFunctionBody: false,
@@ -557,9 +644,9 @@ export function visitCatchClause(
         code += `${this.indent()}{\n`;
         this.indentationLevel++;
 
-        // Always create the JS exception variable.
+        // The JS exception variable is always local to the catch block
         code +=
-            `${this.indent()}auto ${varName} = std::make_shared<jspp::AnyValue>(jspp::RuntimeError::error_to_value(${exceptionName}));\n`;
+            `${this.indent()}jspp::AnyValue ${varName} = jspp::RuntimeError::error_to_value(${exceptionName});\n`;
 
         // Shadow the C++ exception variable *only if* the names don't clash.
         if (varName !== exceptionName) {
@@ -610,6 +697,7 @@ export function visitYieldExpression(
                     this.getDerefCode(
                         exprText,
                         this.getJsVarName(expr),
+                        typeInfo,
                     )
                 }`;
             }
@@ -637,35 +725,32 @@ export function visitReturnStatement(
         if (returnStmt.expression) {
             const expr = returnStmt.expression;
             const exprText = this.visit(expr, context);
+            let finalExpr = exprText;
             if (ts.isIdentifier(expr)) {
                 const scope = this.getScopeForNode(expr);
-                const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
-                    expr.text,
-                    scope,
-                );
+                const typeInfo =
+                    this.typeAnalyzer.scopeManager.lookupFromScope(
+                        expr.text,
+                        scope,
+                    );
                 if (!typeInfo) {
                     returnCode +=
                         `${this.indent()}jspp::RuntimeError::throw_unresolved_reference_error(${
                             this.getJsVarName(expr)
                         });\n`; // THROWS, not returns
-                }
-                if (
+                } else if (
                     typeInfo &&
                     !typeInfo.isParameter &&
                     !typeInfo.isBuiltin
                 ) {
-                    returnCode += `${this.indent()}${returnCmd} ${
-                        this.getDerefCode(
-                            exprText,
-                            this.getJsVarName(expr),
-                        )
-                    };\n`;
-                } else {
-                    returnCode += `${this.indent()}${returnCmd} ${exprText};\n`;
+                    finalExpr = this.getDerefCode(
+                        exprText,
+                        this.getJsVarName(expr),
+                        typeInfo,
+                    );
                 }
-            } else {
-                returnCode += `${this.indent()}${returnCmd} ${exprText};\n`;
             }
+            returnCode += `${this.indent()}${returnCmd} ${finalExpr};\n`;
         } else {
             returnCode +=
                 `${this.indent()}${returnCmd} jspp::AnyValue::make_undefined();\n`;
@@ -676,6 +761,7 @@ export function visitReturnStatement(
     if (returnStmt.expression) {
         const expr = returnStmt.expression;
         const exprText = this.visit(expr, context);
+        let finalExpr = exprText;
         if (ts.isIdentifier(expr)) {
             const scope = this.getScopeForNode(expr);
             const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
@@ -692,15 +778,14 @@ export function visitReturnStatement(
                 !typeInfo.isParameter &&
                 !typeInfo.isBuiltin
             ) {
-                return `${this.indent()}${returnCmd} ${
-                    this.getDerefCode(
-                        exprText,
-                        this.getJsVarName(expr),
-                    )
-                };\n`;
+                finalExpr = this.getDerefCode(
+                    exprText,
+                    this.getJsVarName(expr),
+                    typeInfo,
+                );
             }
         }
-        return `${this.indent()}${returnCmd} ${exprText};\n`;
+        return `${this.indent()}${returnCmd} ${finalExpr};\n`;
     }
     return `${this.indent()}${returnCmd} jspp::AnyValue::make_undefined();\n`;
 }

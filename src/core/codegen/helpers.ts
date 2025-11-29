@@ -101,8 +101,12 @@ export function getDerefCode(
     this: CodeGenerator,
     nodeText: string,
     varName: string,
+    typeInfo: import("../../analysis/typeAnalyzer").TypeInfo,
 ): string {
-    return `jspp::Access::deref(${nodeText}, ${varName})`;
+    if (typeInfo.needsHeapAllocation) {
+        return `jspp::Access::deref_ptr(${nodeText}, ${varName})`;
+    }
+    return `jspp::Access::deref_stack(${nodeText}, ${varName})`;
 }
 
 export function getReturnCommand(

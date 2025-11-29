@@ -137,7 +137,7 @@ export function visitFunctionExpression(
         this.indentationLevel++;
         code +=
             `${this.indent()}auto ${funcName} = std::make_shared<jspp::AnyValue>();\n`;
-        const lambda = this.generateLambda(funcExpr, false, "[=]");
+        const lambda = this.generateLambda(funcExpr, true, "[=]");
         code += `${this.indent()}*${funcName} = ${lambda};\n`;
         code += `${this.indent()}return *${funcName};\n`;
         this.indentationLevel--;

@@ -11,6 +11,7 @@ export interface TypeInfo {
     isParameter?: boolean;
     isConst?: boolean;
     isBuiltin?: boolean;
+    needsHeapAllocation?: boolean;
     captures?: Map<string, TypeInfo>; // <name, typeInfo>
     structName?: string;
     properties?: Map<string, string>;
@@ -34,6 +35,24 @@ export class TypeAnalyzer {
 
     public analyze(ast: Node) {
         this.nodeToScope.set(ast, this.scopeManager.currentScope);
+
+        const crossScopeModificationVisitor = (node: ts.Expression) => {
+            if (ts.isIdentifier(node)) {
+                const name = node.getText();
+                const definingScope =
+                    this.scopeManager.currentScope.findScopeFor(name);
+                if (
+                    definingScope &&
+                    definingScope !== this.scopeManager.currentScope
+                ) {
+                    const typeInfo = this.scopeManager.lookup(name);
+                    if (typeInfo) {
+                        typeInfo.needsHeapAllocation = true;
+                    }
+                }
+            }
+        };
+
         const visitor: Visitor = {
             // Enter new scope for any block-like structure
             Block: {
@@ -142,6 +161,7 @@ export class TypeAnalyzer {
                             isClosure: false,
                             captures: new Map(),
                             declaration: node,
+                            needsHeapAllocation: true, // Added: Functions are always heap-allocated
                         };
                         this.functionTypeInfo.set(node, funcType);
 
@@ -189,6 +209,7 @@ export class TypeAnalyzer {
                                 isClosure: false,
                                 captures: new Map(),
                                 declaration: node,
+                                needsHeapAllocation: true,
                             };
                             this.scopeManager.define(funcName, funcType);
                             this.functionTypeInfo.set(node, funcType);
@@ -226,11 +247,18 @@ export class TypeAnalyzer {
                             (node.parent.flags & ts.NodeFlags.Const) !== 0;
 
                         let type = "auto";
+                        let needsHeap = false;
                         if (node.initializer) {
                             if (
                                 ts.isArrayLiteralExpression(node.initializer)
                             ) {
                                 type = "array";
+                            } else if (
+                                ts.isArrowFunction(node.initializer) ||
+                                ts.isFunctionExpression(node.initializer)
+                            ) {
+                                type = "function";
+                                needsHeap = true;
                             }
                         }
 
@@ -238,6 +266,7 @@ export class TypeAnalyzer {
                             type,
                             declaration: node,
                             isConst,
+                            needsHeapAllocation: needsHeap,
                         };
                         this.scopeManager.define(name, typeInfo);
                     }
@@ -275,6 +304,7 @@ export class TypeAnalyzer {
                                     node.text,
                                 );
                                 if (type) {
+                                    type.needsHeapAllocation = true;
                                     const info = this.functionTypeInfo.get(
                                         currentFuncNode,
                                     );
@@ -284,6 +314,41 @@ export class TypeAnalyzer {
                                     }
                                 }
                             }
+                        }
+                    }
+                },
+            },
+
+            BinaryExpression: {
+                enter: (node) => {
+                    if (ts.isBinaryExpression(node)) {
+                        const isAssignment =
+                            node.operatorToken.kind >=
+                                ts.SyntaxKind.FirstAssignment &&
+                            node.operatorToken.kind <=
+                                ts.SyntaxKind.LastAssignment;
+                        if (isAssignment) {
+                            crossScopeModificationVisitor(node.left);
+                        }
+                    }
+                },
+            },
+            PostfixUnaryExpression: {
+                enter: (node) => {
+                    if (ts.isPostfixUnaryExpression(node)) {
+                        crossScopeModificationVisitor(node.operand);
+                    }
+                },
+            },
+            PrefixUnaryExpression: {
+                enter: (node) => {
+                    if (ts.isPrefixUnaryExpression(node)) {
+                        const op = node.operator;
+                        if (
+                            op === ts.SyntaxKind.PlusPlusToken ||
+                            op === ts.SyntaxKind.MinusMinusToken
+                        ) {
+                            crossScopeModificationVisitor(node.operand);
                         }
                     }
                 },
