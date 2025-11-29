@@ -103,7 +103,7 @@ export function getDerefCode(
     varName: string,
     typeInfo: TypeInfo,
 ): string {
-    if (typeInfo.needsHeapAllocation) {
+    if (typeInfo && typeInfo.needsHeapAllocation) {
         return `jspp::Access::deref_ptr(${nodeText}, ${varName})`;
     }
     return `jspp::Access::deref_stack(${nodeText}, ${varName})`;

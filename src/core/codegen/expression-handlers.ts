@@ -41,7 +41,7 @@ function visitObjectPropertyName(
     if (context.isBracketNotationPropertyAccess) {
         return this.visit(node, context);
     }
-    if (ts.isIdentifier(node) && !context.isShorthandPropertyAssignment) {
+    if (ts.isIdentifier(node) && !context.isObjectLiteralExpression) {
         const scope = this.getScopeForNode(node);
         const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
             node.getText(),
@@ -63,7 +63,10 @@ export function visitObjectLiteralExpression(
     let props = "";
     for (const prop of obj.properties) {
         if (ts.isPropertyAssignment(prop)) {
-            const key = visitObjectPropertyName.call(this, prop.name, context);
+            const key = visitObjectPropertyName.call(this, prop.name, {
+                ...context,
+                isObjectLiteralExpression: true,
+            });
             const initializer = prop.initializer;
             let value = this.visit(initializer, context);
             if (ts.isIdentifier(initializer)) {
@@ -85,7 +88,7 @@ export function visitObjectLiteralExpression(
         } else if (ts.isShorthandPropertyAssignment(prop)) {
             const key = visitObjectPropertyName.call(this, prop.name, {
                 ...context,
-                isShorthandPropertyAssignment: true,
+                isObjectLiteralExpression: true,
             });
             const scope = this.getScopeForNode(prop.name);
             const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(

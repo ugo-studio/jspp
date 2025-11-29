@@ -1,8 +1,45 @@
+import os from "node:os";
+
 import { describe, expect, test } from "bun:test";
 import fs from "fs/promises";
 import path from "path";
 
 import { Interpreter } from "../src";
+
+// --- Configuration ---
+// Dynamically set concurrency based on the number of logical CPU cores
+// Using Math.max to ensure at least 1 core is used even on small VMs
+const CONCURRENCY = Math.max(1, Math.floor(os.cpus().length / 1.3));
+
+// --- Helper: Concurrency Limiter ---
+const pLimit = (concurrency: number) => {
+    let active = 0;
+    const queue: (() => void)[] = [];
+
+    return <T>(fn: () => Promise<T>): Promise<T> => {
+        return new Promise((resolve, reject) => {
+            const run = async () => {
+                active++;
+                try {
+                    resolve(await fn());
+                } catch (e) {
+                    reject(e);
+                } finally {
+                    active--;
+                    if (queue.length > 0) {
+                        queue.shift()!();
+                    }
+                }
+            };
+
+            if (active < concurrency) {
+                run();
+            } else {
+                queue.push(run);
+            }
+        });
+    };
+};
 
 const cases: { name: string; expected: string[] }[] = [
     {
@@ -325,8 +362,10 @@ const stripAnsi = (str: string) =>
     );
 
 describe("Interpreter tests", () => {
-    for (const { name: caseName, expected } of cases) {
-        test(`should correctly interpret and run ${caseName}.js`, async () => {
+    const limit = pLimit(CONCURRENCY);
+
+    const executions = cases.map(({ name: caseName, expected }) =>
+        limit(async () => {
             const inputFile = path.join(
                 process.cwd(),
                 "test",
@@ -346,67 +385,90 @@ describe("Interpreter tests", () => {
                 `${caseName}.exe`,
             );
 
-            const jsCode = await fs.readFile(inputFile, "utf-8");
-            const interpreter = new Interpreter();
-            const { cppCode, preludePath } = interpreter.interpret(jsCode);
-
-            await fs.mkdir(path.dirname(outputFile), { recursive: true });
-            await fs.writeFile(outputFile, cppCode);
-
-            const compile = Bun.spawnSync({
-                cmd: [
-                    "g++",
-                    "-std=c++23",
-                    outputFile,
-                    "-o",
-                    exeFile,
-                    "-I",
-                    preludePath,
-                    "-include",
-                    path.join(process.cwd(), "prelude-build", "index.hpp"),
-                    // "-O3",
-                    // "-DNDEBUG",
-                ],
-                stdout: "pipe",
-                stderr: "pipe",
-            });
-
-            if (compile.exitCode !== 0) {
-                throw new Error(
-                    `C++ compilation failed for ${caseName}: ${compile.stderr.toString()}`,
-                );
-            }
-
             try {
-                const run = Bun.spawnSync({
-                    cmd: [exeFile],
+                const jsCode = await fs.readFile(inputFile, "utf-8");
+                const interpreter = new Interpreter();
+                const { cppCode, preludePath } = interpreter.interpret(jsCode);
+
+                await fs.mkdir(path.dirname(outputFile), {
+                    recursive: true,
+                });
+                await fs.writeFile(outputFile, cppCode);
+
+                const compile = Bun.spawn(
+                    [
+                        "g++",
+                        "-std=c++23",
+                        outputFile,
+                        "-o",
+                        exeFile,
+                        "-I",
+                        preludePath,
+                    ],
+                    {
+                        stdout: "pipe",
+                        stderr: "pipe",
+                    },
+                );
+
+                const compileExitCode = await compile.exited;
+
+                if (compileExitCode !== 0) {
+                    const stderr = await new Response(compile.stderr).text();
+                    throw new Error(
+                        `C++ compilation failed for ${caseName}: ${stderr}`,
+                    );
+                }
+
+                const run = Bun.spawn([exeFile], {
                     stdout: "pipe",
                     stderr: "pipe",
                 });
 
-                const stdout = run.stdout.toString().trim().replace(
-                    /\r\n/g,
-                    "\n",
-                );
-                const stderr = run.stderr.toString().trim().replace(
-                    /\r\n/g,
-                    "\n",
-                );
+                await run.exited;
+
+                const stdoutText = await new Response(run.stdout).text();
+                const stderrText = await new Response(run.stderr).text();
+
+                const stdout = stdoutText.trim().replace(/\r\n/g, "\n");
+                const stderr = stderrText.trim().replace(/\r\n/g, "\n");
                 const output = stripAnsi(`${stdout}\n${stderr}`.trim());
 
-                for (const expectedString of expected) {
-                    expect(output).toInclude(expectedString);
-                }
+                return { output, expected };
             } catch (e: any) {
+                // Return the error rather than throwing it inside the limit() wrapper.
+                // This ensures the promise rejects cleanly for the specific test case
+                // instead of crashing the process or leaking.
                 throw new Error(
                     `Execution failed for ${caseName}: ${e.message}`,
                 );
             } finally {
-                // await fs.unlink(outputFile);
-                await fs.unlink(exeFile);
+                // Ignore errors during cleanup (e.g., if file doesn't exist)
+                try {
+                    // await fs.unlink(outputFile);
+                    await fs.unlink(exeFile);
+                } catch {
+                    // no-op
+                }
             }
-        }, 20000);
-    }
+        })
+    );
+
+    cases.forEach((caseItem, index) => {
+        test(
+            `should correctly interpret and run ${caseItem.name}.js`,
+            async () => {
+                // If the execution promise rejected, this await will throw the Error
+                // created in the catch block above, failing ONLY this test.
+                const { output, expected } = await executions[index];
+
+                for (const expectedString of expected) {
+                    expect(output).toInclude(expectedString);
+                }
+            },
+            20000,
+        );
+    });
 
     test("should throw an error for reserved-keyword.js", async () => {
         const inputFile = path.join(

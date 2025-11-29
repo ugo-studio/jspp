@@ -62,7 +62,7 @@ export interface VisitContext {
     isInsideGeneratorFunction?: boolean;
     hasReturnedFlag?: string;
     isBracketNotationPropertyAccess?: boolean;
-    isShorthandPropertyAssignment?: boolean;
+    isObjectLiteralExpression?: boolean;
 }
 
 export function visit(

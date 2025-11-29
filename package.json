@@ -16,7 +16,6 @@
     "dev": "bun run src/cli.ts",
     "typecheck": "tsc --noEmit",
     "precompile": "bun run scripts/precompile-headers.ts",
-    "pretest": "bun run precompile",
     "test": "bun test",
     "build": "tsc",
     "prepack": "bun run build",
