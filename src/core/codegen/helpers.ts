@@ -1,7 +1,7 @@
 import ts from "typescript";
 
 import { BUILTIN_OBJECTS, Scope } from "../../analysis/scope";
-import type { TypeAnalyzer } from "../../analysis/typeAnalyzer";
+import type { TypeAnalyzer, TypeInfo } from "../../analysis/typeAnalyzer";
 import { CodeGenerator } from "./";
 import type { VisitContext } from "./visitor";
 
@@ -101,7 +101,7 @@ export function getDerefCode(
     this: CodeGenerator,
     nodeText: string,
     varName: string,
-    typeInfo: import("../../analysis/typeAnalyzer").TypeInfo,
+    typeInfo: TypeInfo,
 ): string {
     if (typeInfo.needsHeapAllocation) {
         return `jspp::Access::deref_ptr(${nodeText}, ${varName})`;

@@ -61,7 +61,8 @@ export interface VisitContext {
     isInsideTryCatchLambda?: boolean;
     isInsideGeneratorFunction?: boolean;
     hasReturnedFlag?: string;
-    isPropertyNameAccess?: boolean;
+    isBracketNotationPropertyAccess?: boolean;
+    isShorthandPropertyAssignment?: boolean;
 }
 
 export function visit(

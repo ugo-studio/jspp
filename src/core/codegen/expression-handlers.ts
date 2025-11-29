@@ -9,28 +9,49 @@ function visitObjectPropertyName(
     context: VisitContext,
 ): string {
     if (ts.isNumericLiteral(node)) {
-        return node.getText();
-    } else if (ts.isStringLiteral(node)) {
+        return context.isBracketNotationPropertyAccess
+            ? node.getText()
+            : `"${node.getText()}"`;
+    }
+    if (ts.isStringLiteral(node)) {
         return `"${
             node.getText().substring(
                 1,
                 node.getText().length - 1,
             ) // remove trailing "' from original name
         }"`;
-    } else if (ts.isComputedPropertyName(node)) {
+    }
+    if (ts.isComputedPropertyName(node)) {
         let name = this.visit(node.expression, context);
         if (ts.isIdentifier(node.expression)) {
             const scope = this.getScopeForNode(node.expression);
-            const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(node.expression.getText(), scope)!;
-            name = this.getDerefCode(name, this.getJsVarName(node.expression as ts.Identifier), typeInfo);
+            const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                node.expression.getText(),
+                scope,
+            )!;
+            name = this.getDerefCode(
+                name,
+                this.getJsVarName(node.expression as ts.Identifier),
+                typeInfo,
+            );
         }
         name += ".to_std_string()";
         return name;
-    } else if (context.isPropertyNameAccess) {
-        return this.visit(node, context);
-    } else {
-        return `"${node.getText()}"`;
     }
+    if (context.isBracketNotationPropertyAccess) {
+        return this.visit(node, context);
+    }
+    if (ts.isIdentifier(node) && !context.isShorthandPropertyAssignment) {
+        const scope = this.getScopeForNode(node);
+        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+            node.getText(),
+            scope,
+        )!;
+        return `${
+            this.getDerefCode(node.getText(), this.getJsVarName(node), typeInfo)
+        }.to_std_string()`;
+    }
+    return `"${node.getText()}"`;
 }
 
 export function visitObjectLiteralExpression(
@@ -47,11 +68,10 @@ export function visitObjectLiteralExpression(
             let value = this.visit(initializer, context);
             if (ts.isIdentifier(initializer)) {
                 const scope = this.getScopeForNode(initializer);
-                const typeInfo =
-                    this.typeAnalyzer.scopeManager.lookupFromScope(
-                        initializer.text,
-                        scope,
-                    )!;
+                const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                    initializer.text,
+                    scope,
+                )!;
                 if (typeInfo && !typeInfo.isBuiltin && !typeInfo.isParameter) {
                     value = this.getDerefCode(
                         value,
@@ -63,7 +83,10 @@ export function visitObjectLiteralExpression(
 
             props += `{${key}, ${value}},`;
         } else if (ts.isShorthandPropertyAssignment(prop)) {
-            const key = visitObjectPropertyName.call(this, prop.name, context);
+            const key = visitObjectPropertyName.call(this, prop.name, {
+                ...context,
+                isShorthandPropertyAssignment: true,
+            });
             const scope = this.getScopeForNode(prop.name);
             const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
                 prop.name.text,
@@ -94,11 +117,10 @@ export function visitArrayLiteralExpression(
             let elemText = this.visit(elem, context);
             if (ts.isIdentifier(elem)) {
                 const scope = this.getScopeForNode(elem);
-                const typeInfo =
-                    this.typeAnalyzer.scopeManager.lookupFromScope(
-                        elem.text,
-                        scope,
-                    )!;
+                const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                    elem.text,
+                    scope,
+                )!;
                 if (typeInfo && !typeInfo.isBuiltin && !typeInfo.isParameter) {
                     elemText = this.getDerefCode(
                         elemText,
@@ -126,11 +148,10 @@ export function visitPrefixUnaryExpression(
         let target = operand;
         if (ts.isIdentifier(prefixUnaryExpr.operand)) {
             const scope = this.getScopeForNode(prefixUnaryExpr.operand);
-            const typeInfo =
-                this.typeAnalyzer.scopeManager.lookupFromScope(
-                    prefixUnaryExpr.operand.getText(),
-                    scope,
-                )!;
+            const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                prefixUnaryExpr.operand.getText(),
+                scope,
+            )!;
             if (typeInfo.needsHeapAllocation) {
                 target = `*${operand}`;
             }
@@ -141,11 +162,10 @@ export function visitPrefixUnaryExpression(
         let target = operand;
         if (ts.isIdentifier(prefixUnaryExpr.operand)) {
             const scope = this.getScopeForNode(prefixUnaryExpr.operand);
-            const typeInfo =
-                this.typeAnalyzer.scopeManager.lookupFromScope(
-                    prefixUnaryExpr.operand.getText(),
-                    scope,
-                )!;
+            const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                prefixUnaryExpr.operand.getText(),
+                scope,
+            )!;
             if (typeInfo.needsHeapAllocation) {
                 target = `*${operand}`;
             }
@@ -241,7 +261,7 @@ export function visitElementAccessExpression(
     let argText = visitObjectPropertyName.call(
         this,
         elemAccess.argumentExpression as ts.PropertyName,
-        { ...context, isPropertyNameAccess: true },
+        { ...context, isBracketNotationPropertyAccess: true },
     );
 
     // Dereference the expression being accessed
@@ -368,11 +388,10 @@ export function visitBinaryExpression(
             let finalObjExpr = objExprText;
             if (ts.isIdentifier(propAccess.expression)) {
                 const scope = this.getScopeForNode(propAccess.expression);
-                const typeInfo =
-                    this.typeAnalyzer.scopeManager.lookupFromScope(
-                        propAccess.expression.getText(),
-                        scope,
-                    )!;
+                const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                    propAccess.expression.getText(),
+                    scope,
+                )!;
 
                 if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
                     finalObjExpr = this.getDerefCode(
@@ -388,8 +407,8 @@ export function visitBinaryExpression(
             let finalRightText = rightText;
             if (ts.isIdentifier(binExpr.right)) {
                 const rightScope = this.getScopeForNode(binExpr.right);
-                const rightTypeInfo =
-                    this.typeAnalyzer.scopeManager.lookupFromScope(
+                const rightTypeInfo = this.typeAnalyzer.scopeManager
+                    .lookupFromScope(
                         binExpr.right.getText(),
                         rightScope,
                     )!;
@@ -413,17 +432,16 @@ export function visitBinaryExpression(
             let argText = visitObjectPropertyName.call(
                 this,
                 elemAccess.argumentExpression as ts.PropertyName,
-                { ...context, isPropertyNameAccess: true },
+                { ...context, isBracketNotationPropertyAccess: true },
             );
 
             let finalObjExpr = objExprText;
             if (ts.isIdentifier(elemAccess.expression)) {
                 const scope = this.getScopeForNode(elemAccess.expression);
-                const typeInfo =
-                    this.typeAnalyzer.scopeManager.lookupFromScope(
-                        elemAccess.expression.getText(),
-                        scope,
-                    )!;
+                const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                    elemAccess.expression.getText(),
+                    scope,
+                )!;
                 if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
                     finalObjExpr = this.getDerefCode(
                         objExprText,
@@ -439,8 +457,8 @@ export function visitBinaryExpression(
                 const argScope = this.getScopeForNode(
                     elemAccess.argumentExpression,
                 );
-                const argTypeInfo =
-                    this.typeAnalyzer.scopeManager.lookupFromScope(
+                const argTypeInfo = this.typeAnalyzer.scopeManager
+                    .lookupFromScope(
                         elemAccess.argumentExpression.getText(),
                         argScope,
                     )!;
@@ -462,8 +480,8 @@ export function visitBinaryExpression(
             let finalRightText = rightText;
             if (ts.isIdentifier(binExpr.right)) {
                 const rightScope = this.getScopeForNode(binExpr.right);
-                const rightTypeInfo =
-                    this.typeAnalyzer.scopeManager.lookupFromScope(
+                const rightTypeInfo = this.typeAnalyzer.scopeManager
+                    .lookupFromScope(
                         binExpr.right.getText(),
                         rightScope,
                     )!;
@@ -499,9 +517,7 @@ export function visitBinaryExpression(
         if (typeInfo?.isConst) {
             return `jspp::RuntimeError::throw_immutable_assignment_error()`;
         }
-        const target = typeInfo.needsHeapAllocation
-            ? `*${leftText}`
-            : leftText;
+        const target = typeInfo.needsHeapAllocation ? `*${leftText}` : leftText;
         return `${target} ${op} ${rightText}`;
     }
 
@@ -600,11 +616,10 @@ export function visitCallExpression(
             const argText = this.visit(arg, context);
             if (ts.isIdentifier(arg)) {
                 const scope = this.getScopeForNode(arg);
-                const typeInfo =
-                    this.typeAnalyzer.scopeManager.lookupFromScope(
-                        arg.text,
-                        scope,
-                    );
+                const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                    arg.text,
+                    scope,
+                );
                 if (!typeInfo) {
                     return `jspp::RuntimeError::throw_unresolved_reference_error(${
                         this.getJsVarName(
