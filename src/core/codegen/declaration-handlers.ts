@@ -36,7 +36,7 @@ export function visitVariableDeclaration(
             if (
                 typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin
             ) {
-                initText = `jspp::Access::deref(${initText}, ${varName})`;
+                initText = this.getDerefCode(initText, varName);
             }
         }
         initializer = " = " + initText;

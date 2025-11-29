@@ -161,7 +161,7 @@ export function visitBlock(
         const lastStatement = block.statements[block.statements.length - 1];
         if (!lastStatement || !ts.isReturnStatement(lastStatement)) {
             code += `${this.indent()}${
-                this.getReturnCmd(context)
+                this.getReturnCommand(context)
             } jspp::AnyValue::make_undefined();\n`;
         }
     }
@@ -273,9 +273,7 @@ export function visitForInStatement(
 
     let derefExpr = exprText;
     if (ts.isIdentifier(expr)) {
-        derefExpr = `jspp::Access::deref(${exprText}, ${
-            this.getJsVarName(expr)
-        })`;
+        derefExpr = this.getDerefCode(exprText, this.getJsVarName(expr));
     }
 
     const keysVar = this.generateUniqueName("__keys_", new Set([varName]));
@@ -304,44 +302,40 @@ export function visitForOfStatement(
 
     let code = "";
     this.indentationLevel++; // Enter a new scope for the for-of loop
-    let varName = "";
+    let elemName = "";
 
     if (ts.isVariableDeclarationList(forOf.initializer)) {
         const decl = forOf.initializer.declarations[0];
         if (decl) {
-            varName = decl.name.getText();
+            elemName = decl.name.getText();
             // Declare the shared_ptr before the loop
             code +=
-                `${this.indent()}{ auto ${varName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+                `${this.indent()}{ auto ${elemName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
         }
     } else if (ts.isIdentifier(forOf.initializer)) {
-        varName = forOf.initializer.getText();
+        elemName = forOf.initializer.getText();
         // Assume it's already declared in an outer scope, just assign to it.
         // No explicit declaration here.
         code += `${this.indent()}{\n`;
     }
 
     const iterableExpr = this.visit(forOf.expression, context);
+    const varName = this.getJsVarName(forOf.expression as ts.Identifier);
     const derefIterable = ts.isIdentifier(forOf.expression)
-        ? `jspp::Access::deref(${iterableExpr}, ${
-            this.getJsVarName(forOf.expression as ts.Identifier)
-        })`
+        ? this.getDerefCode(iterableExpr, varName)
         : iterableExpr;
-    const iteratorFn = this.generateUniqueName("__iter_fn_", new Set());
-    const iteratorPtr = this.generateUniqueName("__iter_ptr_", new Set());
-    const nextRes = this.generateUniqueName("__res__", new Set());
+
+    const declaredSymbols = this.getDeclaredSymbols(forOf.statement);
+    const iteratorPtr = this.generateUniqueName("__iter_ptr_", declaredSymbols);
+    const nextRes = this.generateUniqueName("__res__", declaredSymbols);
 
     code +=
-        `${this.indent()}auto ${iteratorFn} = ${derefIterable}.get_own_property(Symbol.get_own_property("iterator"));\n`;
-    code +=
-        `${this.indent()}if (!${iteratorFn}.is_generator()) { throw jspp::RuntimeError::make_error("${iterableExpr} is not iterable", "TypeError"); }\n`;
-    code +=
-        `${this.indent()}auto ${iteratorPtr} = ${iteratorFn}.as_function()->call({}).as_iterator();\n`;
+        `${this.indent()}auto ${iteratorPtr} = jspp::Access::get_object_value_iterator(${derefIterable}, ${varName}).as_iterator();\n`;
     code += `${this.indent()}auto ${nextRes} = ${iteratorPtr}->next();\n`;
     code += `${this.indent()}while (!${nextRes}.done) {\n`;
     this.indentationLevel++;
     code +=
-        `${this.indent()}*${varName} = ${nextRes}.value.value_or(jspp::AnyValue::make_undefined());\n`;
+        `${this.indent()}*${elemName} = ${nextRes}.value.value_or(jspp::AnyValue::make_undefined());\n`;
     code += this.visit(forOf.statement, {
         ...context,
         isFunctionBody: false,
@@ -498,7 +492,7 @@ export function visitTryStatement(
         }
 
         code += `${this.indent()}${
-            this.getReturnCmd(context)
+            this.getReturnCommand(context)
         } jspp::AnyValue::make_undefined();\n`;
 
         this.indentationLevel--;
@@ -612,9 +606,12 @@ export function visitYieldExpression(
                 !typeInfo.isParameter &&
                 !typeInfo.isBuiltin
             ) {
-                return `${this.indent()}co_yield jspp::Access::deref(${exprText}, ${
-                    this.getJsVarName(expr)
-                })`;
+                return `${this.indent()}co_yield ${
+                    this.getDerefCode(
+                        exprText,
+                        this.getJsVarName(expr),
+                    )
+                }`;
             }
         }
         return `${this.indent()}co_yield ${exprText}`;
@@ -633,7 +630,7 @@ export function visitReturnStatement(
     }
 
     const returnStmt = node as ts.ReturnStatement;
-    const returnCmd = this.getReturnCmd(context);
+    const returnCmd = this.getReturnCommand(context);
 
     if (context.isInsideTryCatchLambda && context.hasReturnedFlag) {
         let returnCode = `${this.indent()}${context.hasReturnedFlag} = true;\n`;
@@ -657,10 +654,12 @@ export function visitReturnStatement(
                     !typeInfo.isParameter &&
                     !typeInfo.isBuiltin
                 ) {
-                    returnCode +=
-                        `${this.indent()}${returnCmd} jspp::Access::deref(${exprText}, ${
-                            this.getJsVarName(expr)
-                        });\n`;
+                    returnCode += `${this.indent()}${returnCmd} ${
+                        this.getDerefCode(
+                            exprText,
+                            this.getJsVarName(expr),
+                        )
+                    };\n`;
                 } else {
                     returnCode += `${this.indent()}${returnCmd} ${exprText};\n`;
                 }
@@ -693,9 +692,12 @@ export function visitReturnStatement(
                 !typeInfo.isParameter &&
                 !typeInfo.isBuiltin
             ) {
-                return `${this.indent()}${returnCmd} jspp::Access::deref(${exprText}, ${
-                    this.getJsVarName(expr)
-                });\n`;
+                return `${this.indent()}${returnCmd} ${
+                    this.getDerefCode(
+                        exprText,
+                        this.getJsVarName(expr),
+                    )
+                };\n`;
             }
         }
         return `${this.indent()}${returnCmd} ${exprText};\n`;

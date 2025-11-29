@@ -13,7 +13,7 @@ export function generateLambda(
     const argsName = this.generateUniqueName("__args_", declaredSymbols);
 
     const isInsideGeneratorFunction = this.isGeneratorFunction(node);
-    const returnCmd = this.getReturnCmd({
+    const returnCmd = this.getReturnCommand({
         isInsideGeneratorFunction: isInsideGeneratorFunction,
     });
     const funcReturnType = isInsideGeneratorFunction

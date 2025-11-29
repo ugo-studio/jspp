@@ -97,7 +97,15 @@ export function getJsVarName(this: CodeGenerator, node: ts.Identifier): string {
     return `"${node.text}"`;
 }
 
-export function getReturnCmd(
+export function getDerefCode(
+    this: CodeGenerator,
+    nodeText: string,
+    varName: string,
+): string {
+    return `jspp::Access::deref(${nodeText}, ${varName})`;
+}
+
+export function getReturnCommand(
     this: CodeGenerator,
     context: Partial<VisitContext>,
 ) {

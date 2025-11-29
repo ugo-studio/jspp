@@ -6,8 +6,9 @@ import {
   generateUniqueExceptionName,
   generateUniqueName,
   getDeclaredSymbols,
+  getDerefCode,
   getJsVarName,
-  getReturnCmd,
+  getReturnCommand,
   getScopeForNode,
   indent,
   isBuiltinObject,
@@ -33,7 +34,8 @@ export class CodeGenerator {
     public indent = indent;
     public escapeString = escapeString;
     public getJsVarName = getJsVarName;
-    public getReturnCmd = getReturnCmd;
+    public getDerefCode = getDerefCode;
+    public getReturnCommand = getReturnCommand;
     public isBuiltinObject = isBuiltinObject;
     public isGeneratorFunction = isGeneratorFunction;
 

@@ -19,11 +19,12 @@ function visitObjectPropertyName(
         }"`;
     } else if (ts.isComputedPropertyName(node)) {
         let name = ts.isIdentifier(node.expression)
-            ? `jspp::Access::deref(${node.expression.getText()},${
+            ? this.getDerefCode(
+                node.expression.getText(),
                 this.getJsVarName(
                     node.expression as ts.Identifier,
-                )
-            })`
+                ),
+            )
             : this.visit(node.expression, context);
         name += ".to_std_string()";
         return name;
@@ -42,29 +43,26 @@ export function visitObjectLiteralExpression(
     const obj = node as ts.ObjectLiteralExpression;
     let props = "";
     for (const prop of obj.properties) {
-        // console.log("Property kind:", ts.SyntaxKind[prop.kind]);
         if (ts.isPropertyAssignment(prop)) {
             const key = visitObjectPropertyName.call(this, prop.name, context);
             const value = ts.isIdentifier(prop.initializer)
-                ? `jspp::Access::deref(${
-                    this.visit(prop.initializer, context)
-                }, ${
+                ? this.getDerefCode(
+                    this.visit(prop.initializer, context),
                     this.getJsVarName(
                         prop.initializer,
-                    )
-                })`
+                    ),
+                )
                 : this.visit(prop.initializer, context);
 
             props += `{${key}, ${value}},`;
         } else if (ts.isShorthandPropertyAssignment(prop)) {
             const key = visitObjectPropertyName.call(this, prop.name, context);
-            const value = `jspp::Access::deref(${
-                this.visit(prop.name, context)
-            }, ${
+            const value = this.getDerefCode(
+                this.visit(prop.name, context),
                 this.getJsVarName(
                     prop.name,
-                )
-            })`;
+                ),
+            );
 
             props += `{${key}, ${value}},`;
         }
@@ -80,11 +78,12 @@ export function visitArrayLiteralExpression(
     const elements = (node as ts.ArrayLiteralExpression).elements
         .map((elem) =>
             ts.isIdentifier(elem)
-                ? `jspp::Access::deref(${this.visit(elem, context)}, ${
+                ? this.getDerefCode(
+                    this.visit(elem, context),
                     this.getJsVarName(
                         elem,
-                    )
-                })`
+                    ),
+                )
                 : this.visit(elem, context)
         )
         .join(", ");
@@ -158,11 +157,12 @@ export function visitPropertyAccessExpression(
 
     let finalExpr = "";
     if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
-        finalExpr = `jspp::Access::deref(${exprText}, ${
+        finalExpr = this.getDerefCode(
+            exprText,
             this.getJsVarName(
                 propAccess.expression as ts.Identifier,
-            )
-        })`;
+            ),
+        );
     } else {
         finalExpr = exprText;
     }
@@ -205,11 +205,12 @@ export function visitElementAccessExpression(
 
     const finalExpr =
         exprTypeInfo && !exprTypeInfo.isParameter && !exprTypeInfo.isBuiltin
-            ? `jspp::Access::deref(${exprText}, ${
+            ? this.getDerefCode(
+                exprText,
                 this.getJsVarName(
                     elemAccess.expression as ts.Identifier,
-                )
-            })`
+                ),
+            )
             : exprText;
 
     // Dereference the argument expression if it's an identifier
@@ -229,11 +230,12 @@ export function visitElementAccessExpression(
             })`;
         }
         if (argTypeInfo && !argTypeInfo.isParameter && !argTypeInfo.isBuiltin) {
-            argText = `jspp::Access::deref(${argText}, ${
+            argText = this.getDerefCode(
+                argText,
                 this.getJsVarName(
                     elemAccess.argumentExpression as ts.Identifier,
-                )
-            })`;
+                ),
+            );
         }
     }
 
@@ -257,7 +259,13 @@ export function visitBinaryExpression(
         opToken.kind === ts.SyntaxKind.PercentEqualsToken
     ) {
         const leftText = this.visit(binExpr.left, context);
-        const rightText = this.visit(binExpr.right, context);
+        let rightText = this.visit(binExpr.right, context);
+        if (ts.isIdentifier(binExpr.right)) {
+            rightText = this.getDerefCode(
+                rightText,
+                this.getJsVarName(binExpr.right as ts.Identifier),
+            );
+        }
         return `*${leftText} ${op} ${rightText}`;
     }
 
@@ -279,11 +287,12 @@ export function visitBinaryExpression(
 
             const finalObjExpr =
                 typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin
-                    ? `jspp::Access::deref(${objExprText}, ${
+                    ? this.getDerefCode(
+                        objExprText,
                         this.getJsVarName(
                             propAccess.expression as ts.Identifier,
-                        )
-                    })`
+                        ),
+                    )
                     : objExprText;
 
             let finalRightText = rightText;
@@ -299,11 +308,12 @@ export function visitBinaryExpression(
                     !rightTypeInfo.isParameter &&
                     !rightTypeInfo.isBuiltin
                 ) {
-                    finalRightText = `jspp::Access::deref(${rightText}, ${
+                    finalRightText = this.getDerefCode(
+                        rightText,
                         this.getJsVarName(
                             binExpr.right as ts.Identifier,
-                        )
-                    })`;
+                        ),
+                    );
                 }
             }
 
@@ -328,11 +338,12 @@ export function visitBinaryExpression(
 
             const finalObjExpr =
                 typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin
-                    ? `jspp::Access::deref(${objExprText}, ${
+                    ? this.getDerefCode(
+                        objExprText,
                         this.getJsVarName(
                             elemAccess.expression as ts.Identifier,
-                        )
-                    })`
+                        ),
+                    )
                     : objExprText;
 
             if (ts.isIdentifier(elemAccess.argumentExpression)) {
@@ -349,11 +360,12 @@ export function visitBinaryExpression(
                     !argTypeInfo.isParameter &&
                     !argTypeInfo.isBuiltin
                 ) {
-                    argText = `jspp::Access::deref(${argText}, ${
+                    argText = this.getDerefCode(
+                        argText,
                         this.getJsVarName(
                             elemAccess.argumentExpression as ts.Identifier,
-                        )
-                    })`;
+                        ),
+                    );
                 }
             }
 
@@ -370,16 +382,16 @@ export function visitBinaryExpression(
                     !rightTypeInfo.isParameter &&
                     !rightTypeInfo.isBuiltin
                 ) {
-                    finalRightText = `jspp::Access::deref(${rightText}, ${
+                    finalRightText = this.getDerefCode(
+                        rightText,
                         this.getJsVarName(
                             binExpr.right as ts.Identifier,
-                        )
-                    })`;
+                        ),
+                    );
                 }
             }
 
             return `${finalObjExpr}.set_own_property(${argText}, ${finalRightText})`;
-            // return `${finalObjExpr}[${argText}] = ${finalRightText}`;
         }
 
         const leftText = this.visit(binExpr.left, context);
@@ -424,20 +436,22 @@ export function visitBinaryExpression(
     const finalLeft =
         leftIsIdentifier && leftTypeInfo && !leftTypeInfo.isParameter &&
             !leftTypeInfo.isBuiltin
-            ? `jspp::Access::deref(${leftText}, ${
+            ? this.getDerefCode(
+                leftText,
                 this.getJsVarName(
                     binExpr.left as ts.Identifier,
-                )
-            })`
+                ),
+            )
             : leftText;
     const finalRight =
         rightIsIdentifier && rightTypeInfo && !rightTypeInfo.isParameter &&
             !rightTypeInfo.isBuiltin
-            ? `jspp::Access::deref(${rightText}, ${
+            ? this.getDerefCode(
+                rightText,
                 this.getJsVarName(
                     binExpr.right as ts.Identifier,
-                )
-            })`
+                ),
+            )
             : rightText;
 
     if (
@@ -499,7 +513,6 @@ export function visitCallExpression(
 ): string {
     const callExpr = node as ts.CallExpression;
     const callee = callExpr.expression;
-    const calleeName = this.escapeString(callee.getText());
     const args = callExpr.arguments
         .map((arg) => {
             const argText = this.visit(arg, context);
@@ -517,11 +530,12 @@ export function visitCallExpression(
                     })`;
                 }
                 if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
-                    return `jspp::Access::deref(${argText}, ${
+                    return this.getDerefCode(
+                        argText,
                         this.getJsVarName(
                             arg,
-                        )
-                    })`;
+                        ),
+                    );
                 }
             }
             return argText;
@@ -546,18 +560,30 @@ export function visitCallExpression(
         if (typeInfo?.isBuiltin) {
             derefCallee = calleeCode;
         } else {
-            derefCallee = `jspp::Access::deref(${calleeCode}, ${
+            derefCallee = this.getDerefCode(
+                calleeCode,
                 this.getJsVarName(
                     callee,
-                )
-            })`;
+                ),
+            );
         }
     } else {
         derefCallee = calleeCode;
     }
 
-    return `${derefCallee}.as_function()->call({${args}})`;
-    // return `${derefCallee}.as_function("${calleeName}")->call({${args}})`;
+    let calleeName = "";
+
+    if (ts.isIdentifier(callee) || ts.isPropertyAccessExpression(callee)) {
+        calleeName = this.escapeString(callee.getText());
+    } else if (
+        ts.isParenthesizedExpression(callee) &&
+        ts.isFunctionExpression(callee.expression)
+    ) {
+        const funcExpr = callee.expression as ts.FunctionExpression;
+        calleeName = this.escapeString(funcExpr.name?.getText() || "");
+    }
+
+    return `${derefCallee}.as_function("${calleeName}")->call({${args}})`;
 }
 
 export function visitVoidExpression(
@@ -606,11 +632,12 @@ export function visitTemplateExpression(
                 !typeInfo.isParameter &&
                 !typeInfo.isBuiltin
             ) {
-                finalExpr = `jspp::Access::deref(${exprText}, ${
+                finalExpr = this.getDerefCode(
+                    exprText,
                     this.getJsVarName(
                         expr as ts.Identifier,
-                    )
-                })`;
+                    ),
+                );
             }
         }
 
