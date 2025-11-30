@@ -10,6 +10,12 @@ export function visitForStatement(
 ): string {
     const forStmt = node as ts.ForStatement;
     let code = "";
+
+    if (context.currentLabel) {
+        code += `${this.indent()}${context.currentLabel}: {\n`;
+        this.indentationLevel++;
+    }
+
     this.indentationLevel++; // Enter a new scope for the for loop
 
     // Handle initializer
@@ -21,10 +27,7 @@ export function visitForStatement(
                 (ts.NodeFlags.Let | ts.NodeFlags.Const)) !==
                 0;
             if (isLetOrConst) {
-                // For `let` or `const` in for loop, they are block-scoped to the loop.
-                // Declare the variable within the loop's scope.
-                // The C++ for loop initializer can contain a declaration.
-                const decl = varDeclList.declarations[0]; // Assuming single declaration for simplicity
+                const decl = varDeclList.declarations[0]; 
                 if (decl) {
                     const name = decl.name.getText();
                     const initValue = decl.initializer
@@ -47,14 +50,12 @@ export function visitForStatement(
                     }
                 }
             } else {
-                // For 'var', it's already hoisted, so this is an assignment.
                 initializerCode = this.visit(forStmt.initializer, {
                     ...context,
                     isAssignmentOnly: true,
                 });
             }
         } else {
-            // If it's an expression (e.g., `i = 0`)
             initializerCode = this.visit(forStmt.initializer, context);
         }
     }
@@ -68,11 +69,38 @@ export function visitForStatement(
         code += this.visit(forStmt.incrementor, context);
     }
     code += ") ";
-    code += this.visit(forStmt.statement, {
+
+    const statementCode = this.visit(forStmt.statement, {
         ...context,
+        currentLabel: undefined,
         isFunctionBody: false,
     });
+
+    if (ts.isBlock(node.statement)) {
+        let blockContent = statementCode.substring(1, statementCode.length - 2); // remove curly braces
+        if (context.currentLabel) {
+             blockContent += `${this.indent()}${context.currentLabel}_continue:;\n`;
+        }
+        code += `{\n${blockContent}}\n`;
+    } else {
+        code += `{\n`;
+        this.indentationLevel++;
+        code += statementCode;
+        if (context.currentLabel) {
+            code += `${this.indent()}${context.currentLabel}_continue:;\n`;
+        }
+        this.indentationLevel--;
+        code += `${this.indent()}}\n`;
+    }
+
     this.indentationLevel--; // Exit the scope for the for loop
+
+    if (context.currentLabel) {
+        this.indentationLevel--;
+        code += `${this.indent()}}\n`;
+        code += `${this.indent()}${context.currentLabel}_break:; // break target\n`;
+    }
+
     return code;
 }
 
@@ -83,7 +111,13 @@ export function visitForInStatement(
 ): string {
     const forIn = node as ts.ForInStatement;
 
-    let code = `${this.indent()}{\n`;
+    let code = "";
+    if (context.currentLabel) {
+        code += `${this.indent()}${context.currentLabel}: {\n`;
+        this.indentationLevel++;
+    }
+
+    code += `${this.indent()}{\n`;
     this.indentationLevel++; // Enter a new scope for the for-in loop
     let varName = "";
     let assignmentTarget = "";
@@ -145,11 +179,23 @@ export function visitForInStatement(
         `${this.indent()}${assignmentTarget} = jspp::AnyValue::make_string(${varName}_str);\n`;
     code += this.visit(forIn.statement, {
         ...context,
+        currentLabel: undefined,
         isFunctionBody: false,
     });
     this.indentationLevel--;
-    code += `${this.indent()}}}\n`;
+    if (context.currentLabel) {
+        code += `${this.indent()}${context.currentLabel}_continue:;\n`;
+    }
+    code += `${this.indent()}}\n`;
     this.indentationLevel--; // Exit the scope for the for-in loop
+    code += `${this.indent()}}\n`;
+
+    if (context.currentLabel) {
+        this.indentationLevel--;
+        code += `${this.indent()}}\n`;
+        code += `${this.indent()}${context.currentLabel}_break:; // break target\n`;
+    }
+
     return code;
 }
 
@@ -161,15 +207,20 @@ export function visitForOfStatement(
     const forOf = node as ts.ForOfStatement;
 
     let code = "";
+    if (context.currentLabel) {
+        code += `${this.indent()}${context.currentLabel}: {\n`;
+        this.indentationLevel++;
+    }
+
     this.indentationLevel++; // Enter a new scope for the for-of loop
     let elemName = "";
     let assignmentTarget = "";
 
+    code += `${this.indent()}{\n`;
     if (ts.isVariableDeclarationList(forOf.initializer)) {
         const decl = forOf.initializer.declarations[0];
         if (decl) {
             elemName = decl.name.getText();
-            code += `${this.indent()}{\n`;
             const scope = this.getScopeForNode(decl);
             const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
                 elemName,
@@ -195,7 +246,6 @@ export function visitForOfStatement(
         assignmentTarget = typeInfo.needsHeapAllocation
             ? `*${elemName}`
             : elemName;
-        code += `${this.indent()}{\n`;
     }
 
     const iterableExpr = this.visit(forOf.expression, context);
@@ -224,12 +274,24 @@ export function visitForOfStatement(
         `${this.indent()}${assignmentTarget} = ${nextRes}.value.value_or(jspp::AnyValue::make_undefined());\n`;
     code += this.visit(forOf.statement, {
         ...context,
+        currentLabel: undefined,
         isFunctionBody: false,
     });
+    if (context.currentLabel) {
+        code += `${this.indent()}${context.currentLabel}_continue:;\n`;
+    }
     code += `${this.indent()}${nextRes} = ${iteratorPtr}->next();\n`;
     this.indentationLevel--;
-    code += `${this.indent()}}}\n`;
+    code += `${this.indent()}}\n`;
     this.indentationLevel--; // Exit the scope for the for-of loop
+    code += `${this.indent()}}\n`;
+
+
+    if (context.currentLabel) {
+        this.indentationLevel--;
+        code += `${this.indent()}}\n`;
+        code += `${this.indent()}${context.currentLabel}_break:; // break target\n`;
+    }
 
     return code;
 }
@@ -246,22 +308,40 @@ export function visitWhileStatement(
         : `(${this.visit(condition, context)}).is_truthy()`;
 
     let code = "";
+    if (context.currentLabel) {
+        code += `${this.indent()}${context.currentLabel}: {\n`;
+        this.indentationLevel++;
+    }
 
     code += `${this.indent()}while (${conditionText}) `;
 
     const statementCode = this.visit(node.statement, {
         ...context,
+        currentLabel: undefined,
         isFunctionBody: false,
     });
 
     if (ts.isBlock(node.statement)) {
-        code += statementCode;
+         let blockContent = statementCode.substring(1, statementCode.length - 2); // remove curly braces
+        if (context.currentLabel) {
+             blockContent += `${this.indent()}${context.currentLabel}_continue:;\n`;
+        }
+        code += `{\n${blockContent}}\n`;
     } else {
         code += `{\n`;
         this.indentationLevel++;
         code += statementCode;
+        if (context.currentLabel) {
+            code += `${this.indent()}${context.currentLabel}_continue:;\n`;
+        }
         this.indentationLevel--;
         code += `${this.indent()}}\n`;
+    }
+
+    if (context.currentLabel) {
+        this.indentationLevel--;
+        code += `${this.indent()}}\n`;
+        code += `${this.indent()}${context.currentLabel}_break:; // break target\n`;
     }
 
     return code;
@@ -275,24 +355,44 @@ export function visitDoStatement(
     const condition = node.expression;
     const conditionText = `(${this.visit(condition, context)}).is_truthy()`;
 
-    let code = `${this.indent()}do `;
+    let code = ""
+    if (context.currentLabel) {
+        code += `${this.indent()}${context.currentLabel}: {\n`;
+        this.indentationLevel++;
+    }
+    
+    code += `${this.indent()}do `;
 
     const statementCode = this.visit(node.statement, {
         ...context,
+        currentLabel: undefined,
         isFunctionBody: false,
     });
 
     if (ts.isBlock(node.statement)) {
-        code += statementCode.trimEnd();
+        let blockContent = statementCode.substring(1, statementCode.length - 2); // remove curly braces
+        if (context.currentLabel) {
+             blockContent += `${this.indent()}${context.currentLabel}_continue:;\n`;
+        }
+        code += `{\n${blockContent}}`;
     } else {
         code += `{\n`;
         this.indentationLevel++;
         code += statementCode;
+        if (context.currentLabel) {
+            code += `${this.indent()}${context.currentLabel}_continue:;\n`;
+        }
         this.indentationLevel--;
         code += `${this.indent()}}`;
     }
 
     code += ` while (${conditionText});\n`;
+
+    if (context.currentLabel) {
+        this.indentationLevel--;
+        code += `${this.indent()}}\n`;
+        code += `${this.indent()}${context.currentLabel}_break:; // break target\n`;
+    }
 
     return code;
 }

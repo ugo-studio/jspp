@@ -381,6 +381,32 @@ const cases: { name: string; expected: string[] }[] = [
             "5",
         ],
     },
+    {
+        name: "labeled-statements",
+        expected: [
+            "--- Labeled Statements ---",
+            "--- Labeled break ---",
+            "Outer loop: 0",
+            "Inner loop: 0",
+            "Inner loop: 1",
+            "Inner loop: 2",
+            "Outer loop: 1",
+            "Inner loop: 0",
+            "Inner loop: 1",
+            "Breaking outer loop",
+            "After labeled break. x is 2",
+            "--- Labeled continue ---",
+            "i=0, j=0",
+            "i=0, j=1",
+            "i=0, j=2",
+            "i=1, j=0",
+            "continuing outer loop at i=1, j=1",
+            "i=2, j=0",
+            "i=2, j=1",
+            "i=2, j=2",
+            "After labeled continue",
+        ],
+    },
 ];
 
 const stripAnsi = (str: string) =>

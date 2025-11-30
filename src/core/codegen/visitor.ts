@@ -48,6 +48,7 @@ import {
   visitContinueStatement,
   visitExpressionStatement,
   visitIfStatement,
+  visitLabeledStatement,
   visitReturnStatement,
   visitSourceFile,
   visitThrowStatement,
@@ -67,6 +68,7 @@ export interface VisitContext {
     hasReturnedFlag?: string;
     isBracketNotationPropertyAccess?: boolean;
     isObjectLiteralExpression?: boolean;
+    currentLabel?: string;
 }
 
 export function visit(
@@ -165,6 +167,12 @@ export function visit(
             return visitContinueStatement.call(
                 this,
                 node as ts.ContinueStatement,
+                context,
+            );
+        case ts.SyntaxKind.LabeledStatement:
+            return visitLabeledStatement.call(
+                this,
+                node as ts.LabeledStatement,
                 context,
             );
         case ts.SyntaxKind.IfStatement:

@@ -213,7 +213,10 @@ export function visitBreakStatement(
     node: ts.BreakStatement,
     context: VisitContext,
 ): string {
-    return "break;";
+    if (node.label) {
+        return `${this.indent()}goto ${node.label.text}_break;\n`;
+    }
+    return `${this.indent()}break;\n`;
 }
 
 export function visitContinueStatement(
@@ -221,7 +224,42 @@ export function visitContinueStatement(
     node: ts.ContinueStatement,
     context: VisitContext,
 ): string {
-    return "continue;";
+    if (node.label) {
+        return `${this.indent()}goto ${node.label.text}_continue;\n`;
+    }
+    return `${this.indent()}continue;\n`;
+}
+
+export function visitLabeledStatement(
+    this: CodeGenerator,
+    node: ts.LabeledStatement,
+    context: VisitContext,
+): string {
+    const label = node.label.text;
+    const statement = node.statement;
+
+    const isLoop = ts.isForStatement(statement) ||
+        ts.isForInStatement(statement) ||
+        ts.isForOfStatement(statement) ||
+        ts.isWhileStatement(statement) ||
+        ts.isDoStatement(statement);
+
+    const statementContext = { ...context, currentLabel: label };
+    const statementCode = this.visit(statement, statementContext);
+
+    if (isLoop) {
+        return statementCode;
+    }
+
+    // A non-loop statement can only be broken from.
+    // We wrap it in a labeled block.
+    let code = `${this.indent()}${label}: {\n`;
+    this.indentationLevel++;
+    code += statementCode;
+    this.indentationLevel--;
+    code += `${this.indent()}}\n`;
+    code += `${this.indent()}${label}_break:; // break target for ${label}\n`;
+    return code;
 }
 
 export function visitIfStatement(

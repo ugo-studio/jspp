@@ -133,6 +133,12 @@ export class TypeAnalyzer {
                 exit: () => this.scopeManager.exitScope(),
             },
 
+            LabeledStatement: {
+                enter: (node) => {
+                    this.nodeToScope.set(node, this.scopeManager.currentScope);
+                },
+            },
+
             ArrowFunction: {
                 enter: (node) => {
                     if (ts.isArrowFunction(node)) {
