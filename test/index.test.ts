@@ -407,6 +407,41 @@ const cases: { name: string; expected: string[] }[] = [
             "After labeled continue",
         ],
     },
+    {
+        name: "switch-statements",
+        expected: [
+            "--- Switch Statements ---",
+            "Case 1",
+            "Case 2",
+            "Default case",
+            "Case 'hello'",
+            "Case true",
+            "Default case",
+            "Default case",
+            "Default case",
+            "--- Switch with Fallthrough ---",
+            "Fallthrough 1",
+            "Fallthrough 2",
+            "Fallthrough 2",
+            "Fallthrough 3",
+            "Fallthrough Default",
+            "Fallthrough Default",
+            "--- Switch with no matches and no default ---",
+            "--- Switch in a loop ---",
+            "Loop Case 0",
+            "After switch, loop i: 0",
+            "Loop Case 1",
+            "Loop Case 2",
+            "After switch, loop i: 2",
+            "--- Labeled Switch ---",
+            "Outer Switch Case 1",
+            "Inner Switch Case 'a'",
+            "After labeled outer switch",
+            "--- Switch with complex expressions ---",
+            "Sum is 30",
+            "Object property matched"
+        ]
+    }
 ];
 
 const stripAnsi = (str: string) =>
@@ -545,7 +580,7 @@ describe("Syntax Error tests", () => {
         const interpreter = new Interpreter();
         const code = "break;";
         expect(() => interpreter.interpret(code)).toThrow(
-            "SyntaxError: Unlabeled break must be inside an iteration statement"
+            "SyntaxError: Unlabeled break must be inside an iteration or switch statement"
         );
     });
 

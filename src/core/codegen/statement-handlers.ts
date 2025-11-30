@@ -216,6 +216,9 @@ export function visitBreakStatement(
     if (node.label) {
         return `${this.indent()}goto ${node.label.text}_break;\n`;
     }
+    if (context.switchBreakLabel) {
+        return `${this.indent()}goto ${context.switchBreakLabel};\n`;
+    }
     return `${this.indent()}break;\n`;
 }
 
@@ -245,6 +248,10 @@ export function visitLabeledStatement(
         ts.isDoStatement(statement);
 
     const statementContext = { ...context, currentLabel: label };
+    if (ts.isSwitchStatement(statement)) {
+        return this.visit(statement, statementContext);
+    }
+
     const statementCode = this.visit(statement, statementContext);
 
     if (isLoop) {

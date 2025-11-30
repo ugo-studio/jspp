@@ -8,6 +8,9 @@ import {
   visitForStatement,
   visitWhileStatement,
   visitDoStatement,
+  visitSwitchStatement,
+  visitCaseClause,
+  visitDefaultClause,
 } from "./control-flow-handlers";
 import {
   visitVariableDeclaration,
@@ -69,6 +72,7 @@ export interface VisitContext {
     isBracketNotationPropertyAccess?: boolean;
     isObjectLiteralExpression?: boolean;
     currentLabel?: string;
+    switchBreakLabel?: string;
 }
 
 export function visit(
@@ -155,6 +159,24 @@ export function visit(
             return visitDoStatement.call(
                 this,
                 node as ts.DoStatement,
+                context,
+            );
+        case ts.SyntaxKind.SwitchStatement:
+            return visitSwitchStatement.call(
+                this,
+                node as ts.SwitchStatement,
+                context,
+            );
+        case ts.SyntaxKind.CaseClause:
+            return visitCaseClause.call(
+                this,
+                node as ts.CaseClause,
+                context,
+            );
+        case ts.SyntaxKind.DefaultClause:
+            return visitDefaultClause.call(
+                this,
+                node as ts.DefaultClause,
                 context,
             );
         case ts.SyntaxKind.BreakStatement:

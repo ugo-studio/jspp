@@ -34,6 +34,7 @@ export class TypeAnalyzer {
     public readonly nodeToScope = new Map<ts.Node, Scope>();
     private labelStack: string[] = [];
     private loopDepth = 0;
+    private switchDepth = 0;
 
     public analyze(ast: Node) {
         this.nodeToScope.set(ast, this.scopeManager.currentScope);
@@ -155,6 +156,18 @@ export class TypeAnalyzer {
                 },
             },
 
+            SwitchStatement: {
+                enter: (node) => {
+                    this.switchDepth++;
+                    this.scopeManager.enterScope();
+                    this.nodeToScope.set(node, this.scopeManager.currentScope);
+                },
+                exit: () => {
+                    this.switchDepth--;
+                    this.scopeManager.exitScope();
+                },
+            },
+
             LabeledStatement: {
                 enter: (node) => {
                     this.nodeToScope.set(node, this.scopeManager.currentScope);
@@ -173,8 +186,8 @@ export class TypeAnalyzer {
                             throw new Error(`SyntaxError: Undefined label '${breakNode.label.text}'`);
                         }
                     } else {
-                        if (this.loopDepth === 0) {
-                            throw new Error("SyntaxError: Unlabeled break must be inside an iteration statement");
+                        if (this.loopDepth === 0 && this.switchDepth === 0) {
+                            throw new Error("SyntaxError: Unlabeled break must be inside an iteration or switch statement");
                         }
                     }
                 },

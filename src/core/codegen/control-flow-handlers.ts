@@ -27,7 +27,7 @@ export function visitForStatement(
                 (ts.NodeFlags.Let | ts.NodeFlags.Const)) !==
                 0;
             if (isLetOrConst) {
-                const decl = varDeclList.declarations[0]; 
+                const decl = varDeclList.declarations[0];
                 if (decl) {
                     const name = decl.name.getText();
                     const initValue = decl.initializer
@@ -79,17 +79,16 @@ export function visitForStatement(
     if (ts.isBlock(node.statement)) {
         let blockContent = statementCode.substring(1, statementCode.length - 2); // remove curly braces
         if (context.currentLabel) {
-             blockContent += `${this.indent()}${context.currentLabel}_continue:;\n`;
+            blockContent +=
+                `${this.indent()}${context.currentLabel}_continue:;\n`;
         }
         code += `{\n${blockContent}}\n`;
     } else {
         code += `{\n`;
-        this.indentationLevel++;
         code += statementCode;
         if (context.currentLabel) {
             code += `${this.indent()}${context.currentLabel}_continue:;\n`;
         }
-        this.indentationLevel--;
         code += `${this.indent()}}\n`;
     }
 
@@ -98,7 +97,8 @@ export function visitForStatement(
     if (context.currentLabel) {
         this.indentationLevel--;
         code += `${this.indent()}}\n`;
-        code += `${this.indent()}${context.currentLabel}_break:; // break target\n`;
+        code +=
+            `${this.indent()}${context.currentLabel}_break:; // break target\n`;
     }
 
     return code;
@@ -193,7 +193,8 @@ export function visitForInStatement(
     if (context.currentLabel) {
         this.indentationLevel--;
         code += `${this.indent()}}\n`;
-        code += `${this.indent()}${context.currentLabel}_break:; // break target\n`;
+        code +=
+            `${this.indent()}${context.currentLabel}_break:; // break target\n`;
     }
 
     return code;
@@ -286,11 +287,11 @@ export function visitForOfStatement(
     this.indentationLevel--; // Exit the scope for the for-of loop
     code += `${this.indent()}}\n`;
 
-
     if (context.currentLabel) {
         this.indentationLevel--;
         code += `${this.indent()}}\n`;
-        code += `${this.indent()}${context.currentLabel}_break:; // break target\n`;
+        code +=
+            `${this.indent()}${context.currentLabel}_break:; // break target\n`;
     }
 
     return code;
@@ -322,9 +323,10 @@ export function visitWhileStatement(
     });
 
     if (ts.isBlock(node.statement)) {
-         let blockContent = statementCode.substring(1, statementCode.length - 2); // remove curly braces
+        let blockContent = statementCode.substring(1, statementCode.length - 2); // remove curly braces
         if (context.currentLabel) {
-             blockContent += `${this.indent()}${context.currentLabel}_continue:;\n`;
+            blockContent +=
+                `${this.indent()}${context.currentLabel}_continue:;\n`;
         }
         code += `{\n${blockContent}}\n`;
     } else {
@@ -341,7 +343,8 @@ export function visitWhileStatement(
     if (context.currentLabel) {
         this.indentationLevel--;
         code += `${this.indent()}}\n`;
-        code += `${this.indent()}${context.currentLabel}_break:; // break target\n`;
+        code +=
+            `${this.indent()}${context.currentLabel}_break:; // break target\n`;
     }
 
     return code;
@@ -355,12 +358,12 @@ export function visitDoStatement(
     const condition = node.expression;
     const conditionText = `(${this.visit(condition, context)}).is_truthy()`;
 
-    let code = ""
+    let code = "";
     if (context.currentLabel) {
         code += `${this.indent()}${context.currentLabel}: {\n`;
         this.indentationLevel++;
     }
-    
+
     code += `${this.indent()}do `;
 
     const statementCode = this.visit(node.statement, {
@@ -372,7 +375,8 @@ export function visitDoStatement(
     if (ts.isBlock(node.statement)) {
         let blockContent = statementCode.substring(1, statementCode.length - 2); // remove curly braces
         if (context.currentLabel) {
-             blockContent += `${this.indent()}${context.currentLabel}_continue:;\n`;
+            blockContent +=
+                `${this.indent()}${context.currentLabel}_continue:;\n`;
         }
         code += `{\n${blockContent}}`;
     } else {
@@ -391,8 +395,134 @@ export function visitDoStatement(
     if (context.currentLabel) {
         this.indentationLevel--;
         code += `${this.indent()}}\n`;
-        code += `${this.indent()}${context.currentLabel}_break:; // break target\n`;
+        code +=
+            `${this.indent()}${context.currentLabel}_break:; // break target\n`;
     }
 
     return code;
+}
+
+export function visitSwitchStatement(
+    this: CodeGenerator,
+    node: ts.SwitchStatement,
+    context: VisitContext,
+): string {
+    const switchStmt = node as ts.SwitchStatement;
+    let code = "";
+
+    const declaredSymbols = this.getDeclaredSymbols(switchStmt.caseBlock);
+    const switchBreakLabel = this.generateUniqueName(
+        "__switch_break_",
+        declaredSymbols,
+    );
+    const fallthroughVar = this.generateUniqueName(
+        "__switch_fallthrough_",
+        declaredSymbols,
+    );
+
+    if (context.currentLabel) {
+        code += `${this.indent()}${context.currentLabel}: {\n`;
+        this.indentationLevel++;
+    }
+
+    code += `${this.indent()}do {\n`; // Wrap the entire switch logic in a do-while(false) block
+    this.indentationLevel++;
+
+    // Evaluate the switch expression once
+    const expressionCode = this.visit(switchStmt.expression, context);
+    const switchValueVar = this.generateUniqueName(
+        "__switch_value_",
+        declaredSymbols,
+    );
+    code +=
+        `${this.indent()}const jspp::AnyValue ${switchValueVar} = ${expressionCode};\n`;
+    code += `${this.indent()}bool ${fallthroughVar} = false;\n`;
+
+    let firstIf = true;
+
+    for (const clause of switchStmt.caseBlock.clauses) {
+        if (ts.isCaseClause(clause)) {
+            const caseExprCode = this.visit(clause.expression, {
+                ...context,
+                currentLabel: undefined, // Clear currentLabel for nested visits
+            });
+            let condition = "";
+
+            if (firstIf) {
+                condition =
+                    `(${fallthroughVar} || ${switchValueVar}.is_strictly_equal_to_primitive(${caseExprCode}).as_boolean())`;
+                code += `${this.indent()}if ${condition} {\n`;
+                firstIf = false;
+            } else {
+                condition =
+                    `(${fallthroughVar} || ${switchValueVar}.is_strictly_equal_to_primitive(${caseExprCode}).as_boolean())`;
+                code += `${this.indent()}if ${condition} {\n`;
+            }
+
+            this.indentationLevel++;
+            code += `${this.indent()}${fallthroughVar} = true;\n`;
+            for (const statement of clause.statements) {
+                code += this.visit(statement, {
+                    ...context,
+                    switchBreakLabel,
+                    currentLabel: undefined, // Clear currentLabel for nested visits
+                });
+            }
+            this.indentationLevel--;
+            code += `${this.indent()}}\n`;
+        } else if (ts.isDefaultClause(clause)) {
+            // Default clause
+            if (firstIf) {
+                code += `${this.indent()}if (true) {\n`; // Always execute if no prior cases match and it's the first clause
+                firstIf = false;
+            } else {
+                code += `${this.indent()}if (!${fallthroughVar}) {\n`; // Only execute if no prior case (or default) has matched and caused fallthrough
+            }
+            this.indentationLevel++;
+            code += `${this.indent()}${fallthroughVar} = true;\n`;
+            for (const statement of clause.statements) {
+                code += this.visit(statement, {
+                    ...context,
+                    switchBreakLabel,
+                    currentLabel: undefined, // Clear currentLabel for nested visits
+                });
+            }
+            this.indentationLevel--;
+            code += `${this.indent()}}\n`;
+        }
+    }
+
+    this.indentationLevel--;
+    code += `${this.indent()}} while (false);\n`; // End of the do-while(false) block
+    code +=
+        `${this.indent()}${switchBreakLabel}:; // break target for switch\n`;
+
+    if (context.currentLabel) {
+        this.indentationLevel--;
+        code += `${this.indent()}}\n`;
+        code +=
+            `${this.indent()}${context.currentLabel}_break:; // break target for labeled switch\n`;
+    }
+
+    return code;
+}
+
+export function visitCaseClause(
+    this: CodeGenerator,
+    node: ts.CaseClause,
+    context: VisitContext,
+): string {
+    // Case clauses are handled inline by visitSwitchStatement, not generated directly
+    // This function will likely not be called, or can return an empty string
+    return "";
+}
+
+export function visitDefaultClause(
+    this: CodeGenerator,
+    node: ts.DefaultClause,
+    context: VisitContext,
+): string {
+    // Default clauses are handled inline by visitSwitchStatement, not generated directly
+    // This function will likely not be called, or can return an empty string
+    return "";
 }

@@ -630,5 +630,6 @@ namespace jspp
         const AnyValue not_equal_to_primitive(const AnyValue &other) const noexcept;
 
         const std::string to_std_string() const noexcept;
+        const int32_t to_int() const noexcept;
     };
 }
