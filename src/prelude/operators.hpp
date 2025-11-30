@@ -151,6 +151,20 @@ namespace jspp
         return AnyValue::make_boolean(!lhs.is_equal_to(rhs));
     }
 
+    // --- LOGICAL OPERATORS
+    inline AnyValue operator||(const AnyValue &lhs, const AnyValue &rhs)
+    {
+        if (lhs.is_truthy())
+            return lhs;
+        return rhs;
+    }
+    inline AnyValue operator&&(const AnyValue &lhs, const AnyValue &rhs)
+    {
+        if (!lhs.is_truthy())
+            return lhs;
+        return rhs;
+    }
+
     // --- BITWISE OPERATORS
     inline AnyValue operator^(const AnyValue &lhs, const AnyValue &rhs)
     {
