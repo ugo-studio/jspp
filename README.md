@@ -139,8 +139,8 @@ This phase will broaden the range of supported JavaScript syntax and features.
 This phase will focus on building out the standard library and enabling modular code.
 
 - [ ] **JS Standard Library:** Implementation of common built-in objects and functions (`Math`, `Date`, `String.prototype.*`, `Array.prototype.*`).
-- [ ] **Module System:** Support for `import` and `export` to transpile multi-file projects.
 - [ ] **Asynchronous Operations:** A C++ implementation of the JavaScript event loop, `Promise`, and `async/await`.
+- [ ] **Module System:** Support for `import` and `export` to transpile multi-file projects.
 
 ### **Phase 4: Optimization & Advanced Features**
 

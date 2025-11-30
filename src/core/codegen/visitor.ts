@@ -3,6 +3,12 @@ import ts from "typescript";
 import type { Node } from "../../ast/types";
 import { CodeGenerator } from "./";
 import {
+  visitForInStatement,
+  visitForOfStatement,
+  visitForStatement,
+  visitWhileStatement,
+} from "./control-flow-handlers";
+import {
   visitVariableDeclaration,
   visitVariableDeclarationList,
 } from "./declaration-handlers";
@@ -40,9 +46,6 @@ import {
   visitCatchClause,
   visitContinueStatement,
   visitExpressionStatement,
-  visitForInStatement,
-  visitForOfStatement,
-  visitForStatement,
   visitIfStatement,
   visitReturnStatement,
   visitSourceFile,
@@ -137,6 +140,12 @@ export function visit(
             return visitForOfStatement.call(
                 this,
                 node as ts.ForOfStatement,
+                context,
+            );
+        case ts.SyntaxKind.WhileStatement:
+            return visitWhileStatement.call(
+                this,
+                node as ts.WhileStatement,
                 context,
             );
         case ts.SyntaxKind.BreakStatement:

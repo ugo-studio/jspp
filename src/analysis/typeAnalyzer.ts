@@ -39,8 +39,8 @@ export class TypeAnalyzer {
         const crossScopeModificationVisitor = (node: ts.Expression) => {
             if (ts.isIdentifier(node)) {
                 const name = node.getText();
-                const definingScope =
-                    this.scopeManager.currentScope.findScopeFor(name);
+                const definingScope = this.scopeManager.currentScope
+                    .findScopeFor(name);
                 if (
                     definingScope &&
                     definingScope !== this.scopeManager.currentScope
@@ -115,6 +115,13 @@ export class TypeAnalyzer {
                         // If it's an existing identifier, we don't redefine it, but ensure it's in scope.
                         // The generator will handle assigning to it.
                     }
+                },
+                exit: () => this.scopeManager.exitScope(),
+            },
+            WhileStatement: {
+                enter: (node) => {
+                    this.scopeManager.enterScope();
+                    this.nodeToScope.set(node, this.scopeManager.currentScope);
                 },
                 exit: () => this.scopeManager.exitScope(),
             },
@@ -322,8 +329,7 @@ export class TypeAnalyzer {
             BinaryExpression: {
                 enter: (node) => {
                     if (ts.isBinaryExpression(node)) {
-                        const isAssignment =
-                            node.operatorToken.kind >=
+                        const isAssignment = node.operatorToken.kind >=
                                 ts.SyntaxKind.FirstAssignment &&
                             node.operatorToken.kind <=
                                 ts.SyntaxKind.LastAssignment;
