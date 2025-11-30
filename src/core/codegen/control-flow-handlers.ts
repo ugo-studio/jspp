@@ -425,7 +425,7 @@ export function visitSwitchStatement(
         this.indentationLevel++;
     }
 
-    code += `${this.indent()}do {\n`; // Wrap the entire switch logic in a do-while(false) block
+    code += `${this.indent()}{\n`; // Wrap the entire switch logic in a block
     this.indentationLevel++;
 
     // Evaluate the switch expression once
@@ -450,12 +450,12 @@ export function visitSwitchStatement(
 
             if (firstIf) {
                 condition =
-                    `(${fallthroughVar} || ${switchValueVar}.is_strictly_equal_to_primitive(${caseExprCode}).as_boolean())`;
+                    `(${fallthroughVar} || ${switchValueVar}.is_strictly_equal_to(${caseExprCode}))`;
                 code += `${this.indent()}if ${condition} {\n`;
                 firstIf = false;
             } else {
                 condition =
-                    `(${fallthroughVar} || ${switchValueVar}.is_strictly_equal_to_primitive(${caseExprCode}).as_boolean())`;
+                    `(${fallthroughVar} || ${switchValueVar}.is_strictly_equal_to(${caseExprCode}))`;
                 code += `${this.indent()}if ${condition} {\n`;
             }
 
@@ -472,14 +472,15 @@ export function visitSwitchStatement(
             code += `${this.indent()}}\n`;
         } else if (ts.isDefaultClause(clause)) {
             // Default clause
+            code +=
+                `${this.indent()}if (!${fallthroughVar}) ${fallthroughVar} = true;\n`;
             if (firstIf) {
                 code += `${this.indent()}if (true) {\n`; // Always execute if no prior cases match and it's the first clause
                 firstIf = false;
             } else {
-                code += `${this.indent()}if (!${fallthroughVar}) {\n`; // Only execute if no prior case (or default) has matched and caused fallthrough
+                code += `${this.indent()}if (${fallthroughVar}) {\n`; // Only execute if no prior case (or default) has matched and caused fallthrough
             }
             this.indentationLevel++;
-            code += `${this.indent()}${fallthroughVar} = true;\n`;
             for (const statement of clause.statements) {
                 code += this.visit(statement, {
                     ...context,
@@ -493,7 +494,7 @@ export function visitSwitchStatement(
     }
 
     this.indentationLevel--;
-    code += `${this.indent()}} while (false);\n`; // End of the do-while(false) block
+    code += `${this.indent()}}\n`; // End of the switch block
     code +=
         `${this.indent()}${switchBreakLabel}:; // break target for switch\n`;
 

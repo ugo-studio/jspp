@@ -132,7 +132,7 @@ This phase will broaden the range of supported JavaScript syntax and features.
 - [x] **Objects:** Literals, property access (dot and bracket notation), methods.
 - [x] **Arrays:** Literals, indexing, and core methods (`.push`, `.pop`, `.length`, etc.).
 - [x] **Operators:** Full suite of arithmetic, logical, and comparison operators.
-- [ ] **Control Flow:** tenary operators, `for` loops, `while` loops, `switch`.
+- [x] **Control Flow:** tenary operators, `for` loops, `while` loops, `switch`.
 
 ### **Phase 3: Interoperability & Standard Library**
 
