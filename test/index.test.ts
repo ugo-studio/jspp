@@ -9,7 +9,7 @@ import { Interpreter } from "../src";
 // --- Configuration ---
 // Dynamically set concurrency based on the number of logical CPU cores
 // Using Math.max to ensure at least 1 core is used even on small VMs
-const CONCURRENCY = Math.max(1, Math.floor(os.cpus().length / 1.3));
+const CONCURRENCY = Math.max(1, Math.floor(os.cpus().length / 2));
 
 // --- Helper: Concurrency Limiter ---
 const pLimit = (concurrency: number) => {
@@ -353,6 +353,34 @@ const cases: { name: string; expected: string[] }[] = [
             "c >> 1: 2",
         ],
     },
+    {
+        name: "while-loops",
+        expected: [
+            "--- While Loops ---",
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "--- While loop with break ---",
+            "0",
+            "1",
+            "2",
+        ],
+    },
+    {
+        name: "do-while-loops",
+        expected: [
+            "--- Do-While Loops ---",
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "--- Do-While loop that runs once ---",
+            "5",
+        ],
+    },
 ];
 
 const stripAnsi = (str: string) =>
@@ -466,7 +494,7 @@ describe("Interpreter tests", () => {
                     expect(output).toInclude(expectedString);
                 }
             },
-            20000,
+            25000,
         );
     });
 

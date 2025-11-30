@@ -125,6 +125,13 @@ export class TypeAnalyzer {
                 },
                 exit: () => this.scopeManager.exitScope(),
             },
+            DoStatement: {
+                enter: (node) => {
+                    this.scopeManager.enterScope();
+                    this.nodeToScope.set(node, this.scopeManager.currentScope);
+                },
+                exit: () => this.scopeManager.exitScope(),
+            },
 
             ArrowFunction: {
                 enter: (node) => {

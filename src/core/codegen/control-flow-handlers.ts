@@ -247,14 +247,52 @@ export function visitWhileStatement(
 
     let code = "";
 
-    code += `${this.indent()}while (${conditionText}) {\n`;
-    this.indentationLevel++;
-    code += this.visit(node.statement, {
+    code += `${this.indent()}while (${conditionText}) `;
+
+    const statementCode = this.visit(node.statement, {
         ...context,
         isFunctionBody: false,
     });
-    this.indentationLevel--;
-    code += `${this.indent()}}\n`;
+
+    if (ts.isBlock(node.statement)) {
+        code += statementCode;
+    } else {
+        code += `{\n`;
+        this.indentationLevel++;
+        code += statementCode;
+        this.indentationLevel--;
+        code += `${this.indent()}}\n`;
+    }
+
+    return code;
+}
+
+export function visitDoStatement(
+    this: CodeGenerator,
+    node: ts.DoStatement,
+    context: VisitContext,
+): string {
+    const condition = node.expression;
+    const conditionText = `(${this.visit(condition, context)}).is_truthy()`;
+
+    let code = `${this.indent()}do `;
+
+    const statementCode = this.visit(node.statement, {
+        ...context,
+        isFunctionBody: false,
+    });
+
+    if (ts.isBlock(node.statement)) {
+        code += statementCode.trimEnd();
+    } else {
+        code += `{\n`;
+        this.indentationLevel++;
+        code += statementCode;
+        this.indentationLevel--;
+        code += `${this.indent()}}`;
+    }
+
+    code += ` while (${conditionText});\n`;
 
     return code;
 }

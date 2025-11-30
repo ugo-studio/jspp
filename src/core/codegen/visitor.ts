@@ -7,6 +7,7 @@ import {
   visitForOfStatement,
   visitForStatement,
   visitWhileStatement,
+  visitDoStatement,
 } from "./control-flow-handlers";
 import {
   visitVariableDeclaration,
@@ -146,6 +147,12 @@ export function visit(
             return visitWhileStatement.call(
                 this,
                 node as ts.WhileStatement,
+                context,
+            );
+        case ts.SyntaxKind.DoStatement:
+            return visitDoStatement.call(
+                this,
+                node as ts.DoStatement,
                 context,
             );
         case ts.SyntaxKind.BreakStatement:
