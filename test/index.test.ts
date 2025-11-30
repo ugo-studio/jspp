@@ -539,3 +539,44 @@ describe("Interpreter tests", () => {
         );
     });
 });
+
+describe("Syntax Error tests", () => {
+    test("should throw for unlabeled break outside a loop", () => {
+        const interpreter = new Interpreter();
+        const code = "break;";
+        expect(() => interpreter.interpret(code)).toThrow(
+            "SyntaxError: Unlabeled break must be inside an iteration statement"
+        );
+    });
+
+    test("should throw for unlabeled continue outside a loop", () => {
+        const interpreter = new Interpreter();
+        const code = "continue;";
+        expect(() => interpreter.interpret(code)).toThrow(
+            "SyntaxError: Unlabeled continue must be inside an iteration statement"
+        );
+    });
+
+    test("should throw for break to an undefined label", () => {
+        const interpreter = new Interpreter();
+        const code = "outer: while(true) { break inner; }";
+        expect(() => interpreter.interpret(code)).toThrow(
+            "SyntaxError: Undefined label 'inner'"
+        );
+    });
+
+    test("should throw for continue to an undefined label", () => {
+        const interpreter = new Interpreter();
+        const code = "outer: while(true) { continue inner; }";
+        expect(() => interpreter.interpret(code)).toThrow(
+            "SyntaxError: Undefined label 'inner'"
+        );
+    });
+
+    // This case is valid in JS, so we should ensure it does NOT throw.
+    test("should allow break from a labeled non-loop block", () => {
+        const interpreter = new Interpreter();
+        const code = "myLabel: { break myLabel; }";
+        expect(() => interpreter.interpret(code)).not.toThrow();
+    });
+});

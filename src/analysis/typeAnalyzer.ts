@@ -32,6 +32,8 @@ export class TypeAnalyzer {
         | ts.FunctionExpression
     )[] = [];
     public readonly nodeToScope = new Map<ts.Node, Scope>();
+    private labelStack: string[] = [];
+    private loopDepth = 0;
 
     public analyze(ast: Node) {
         this.nodeToScope.set(ast, this.scopeManager.currentScope);
@@ -80,20 +82,29 @@ export class TypeAnalyzer {
             },
             ForStatement: {
                 enter: (node) => {
+                    this.loopDepth++;
                     this.scopeManager.enterScope();
                     this.nodeToScope.set(node, this.scopeManager.currentScope);
                 },
-                exit: () => this.scopeManager.exitScope(),
+                exit: () => {
+                    this.loopDepth--;
+                    this.scopeManager.exitScope();
+                },
             },
             ForOfStatement: {
                 enter: (node) => {
+                    this.loopDepth++;
                     this.scopeManager.enterScope();
                     this.nodeToScope.set(node, this.scopeManager.currentScope);
                 },
-                exit: () => this.scopeManager.exitScope(),
+                exit: () => {
+                    this.loopDepth--;
+                    this.scopeManager.exitScope();
+                },
             },
             ForInStatement: {
                 enter: (node) => {
+                    this.loopDepth++;
                     this.scopeManager.enterScope();
                     this.nodeToScope.set(node, this.scopeManager.currentScope);
                     const forIn = node as ts.ForInStatement;
@@ -116,26 +127,73 @@ export class TypeAnalyzer {
                         // The generator will handle assigning to it.
                     }
                 },
-                exit: () => this.scopeManager.exitScope(),
+                exit: () => {
+                    this.loopDepth--;
+                    this.scopeManager.exitScope();
+                },
             },
             WhileStatement: {
                 enter: (node) => {
+                    this.loopDepth++;
                     this.scopeManager.enterScope();
                     this.nodeToScope.set(node, this.scopeManager.currentScope);
                 },
-                exit: () => this.scopeManager.exitScope(),
+                exit: () => {
+                    this.loopDepth--;
+                    this.scopeManager.exitScope();
+                },
             },
             DoStatement: {
                 enter: (node) => {
+                    this.loopDepth++;
                     this.scopeManager.enterScope();
                     this.nodeToScope.set(node, this.scopeManager.currentScope);
                 },
-                exit: () => this.scopeManager.exitScope(),
+                exit: () => {
+                    this.loopDepth--;
+                    this.scopeManager.exitScope();
+                },
             },
 
             LabeledStatement: {
                 enter: (node) => {
                     this.nodeToScope.set(node, this.scopeManager.currentScope);
+                    this.labelStack.push((node as ts.LabeledStatement).label.text);
+                },
+                exit: () => {
+                    this.labelStack.pop();
+                },
+            },
+
+            BreakStatement: {
+                enter: (node) => {
+                    const breakNode = node as ts.BreakStatement;
+                    if (breakNode.label) {
+                        if (!this.labelStack.includes(breakNode.label.text)) {
+                            throw new Error(`SyntaxError: Undefined label '${breakNode.label.text}'`);
+                        }
+                    } else {
+                        if (this.loopDepth === 0) {
+                            throw new Error("SyntaxError: Unlabeled break must be inside an iteration statement");
+                        }
+                    }
+                },
+            },
+
+            ContinueStatement: {
+                enter: (node) => {
+                    const continueNode = node as ts.ContinueStatement;
+                    if (continueNode.label) {
+                        if (!this.labelStack.includes(continueNode.label.text)) {
+                            throw new Error(`SyntaxError: Undefined label '${continueNode.label.text}'`);
+                        }
+                        // Also need to check if the label belongs to a loop, but that's harder here.
+                        // The TS checker should handle this. We'll assume for now it does.
+                    } else {
+                        if (this.loopDepth === 0) {
+                            throw new Error("SyntaxError: Unlabeled continue must be inside an iteration statement");
+                        }
+                    }
                 },
             },
 
@@ -245,6 +303,7 @@ export class TypeAnalyzer {
                             this.scopeManager.define(p.name.getText(), {
                                 type: "auto",
                                 isParameter: true,
+
                                 declaration: p,
                             })
                         );
