@@ -438,6 +438,24 @@ export function visitSwitchStatement(
         `${this.indent()}const jspp::AnyValue ${switchValueVar} = ${expressionCode};\n`;
     code += `${this.indent()}bool ${fallthroughVar} = false;\n`;
 
+    // Hoist variable declarations
+    const hoistedSymbols = new Set<string>();
+    for (const clause of switchStmt.caseBlock.clauses) {
+        if (ts.isCaseClause(clause) || ts.isDefaultClause(clause)) {
+            for (const statement of clause.statements) {
+                if (ts.isVariableStatement(statement)) {
+                    const varDecls = statement.declarationList.declarations;
+                    for (const decl of varDecls) {
+                        code += this.hoistVariableDeclaration(
+                            decl,
+                            hoistedSymbols,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     let firstIf = true;
 
     for (const clause of switchStmt.caseBlock.clauses) {

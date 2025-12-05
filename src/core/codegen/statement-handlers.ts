@@ -30,32 +30,7 @@ export function visitSourceFile(
 
     // Hoist variable declarations
     varDecls.forEach((decl) => {
-        const name = decl.name.getText();
-        if (hoistedSymbols.has(name)) {
-            return;
-        }
-        hoistedSymbols.add(name);
-
-        const scope = this.getScopeForNode(decl);
-        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
-            name,
-            scope,
-        )!;
-
-        const isLetOrConst =
-            (decl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !==
-                0;
-        const initializer = isLetOrConst
-            ? "jspp::AnyValue::make_uninitialized()"
-            : "jspp::AnyValue::make_undefined()";
-
-        if (typeInfo.needsHeapAllocation) {
-            code +=
-                `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;
-        } else {
-            code +=
-                `${this.indent()}jspp::AnyValue ${name} = ${initializer};\n`;
-        }
+        code += this.hoistVariableDeclaration(decl, hoistedSymbols);
     });
 
     // 2. Assign all hoisted functions first
@@ -122,31 +97,7 @@ export function visitBlock(
 
     // Hoist variable declarations
     varDecls.forEach((decl) => {
-        const name = decl.name.getText();
-        if (hoistedSymbols.has(name)) {
-            return;
-        }
-        hoistedSymbols.add(name);
-
-        const scope = this.getScopeForNode(decl);
-        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
-            name,
-            scope,
-        )!;
-
-        const isLetOrConst =
-            (decl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !==
-                0;
-        const initializer = isLetOrConst
-            ? "jspp::AnyValue::make_uninitialized()"
-            : "jspp::AnyValue::make_undefined()";
-        if (typeInfo.needsHeapAllocation) {
-            code +=
-                `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;
-        } else {
-            code +=
-                `${this.indent()}jspp::AnyValue ${name} = ${initializer};\n`;
-        }
+        code += this.hoistVariableDeclaration(decl, hoistedSymbols);
     });
 
     // 2. Assign all hoisted functions first

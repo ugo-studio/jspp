@@ -116,6 +116,39 @@ export function getReturnCommand(
     return context.isInsideGeneratorFunction ? "co_return" : "return";
 }
 
+export function hoistVariableDeclaration(
+    this: CodeGenerator,
+    decl: ts.VariableDeclaration,
+    hoistedSymbols: Set<string>,
+) {
+    const name = decl.name.getText();
+    if (hoistedSymbols.has(name)) {
+        throw new SyntaxError(
+            `Identifier '${name}' has already been declared`,
+        );
+    }
+    hoistedSymbols.add(name);
+
+    const scope = this.getScopeForNode(decl);
+    const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+        name,
+        scope,
+    )!;
+
+    const isLetOrConst =
+        (decl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !==
+            0;
+    const initializer = isLetOrConst
+        ? "jspp::AnyValue::make_uninitialized()"
+        : "jspp::AnyValue::make_undefined()";
+
+    if (typeInfo.needsHeapAllocation) {
+        return `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;
+    } else {
+        return `${this.indent()}jspp::AnyValue ${name} = ${initializer};\n`;
+    }
+}
+
 export function isGeneratorFunction(node: ts.Node): boolean {
     return (
         (ts.isFunctionDeclaration(node) ||

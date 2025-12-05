@@ -10,6 +10,7 @@ import {
   getJsVarName,
   getReturnCommand,
   getScopeForNode,
+  hoistVariableDeclaration,
   indent,
   isBuiltinObject,
   isGeneratorFunction,
@@ -30,6 +31,7 @@ export class CodeGenerator {
     public getDeclaredSymbols = getDeclaredSymbols;
     public generateUniqueName = generateUniqueName;
     public generateUniqueExceptionName = generateUniqueExceptionName;
+    public hoistVariableDeclaration = hoistVariableDeclaration;
     public getScopeForNode = getScopeForNode;
     public indent = indent;
     public escapeString = escapeString;
