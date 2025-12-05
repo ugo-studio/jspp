@@ -144,11 +144,11 @@ namespace jspp
     }
     inline AnyValue operator==(const AnyValue &lhs, const AnyValue &rhs)
     {
-        return AnyValue::make_boolean(lhs.is_equal_to(rhs));
+        return AnyValue::make_boolean(lhs.is_equal_to_primitive(rhs));
     }
     inline AnyValue operator!=(const AnyValue &lhs, const AnyValue &rhs)
     {
-        return AnyValue::make_boolean(!lhs.is_equal_to(rhs));
+        return AnyValue::make_boolean(!lhs.is_equal_to_primitive(rhs));
     }
 
     // --- LOGICAL OPERATORS

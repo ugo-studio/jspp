@@ -87,7 +87,7 @@ export function visitSourceFile(
                 code += `${this.indent()}${assignments};\n`;
             }
         } else {
-            code += this.visit(stmt, context);
+            code += this.visit(stmt, { ...context, isFunctionBody: false });
         }
     });
     return code;
@@ -178,7 +178,7 @@ export function visitBlock(
                 code += `${this.indent()}${assignments};\n`;
             }
         } else {
-            code += this.visit(stmt, context);
+            code += this.visit(stmt, { ...context, isFunctionBody: false });
         }
     });
 

@@ -450,12 +450,12 @@ export function visitSwitchStatement(
 
             if (firstIf) {
                 condition =
-                    `(${fallthroughVar} || ${switchValueVar}.is_strictly_equal_to(${caseExprCode}))`;
+                    `(${fallthroughVar} || ${switchValueVar}.is_strictly_equal_to_primitive(${caseExprCode}))`;
                 code += `${this.indent()}if ${condition} {\n`;
                 firstIf = false;
             } else {
                 condition =
-                    `(${fallthroughVar} || ${switchValueVar}.is_strictly_equal_to(${caseExprCode}))`;
+                    `(${fallthroughVar} || ${switchValueVar}.is_strictly_equal_to_primitive(${caseExprCode}))`;
                 code += `${this.indent()}if ${condition} {\n`;
             }
 

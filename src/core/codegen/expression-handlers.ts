@@ -577,16 +577,16 @@ export function visitBinaryExpression(
     }
 
     if (opToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken) {
-        return `${finalLeft}.is_strictly_equal_to_primitive(${finalRight})`;
+        return `${finalLeft}.is_strictly_equal_to(${finalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.EqualsEqualsToken) {
-        return `${finalLeft}.is_equal_to_primitive(${finalRight})`;
+        return `${finalLeft}.is_equal_to(${finalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken) {
-        return `${finalLeft}.not_strictly_equal_to_primitive(${finalRight})`;
+        return `${finalLeft}.not_strictly_equal_to(${finalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.ExclamationEqualsToken) {
-        return `${finalLeft}.not_equal_to_primitive(${finalRight})`;
+        return `${finalLeft}.not_equal_to(${finalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.AsteriskAsteriskToken) {
         return `jspp::pow(${finalLeft}, ${finalRight})`;

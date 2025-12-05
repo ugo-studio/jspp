@@ -620,16 +620,15 @@ namespace jspp
         // --- HELPERS
         const bool is_truthy() const noexcept;
 
-        const bool is_strictly_equal_to(const AnyValue &other) const noexcept;
-        const bool is_equal_to(const AnyValue &other) const noexcept;
+        const bool is_strictly_equal_to_primitive(const AnyValue &other) const noexcept;
+        const bool is_equal_to_primitive(const AnyValue &other) const noexcept;
 
-        const AnyValue is_strictly_equal_to_primitive(const AnyValue &other) const noexcept;
-        const AnyValue is_equal_to_primitive(const AnyValue &other) const noexcept;
+        const AnyValue is_strictly_equal_to(const AnyValue &other) const noexcept;
+        const AnyValue is_equal_to(const AnyValue &other) const noexcept;
 
-        const AnyValue not_strictly_equal_to_primitive(const AnyValue &other) const noexcept;
-        const AnyValue not_equal_to_primitive(const AnyValue &other) const noexcept;
+        const AnyValue not_strictly_equal_to(const AnyValue &other) const noexcept;
+        const AnyValue not_equal_to(const AnyValue &other) const noexcept;
 
         const std::string to_std_string() const noexcept;
-        const int32_t to_int() const noexcept;
     };
 }

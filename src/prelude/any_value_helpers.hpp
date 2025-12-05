@@ -25,7 +25,7 @@ const bool jspp::AnyValue::is_truthy() const noexcept
     }
 }
 
-const bool jspp::AnyValue::is_strictly_equal_to(const AnyValue &other) const noexcept
+const bool jspp::AnyValue::is_strictly_equal_to_primitive(const AnyValue &other) const noexcept
 {
     if (storage.type == other.storage.type)
     {
@@ -47,22 +47,22 @@ const bool jspp::AnyValue::is_strictly_equal_to(const AnyValue &other) const noe
             // Symbols are unique by reference/pointer identity
             return (storage.symbol == other.storage.symbol);
         case JsType::DataDescriptor:
-            return (resolve_property_for_read(*this).is_strictly_equal_to(resolve_property_for_read(other)));
+            return (resolve_property_for_read(*this).is_strictly_equal_to_primitive(resolve_property_for_read(other)));
         case JsType::AccessorDescriptor:
-            return (resolve_property_for_read(*this).is_strictly_equal_to(resolve_property_for_read(other)));
+            return (resolve_property_for_read(*this).is_strictly_equal_to_primitive(resolve_property_for_read(other)));
         default:
             return true;
         }
     }
     return false;
 }
-const bool jspp::AnyValue::is_equal_to(const AnyValue &other) const noexcept
+const bool jspp::AnyValue::is_equal_to_primitive(const AnyValue &other) const noexcept
 {
     // Implements JavaScript's Abstract Equality Comparison Algorithm (==)
     // Step 1: If types are the same, use strict equality (===)
     if (storage.type == other.storage.type)
     {
-        return is_strictly_equal_to(other);
+        return is_strictly_equal_to_primitive(other);
     }
     // Steps 2 & 3: null == undefined
     if ((is_null() && other.is_undefined()) || (is_undefined() && other.is_null()))
@@ -107,18 +107,18 @@ const bool jspp::AnyValue::is_equal_to(const AnyValue &other) const noexcept
     if (is_string() && other.is_number())
     {
         // Delegate to the other operand to avoid code duplication
-        return other.is_equal_to(*this);
+        return other.is_equal_to_primitive(*this);
     }
     // Step 6 & 7: boolean == any
     if (is_boolean())
     {
         // Convert boolean to number and re-compare
-        return AnyValue::make_number(as_boolean() ? 1.0 : 0.0).is_equal_to(other);
+        return AnyValue::make_number(as_boolean() ? 1.0 : 0.0).is_equal_to_primitive(other);
     }
     if (other.is_boolean())
     {
         // Convert boolean to number and re-compare
-        return is_equal_to(AnyValue::make_number(other.as_boolean() ? 1.0 : 0.0));
+        return is_equal_to_primitive(AnyValue::make_number(other.as_boolean() ? 1.0 : 0.0));
     }
     // Step 8 & 9: object == (string or number or symbol)
     // Simplified: Objects convert to primitives.
@@ -126,38 +126,38 @@ const bool jspp::AnyValue::is_equal_to(const AnyValue &other) const noexcept
     {
         // Convert object to primitive (string) and re-compare.
         // This is a simplification of JS's ToPrimitive.
-        return AnyValue::make_string(to_std_string()).is_equal_to(other);
+        return AnyValue::make_string(to_std_string()).is_equal_to_primitive(other);
     }
     if ((other.is_object() || other.is_array() || other.is_function()) && (is_string() || is_number() || is_symbol()))
     {
-        return other.is_equal_to(*this);
+        return other.is_equal_to_primitive(*this);
     }
     // Step 10: Parse datacriptor or accessor descriptor to primitive and re-compare
     if (is_data_descriptor() || is_accessor_descriptor())
     {
         AnyValue prim = resolve_property_for_read(*this);
-        return prim.is_equal_to(other);
+        return prim.is_equal_to_primitive(other);
     }
     // Step 11: All other cases (e.g., object == null) are false.
     return false;
 }
 
-const jspp::AnyValue jspp::AnyValue::is_strictly_equal_to_primitive(const AnyValue &other) const noexcept
+const jspp::AnyValue jspp::AnyValue::is_strictly_equal_to(const AnyValue &other) const noexcept
 {
-    return AnyValue::make_boolean(is_strictly_equal_to(other));
+    return AnyValue::make_boolean(is_strictly_equal_to_primitive(other));
 }
-const jspp::AnyValue jspp::AnyValue::is_equal_to_primitive(const AnyValue &other) const noexcept
+const jspp::AnyValue jspp::AnyValue::is_equal_to(const AnyValue &other) const noexcept
 {
-    return AnyValue::make_boolean(is_equal_to(other));
+    return AnyValue::make_boolean(is_equal_to_primitive(other));
 }
 
-const jspp::AnyValue jspp::AnyValue::not_strictly_equal_to_primitive(const AnyValue &other) const noexcept
+const jspp::AnyValue jspp::AnyValue::not_strictly_equal_to(const AnyValue &other) const noexcept
 {
-    return AnyValue::make_boolean(!is_strictly_equal_to(other));
+    return AnyValue::make_boolean(!is_strictly_equal_to_primitive(other));
 }
-const jspp::AnyValue jspp::AnyValue::not_equal_to_primitive(const AnyValue &other) const noexcept
+const jspp::AnyValue jspp::AnyValue::not_equal_to(const AnyValue &other) const noexcept
 {
-    return AnyValue::make_boolean(!is_equal_to(other));
+    return AnyValue::make_boolean(!is_equal_to_primitive(other));
 }
 
 const std::string jspp::AnyValue::to_std_string() const noexcept

@@ -3,14 +3,14 @@ import ts from "typescript";
 import type { Node } from "../../ast/types";
 import { CodeGenerator } from "./";
 import {
+  visitCaseClause,
+  visitDefaultClause,
+  visitDoStatement,
   visitForInStatement,
   visitForOfStatement,
   visitForStatement,
-  visitWhileStatement,
-  visitDoStatement,
   visitSwitchStatement,
-  visitCaseClause,
-  visitDefaultClause,
+  visitWhileStatement,
 } from "./control-flow-handlers";
 import {
   visitVariableDeclaration,
