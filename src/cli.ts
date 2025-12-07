@@ -21,9 +21,8 @@ async function main() {
         const jsCode = await fs.readFile(jsFilePath, "utf-8");
         const interpreter = new Interpreter();
 
-        console.time(`Generated C++ code ${cppFilePath}...`);
         const { cppCode, preludePath } = interpreter.interpret(jsCode);
-        console.timeEnd(`Generated C++ code ${cppFilePath}...`);
+        console.log(`Generated C++ code ${cppFilePath}...`);
 
         await fs.mkdir(outputDir, { recursive: true });
         await fs.writeFile(cppFilePath, cppCode);

@@ -8,3 +8,8 @@ export interface Visitor {
         exit?: (node: Node, parent: Node | null) => void;
     };
 }
+
+export type DeclaredSymbols = Map<
+    string,
+    "letOrConst" | "function" | "var"
+>;

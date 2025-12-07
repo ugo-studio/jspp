@@ -2,6 +2,7 @@ import ts from "typescript";
 
 import { BUILTIN_OBJECTS, Scope } from "../../analysis/scope";
 import type { TypeAnalyzer, TypeInfo } from "../../analysis/typeAnalyzer";
+import type { DeclaredSymbols } from "../../ast/types";
 import { CodeGenerator } from "./";
 import type { VisitContext } from "./visitor";
 
@@ -103,6 +104,10 @@ export function getDerefCode(
     varName: string,
     typeInfo: TypeInfo,
 ): string {
+    // Make sure varName is incased in quotes
+    if (!varName.startsWith('"')) varName = '"' + varName;
+    if (!varName.endsWith('"')) varName = varName + '"';
+
     if (typeInfo && typeInfo.needsHeapAllocation) {
         return `jspp::Access::deref_ptr(${nodeText}, ${varName})`;
     }
@@ -116,18 +121,39 @@ export function getReturnCommand(
     return context.isInsideGeneratorFunction ? "co_return" : "return";
 }
 
-export function hoistVariableDeclaration(
+export function hoistDeclaration(
     this: CodeGenerator,
-    decl: ts.VariableDeclaration,
-    hoistedSymbols: Set<string>,
+    decl: ts.VariableDeclaration | ts.FunctionDeclaration,
+    hoistedSymbols: DeclaredSymbols,
 ) {
-    const name = decl.name.getText();
-    if (hoistedSymbols.has(name)) {
-        throw new SyntaxError(
-            `Identifier '${name}' has already been declared`,
-        );
+    const name = decl.name?.getText();
+    if (!name) {
+        return `/* Unknown declaration name: ${ts.SyntaxKind[decl.kind]} */`;
     }
-    hoistedSymbols.add(name);
+
+    const isLetOrConst =
+        (decl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !==
+            0;
+    const symbolType = isLetOrConst
+        ? "letOrConst"
+        : (ts.isFunctionDeclaration(decl) ? "function" : "var");
+
+    if (hoistedSymbols.has(name)) {
+        const existingType = hoistedSymbols.get(name);
+        // Don't allow multiple declaration of `letOrConst` or `function` variables
+        if (
+            existingType === "letOrConst" ||
+            existingType === "function" ||
+            existingType !== symbolType
+        ) {
+            throw new SyntaxError(
+                `Identifier '${name}' has already been declared`,
+            );
+        }
+        // `var` variables can be declared multiple times
+        return "";
+    }
+    hoistedSymbols.set(name, symbolType);
 
     const scope = this.getScopeForNode(decl);
     const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
@@ -135,9 +161,6 @@ export function hoistVariableDeclaration(
         scope,
     )!;
 
-    const isLetOrConst =
-        (decl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !==
-            0;
     const initializer = isLetOrConst
         ? "jspp::AnyValue::make_uninitialized()"
         : "jspp::AnyValue::make_undefined()";

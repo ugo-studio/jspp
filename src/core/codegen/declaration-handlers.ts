@@ -33,11 +33,10 @@ export function visitVariableDeclaration(
         let initText = this.visit(initExpr, context);
         if (ts.isIdentifier(initExpr)) {
             const initScope = this.getScopeForNode(initExpr);
-            const initTypeInfo =
-                this.typeAnalyzer.scopeManager.lookupFromScope(
-                    initExpr.text,
-                    initScope,
-                )!;
+            const initTypeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                initExpr.text,
+                initScope,
+            )!;
             const varName = this.getJsVarName(initExpr);
             if (
                 initTypeInfo &&
@@ -52,13 +51,18 @@ export function visitVariableDeclaration(
 
     const isLetOrConst =
         (varDecl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+    const shouldDeref = context.derefBeforeAssignment &&
+        (!context.localScopeSymbols?.has(name));
 
-    const assignmentTarget = typeInfo.needsHeapAllocation ? `*${name}` : name;
+    const assignmentTarget = shouldDeref
+        ? this.getDerefCode(name, name, typeInfo)
+        : (typeInfo.needsHeapAllocation ? `*${name}` : name);
 
     if (isLetOrConst) {
         // If there's no initializer, it should be assigned undefined.
-        if (!initializer)
+        if (!initializer) {
             return `${assignmentTarget} = jspp::AnyValue::make_undefined()`;
+        }
         return `${assignmentTarget}${initializer}`;
     }
 

@@ -1,5 +1,6 @@
 import ts from "typescript";
 
+import type { DeclaredSymbols } from "../../ast/types";
 import { CodeGenerator } from "./";
 import type { VisitContext } from "./visitor";
 
@@ -16,21 +17,16 @@ export function visitSourceFile(
 
     const funcDecls = sourceFile.statements.filter(ts.isFunctionDeclaration);
 
-    const hoistedSymbols = new Set<string>();
+    const hoistedSymbols: DeclaredSymbols = new Map();
 
     // 1. Hoist function declarations
     funcDecls.forEach((func) => {
-        const funcName = func.name?.getText();
-        if (funcName && !hoistedSymbols.has(funcName)) {
-            hoistedSymbols.add(funcName);
-            code +=
-                `${this.indent()}auto ${funcName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
-        }
+        code += this.hoistDeclaration(func, hoistedSymbols);
     });
 
     // Hoist variable declarations
     varDecls.forEach((decl) => {
-        code += this.hoistVariableDeclaration(decl, hoistedSymbols);
+        code += this.hoistDeclaration(decl, hoistedSymbols);
     });
 
     // 2. Assign all hoisted functions first
@@ -53,6 +49,8 @@ export function visitSourceFile(
             const contextForVisit = {
                 ...context,
                 isAssignmentOnly: !isLetOrConst,
+                topLevelScopeSymbols: context.localScopeSymbols, // local now becomes top
+                localScopeSymbols: hoistedSymbols, // hoistedSymbols becomes new local
             };
             const assignments = this.visit(
                 stmt.declarationList,
@@ -62,7 +60,12 @@ export function visitSourceFile(
                 code += `${this.indent()}${assignments};\n`;
             }
         } else {
-            code += this.visit(stmt, { ...context, isFunctionBody: false });
+            code += this.visit(stmt, {
+                ...context,
+                isFunctionBody: false,
+                localScopeSymbols: undefined, // clear the localScopeSymbols for nested visit
+                topLevelScopeSymbols: undefined, // clear the topLevelScopeSymbols for nested visit
+            });
         }
     });
     return code;
@@ -83,21 +86,16 @@ export function visitBlock(
 
     const funcDecls = block.statements.filter(ts.isFunctionDeclaration);
 
-    const hoistedSymbols = new Set<string>();
+    const hoistedSymbols: DeclaredSymbols = new Map();
 
     // 1. Hoist all function declarations
     funcDecls.forEach((func) => {
-        const funcName = func.name?.getText();
-        if (funcName && !hoistedSymbols.has(funcName)) {
-            hoistedSymbols.add(funcName);
-            code +=
-                `${this.indent()}auto ${funcName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
-        }
+        code += this.hoistDeclaration(func, hoistedSymbols);
     });
 
     // Hoist variable declarations
     varDecls.forEach((decl) => {
-        code += this.hoistVariableDeclaration(decl, hoistedSymbols);
+        code += this.hoistDeclaration(decl, hoistedSymbols);
     });
 
     // 2. Assign all hoisted functions first
@@ -120,6 +118,8 @@ export function visitBlock(
             const contextForVisit = {
                 ...context,
                 isAssignmentOnly: !isLetOrConst,
+                topLevelScopeSymbols: context.localScopeSymbols, // local now becomes top
+                localScopeSymbols: hoistedSymbols, // hoistedSymbols becomes new local
             };
             const assignments = this.visit(
                 stmt.declarationList,
@@ -129,7 +129,12 @@ export function visitBlock(
                 code += `${this.indent()}${assignments};\n`;
             }
         } else {
-            code += this.visit(stmt, { ...context, isFunctionBody: false });
+            code += this.visit(stmt, {
+                ...context,
+                isFunctionBody: false,
+                localScopeSymbols: undefined, // clear the localScopeSymbols for nested visit
+                topLevelScopeSymbols: undefined, // clear the topLevelScopeSymbols for nested visit
+            });
         }
     });
 

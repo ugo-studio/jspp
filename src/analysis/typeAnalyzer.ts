@@ -171,7 +171,9 @@ export class TypeAnalyzer {
             LabeledStatement: {
                 enter: (node) => {
                     this.nodeToScope.set(node, this.scopeManager.currentScope);
-                    this.labelStack.push((node as ts.LabeledStatement).label.text);
+                    this.labelStack.push(
+                        (node as ts.LabeledStatement).label.text,
+                    );
                 },
                 exit: () => {
                     this.labelStack.pop();
@@ -183,11 +185,15 @@ export class TypeAnalyzer {
                     const breakNode = node as ts.BreakStatement;
                     if (breakNode.label) {
                         if (!this.labelStack.includes(breakNode.label.text)) {
-                            throw new Error(`SyntaxError: Undefined label '${breakNode.label.text}'`);
+                            throw new Error(
+                                `SyntaxError: Undefined label '${breakNode.label.text}'`,
+                            );
                         }
                     } else {
                         if (this.loopDepth === 0 && this.switchDepth === 0) {
-                            throw new Error("SyntaxError: Unlabeled break must be inside an iteration or switch statement");
+                            throw new Error(
+                                "SyntaxError: Unlabeled break must be inside an iteration or switch statement",
+                            );
                         }
                     }
                 },
@@ -197,14 +203,20 @@ export class TypeAnalyzer {
                 enter: (node) => {
                     const continueNode = node as ts.ContinueStatement;
                     if (continueNode.label) {
-                        if (!this.labelStack.includes(continueNode.label.text)) {
-                            throw new Error(`SyntaxError: Undefined label '${continueNode.label.text}'`);
+                        if (
+                            !this.labelStack.includes(continueNode.label.text)
+                        ) {
+                            throw new Error(
+                                `SyntaxError: Undefined label '${continueNode.label.text}'`,
+                            );
                         }
                         // Also need to check if the label belongs to a loop, but that's harder here.
                         // The TS checker should handle this. We'll assume for now it does.
                     } else {
                         if (this.loopDepth === 0) {
-                            throw new Error("SyntaxError: Unlabeled continue must be inside an iteration statement");
+                            throw new Error(
+                                "SyntaxError: Unlabeled continue must be inside an iteration statement",
+                            );
                         }
                     }
                 },

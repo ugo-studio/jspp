@@ -155,7 +155,9 @@ export function visitPrefixUnaryExpression(
                 prefixUnaryExpr.operand.getText(),
                 scope,
             )!;
-            if (typeInfo.needsHeapAllocation) {
+            if (context.derefBeforeAssignment) {
+                target = this.getDerefCode(operand, operand, typeInfo);
+            } else if (typeInfo.needsHeapAllocation) {
                 target = `*${operand}`;
             }
         }
@@ -169,7 +171,9 @@ export function visitPrefixUnaryExpression(
                 prefixUnaryExpr.operand.getText(),
                 scope,
             )!;
-            if (typeInfo.needsHeapAllocation) {
+            if (context.derefBeforeAssignment) {
+                target = this.getDerefCode(operand, operand, typeInfo);
+            } else if (typeInfo.needsHeapAllocation) {
                 target = `*${operand}`;
             }
         }
@@ -193,7 +197,9 @@ export function visitPostfixUnaryExpression(
             postfixUnaryExpr.operand.getText(),
             scope,
         )!;
-        if (typeInfo.needsHeapAllocation) {
+        if (context.derefBeforeAssignment) {
+            target = this.getDerefCode(operand, operand, typeInfo);
+        } else if (typeInfo.needsHeapAllocation) {
             target = `*${operand}`;
         }
     }
@@ -373,7 +379,9 @@ export function visitBinaryExpression(
                 binExpr.left.getText(),
                 scope,
             )!;
-            if (typeInfo.needsHeapAllocation) {
+            if (context.derefBeforeAssignment) {
+                target = this.getDerefCode(leftText, leftText, typeInfo);
+            } else if (typeInfo.needsHeapAllocation) {
                 target = `*${leftText}`;
             }
         }
@@ -520,7 +528,9 @@ export function visitBinaryExpression(
         if (typeInfo?.isConst) {
             return `jspp::RuntimeError::throw_immutable_assignment_error()`;
         }
-        const target = typeInfo.needsHeapAllocation ? `*${leftText}` : leftText;
+        const target = context.derefBeforeAssignment
+            ? this.getDerefCode(leftText, leftText, typeInfo)
+            : (typeInfo.needsHeapAllocation ? `*${leftText}` : leftText);
         return `${target} ${op} ${rightText}`;
     }
 

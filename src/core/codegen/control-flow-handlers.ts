@@ -1,5 +1,6 @@
 import ts from "typescript";
 
+import type { DeclaredSymbols } from "../../ast/types";
 import { CodeGenerator } from "./";
 import type { VisitContext } from "./visitor";
 
@@ -439,18 +440,23 @@ export function visitSwitchStatement(
     code += `${this.indent()}bool ${fallthroughVar} = false;\n`;
 
     // Hoist variable declarations
-    const hoistedSymbols = new Set<string>();
+    const hoistedSymbols: DeclaredSymbols = new Map();
     for (const clause of switchStmt.caseBlock.clauses) {
         if (ts.isCaseClause(clause) || ts.isDefaultClause(clause)) {
-            for (const statement of clause.statements) {
-                if (ts.isVariableStatement(statement)) {
-                    const varDecls = statement.declarationList.declarations;
+            for (const stmt of clause.statements) {
+                if (ts.isVariableStatement(stmt)) {
+                    const varDecls = stmt.declarationList.declarations;
                     for (const decl of varDecls) {
-                        code += this.hoistVariableDeclaration(
+                        code += this.hoistDeclaration(
                             decl,
                             hoistedSymbols,
                         );
                     }
+                } else if (ts.isFunctionDeclaration(stmt)) {
+                    code += this.hoistDeclaration(
+                        stmt,
+                        hoistedSymbols,
+                    );
                 }
             }
         }
@@ -479,12 +485,23 @@ export function visitSwitchStatement(
 
             this.indentationLevel++;
             code += `${this.indent()}${fallthroughVar} = true;\n`;
-            for (const statement of clause.statements) {
-                code += this.visit(statement, {
-                    ...context,
-                    switchBreakLabel,
-                    currentLabel: undefined, // Clear currentLabel for nested visits
-                });
+            for (const stmt of clause.statements) {
+                if (ts.isFunctionDeclaration(stmt)) {
+                    const funcName = stmt.name?.getText();
+                    if (funcName) {
+                        const lambda = this.generateLambda(stmt, true);
+                        code += `${this.indent()}*${funcName} = ${lambda};\n`;
+                    }
+                } else {
+                    code += this.visit(stmt, {
+                        ...context,
+                        switchBreakLabel,
+                        currentLabel: undefined, // Clear currentLabel for nested visits
+                        localScopeSymbols: hoistedSymbols,
+                        derefBeforeAssignment: true,
+                        isAssignmentOnly: ts.isVariableStatement(stmt),
+                    });
+                }
             }
             this.indentationLevel--;
             code += `${this.indent()}}\n`;
@@ -499,11 +516,13 @@ export function visitSwitchStatement(
                 code += `${this.indent()}if (${fallthroughVar}) {\n`; // Only execute if no prior case (or default) has matched and caused fallthrough
             }
             this.indentationLevel++;
-            for (const statement of clause.statements) {
-                code += this.visit(statement, {
+            for (const stmt of clause.statements) {
+                code += this.visit(stmt, {
                     ...context,
                     switchBreakLabel,
                     currentLabel: undefined, // Clear currentLabel for nested visits
+                    derefBeforeAssignment: true,
+                    isAssignmentOnly: ts.isVariableStatement(stmt),
                 });
             }
             this.indentationLevel--;

@@ -1,6 +1,6 @@
 import ts from "typescript";
 
-import type { Node } from "../../ast/types";
+import type { DeclaredSymbols, Node } from "../../ast/types";
 import { CodeGenerator } from "./";
 import {
   visitCaseClause,
@@ -73,6 +73,9 @@ export interface VisitContext {
     isObjectLiteralExpression?: boolean;
     currentLabel?: string;
     switchBreakLabel?: string;
+    topLevelScopeSymbols?: DeclaredSymbols;
+    localScopeSymbols?: DeclaredSymbols;
+    derefBeforeAssignment?: boolean;
 }
 
 export function visit(
