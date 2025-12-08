@@ -60,14 +60,14 @@ jspp::AnyValue jspp::JsIterator<T>::get_property(const std::string &key)
             auto proto_it = IteratorPrototypes::get(key, this);
             if (proto_it.has_value())
             {
-                return AnyValue::resolve_property_for_read(proto_it.value());
+                return AnyValue::resolve_property_for_read(proto_it.value(), key);
             }
         }
         // prototype not found
         return jspp::AnyValue::make_undefined();
     }
 
-    return jspp::AnyValue::resolve_property_for_read(it->second);
+    return jspp::AnyValue::resolve_property_for_read(it->second, key);
 }
 
 template <typename T>
@@ -82,7 +82,11 @@ jspp::AnyValue jspp::JsIterator<T>::set_property(const std::string &key, const A
             auto proto_value = proto_it.value();
             if (proto_value.is_accessor_descriptor())
             {
-                return AnyValue::resolve_property_for_write(proto_it.value(), value);
+                return AnyValue::resolve_property_for_write(proto_value, value, key);
+            }
+            if (proto_value.is_data_descriptor() && !proto_value.as_data_descriptor()->writable)
+            {
+                return AnyValue::resolve_property_for_write(proto_value, value, key);
             }
         }
     }
@@ -91,7 +95,7 @@ jspp::AnyValue jspp::JsIterator<T>::set_property(const std::string &key, const A
     auto it = props.find(key);
     if (it != props.end())
     {
-        return jspp::AnyValue::resolve_property_for_write(it->second, value);
+        return jspp::AnyValue::resolve_property_for_write(it->second, value, key);
     }
     else
     {

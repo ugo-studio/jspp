@@ -25,7 +25,9 @@ namespace jspp
                     [self](const std::vector<AnyValue> &) -> AnyValue
                     {
                         if (self->description.empty())
+                        {
                             return AnyValue::make_undefined();
+                        }
                         return AnyValue::make_string(self->description);
                     },
                     std::nullopt,

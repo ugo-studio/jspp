@@ -404,7 +404,7 @@ namespace jspp
         }
 
         // property resolution helpers ---------------------------------------
-        static AnyValue resolve_property_for_read(const AnyValue &val) noexcept
+        static AnyValue resolve_property_for_read(const AnyValue &val, const std::string &propName) noexcept
         {
             switch (val.storage.type)
             {
@@ -428,14 +428,21 @@ namespace jspp
             }
             }
         }
-        static AnyValue resolve_property_for_write(AnyValue &val, const AnyValue &new_val)
+        static AnyValue resolve_property_for_write(AnyValue &val, const AnyValue &new_val, const std::string &propName)
         {
             switch (val.storage.type)
             {
             case JsType::DataDescriptor:
             {
-                *(val.storage.data_desc->value) = new_val;
-                return new_val;
+                if (val.storage.data_desc->writable)
+                {
+                    *(val.storage.data_desc->value) = new_val;
+                    return new_val;
+                }
+                else
+                {
+                    throw RuntimeError::make_error("Cannot assign to read only property '" + propName + "' of object '#<Object>'", "TypeError");
+                }
             }
             case JsType::AccessorDescriptor:
             {

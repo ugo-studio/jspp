@@ -16,7 +16,7 @@ jspp::AnyValue jspp::JsSymbol::get_property(const std::string &key)
     auto proto_it = SymbolPrototypes::get(key, this);
     if (proto_it.has_value())
     {
-        return AnyValue::resolve_property_for_read(proto_it.value());
+        return AnyValue::resolve_property_for_read(proto_it.value(), key);
     }
     // not found
     return AnyValue::make_undefined();

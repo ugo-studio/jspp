@@ -28,7 +28,7 @@ jspp::AnyValue jspp::JsString::get_property(const std::string &key)
     auto proto_fn = StringPrototypes::get(key, this);
     if (proto_fn.has_value())
     {
-        return AnyValue::resolve_property_for_read(proto_fn.value());
+        return AnyValue::resolve_property_for_read(proto_fn.value(), key);
     }
     // Handle character access by string index (e.g., "abc"["1"])
     if (JsArray::is_array_index(key))

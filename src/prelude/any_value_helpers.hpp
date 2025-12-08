@@ -47,9 +47,9 @@ const bool jspp::AnyValue::is_strictly_equal_to_primitive(const AnyValue &other)
             // Symbols are unique by reference/pointer identity
             return (storage.symbol == other.storage.symbol);
         case JsType::DataDescriptor:
-            return (resolve_property_for_read(*this).is_strictly_equal_to_primitive(resolve_property_for_read(other)));
+            return storage.data_desc == other.storage.data_desc;
         case JsType::AccessorDescriptor:
-            return (resolve_property_for_read(*this).is_strictly_equal_to_primitive(resolve_property_for_read(other)));
+            return storage.accessor_desc == other.storage.accessor_desc;
         default:
             return true;
         }
@@ -132,11 +132,10 @@ const bool jspp::AnyValue::is_equal_to_primitive(const AnyValue &other) const no
     {
         return other.is_equal_to_primitive(*this);
     }
-    // Step 10: Parse datacriptor or accessor descriptor to primitive and re-compare
+    // Step 10: Datacriptor or accessor descriptor
     if (is_data_descriptor() || is_accessor_descriptor())
     {
-        AnyValue prim = resolve_property_for_read(*this);
-        return prim.is_equal_to_primitive(other);
+        return (*this).is_strictly_equal_to_primitive(other);
     }
     // Step 11: All other cases (e.g., object == null) are false.
     return false;

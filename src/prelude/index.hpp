@@ -19,11 +19,11 @@
 #include "error_helpers.hpp"
 
 #include "values/prototypes/symbol.hpp"
-#include "values/prototypes/string.hpp"
 #include "values/prototypes/object.hpp"
 #include "values/prototypes/array.hpp"
 #include "values/prototypes/function.hpp"
 #include "values/prototypes/iterator.hpp"
+#include "values/prototypes/string.hpp"
 
 #include "values/helpers/symbol.hpp"
 #include "values/helpers/object.hpp"

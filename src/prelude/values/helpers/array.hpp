@@ -75,12 +75,12 @@ jspp::AnyValue jspp::JsArray::get_property(const std::string &key)
             auto proto_it = ArrayPrototypes::get(key, this);
             if (proto_it.has_value())
             {
-                return AnyValue::resolve_property_for_read(proto_it.value());
+                return AnyValue::resolve_property_for_read(proto_it.value(), key);
             }
             // not found
             return AnyValue::make_undefined();
         }
-        return AnyValue::resolve_property_for_read(it->second);
+        return AnyValue::resolve_property_for_read(it->second, key);
     }
 }
 
@@ -88,12 +88,12 @@ jspp::AnyValue jspp::JsArray::get_property(uint32_t idx)
 {
     if (idx < dense.size())
     {
-        return AnyValue::resolve_property_for_read(dense[idx].value_or(AnyValue::make_undefined()));
+        return dense[idx].value_or(AnyValue::make_undefined());
     }
     const auto &it = sparse.find(idx);
     if (it != sparse.end())
     {
-        return AnyValue::resolve_property_for_read(it->second.value_or(AnyValue::make_undefined()));
+        return it->second.value_or(AnyValue::make_undefined());
     }
     return AnyValue::make_undefined();
 }
@@ -114,14 +114,21 @@ jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const AnyValu
         if (proto_val_opt.has_value())
         {
             auto proto_value = proto_val_opt.value();
-            return AnyValue::resolve_property_for_write(proto_value, value);
+            if (proto_value.is_accessor_descriptor())
+            {
+                return AnyValue::resolve_property_for_write(proto_value, value, key);
+            }
+            if (proto_value.is_data_descriptor() && !proto_value.as_data_descriptor()->writable)
+            {
+                return AnyValue::resolve_property_for_write(proto_value, value, key);
+            }
         }
 
         // set own property
         auto it = props.find(key);
         if (it != props.end())
         {
-            return AnyValue::resolve_property_for_write(it->second, value);
+            return AnyValue::resolve_property_for_write(it->second, value, key);
         }
         else
         {
@@ -144,7 +151,8 @@ jspp::AnyValue jspp::JsArray::set_property(uint32_t idx, const AnyValue &value)
         {
             dense[idx] = AnyValue::make_undefined();
         }
-        return AnyValue::resolve_property_for_write(dense[idx].value(), value);
+        dense[idx] = value;
+        return value;
     }
     else if (idx <= dense.size() + DENSE_GROW_THRESHOLD)
     {
@@ -161,7 +169,8 @@ jspp::AnyValue jspp::JsArray::set_property(uint32_t idx, const AnyValue &value)
             {
                 it->second = AnyValue::make_undefined();
             }
-            return AnyValue::resolve_property_for_write(it->second.value(), value);
+            it->second = value;
+            return value;
         }
         else
         {

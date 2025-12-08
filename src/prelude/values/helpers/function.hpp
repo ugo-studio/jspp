@@ -42,12 +42,12 @@ jspp::AnyValue jspp::JsFunction::get_property(const std::string &key)
         auto proto_it = FunctionPrototypes::get(key, this);
         if (proto_it.has_value())
         {
-            return AnyValue::resolve_property_for_read(proto_it.value());
+            return AnyValue::resolve_property_for_read(proto_it.value(), key);
         }
         // not found
         return AnyValue::make_undefined();
     }
-    return AnyValue::resolve_property_for_read(it->second);
+    return AnyValue::resolve_property_for_read(it->second, key);
 }
 
 jspp::AnyValue jspp::JsFunction::set_property(const std::string &key, const AnyValue &value)
@@ -59,7 +59,11 @@ jspp::AnyValue jspp::JsFunction::set_property(const std::string &key, const AnyV
         auto proto_value = proto_it.value();
         if (proto_value.is_accessor_descriptor())
         {
-            return AnyValue::resolve_property_for_write(proto_value, value);
+            return AnyValue::resolve_property_for_write(proto_value, value, key);
+        }
+        if (proto_value.is_data_descriptor() && !proto_value.as_data_descriptor()->writable)
+        {
+            return AnyValue::resolve_property_for_write(proto_value, value, key);
         }
     }
 
@@ -67,7 +71,7 @@ jspp::AnyValue jspp::JsFunction::set_property(const std::string &key, const AnyV
     auto it = props.find(key);
     if (it != props.end())
     {
-        return AnyValue::resolve_property_for_write(it->second, value);
+        return AnyValue::resolve_property_for_write(it->second, value, key);
     }
     else
     {

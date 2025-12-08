@@ -45,6 +45,10 @@ namespace jspp
     inline AnyValue pow(const AnyValue &lhs, const AnyValue &rhs);
 
     // AnyValue prototypes
+    namespace ObjectPrototypes
+    {
+        inline std::optional<AnyValue> get(const std::string &key, JsObject *self);
+    }
     namespace StringPrototypes
     {
         inline std::optional<AnyValue> get(const std::string &key, JsString *self);

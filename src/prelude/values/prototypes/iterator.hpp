@@ -22,8 +22,8 @@ namespace jspp
             // --- [Symbol.iterator]() method ---
             if (key == WellKnownSymbols::iterator->key)
             {
-                return AnyValue::make_function([self](const std::vector<AnyValue> &) -> AnyValue
-                                               {
+                return AnyValue::make_generator([self](const std::vector<AnyValue> &) -> AnyValue
+                                                {
                                                    // An iterator's iterator is itself.
                                                    // We need to return an AnyValue that holds a shared_ptr to this JsIterator.
                                                    // Since we only have a raw pointer `self`, we can't directly make a new shared_ptr.
@@ -32,7 +32,7 @@ namespace jspp
                                                    // A better solution might involve passing a shared_ptr to `self` into the prototype getters.
                                                    // For now, let's assume the object containing the iterator is alive.
                                                    return AnyValue::from_iterator_ref(self); },
-                                               key);
+                                                key);
             }
             // --- next() method ---
             if (key == "next")
