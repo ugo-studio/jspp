@@ -441,6 +441,33 @@ const cases: { name: string; expected: string[] }[] = [
             "Sum is 30",
             "Object property matched"
         ]
+    },
+    {
+        name: "generators",
+        expected: [
+            "--- Generators ---",
+            "- for...of on generator call -",
+            "1",
+            "2",
+            "3",
+            "- Iterator protocol -",
+            "1",
+            "2",
+            "3",
+            "true",
+            "- Generator with return -",
+            "a",
+            "b",
+            "true",
+            "- Iterable Iterator -",
+            "from iter: 1",
+            "from iter: 2",
+            "from iter: 3",
+            "- Array Iterator -",
+            "10",
+            "20",
+            "true",
+        ],
     }
 ];
 

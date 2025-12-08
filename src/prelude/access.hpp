@@ -107,12 +107,22 @@ namespace jspp
         }
         inline AnyValue get_object_value_iterator(const AnyValue &obj, const std::string &name)
         {
-            auto iter_fn = obj.get_own_property(WellKnownSymbols::iterator->key);
-            if (!iter_fn.is_generator())
+            if (obj.is_iterator())
             {
-                throw jspp::RuntimeError::make_error(name + " is not iterable", "TypeError");
+                return obj;
             }
-            return iter_fn.as_function()->call({}); // Don't convert to raw iterator here
+
+            auto gen_fn = obj.get_own_property(WellKnownSymbols::iterator->key);
+            if (gen_fn.is_function())
+            {
+                auto iter = gen_fn.as_function()->call({});
+                if (iter.is_iterator())
+                {
+                    return iter;
+                }
+            }
+
+            throw jspp::RuntimeError::make_error(name + " is not iterable", "TypeError");
         }
     }
 }

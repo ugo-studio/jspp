@@ -86,7 +86,7 @@ export function generateLambda(
         signature =
             "jspp::JsIterator<jspp::AnyValue>(const std::vector<jspp::AnyValue>&)";
         callable = `std::function<${signature}>(${lambda})`;
-        method = `jspp::AnyValue::make_function`;
+        method = `jspp::AnyValue::make_generator`;
     } // Handle normal function
     else {
         signature = `jspp::AnyValue(const std::vector<jspp::AnyValue>&)`;

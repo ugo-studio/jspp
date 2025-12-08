@@ -45,6 +45,7 @@ namespace jspp
 
         std::string to_std_string() const;
         AnyValue call(const std::vector<AnyValue> &args);
+
         AnyValue get_property(const std::string &key);
         AnyValue set_property(const std::string &key, const AnyValue &value);
     };
