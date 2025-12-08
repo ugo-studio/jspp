@@ -73,8 +73,8 @@ export interface VisitContext {
     isObjectLiteralExpression?: boolean;
     currentLabel?: string;
     switchBreakLabel?: string;
-    topLevelScopeSymbols?: DeclaredSymbols;
-    localScopeSymbols?: DeclaredSymbols;
+    topLevelScopeSymbols: DeclaredSymbols;
+    localScopeSymbols: DeclaredSymbols;
     derefBeforeAssignment?: boolean;
 }
 

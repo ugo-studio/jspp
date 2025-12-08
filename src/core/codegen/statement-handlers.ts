@@ -30,19 +30,27 @@ export function visitSourceFile(
     });
 
     // 2. Assign all hoisted functions first
+    const contextForFunctions = {
+        ...context,
+        localScopeSymbols: new Map(context.localScopeSymbols),
+    };
+    hoistedSymbols.forEach((v, k) =>
+        contextForFunctions.localScopeSymbols.set(k, v)
+    );
+
     funcDecls.forEach((stmt) => {
         const funcName = stmt.name?.getText();
         if (funcName) {
-            const lambda = this.generateLambda(stmt, true);
+            const lambda = this.generateLambda(stmt, contextForFunctions, true);
             code += `${this.indent()}*${funcName} = ${lambda};\n`;
         }
     });
 
     // 3. Process other statements
     sourceFile.statements.forEach((stmt) => {
-        const topLevelScopeSymbols = new Map(context.topLevelScopeSymbols);
-        context.localScopeSymbols?.forEach((v, k) =>
-            topLevelScopeSymbols.set(k, v) //  local now becomes top
+        const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
+            context.topLevelScopeSymbols,
+            context.localScopeSymbols,
         );
         const localScopeSymbols = hoistedSymbols; // hoistedSymbols becomes new local
 
@@ -107,19 +115,27 @@ export function visitBlock(
     });
 
     // 2. Assign all hoisted functions first
+    const contextForFunctions = {
+        ...context,
+        localScopeSymbols: new Map(context.localScopeSymbols),
+    };
+    hoistedSymbols.forEach((v, k) =>
+        contextForFunctions.localScopeSymbols.set(k, v)
+    );
+
     funcDecls.forEach((stmt) => {
         const funcName = stmt.name?.getText();
         if (funcName) {
-            const lambda = this.generateLambda(stmt, true);
+            const lambda = this.generateLambda(stmt, contextForFunctions, true);
             code += `${this.indent()}*${funcName} = ${lambda};\n`;
         }
     });
 
     // 3. Process other statements
     block.statements.forEach((stmt) => {
-        const topLevelScopeSymbols = new Map(context.topLevelScopeSymbols);
-        context.localScopeSymbols?.forEach((v, k) =>
-            topLevelScopeSymbols.set(k, v) //  local now becomes top
+        const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
+            context.topLevelScopeSymbols,
+            context.localScopeSymbols,
         );
         const localScopeSymbols = hoistedSymbols; // hoistedSymbols becomes new local
 

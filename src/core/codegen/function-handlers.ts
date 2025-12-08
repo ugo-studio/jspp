@@ -6,6 +6,7 @@ import type { VisitContext } from "./visitor";
 export function generateLambda(
     this: CodeGenerator,
     node: ts.ArrowFunction | ts.FunctionDeclaration | ts.FunctionExpression,
+    context: VisitContext,
     isAssignment: boolean = false,
     capture: string = "[=]",
 ): string {
@@ -23,10 +24,17 @@ export function generateLambda(
     let lambda =
         `${capture}(const std::vector<jspp::AnyValue>& ${argsName}) mutable -> ${funcReturnType} `;
 
+    const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
+        context.topLevelScopeSymbols,
+        context.localScopeSymbols,
+    );
+
     const visitContext: VisitContext = {
         isMainContext: false,
         isInsideFunction: true,
         isFunctionBody: false,
+        topLevelScopeSymbols,
+        localScopeSymbols: new Map(),
     };
 
     if (node.body) {
@@ -44,6 +52,7 @@ export function generateLambda(
             this.indentationLevel--;
 
             const blockContent = this.visit(node.body, {
+                ...visitContext,
                 isMainContext: false,
                 isInsideFunction: true,
                 isFunctionBody: true,
@@ -64,6 +73,7 @@ export function generateLambda(
             });
             lambda += `${this.indent()}${returnCmd} ${
                 this.visit(node.body, {
+                    ...visitContext,
                     isMainContext: false,
                     isInsideFunction: true,
                     isFunctionBody: false,
@@ -112,7 +122,7 @@ export function visitFunctionDeclaration(
         // This will now be handled by the Block visitor for hoisting.
         // However, we still need to generate the lambda for assignment.
         // The block visitor will wrap this in an assignment.
-        return this.generateLambda(node as ts.FunctionDeclaration);
+        return this.generateLambda(node as ts.FunctionDeclaration, context);
     }
     return "";
 }
@@ -122,7 +132,7 @@ export function visitArrowFunction(
     node: ts.ArrowFunction,
     context: VisitContext,
 ): string {
-    return this.generateLambda(node as ts.ArrowFunction);
+    return this.generateLambda(node as ts.ArrowFunction, context);
 }
 
 export function visitFunctionExpression(
@@ -137,12 +147,12 @@ export function visitFunctionExpression(
         this.indentationLevel++;
         code +=
             `${this.indent()}auto ${funcName} = std::make_shared<jspp::AnyValue>();\n`;
-        const lambda = this.generateLambda(funcExpr, true, "[=]");
+        const lambda = this.generateLambda(funcExpr, context, true, "[=]");
         code += `${this.indent()}*${funcName} = ${lambda};\n`;
         code += `${this.indent()}return *${funcName};\n`;
         this.indentationLevel--;
         code += `${this.indent()}})()`;
         return code;
     }
-    return this.generateLambda(node as ts.FunctionExpression);
+    return this.generateLambda(node as ts.FunctionExpression, context);
 }

@@ -462,6 +462,12 @@ export function visitSwitchStatement(
         }
     }
 
+    // Prepare scope symbols for the switch block
+    const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
+        context.topLevelScopeSymbols,
+        context.localScopeSymbols,
+    );
+
     let firstIf = true;
 
     for (const clause of switchStmt.caseBlock.clauses) {
@@ -489,7 +495,16 @@ export function visitSwitchStatement(
                 if (ts.isFunctionDeclaration(stmt)) {
                     const funcName = stmt.name?.getText();
                     if (funcName) {
-                        const lambda = this.generateLambda(stmt, true);
+                        const contextForFunction = {
+                            ...context,
+                            topLevelScopeSymbols,
+                            localScopeSymbols: hoistedSymbols,
+                        };
+                        const lambda = this.generateLambda(
+                            stmt,
+                            contextForFunction,
+                            true,
+                        );
                         code += `${this.indent()}*${funcName} = ${lambda};\n`;
                     }
                 } else {
@@ -497,6 +512,7 @@ export function visitSwitchStatement(
                         ...context,
                         switchBreakLabel,
                         currentLabel: undefined, // Clear currentLabel for nested visits
+                        topLevelScopeSymbols,
                         localScopeSymbols: hoistedSymbols,
                         derefBeforeAssignment: true,
                         isAssignmentOnly: ts.isVariableStatement(stmt),
@@ -521,6 +537,8 @@ export function visitSwitchStatement(
                     ...context,
                     switchBreakLabel,
                     currentLabel: undefined, // Clear currentLabel for nested visits
+                    topLevelScopeSymbols,
+                    localScopeSymbols: hoistedSymbols,
                     derefBeforeAssignment: true,
                     isAssignmentOnly: ts.isVariableStatement(stmt),
                 });

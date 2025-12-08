@@ -45,8 +45,8 @@ function visitObjectPropertyName(
     if (ts.isIdentifier(node) && context.isObjectLiteralExpression) {
         const name = node.getText();
         if (
-            context.localScopeSymbols?.has(name) ||
-            context.topLevelScopeSymbols?.has(name)
+            context.localScopeSymbols.has(name) ||
+            context.topLevelScopeSymbols.has(name)
         ) {
             const scope = this.getScopeForNode(node);
             const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(

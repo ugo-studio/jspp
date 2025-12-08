@@ -2,7 +2,7 @@ import ts from "typescript";
 
 import { BUILTIN_OBJECTS, Scope } from "../../analysis/scope";
 import type { TypeAnalyzer, TypeInfo } from "../../analysis/typeAnalyzer";
-import type { DeclaredSymbols } from "../../ast/types";
+import { type DeclaredSymbols, DeclaredSymbolType } from "../../ast/types";
 import { CodeGenerator } from "./";
 import type { VisitContext } from "./visitor";
 
@@ -135,15 +135,17 @@ export function hoistDeclaration(
         (decl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !==
             0;
     const symbolType = isLetOrConst
-        ? "letOrConst"
-        : (ts.isFunctionDeclaration(decl) ? "function" : "var");
+        ? DeclaredSymbolType.letOrConst
+        : (ts.isFunctionDeclaration(decl)
+            ? DeclaredSymbolType.function
+            : DeclaredSymbolType.var);
 
     if (hoistedSymbols.has(name)) {
         const existingType = hoistedSymbols.get(name);
         // Don't allow multiple declaration of `letOrConst` or `function` variables
         if (
-            existingType === "letOrConst" ||
-            existingType === "function" ||
+            existingType === DeclaredSymbolType.letOrConst ||
+            existingType === DeclaredSymbolType.function ||
             existingType !== symbolType
         ) {
             throw new SyntaxError(
@@ -179,4 +181,13 @@ export function isGeneratorFunction(node: ts.Node): boolean {
             ts.isMethodDeclaration(node)) &&
         !!node.asteriskToken // generator indicator
     );
+}
+
+export function prepareScopeSymbolsForVisit(
+    topLevel: DeclaredSymbols,
+    local: DeclaredSymbols,
+): DeclaredSymbols {
+    const newTopLevel = new Map(topLevel);
+    local.forEach((v, k) => newTopLevel.set(k, v));
+    return newTopLevel;
 }

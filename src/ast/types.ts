@@ -9,7 +9,12 @@ export interface Visitor {
     };
 }
 
+export enum DeclaredSymbolType {
+    letOrConst = "letOrConst",
+    function = "function",
+    var = "var",
+}
 export type DeclaredSymbols = Map<
     string,
-    "letOrConst" | "function" | "var"
+    DeclaredSymbolType
 >;

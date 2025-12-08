@@ -14,6 +14,7 @@ import {
   indent,
   isBuiltinObject,
   isGeneratorFunction,
+  prepareScopeSymbolsForVisit,
 } from "./helpers";
 import { visit } from "./visitor";
 
@@ -40,6 +41,7 @@ export class CodeGenerator {
     public getReturnCommand = getReturnCommand;
     public isBuiltinObject = isBuiltinObject;
     public isGeneratorFunction = isGeneratorFunction;
+    public prepareScopeSymbolsForVisit = prepareScopeSymbolsForVisit;
 
     // function handlers
     public generateLambda = generateLambda;
@@ -58,6 +60,8 @@ export class CodeGenerator {
             isMainContext: true,
             isInsideFunction: true,
             isFunctionBody: true,
+            topLevelScopeSymbols: new Map(),
+            localScopeSymbols: new Map(),
         });
         this.indentationLevel--;
         containerCode += "  return jspp::AnyValue::make_undefined();\n";
