@@ -25,6 +25,7 @@ namespace jspp
         {
             std::optional<T> current_value;
             std::exception_ptr exception_;
+            T input_value;
 
             JsIterator get_return_object()
             {
@@ -40,10 +41,17 @@ namespace jspp
 
             // Handle co_yield
             template <typename From>
-            std::suspend_always yield_value(From &&from)
+            auto yield_value(From &&from)
             {
                 current_value = std::forward<From>(from);
-                return {};
+                struct Awaiter
+                {
+                    promise_type &p;
+                    bool await_ready() { return false; }
+                    void await_suspend(std::coroutine_handle<promise_type>) {}
+                    T await_resume() { return p.input_value; }
+                };
+                return Awaiter{*this};
             }
 
             // Handle co_return
@@ -80,7 +88,7 @@ namespace jspp
         std::unordered_map<std::string, AnyValue> props;
 
         std::string to_std_string() const;
-        NextResult next();
+        NextResult next(const T &val = T());
         std::vector<std::optional<T>> to_vector();
         AnyValue get_property(const std::string &key);
         AnyValue set_property(const std::string &key, const AnyValue &value);

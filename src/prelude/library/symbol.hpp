@@ -8,7 +8,6 @@
 
 inline auto Symbol = jspp::AnyValue::make_object({
     {"iterator", jspp::AnyValue::from_symbol(jspp::WellKnownSymbols::iterator)},
-    {"toString", jspp::AnyValue::from_symbol(jspp::WellKnownSymbols::toString)},
 });
 
 // #pragma once

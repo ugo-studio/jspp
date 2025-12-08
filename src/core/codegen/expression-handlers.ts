@@ -22,34 +22,45 @@ function visitObjectPropertyName(
         }"`;
     }
     if (ts.isComputedPropertyName(node)) {
-        let name = this.visit(node.expression, context);
-        if (ts.isIdentifier(node.expression)) {
-            const scope = this.getScopeForNode(node.expression);
+        const compExpr = node.expression as ts.Expression;
+        let propName = this.visit(compExpr, context);
+        if (ts.isIdentifier(compExpr)) {
+            const scope = this.getScopeForNode(compExpr);
             const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
-                node.expression.getText(),
+                compExpr.getText(),
                 scope,
             )!;
-            name = this.getDerefCode(
-                name,
-                this.getJsVarName(node.expression as ts.Identifier),
+            propName = this.getDerefCode(
+                propName,
+                this.getJsVarName(compExpr as ts.Identifier),
                 typeInfo,
             );
         }
-        name += ".to_std_string()";
-        return name;
+        propName += ".to_std_string()";
+        return propName;
     }
     if (context.isBracketNotationPropertyAccess) {
         return this.visit(node, context);
     }
-    if (ts.isIdentifier(node) && !context.isObjectLiteralExpression) {
-        const scope = this.getScopeForNode(node);
-        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
-            node.getText(),
-            scope,
-        )!;
-        return `${
-            this.getDerefCode(node.getText(), this.getJsVarName(node), typeInfo)
-        }.to_std_string()`;
+    if (ts.isIdentifier(node) && context.isObjectLiteralExpression) {
+        const name = node.getText();
+        if (
+            context.localScopeSymbols?.has(name) ||
+            context.topLevelScopeSymbols?.has(name)
+        ) {
+            const scope = this.getScopeForNode(node);
+            const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                node.getText(),
+                scope,
+            )!;
+            return `${
+                this.getDerefCode(
+                    node.getText(),
+                    node.getText(),
+                    typeInfo,
+                )
+            }.to_std_string()`;
+        }
     }
     return `"${node.getText()}"`;
 }

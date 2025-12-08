@@ -47,3 +47,18 @@ const arrIter = arr[Symbol.iterator]();
 console.log(arrIter.next().value);
 console.log(arrIter.next().value);
 console.log(arrIter.next().done);
+
+console.log("- Generator with input -");
+function* genWithInput() {
+    console.log("start");
+    const a = yield 1;
+    console.log("received a:", a);
+    const b = yield 2;
+    console.log("received b:", b);
+    return 3;
+}
+
+const gInput = genWithInput();
+console.log(gInput.next().value);
+console.log(gInput.next("value-for-a").value);
+console.log(gInput.next("value-for-b").value);

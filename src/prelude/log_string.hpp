@@ -141,7 +141,7 @@ namespace jspp
                 auto obj = val.as_object();
 
                 // If custom toString exists on the object, prefer it
-                auto itToString = obj->props.find(jspp::WellKnownSymbols::toString->key);
+                auto itToString = obj->props.find("toString");
                 if (itToString != obj->props.end() && itToString->second.is_function())
                 {
                     try
@@ -234,7 +234,7 @@ namespace jspp
                 size_t item_count = static_cast<size_t>(arr->length);
 
                 // If custom toString exists on the object, prefer it
-                auto itToString = arr->props.find(jspp::WellKnownSymbols::toString->key);
+                auto itToString = arr->props.find("toString");
                 if (depth > 0 && itToString != arr->props.end() && itToString->second.is_function())
                 {
                     try

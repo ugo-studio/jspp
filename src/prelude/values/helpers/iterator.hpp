@@ -11,11 +11,13 @@ std::string jspp::JsIterator<T>::to_std_string() const
 }
 
 template <typename T>
-jspp::JsIterator<T>::NextResult jspp::JsIterator<T>::next()
+jspp::JsIterator<T>::NextResult jspp::JsIterator<T>::next(const T &val)
 {
     // If the generator is already finished or invalid, return {undefined, true}
     if (!handle || handle.done())
         return {std::nullopt, true};
+
+    handle.promise().input_value = val;
 
     // Resume execution until next co_yield or co_return
     handle.resume();

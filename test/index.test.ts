@@ -467,6 +467,13 @@ const cases: { name: string; expected: string[] }[] = [
             "10",
             "20",
             "true",
+            "- Generator with input -",
+            "start",
+            "1",
+            "received a: value-for-a",
+            "2",
+            "received b: value-for-b",
+            "3",
         ],
     }
 ];

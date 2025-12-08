@@ -13,7 +13,7 @@ namespace jspp
         inline std::optional<AnyValue> get(const std::string &key, JsFunction *self)
         {
             // --- toString() method ---
-            if (key == "toString" || key == WellKnownSymbols::toString->key)
+            if (key == "toString" )
             {
                 return AnyValue::make_function([self](const std::vector<AnyValue> &_) -> AnyValue
                                                { return AnyValue::make_string(self->to_std_string()); },

@@ -13,7 +13,7 @@ namespace jspp
         inline std::optional<AnyValue> get(const std::string &key, JsIterator<AnyValue> *self)
         {
             // --- toString() method ---
-            if (key == "toString" || key == WellKnownSymbols::toString->key)
+            if (key == "toString" )
             {
                 return AnyValue::make_function([self](const std::vector<AnyValue> &) -> AnyValue
                                                { return AnyValue::make_string(self->to_std_string()); },
@@ -37,9 +37,10 @@ namespace jspp
             // --- next() method ---
             if (key == "next")
             {
-                return AnyValue::make_function([self](const std::vector<AnyValue> &) -> AnyValue
+                return AnyValue::make_function([self](const std::vector<AnyValue> &args) -> AnyValue
                                                {
-                                                auto res = self->next();
+                                                AnyValue val = args.empty() ? AnyValue::make_undefined() : args[0];
+                                                auto res = self->next(val);
                                                 return AnyValue::make_object({{"value",res.value.value_or(AnyValue::make_undefined())},{"done",AnyValue::make_boolean(res.done)},}); },
                                                key);
             }

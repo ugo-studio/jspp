@@ -40,6 +40,12 @@ export function visitSourceFile(
 
     // 3. Process other statements
     sourceFile.statements.forEach((stmt) => {
+        const topLevelScopeSymbols = new Map(context.topLevelScopeSymbols);
+        context.localScopeSymbols?.forEach((v, k) =>
+            topLevelScopeSymbols.set(k, v) //  local now becomes top
+        );
+        const localScopeSymbols = hoistedSymbols; // hoistedSymbols becomes new local
+
         if (ts.isFunctionDeclaration(stmt)) {
             // Already handled
         } else if (ts.isVariableStatement(stmt)) {
@@ -48,9 +54,9 @@ export function visitSourceFile(
                 0;
             const contextForVisit = {
                 ...context,
+                topLevelScopeSymbols,
+                localScopeSymbols,
                 isAssignmentOnly: !isLetOrConst,
-                topLevelScopeSymbols: context.localScopeSymbols, // local now becomes top
-                localScopeSymbols: hoistedSymbols, // hoistedSymbols becomes new local
             };
             const assignments = this.visit(
                 stmt.declarationList,
@@ -63,8 +69,10 @@ export function visitSourceFile(
             code += this.visit(stmt, {
                 ...context,
                 isFunctionBody: false,
-                localScopeSymbols: undefined, // clear the localScopeSymbols for nested visit
-                topLevelScopeSymbols: undefined, // clear the topLevelScopeSymbols for nested visit
+                topLevelScopeSymbols,
+                localScopeSymbols,
+                // localScopeSymbols: undefined, // clear the localScopeSymbols for nested visit
+                // topLevelScopeSymbols: undefined, // clear the topLevelScopeSymbols for nested visit
             });
         }
     });
@@ -109,6 +117,12 @@ export function visitBlock(
 
     // 3. Process other statements
     block.statements.forEach((stmt) => {
+        const topLevelScopeSymbols = new Map(context.topLevelScopeSymbols);
+        context.localScopeSymbols?.forEach((v, k) =>
+            topLevelScopeSymbols.set(k, v) //  local now becomes top
+        );
+        const localScopeSymbols = hoistedSymbols; // hoistedSymbols becomes new local
+
         if (ts.isFunctionDeclaration(stmt)) {
             // Do nothing, already handled
         } else if (ts.isVariableStatement(stmt)) {
@@ -117,9 +131,9 @@ export function visitBlock(
                 0;
             const contextForVisit = {
                 ...context,
+                topLevelScopeSymbols,
+                localScopeSymbols,
                 isAssignmentOnly: !isLetOrConst,
-                topLevelScopeSymbols: context.localScopeSymbols, // local now becomes top
-                localScopeSymbols: hoistedSymbols, // hoistedSymbols becomes new local
             };
             const assignments = this.visit(
                 stmt.declarationList,
@@ -132,8 +146,10 @@ export function visitBlock(
             code += this.visit(stmt, {
                 ...context,
                 isFunctionBody: false,
-                localScopeSymbols: undefined, // clear the localScopeSymbols for nested visit
-                topLevelScopeSymbols: undefined, // clear the topLevelScopeSymbols for nested visit
+                topLevelScopeSymbols,
+                localScopeSymbols,
+                // localScopeSymbols: undefined, // clear the localScopeSymbols for nested visit
+                // topLevelScopeSymbols: undefined, // clear the topLevelScopeSymbols for nested visit
             });
         }
     });
