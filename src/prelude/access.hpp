@@ -115,7 +115,7 @@ namespace jspp
             auto gen_fn = obj.get_own_property(WellKnownSymbols::iterator->key);
             if (gen_fn.is_generator())
             {
-                auto iter = gen_fn.as_function()->call({});
+                auto iter = gen_fn.as_function()->call(gen_fn, {});
                 if (iter.is_iterator())
                 {
                     return iter;

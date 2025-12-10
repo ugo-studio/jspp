@@ -1,10 +1,12 @@
 #pragma once
 
 #include "types.hpp"
-#include "object.hpp"
-#include "console.hpp"
+#include "values/non_values.hpp"
+#include "values/object.hpp"
+#include "values/function.hpp"
+#include "operators.hpp"
 
-inline auto global = jspp::Object::make_object({
+inline auto global = jspp::AnyValue::make_object({
     {"console", console},
+    {"performance", performance},
 });
-inline auto globalThis = global;

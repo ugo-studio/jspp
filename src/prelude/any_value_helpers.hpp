@@ -186,7 +186,7 @@ const std::string jspp::AnyValue::to_std_string() const noexcept
     case JsType::AccessorDescriptor:
     {
         if (storage.accessor_desc->get.has_value())
-            return storage.accessor_desc->get.value()({}).to_std_string();
+            return storage.accessor_desc->get.value()(*this, {}).to_std_string();
         else
             return "undefined";
     }

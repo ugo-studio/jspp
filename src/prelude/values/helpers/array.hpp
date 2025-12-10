@@ -57,7 +57,7 @@ jspp::JsIterator<jspp::AnyValue> jspp::JsArray::get_iterator()
     co_return AnyValue::make_undefined();
 }
 
-jspp::AnyValue jspp::JsArray::get_property(const std::string &key)
+jspp::AnyValue jspp::JsArray::get_property(const std::string &key, const AnyValue &thisVal)
 {
     if (
         !key.empty() && std::isdigit(static_cast<unsigned char>(key[0])) // Quick check: if the first character is not a digit, it can't be a standard index.
@@ -75,12 +75,12 @@ jspp::AnyValue jspp::JsArray::get_property(const std::string &key)
             auto proto_it = ArrayPrototypes::get(key, this);
             if (proto_it.has_value())
             {
-                return AnyValue::resolve_property_for_read(proto_it.value(), key);
+                return AnyValue::resolve_property_for_read(proto_it.value(), thisVal, key);
             }
             // not found
             return AnyValue::make_undefined();
         }
-        return AnyValue::resolve_property_for_read(it->second, key);
+        return AnyValue::resolve_property_for_read(it->second, thisVal, key);
     }
 }
 
@@ -98,7 +98,7 @@ jspp::AnyValue jspp::JsArray::get_property(uint32_t idx)
     return AnyValue::make_undefined();
 }
 
-jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const AnyValue &value)
+jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal)
 {
     if (
         !key.empty() && std::isdigit(static_cast<unsigned char>(key[0])) // Quick check: if the first character is not a digit, it can't be a standard index.
@@ -116,11 +116,11 @@ jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const AnyValu
             auto proto_value = proto_val_opt.value();
             if (proto_value.is_accessor_descriptor())
             {
-                return AnyValue::resolve_property_for_write(proto_value, value, key);
+                return AnyValue::resolve_property_for_write(proto_value, thisVal, value, key);
             }
             if (proto_value.is_data_descriptor() && !proto_value.as_data_descriptor()->writable)
             {
-                return AnyValue::resolve_property_for_write(proto_value, value, key);
+                return AnyValue::resolve_property_for_write(proto_value, thisVal, value, key);
             }
         }
 
@@ -128,7 +128,7 @@ jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const AnyValu
         auto it = props.find(key);
         if (it != props.end())
         {
-            return AnyValue::resolve_property_for_write(it->second, value, key);
+            return AnyValue::resolve_property_for_write(it->second, thisVal, value, key);
         }
         else
         {

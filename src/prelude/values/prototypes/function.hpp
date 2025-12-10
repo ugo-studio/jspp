@@ -15,7 +15,7 @@ namespace jspp
             // --- toString() method ---
             if (key == "toString" )
             {
-                return AnyValue::make_function([self](const std::vector<AnyValue> &_) -> AnyValue
+                return AnyValue::make_function([self](const AnyValue &thisVal, const std::vector<AnyValue> &_) -> AnyValue
                                                { return AnyValue::make_string(self->to_std_string()); },
                                                key);
             }

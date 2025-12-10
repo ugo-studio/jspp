@@ -41,3 +41,4 @@
 #include "library/symbol.hpp"
 #include "library/console.hpp"
 #include "library/performance.hpp"
+#include "library/global.hpp"

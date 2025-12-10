@@ -56,6 +56,7 @@ export class CodeGenerator {
 
         let containerCode = `jspp::AnyValue ${CONTAINER_FUNCTION_NAME}() {\n`;
         this.indentationLevel++;
+        containerCode += `${this.indent()}jspp::AnyValue __this_val__ = global;\n`;
         containerCode += this.visit(ast, {
             isMainContext: true,
             isInsideFunction: true,
@@ -76,7 +77,7 @@ export class CodeGenerator {
         mainCode +=
             "    auto error = std::make_shared<jspp::AnyValue>(jspp::RuntimeError::error_to_value(ex));\n{\n";
         mainCode +=
-            `    console.get_own_property("error").as_function("console.error")->call({*error});\n`;
+            `    ([&](){ auto __obj = console; return __obj.get_own_property("error").as_function("console.error")->call(__obj, {*error}); })();\n`;
         mainCode += `    return 1;\n}\n`;
         mainCode += `  }\n`;
         mainCode += "  return 0;\n}";

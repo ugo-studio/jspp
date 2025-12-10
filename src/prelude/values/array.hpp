@@ -21,9 +21,9 @@ namespace jspp
         std::string to_std_string() const;
         JsIterator<AnyValue> get_iterator();
 
-        AnyValue get_property(const std::string &key);
+        AnyValue get_property(const std::string &key, const AnyValue &thisVal);
         AnyValue get_property(uint32_t idx);
-        AnyValue set_property(const std::string &key, const AnyValue &value);
+        AnyValue set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal);
         AnyValue set_property(uint32_t idx, const AnyValue &value);
 
         static bool is_array_index(const std::string &s)

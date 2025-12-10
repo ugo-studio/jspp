@@ -146,7 +146,7 @@ namespace jspp
                 {
                     try
                     {
-                        auto result = itToString->second.as_function()->call({});
+                        auto result = itToString->second.as_function()->call(itToString->second, {});
                         return to_log_string(result, visited, depth);
                     }
                     catch (...)
@@ -239,7 +239,7 @@ namespace jspp
                 {
                     try
                     {
-                        auto result = itToString->second.as_function()->call({});
+                        auto result = itToString->second.as_function()->call(itToString->second, {});
                         return to_log_string(result, visited, depth);
                     }
                     catch (...)

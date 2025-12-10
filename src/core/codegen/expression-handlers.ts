@@ -663,6 +663,68 @@ export function visitCallExpression(
         })
         .join(", ");
 
+    // Handle obj.method() -> pass obj as 'this'
+    if (ts.isPropertyAccessExpression(callee)) {
+        const propAccess = callee as ts.PropertyAccessExpression;
+        const objExpr = propAccess.expression;
+        const propName = propAccess.name.getText();
+        const objCode = this.visit(objExpr, context);
+        
+        // We need to dereference the object expression if it's a variable
+        let derefObj = objCode;
+        if (ts.isIdentifier(objExpr)) {
+            const scope = this.getScopeForNode(objExpr);
+            const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(objExpr.getText(), scope);
+            if (!typeInfo && !this.isBuiltinObject(objExpr)) {
+                 return `jspp::RuntimeError::throw_unresolved_reference_error(${this.getJsVarName(objExpr)})`;
+            }
+            if (typeInfo && !typeInfo.isBuiltin && !typeInfo.isParameter) {
+                derefObj = this.getDerefCode(objCode, this.getJsVarName(objExpr), typeInfo);
+            }
+        }
+
+        return `([&](){ auto __obj = ${derefObj}; return __obj.get_own_property("${propName}").as_function("${this.escapeString(propName)}")->call(__obj, {${args}}); })()`;
+    }
+
+    // Handle obj[method]() -> pass obj as 'this'
+    if (ts.isElementAccessExpression(callee)) {
+        const elemAccess = callee as ts.ElementAccessExpression;
+        const objExpr = elemAccess.expression;
+        const objCode = this.visit(objExpr, context);
+        
+        let derefObj = objCode;
+        if (ts.isIdentifier(objExpr)) {
+            const scope = this.getScopeForNode(objExpr);
+            const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(objExpr.getText(), scope);
+            if (!typeInfo && !this.isBuiltinObject(objExpr)) {
+                 return `jspp::RuntimeError::throw_unresolved_reference_error(${this.getJsVarName(objExpr)})`;
+            }
+            if (typeInfo && !typeInfo.isBuiltin && !typeInfo.isParameter) {
+                derefObj = this.getDerefCode(objCode, this.getJsVarName(objExpr), typeInfo);
+            }
+        }
+
+        let argText = visitObjectPropertyName.call(
+            this,
+            elemAccess.argumentExpression as ts.PropertyName,
+            { ...context, isBracketNotationPropertyAccess: true },
+        );
+        
+        // Dereference argument if needed (logic copied from visitElementAccessExpression)
+        if (ts.isIdentifier(elemAccess.argumentExpression)) {
+            const argScope = this.getScopeForNode(elemAccess.argumentExpression);
+            const argTypeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(elemAccess.argumentExpression.getText(), argScope);
+             if (!argTypeInfo && !this.isBuiltinObject(elemAccess.argumentExpression)) {
+                return `jspp::RuntimeError::throw_unresolved_reference_error(${this.getJsVarName(elemAccess.argumentExpression as ts.Identifier)})`;
+            }
+            if (argTypeInfo && !argTypeInfo.isParameter && !argTypeInfo.isBuiltin) {
+                argText = this.getDerefCode(argText, this.getJsVarName(elemAccess.argumentExpression), argTypeInfo);
+            }
+        }
+
+        return `([&](){ auto __obj = ${derefObj}; return __obj.get_own_property(${argText}).as_function()->call(__obj, {${args}}); })()`;
+    }
+
     const calleeCode = this.visit(callee, context);
     let derefCallee = calleeCode;
     if (ts.isIdentifier(callee)) {
@@ -701,7 +763,8 @@ export function visitCallExpression(
         calleeName = this.escapeString(funcExpr.name?.getText() || "");
     }
 
-    return `${derefCallee}.as_function("${calleeName}")->call({${args}})`;
+    // Pass undefined as 'this' for normal function calls
+    return `${derefCallee}.as_function("${calleeName}")->call(jspp::AnyValue::make_undefined(), {${args}})`;
 }
 
 export function visitVoidExpression(

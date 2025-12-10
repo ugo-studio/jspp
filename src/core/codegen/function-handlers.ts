@@ -21,8 +21,11 @@ export function generateLambda(
         ? "jspp::JsIterator<jspp::AnyValue>"
         : "jspp::AnyValue";
 
+    const isArrow = ts.isArrowFunction(node);
+    const thisArgParam = isArrow ? "const jspp::AnyValue&" : "const jspp::AnyValue& __this_val__";
+
     let lambda =
-        `${capture}(const std::vector<jspp::AnyValue>& ${argsName}) mutable -> ${funcReturnType} `;
+        `${capture}(${thisArgParam}, const std::vector<jspp::AnyValue>& ${argsName}) mutable -> ${funcReturnType} `;
 
     const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
         context.topLevelScopeSymbols,
@@ -94,12 +97,12 @@ export function generateLambda(
     // Handle generator function
     if (isInsideGeneratorFunction) {
         signature =
-            "jspp::JsIterator<jspp::AnyValue>(const std::vector<jspp::AnyValue>&)";
+            "jspp::JsIterator<jspp::AnyValue>(const jspp::AnyValue&, const std::vector<jspp::AnyValue>&)";
         callable = `std::function<${signature}>(${lambda})`;
         method = `jspp::AnyValue::make_generator`;
     } // Handle normal function
     else {
-        signature = `jspp::AnyValue(const std::vector<jspp::AnyValue>&)`;
+        signature = `jspp::AnyValue(const jspp::AnyValue&, const std::vector<jspp::AnyValue>&)`;
         callable = `std::function<${signature}>(${lambda})`;
         method = `jspp::AnyValue::make_function`;
     }

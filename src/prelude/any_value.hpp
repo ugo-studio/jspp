@@ -328,6 +328,14 @@ namespace jspp
             new (&v.storage.object) std::shared_ptr<JsObject>(std::make_shared<JsObject>(props));
             return v;
         }
+        static AnyValue make_object_with_proto(const std::map<std::string, AnyValue> &props, const AnyValue &proto) noexcept
+        {
+            AnyValue v;
+            v.storage.type = JsType::Object;
+            auto protoPtr = std::make_shared<AnyValue>(proto);
+            new (&v.storage.object) std::shared_ptr<JsObject>(std::make_shared<JsObject>(props, protoPtr));
+            return v;
+        }
         static AnyValue make_array(const std::vector<std::optional<AnyValue>> &dense) noexcept
         {
             AnyValue v;
@@ -363,8 +371,8 @@ namespace jspp
             new (&v.storage.data_desc) std::shared_ptr<DataDescriptor>(std::make_shared<DataDescriptor>(std::make_shared<AnyValue>(value), writable, enumerable, configurable));
             return v;
         }
-        static AnyValue make_accessor_descriptor(const std::optional<std::function<AnyValue(const std::vector<AnyValue> &)>> &get,
-                                                 const std::optional<std::function<AnyValue(const std::vector<AnyValue> &)>> &set,
+        static AnyValue make_accessor_descriptor(const std::optional<std::function<AnyValue(const AnyValue &, const std::vector<AnyValue> &)>> &get,
+                                                 const std::optional<std::function<AnyValue(const AnyValue &, const std::vector<AnyValue> &)>> &set,
                                                  bool enumerable,
                                                  bool configurable) noexcept
         {
@@ -404,7 +412,7 @@ namespace jspp
         }
 
         // property resolution helpers ---------------------------------------
-        static AnyValue resolve_property_for_read(const AnyValue &val, const std::string &propName) noexcept
+        static AnyValue resolve_property_for_read(const AnyValue &val, const AnyValue &thisVal, const std::string &propName) noexcept
         {
             switch (val.storage.type)
             {
@@ -415,7 +423,7 @@ namespace jspp
             case JsType::AccessorDescriptor:
             {
                 if (val.storage.accessor_desc->get.has_value())
-                    return val.storage.accessor_desc->get.value()({});
+                    return val.storage.accessor_desc->get.value()(thisVal, {});
                 else
                 {
                     static AnyValue undefined = AnyValue{};
@@ -428,7 +436,7 @@ namespace jspp
             }
             }
         }
-        static AnyValue resolve_property_for_write(AnyValue &val, const AnyValue &new_val, const std::string &propName)
+        static AnyValue resolve_property_for_write(AnyValue &val, const AnyValue &thisVal, const AnyValue &new_val, const std::string &propName)
         {
             switch (val.storage.type)
             {
@@ -448,7 +456,7 @@ namespace jspp
             {
                 if (val.storage.accessor_desc->set.has_value())
                 {
-                    val.storage.accessor_desc->set.value()({new_val});
+                    val.storage.accessor_desc->set.value()(thisVal, {new_val});
                     return new_val;
                 }
                 else
@@ -539,17 +547,17 @@ namespace jspp
             switch (storage.type)
             {
             case JsType::Object:
-                return storage.object->get_property(key);
+                return storage.object->get_property(key, *this);
             case JsType::Array:
-                return storage.array->get_property(key);
+                return storage.array->get_property(key, *this);
             case JsType::Function:
-                return storage.function->get_property(key);
+                return storage.function->get_property(key, *this);
             case JsType::Iterator:
-                return storage.iterator->get_property(key);
+                return storage.iterator->get_property(key, *this);
             case JsType::Symbol:
-                return storage.symbol->get_property(key);
+                return storage.symbol->get_property(key, *this);
             case JsType::String:
-                return storage.str->get_property(key);
+                return storage.str->get_property(key, *this);
             case JsType::Undefined:
                 throw RuntimeError::make_error("Cannot read properties of undefined (reading '" + key + "')", "TypeError");
             case JsType::Null:
@@ -589,11 +597,11 @@ namespace jspp
             switch (storage.type)
             {
             case JsType::Object:
-                return storage.object->set_property(key, value);
+                return storage.object->set_property(key, value, *this);
             case JsType::Array:
-                return storage.array->set_property(key, value);
+                return storage.array->set_property(key, value, *this);
             case JsType::Function:
-                return storage.function->set_property(key, value);
+                return storage.function->set_property(key, value, *this);
             case JsType::Undefined:
                 throw RuntimeError::make_error("Cannot set properties of undefined (setting '" + key + "')", "TypeError");
             case JsType::Null:

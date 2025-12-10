@@ -13,7 +13,7 @@ namespace jspp
             // --- toString() method ---
             if (key == "toString" )
             {
-                return AnyValue::make_function([self](const std::vector<AnyValue> &) -> AnyValue
+                return AnyValue::make_function([self](const AnyValue &thisVal, const std::vector<AnyValue> &) -> AnyValue
                                                { return AnyValue::make_string(self->to_std_string()); },
                                                key);
             }
@@ -22,7 +22,7 @@ namespace jspp
             if (key == "description")
             {
                 return AnyValue::make_accessor_descriptor(
-                    [self](const std::vector<AnyValue> &) -> AnyValue
+                    [self](const AnyValue &thisVal, const std::vector<AnyValue> &) -> AnyValue
                     {
                         if (self->description.empty())
                         {

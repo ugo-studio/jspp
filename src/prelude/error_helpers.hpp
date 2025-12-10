@@ -12,7 +12,7 @@ const char *jspp::RuntimeError::what() const noexcept
 jspp::RuntimeError jspp::RuntimeError::make_error(const std::string &message, const std::string &name = "Error")
 {
     auto errorObj = std::make_shared<AnyValue>(AnyValue::make_object({{"message", AnyValue::make_string(message)}, {"name", AnyValue::make_string(name)}}));
-    (*errorObj).set_own_property("toString", AnyValue::make_function([errorObj](const std::vector<AnyValue> &) -> AnyValue
+    (*errorObj).set_own_property("toString", AnyValue::make_function([errorObj](const AnyValue &thisVal, const std::vector<AnyValue> &) -> AnyValue
                                                                      {
                                                                                   AnyValue name = (*errorObj).get_own_property("name");
                                                                                   AnyValue message = (*errorObj).get_own_property("message");

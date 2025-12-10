@@ -97,6 +97,6 @@ namespace jspp
 
         // --- Methods ---
         std::string to_std_string() const;
-        AnyValue get_property(const std::string &key);
+        AnyValue get_property(const std::string &key, const AnyValue &thisVal);
     };
 }

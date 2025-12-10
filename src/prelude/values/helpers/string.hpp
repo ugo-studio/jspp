@@ -22,13 +22,13 @@ jspp::JsIterator<jspp::AnyValue> jspp::JsString::get_iterator()
     co_return AnyValue::make_undefined();
 }
 
-jspp::AnyValue jspp::JsString::get_property(const std::string &key)
+jspp::AnyValue jspp::JsString::get_property(const std::string &key, const AnyValue &thisVal)
 {
     // Check for prototype methods
     auto proto_fn = StringPrototypes::get(key, this);
     if (proto_fn.has_value())
     {
-        return AnyValue::resolve_property_for_read(proto_fn.value(), key);
+        return AnyValue::resolve_property_for_read(proto_fn.value(), thisVal, key);
     }
     // Handle character access by string index (e.g., "abc"["1"])
     if (JsArray::is_array_index(key))
