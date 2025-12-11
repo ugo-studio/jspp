@@ -28,12 +28,14 @@ import {
   visitPropertyAccessExpression,
   visitTemplateExpression,
   visitVoidExpression,
+  visitNewExpression,
 } from "./expression-handlers";
 import {
   visitArrowFunction,
   visitFunctionDeclaration,
   visitFunctionExpression,
 } from "./function-handlers";
+import { visitClassDeclaration } from "./class-handlers";
 import {
   visitFalseKeyword,
   visitIdentifier,
@@ -43,6 +45,7 @@ import {
   visitStringLiteral,
   visitTrueKeyword,
   visitUndefinedKeyword,
+  visitThisKeyword,
 } from "./literal-handlers";
 import {
   visitBlock,
@@ -76,6 +79,7 @@ export interface VisitContext {
     topLevelScopeSymbols: DeclaredSymbols;
     localScopeSymbols: DeclaredSymbols;
     derefBeforeAssignment?: boolean;
+    superClassVar?: string;
 }
 
 export function visit(
@@ -98,6 +102,12 @@ export function visit(
             return visitFunctionExpression.call(
                 this,
                 node as ts.FunctionExpression,
+                context,
+            );
+        case ts.SyntaxKind.ClassDeclaration:
+            return visitClassDeclaration.call(
+                this,
+                node as ts.ClassDeclaration,
                 context,
             );
         case ts.SyntaxKind.SourceFile:
@@ -297,6 +307,12 @@ export function visit(
                 node as ts.TemplateExpression,
                 context,
             );
+        case ts.SyntaxKind.NewExpression:
+            return visitNewExpression.call(
+                this,
+                node as ts.NewExpression,
+                context,
+            );
         case ts.SyntaxKind.TrueKeyword:
             return visitTrueKeyword.call(this);
         case ts.SyntaxKind.FalseKeyword:
@@ -311,6 +327,8 @@ export function visit(
             return visitUndefinedKeyword.call(this);
         case ts.SyntaxKind.NullKeyword:
             return visitNullKeyword.call(this);
+        case ts.SyntaxKind.ThisKeyword:
+            return visitThisKeyword.call(this);
         default:
             return `/* Unhandled node: ${ts.SyntaxKind[node.kind]} */`;
     }

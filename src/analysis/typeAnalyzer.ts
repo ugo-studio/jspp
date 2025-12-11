@@ -23,13 +23,21 @@ export class TypeAnalyzer {
     private traverser = new Traverser();
     public readonly scopeManager = new ScopeManager();
     public readonly functionTypeInfo = new Map<
-        ts.FunctionDeclaration | ts.ArrowFunction | ts.FunctionExpression,
+        | ts.FunctionDeclaration
+        | ts.ArrowFunction
+        | ts.FunctionExpression
+        | ts.ClassDeclaration
+        | ts.MethodDeclaration
+        | ts.ConstructorDeclaration,
         TypeInfo
     >();
     private functionStack: (
         | ts.FunctionDeclaration
         | ts.ArrowFunction
         | ts.FunctionExpression
+        | ts.ClassDeclaration
+        | ts.MethodDeclaration
+        | ts.ConstructorDeclaration
     )[] = [];
     public readonly nodeToScope = new Map<ts.Node, Scope>();
     private labelStack: string[] = [];
@@ -337,6 +345,98 @@ export class TypeAnalyzer {
                 },
                 exit: (node) => {
                     if (ts.isFunctionDeclaration(node)) {
+                        this.functionStack.pop();
+                    }
+                    this.scopeManager.exitScope();
+                },
+            },
+
+            ClassDeclaration: {
+                enter: (node) => {
+                    const classNode = node as ts.ClassDeclaration;
+                    if (classNode.name) {
+                        const name = classNode.name.getText();
+                        const typeInfo: TypeInfo = {
+                            type: "function", // Classes are functions
+                            declaration: classNode,
+                            needsHeapAllocation: true,
+                        };
+                        this.scopeManager.define(name, typeInfo);
+                    }
+                    this.scopeManager.enterScope();
+                    this.nodeToScope.set(node, this.scopeManager.currentScope);
+                },
+                exit: () => {
+                    this.scopeManager.exitScope();
+                },
+            },
+
+            MethodDeclaration: {
+                enter: (node) => {
+                    if (ts.isMethodDeclaration(node)) {
+                        const funcType: TypeInfo = {
+                            type: "function",
+                            isClosure: false,
+                            captures: new Map(),
+                            declaration: node,
+                            needsHeapAllocation: true,
+                        };
+                        // Methods don't need to be defined in scope by name generally,
+                        // but we need to track them for captures.
+                        this.functionTypeInfo.set(node, funcType);
+
+                        this.scopeManager.enterScope();
+                        this.nodeToScope.set(
+                            node,
+                            this.scopeManager.currentScope,
+                        );
+                        node.parameters.forEach((p) =>
+                            this.scopeManager.define(p.name.getText(), {
+                                type: "auto",
+                                isParameter: true,
+                                declaration: p,
+                            })
+                        );
+                        this.functionStack.push(node);
+                    }
+                },
+                exit: (node) => {
+                    if (ts.isMethodDeclaration(node)) {
+                        this.functionStack.pop();
+                    }
+                    this.scopeManager.exitScope();
+                },
+            },
+
+            Constructor: {
+                enter: (node) => {
+                    if (ts.isConstructorDeclaration(node)) {
+                        const funcType: TypeInfo = {
+                            type: "function",
+                            isClosure: false,
+                            captures: new Map(),
+                            declaration: node,
+                            needsHeapAllocation: true,
+                        };
+                        this.functionTypeInfo.set(node, funcType);
+
+                        this.scopeManager.enterScope();
+                        this.nodeToScope.set(
+                            node,
+                            this.scopeManager.currentScope,
+                        );
+                        node.parameters.forEach((p) =>
+                            this.scopeManager.define(p.name.getText(), {
+                                type: "auto",
+                                isParameter: true,
+                                declaration: p,
+                            })
+                        );
+                        this.functionStack.push(node); // Constructor acts like a function
+                    }
+                },
+                exit: (node) => {
+                    if (ts.isConstructorDeclaration(node)) {
                         this.functionStack.pop();
                     }
                     this.scopeManager.exitScope();

@@ -52,3 +52,7 @@ export function visitUndefinedKeyword(): string {
 export function visitNullKeyword(): string {
     return "jspp::AnyValue::make_null()";
 }
+
+export function visitThisKeyword(): string {
+    return "__this_val__";
+}

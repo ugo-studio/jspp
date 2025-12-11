@@ -16,12 +16,18 @@ export function visitSourceFile(
         .flatMap((stmt) => stmt.declarationList.declarations);
 
     const funcDecls = sourceFile.statements.filter(ts.isFunctionDeclaration);
+    const classDecls = sourceFile.statements.filter(ts.isClassDeclaration);
 
     const hoistedSymbols: DeclaredSymbols = new Map();
 
     // 1. Hoist function declarations
     funcDecls.forEach((func) => {
         code += this.hoistDeclaration(func, hoistedSymbols);
+    });
+
+    // Hoist class declarations
+    classDecls.forEach((cls) => {
+        code += this.hoistDeclaration(cls, hoistedSymbols);
     });
 
     // Hoist variable declarations
@@ -41,7 +47,9 @@ export function visitSourceFile(
     funcDecls.forEach((stmt) => {
         const funcName = stmt.name?.getText();
         if (funcName) {
-            const lambda = this.generateLambda(stmt, contextForFunctions, true);
+            const lambda = this.generateLambda(stmt, contextForFunctions, {
+                isAssignment: true,
+            });
             code += `${this.indent()}*${funcName} = ${lambda};\n`;
         }
     });
@@ -101,12 +109,18 @@ export function visitBlock(
         .flatMap((stmt) => stmt.declarationList.declarations);
 
     const funcDecls = block.statements.filter(ts.isFunctionDeclaration);
+    const classDecls = block.statements.filter(ts.isClassDeclaration);
 
     const hoistedSymbols: DeclaredSymbols = new Map();
 
     // 1. Hoist all function declarations
     funcDecls.forEach((func) => {
         code += this.hoistDeclaration(func, hoistedSymbols);
+    });
+
+    // Hoist class declarations
+    classDecls.forEach((cls) => {
+        code += this.hoistDeclaration(cls, hoistedSymbols);
     });
 
     // Hoist variable declarations
@@ -126,7 +140,9 @@ export function visitBlock(
     funcDecls.forEach((stmt) => {
         const funcName = stmt.name?.getText();
         if (funcName) {
-            const lambda = this.generateLambda(stmt, contextForFunctions, true);
+            const lambda = this.generateLambda(stmt, contextForFunctions, {
+                isAssignment: true,
+            });
             code += `${this.indent()}*${funcName} = ${lambda};\n`;
         }
     });

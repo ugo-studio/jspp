@@ -348,6 +348,11 @@ namespace jspp
             AnyValue v;
             v.storage.type = JsType::Function;
             new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(call, name));
+
+            auto proto = make_object({});
+            proto.set_own_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
+            v.set_own_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
+
             return v;
         }
         static AnyValue make_generator(const JsFunctionCallable &call, const std::string &name) noexcept
@@ -355,6 +360,11 @@ namespace jspp
             AnyValue v;
             v.storage.type = JsType::Function;
             new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(call, true, name));
+
+            auto proto = make_object({});
+            proto.set_own_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
+            v.set_own_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
+
             return v;
         }
         static AnyValue make_symbol(const std::string &description = "") noexcept
@@ -643,6 +653,10 @@ namespace jspp
 
         const AnyValue not_strictly_equal_to(const AnyValue &other) const noexcept;
         const AnyValue not_equal_to(const AnyValue &other) const noexcept;
+
+        const AnyValue construct(const std::vector<AnyValue> &args) const;
+
+        void set_prototype(const AnyValue &proto);
 
         const std::string to_std_string() const noexcept;
     };

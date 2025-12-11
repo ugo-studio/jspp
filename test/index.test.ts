@@ -475,6 +475,25 @@ const cases: { name: string; expected: string[] }[] = [
             "received b: value-for-b",
             "3",
         ],
+    },
+    {
+        name: "new-operator",
+        expected: [
+            "--- New Operator ---",
+            "Hello, World",
+            "World"
+        ],
+    },
+    {
+        name: "classes",
+        expected: [
+            "--- Classes ---",
+            "Dog makes a noise.",
+            "Rex barks.",
+            "Rex is a German Shepherd",
+            "--- Static Methods ---",
+            "8"
+        ],
     }
 ];
 

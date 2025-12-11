@@ -25,6 +25,9 @@ export function getDeclaredSymbols(
         } else if (ts.isFunctionDeclaration(child) && child.name) {
             // Handles function declarations
             symbols.add(child.name.getText());
+        } else if (ts.isClassDeclaration(child) && child.name) {
+            // Handles class declarations
+            symbols.add(child.name.getText());
         } else if (ts.isParameter(child)) {
             // Handles function parameters
             symbols.add(child.name.getText());
@@ -123,7 +126,7 @@ export function getReturnCommand(
 
 export function hoistDeclaration(
     this: CodeGenerator,
-    decl: ts.VariableDeclaration | ts.FunctionDeclaration,
+    decl: ts.VariableDeclaration | ts.FunctionDeclaration | ts.ClassDeclaration,
     hoistedSymbols: DeclaredSymbols,
 ) {
     const name = decl.name?.getText();
@@ -138,11 +141,11 @@ export function hoistDeclaration(
         ? DeclaredSymbolType.letOrConst
         : (ts.isFunctionDeclaration(decl)
             ? DeclaredSymbolType.function
-            : DeclaredSymbolType.var);
+            : (ts.isClassDeclaration(decl) ? DeclaredSymbolType.letOrConst : DeclaredSymbolType.var));
 
     if (hoistedSymbols.has(name)) {
         const existingType = hoistedSymbols.get(name);
-        // Don't allow multiple declaration of `letOrConst` or `function` variables
+        // Don't allow multiple declaration of `letOrConst` or `function` or `class` variables
         if (
             existingType === DeclaredSymbolType.letOrConst ||
             existingType === DeclaredSymbolType.function ||
@@ -163,7 +166,7 @@ export function hoistDeclaration(
         scope,
     )!;
 
-    const initializer = isLetOrConst
+    const initializer = isLetOrConst || ts.isClassDeclaration(decl)
         ? "jspp::AnyValue::make_uninitialized()"
         : "jspp::AnyValue::make_undefined()";
 

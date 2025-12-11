@@ -222,3 +222,15 @@ const std::string jspp::AnyValue::to_std_string() const noexcept
         return "";
     }
 }
+
+void jspp::AnyValue::set_prototype(const AnyValue &proto)
+{
+    if (is_object())
+    {
+        storage.object->proto = std::make_shared<AnyValue>(proto);
+    }
+    else if (is_function())
+    {
+        storage.function->proto = std::make_shared<AnyValue>(proto);
+    }
+}

@@ -15,6 +15,7 @@ namespace jspp
         JsFunctionCallable callable;
         std::string name;
         std::unordered_map<std::string, AnyValue> props;
+        std::shared_ptr<AnyValue> proto = nullptr;
         bool is_generator;
 
         // ---- Constructor A: infer is_generator using index() ----

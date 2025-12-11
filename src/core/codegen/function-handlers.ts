@@ -5,11 +5,22 @@ import type { VisitContext } from "./visitor";
 
 export function generateLambda(
     this: CodeGenerator,
-    node: ts.ArrowFunction | ts.FunctionDeclaration | ts.FunctionExpression,
+    node:
+        | ts.ArrowFunction
+        | ts.FunctionDeclaration
+        | ts.FunctionExpression
+        | ts.ConstructorDeclaration
+        | ts.MethodDeclaration,
     context: VisitContext,
-    isAssignment: boolean = false,
-    capture: string = "[=]",
+    options?: {
+        isAssignment?: boolean;
+        capture?: string;
+        lambdaName?: string;
+    },
 ): string {
+    const isAssignment = options?.isAssignment || false;
+    const capture = options?.capture || "[=]";
+
     const declaredSymbols = this.getDeclaredSymbols(node);
     const argsName = this.generateUniqueName("__args_", declaredSymbols);
 
@@ -22,7 +33,9 @@ export function generateLambda(
         : "jspp::AnyValue";
 
     const isArrow = ts.isArrowFunction(node);
-    const thisArgParam = isArrow ? "const jspp::AnyValue&" : "const jspp::AnyValue& __this_val__";
+    const thisArgParam = isArrow
+        ? "const jspp::AnyValue&"
+        : "const jspp::AnyValue& __this_val__";
 
     let lambda =
         `${capture}(${thisArgParam}, const std::vector<jspp::AnyValue>& ${argsName}) mutable -> ${funcReturnType} `;
@@ -38,6 +51,7 @@ export function generateLambda(
         isFunctionBody: false,
         topLevelScopeSymbols,
         localScopeSymbols: new Map(),
+        superClassVar: context.superClassVar,
     };
 
     if (node.body) {
@@ -102,13 +116,16 @@ export function generateLambda(
         method = `jspp::AnyValue::make_generator`;
     } // Handle normal function
     else {
-        signature = `jspp::AnyValue(const jspp::AnyValue&, const std::vector<jspp::AnyValue>&)`;
+        signature =
+            `jspp::AnyValue(const jspp::AnyValue&, const std::vector<jspp::AnyValue>&)`;
         callable = `std::function<${signature}>(${lambda})`;
         method = `jspp::AnyValue::make_function`;
     }
 
     const funcName = node.name?.getText();
-    const fullExpression = `${method}(${callable}, "${funcName || ""}")`;
+    const fullExpression = `${method}(${callable}, "${
+        options?.lambdaName || funcName || ""
+    }")`;
 
     if (ts.isFunctionDeclaration(node) && !isAssignment && funcName) {
         return `${this.indent()}auto ${funcName} = ${fullExpression};\n`;
@@ -150,7 +167,11 @@ export function visitFunctionExpression(
         this.indentationLevel++;
         code +=
             `${this.indent()}auto ${funcName} = std::make_shared<jspp::AnyValue>();\n`;
-        const lambda = this.generateLambda(funcExpr, context, true, "[=]");
+        const lambda = this.generateLambda(funcExpr, context, {
+            isAssignment: true,
+            capture: "[=]",
+            lambdaName: funcName,
+        });
         code += `${this.indent()}*${funcName} = ${lambda};\n`;
         code += `${this.indent()}return *${funcName};\n`;
         this.indentationLevel--;

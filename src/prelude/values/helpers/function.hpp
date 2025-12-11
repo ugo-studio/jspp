@@ -37,7 +37,13 @@ jspp::AnyValue jspp::JsFunction::get_property(const std::string &key, const AnyV
     auto it = props.find(key);
     if (it == props.end())
     {
-        // check prototype
+        // check explicit proto chain (e.g. for classes extending other classes)
+        if (proto && !(*proto).is_null() && !(*proto).is_undefined())
+        {
+            return (*proto).get_own_property(key);
+        }
+
+        // check prototype (implicit Function.prototype)
         auto proto_it = FunctionPrototypes::get(key, this);
         if (proto_it.has_value())
         {
@@ -77,4 +83,36 @@ jspp::AnyValue jspp::JsFunction::set_property(const std::string &key, const AnyV
         props[key] = value;
         return value;
     }
+}
+
+// AnyValue::construct implementation
+const jspp::AnyValue jspp::AnyValue::construct(const std::vector<AnyValue> &args) const
+{
+    if (!is_function())
+    {
+        throw RuntimeError::make_error(to_std_string() + " is not a constructor", "TypeError");
+    }
+
+    // 1. Get prototype
+    AnyValue proto = get_own_property("prototype");
+    // If prototype is not an object, default to a plain object (which ideally inherits from Object.prototype)
+    // Here we just make a plain object.
+    if (!proto.is_object())
+    {
+        proto = AnyValue::make_object({});
+    }
+
+    // 2. Create instance
+    AnyValue instance = AnyValue::make_object_with_proto({}, proto);
+
+    // 3. Call function
+    // We pass 'instance' as 'this'
+    AnyValue result = as_function()->call(instance, args);
+
+    // 4. Return result if object, else instance
+    if (result.is_object() || result.is_function() || result.is_array())
+    {
+        return result;
+    }
+    return instance;
 }

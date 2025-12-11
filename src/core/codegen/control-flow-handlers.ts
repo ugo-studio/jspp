@@ -503,7 +503,7 @@ export function visitSwitchStatement(
                         const lambda = this.generateLambda(
                             stmt,
                             contextForFunction,
-                            true,
+                            { isAssignment: true },
                         );
                         code += `${this.indent()}*${funcName} = ${lambda};\n`;
                     }

@@ -232,6 +232,15 @@ export function visitPropertyAccessExpression(
     context: VisitContext,
 ): string {
     const propAccess = node as ts.PropertyAccessExpression;
+
+    if (propAccess.expression.kind === ts.SyntaxKind.SuperKeyword) {
+        if (!context.superClassVar) {
+            throw new Error("super.prop accessed but no super class variable found in context");
+        }
+        const propName = propAccess.name.getText();
+        return `jspp::AnyValue::resolve_property_for_read((${context.superClassVar}).get_own_property("prototype").get_own_property("${propName}"), __this_val__, "${this.escapeString(propName)}")`;
+    }
+
     const exprText = this.visit(propAccess.expression, context);
     const propName = propAccess.name.getText();
 
@@ -404,6 +413,34 @@ export function visitBinaryExpression(
 
         if (ts.isPropertyAccessExpression(binExpr.left)) {
             const propAccess = binExpr.left;
+            
+            if (propAccess.expression.kind === ts.SyntaxKind.SuperKeyword) {
+                 const propName = propAccess.name.getText();
+                 let finalRightText = rightText;
+                 // Deref right text logic...
+                 if (ts.isIdentifier(binExpr.right)) {
+                    const rightScope = this.getScopeForNode(binExpr.right);
+                    const rightTypeInfo = this.typeAnalyzer.scopeManager
+                        .lookupFromScope(
+                            binExpr.right.getText(),
+                            rightScope,
+                        )!;
+                    if (
+                        rightTypeInfo &&
+                        !rightTypeInfo.isParameter &&
+                        !rightTypeInfo.isBuiltin
+                    ) {
+                        finalRightText = this.getDerefCode(
+                            rightText,
+                            this.getJsVarName(binExpr.right as ts.Identifier),
+                            rightTypeInfo,
+                        );
+                    }
+                }
+                // Approximate super assignment as setting property on 'this'
+                return `(__this_val__).set_own_property("${propName}", ${finalRightText})`;
+            }
+
             const objExprText = this.visit(propAccess.expression, context);
             const propName = propAccess.name.getText();
 
@@ -635,6 +672,15 @@ export function visitCallExpression(
 ): string {
     const callExpr = node as ts.CallExpression;
     const callee = callExpr.expression;
+
+    if (callee.kind === ts.SyntaxKind.SuperKeyword) {
+        if (!context.superClassVar) {
+            throw new Error("super() called but no super class variable found in context");
+        }
+        const args = callExpr.arguments.map(arg => this.visit(arg, context)).join(", ");
+        return `(${context.superClassVar}).as_function("super")->call(__this_val__, {${args}})`;
+    }
+
     const args = callExpr.arguments
         .map((arg) => {
             const argText = this.visit(arg, context);
@@ -666,6 +712,15 @@ export function visitCallExpression(
     // Handle obj.method() -> pass obj as 'this'
     if (ts.isPropertyAccessExpression(callee)) {
         const propAccess = callee as ts.PropertyAccessExpression;
+        
+        if (propAccess.expression.kind === ts.SyntaxKind.SuperKeyword) {
+             if (!context.superClassVar) {
+                throw new Error("super.method() called but no super class variable found in context");
+             }
+             const propName = propAccess.name.getText();
+             return `(${context.superClassVar}).get_own_property("prototype").get_own_property("${propName}").as_function("${this.escapeString(propName)}")->call(__this_val__, {${args}})`;
+        }
+
         const objExpr = propAccess.expression;
         const propName = propAccess.name.getText();
         const objCode = this.visit(objExpr, context);
@@ -832,4 +887,68 @@ export function visitTemplateExpression(
         }
     }
     return result;
+}
+
+export function visitNewExpression(
+    this: CodeGenerator,
+    node: ts.NewExpression,
+    context: VisitContext,
+): string {
+    const newExpr = node as ts.NewExpression;
+    const exprText = this.visit(newExpr.expression, context);
+    
+    let derefExpr = exprText;
+    if (ts.isIdentifier(newExpr.expression)) {
+        const scope = this.getScopeForNode(newExpr.expression);
+        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+            newExpr.expression.getText(),
+            scope,
+        );
+        if (!typeInfo && !this.isBuiltinObject(newExpr.expression as ts.Identifier)) {
+            return `jspp::RuntimeError::throw_unresolved_reference_error(${
+                this.getJsVarName(
+                    newExpr.expression as ts.Identifier,
+                )
+            })`;
+        }
+        if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
+             derefExpr = this.getDerefCode(
+                exprText,
+                this.getJsVarName(newExpr.expression as ts.Identifier),
+                typeInfo,
+            );
+        }
+    }
+
+    const args = newExpr.arguments
+        ? newExpr.arguments
+              .map((arg) => {
+                  const argText = this.visit(arg, context);
+                   if (ts.isIdentifier(arg)) {
+                        const scope = this.getScopeForNode(arg);
+                        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                            arg.text,
+                            scope,
+                        );
+                        if (!typeInfo) {
+                            return `jspp::RuntimeError::throw_unresolved_reference_error(${
+                                this.getJsVarName(
+                                    arg as ts.Identifier,
+                                )
+                            })`;
+                        }
+                        if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
+                            return this.getDerefCode(
+                                argText,
+                                this.getJsVarName(arg as ts.Identifier),
+                                typeInfo,
+                            );
+                        }
+                    }
+                  return argText;
+              })
+              .join(", ")
+        : "";
+
+    return `${derefExpr}.construct({${args}})`;
 }
