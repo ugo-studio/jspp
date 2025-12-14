@@ -35,7 +35,7 @@ export function generateLambda(
     const isArrow = ts.isArrowFunction(node);
     const thisArgParam = isArrow
         ? "const jspp::AnyValue&"
-        : "const jspp::AnyValue& __this_val__";
+        : `const jspp::AnyValue& ${this.globalThisVar}`;
 
     let lambda =
         `${capture}(${thisArgParam}, const std::vector<jspp::AnyValue>& ${argsName}) mutable -> ${funcReturnType} `;

@@ -2,6 +2,7 @@ import ts from "typescript";
 
 import type { DeclaredSymbols, Node } from "../../ast/types";
 import { CodeGenerator } from "./";
+import { visitClassDeclaration } from "./class-handlers";
 import {
   visitCaseClause,
   visitDefaultClause,
@@ -21,6 +22,7 @@ import {
   visitBinaryExpression,
   visitCallExpression,
   visitElementAccessExpression,
+  visitNewExpression,
   visitObjectLiteralExpression,
   visitParenthesizedExpression,
   visitPostfixUnaryExpression,
@@ -28,14 +30,12 @@ import {
   visitPropertyAccessExpression,
   visitTemplateExpression,
   visitVoidExpression,
-  visitNewExpression,
 } from "./expression-handlers";
 import {
   visitArrowFunction,
   visitFunctionDeclaration,
   visitFunctionExpression,
 } from "./function-handlers";
-import { visitClassDeclaration } from "./class-handlers";
 import {
   visitFalseKeyword,
   visitIdentifier,
@@ -43,9 +43,9 @@ import {
   visitNullKeyword,
   visitNumericLiteral,
   visitStringLiteral,
+  visitThisKeyword,
   visitTrueKeyword,
   visitUndefinedKeyword,
-  visitThisKeyword,
 } from "./literal-handlers";
 import {
   visitBlock,

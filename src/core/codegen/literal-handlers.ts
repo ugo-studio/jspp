@@ -53,6 +53,6 @@ export function visitNullKeyword(): string {
     return "jspp::AnyValue::make_null()";
 }
 
-export function visitThisKeyword(): string {
-    return "__this_val__";
+export function visitThisKeyword(this: CodeGenerator): string {
+    return `${this.globalThisVar}`;
 }

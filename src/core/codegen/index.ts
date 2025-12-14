@@ -23,6 +23,7 @@ const CONTAINER_FUNCTION_NAME = "__container__";
 export class CodeGenerator {
     public indentationLevel: number = 0;
     public typeAnalyzer!: TypeAnalyzer;
+    public globalThisVar!: string;
     public exceptionCounter = 0;
 
     // visitor
@@ -51,12 +52,17 @@ export class CodeGenerator {
      */
     public generate(ast: Node, analyzer: TypeAnalyzer): string {
         this.typeAnalyzer = analyzer;
+        this.globalThisVar = this.generateUniqueName(
+            "__this_val__",
+            this.getDeclaredSymbols(ast),
+        );
 
         const declarations = `#include "index.hpp"\n\n`;
 
         let containerCode = `jspp::AnyValue ${CONTAINER_FUNCTION_NAME}() {\n`;
         this.indentationLevel++;
-        containerCode += `${this.indent()}jspp::AnyValue __this_val__ = global;\n`;
+        containerCode +=
+            `${this.indent()}jspp::AnyValue ${this.globalThisVar} = global;\n`;
         containerCode += this.visit(ast, {
             isMainContext: true,
             isInsideFunction: true,
