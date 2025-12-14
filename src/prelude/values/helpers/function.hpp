@@ -40,7 +40,7 @@ jspp::AnyValue jspp::JsFunction::get_property(const std::string &key, const AnyV
         // check explicit proto chain (e.g. for classes extending other classes)
         if (proto && !(*proto).is_null() && !(*proto).is_undefined())
         {
-            return (*proto).get_own_property(key);
+            return (*proto).get_property_with_receiver(key, thisVal);
         }
 
         // check prototype (implicit Function.prototype)

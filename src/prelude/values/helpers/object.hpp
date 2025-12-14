@@ -17,7 +17,7 @@ jspp::AnyValue jspp::JsObject::get_property(const std::string &key, const AnyVal
         // check prototype chain
         if (proto && !(*proto).is_null() && !(*proto).is_undefined())
         {
-            return (*proto).get_own_property(key);
+            return (*proto).get_property_with_receiver(key, thisVal);
         }
 
         // check built-in prototype methods (Object.prototype)

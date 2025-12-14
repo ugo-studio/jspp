@@ -5,8 +5,8 @@
 #include "values/non_values.hpp"
 #include "values/object.hpp"
 #include "values/function.hpp"
-#include "operators.hpp"
-#include "log_string.hpp"
+#include "utils/operators.hpp"
+#include "utils/log_any_value/log_any_value.hpp"
 
 #include <cmath>
 #include <sstream>
@@ -18,7 +18,7 @@ auto logFn = jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, con
                                            {
                                                for (size_t i = 0; i < args.size(); ++i)
                                                {
-                                                   std::cout << jspp::LogString::to_log_string(args[i]);
+                                                   std::cout << jspp::LogAnyValue::to_log_string(args[i]);
                                                    if (i < args.size() - 1)
                                                        std::cout << " ";
                                                }
@@ -29,7 +29,7 @@ auto warnFn = jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, co
                                                 std::cerr << "\033[33m";
                                                 for (size_t i = 0; i < args.size(); ++i)
                                                 {
-                                                    std::cout << jspp::LogString::to_log_string(args[i]);
+                                                    std::cout << jspp::LogAnyValue::to_log_string(args[i]);
                                                     if (i < args.size() - 1)
                                                         std::cout << " ";
                                                 }
@@ -40,7 +40,7 @@ auto errorFn = jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, c
                                                  std::cerr << "\033[31m";
                                                  for (size_t i = 0; i < args.size(); ++i)
                                                  {
-                                                     std::cout << jspp::LogString::to_log_string(args[i]);
+                                                     std::cout << jspp::LogAnyValue::to_log_string(args[i]);
                                                      if (i < args.size() - 1)
                                                          std::cout << " ";
                                                  }

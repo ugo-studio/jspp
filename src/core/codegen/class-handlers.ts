@@ -109,6 +109,42 @@ export function visitClassDeclaration(
                 code +=
                     `${this.indent()}(*${className}).get_own_property("prototype").set_own_property(${methodName}, ${methodLambda});\n`;
             }
+        } else if (ts.isGetAccessor(member)) {
+            const methodName = visitObjectPropertyName.call(this, member.name, {
+                ...context,
+                isObjectLiteralExpression: true,
+            });
+            const isStatic = member.modifiers?.some((m) =>
+                m.kind === ts.SyntaxKind.StaticKeyword
+            );
+            const lambda = this.generateLambda(member, {
+                ...classContext,
+                isInsideFunction: true,
+            });
+
+            if (isStatic) {
+                 code += `${this.indent()}(*${className}).define_getter(${methodName}, ${lambda});\n`;
+            } else {
+                 code += `${this.indent()}(*${className}).get_own_property("prototype").define_getter(${methodName}, ${lambda});\n`;
+            }
+        } else if (ts.isSetAccessor(member)) {
+            const methodName = visitObjectPropertyName.call(this, member.name, {
+                ...context,
+                isObjectLiteralExpression: true,
+            });
+            const isStatic = member.modifiers?.some((m) =>
+                m.kind === ts.SyntaxKind.StaticKeyword
+            );
+            const lambda = this.generateLambda(member, {
+                ...classContext,
+                isInsideFunction: true,
+            });
+
+            if (isStatic) {
+                 code += `${this.indent()}(*${className}).define_setter(${methodName}, ${lambda});\n`;
+            } else {
+                 code += `${this.indent()}(*${className}).get_own_property("prototype").define_setter(${methodName}, ${lambda});\n`;
+            }
         }
     }
 

@@ -5,7 +5,7 @@
 #include "values/non_values.hpp"
 #include "values/object.hpp"
 #include "values/function.hpp"
-#include "operators.hpp"
+#include "utils/operators.hpp"
 
 inline auto performance = jspp::AnyValue::make_object({
     {"now",

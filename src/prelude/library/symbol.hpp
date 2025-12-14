@@ -1,7 +1,7 @@
 #pragma once
 
 #include "types.hpp"
-#include "well_known_symbols.hpp"
+#include "utils/well_known_symbols.hpp"
 
 #include "values/object.hpp"
 #include "any_value.hpp"
@@ -13,7 +13,7 @@ inline auto Symbol = jspp::AnyValue::make_object({
 // #pragma once
 
 // #include "types.hpp"
-// #include "well_known_symbols.hpp"
+// #include "utils/well_known_symbols.hpp"
 // #include "values/object.hpp"
 // #include "any_value.hpp"
 

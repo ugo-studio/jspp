@@ -10,7 +10,9 @@ export function generateLambda(
         | ts.FunctionDeclaration
         | ts.FunctionExpression
         | ts.ConstructorDeclaration
-        | ts.MethodDeclaration,
+        | ts.MethodDeclaration
+        | ts.GetAccessorDeclaration
+        | ts.SetAccessorDeclaration,
     context: VisitContext,
     options?: {
         isAssignment?: boolean;

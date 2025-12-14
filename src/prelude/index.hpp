@@ -1,7 +1,7 @@
 #pragma once
 
 #include "types.hpp"
-#include "well_known_symbols.hpp"
+#include "utils/well_known_symbols.hpp"
 
 // values
 #include "values/symbol.hpp"
@@ -13,9 +13,10 @@
 #include "values/string.hpp"
 
 #include "error.hpp"
-#include "descriptors.hpp"
+#include "values/descriptors.hpp"
 #include "any_value.hpp"
 #include "any_value_helpers.hpp"
+#include "any_value_defines.hpp"
 #include "error_helpers.hpp"
 
 #include "values/prototypes/symbol.hpp"
@@ -32,10 +33,10 @@
 #include "values/helpers/iterator.hpp"
 #include "values/helpers/string.hpp"
 
-// helpers
-#include "operators.hpp"
-#include "access.hpp"
-#include "log_string.hpp"
+// utilities
+#include "utils/operators.hpp"
+#include "utils/access.hpp"
+#include "utils/log_any_value/log_any_value.hpp"
 
 // js standard libraries
 #include "library/symbol.hpp"

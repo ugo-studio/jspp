@@ -494,6 +494,27 @@ const cases: { name: string; expected: string[] }[] = [
             "--- Static Methods ---",
             "8"
         ],
+    },
+    {
+        name: "methods-and-accessors",
+        expected: [
+            "--- Object Methods & Computed Keys ---",
+            "a",
+            "b",
+            "c",
+            "d",
+            "--- Object Accessors & Computed Keys ---",
+            "1 2",
+            "20 30",
+            "20 30",
+            "--- Class Computed Methods ---",
+            "static dynamic",
+            "instance dynamic",
+            "--- Class Accessors ---",
+            "Class getter: 100",
+            "Class getter after set: 200",
+            "Static getter: static",
+        ],
     }
 ];
 

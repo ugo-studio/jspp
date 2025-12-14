@@ -26,8 +26,8 @@
 #include "values/symbol.hpp"
 #include "values/string.hpp"
 #include "error.hpp"
-#include "descriptors.hpp"
-#include "well_known_symbols.hpp"
+#include "values/descriptors.hpp"
+#include "utils/well_known_symbols.hpp"
 
 namespace jspp
 {
@@ -564,23 +564,22 @@ namespace jspp
             return storage.accessor_desc.get();
         }
 
-        // --- PROPERTY ACCESS OPERATORS
-        AnyValue get_own_property(const std::string &key) const
+        AnyValue get_property_with_receiver(const std::string &key, const AnyValue &receiver) const
         {
             switch (storage.type)
             {
             case JsType::Object:
-                return storage.object->get_property(key, *this);
+                return storage.object->get_property(key, receiver);
             case JsType::Array:
-                return storage.array->get_property(key, *this);
+                return storage.array->get_property(key, receiver);
             case JsType::Function:
-                return storage.function->get_property(key, *this);
+                return storage.function->get_property(key, receiver);
             case JsType::Iterator:
-                return storage.iterator->get_property(key, *this);
+                return storage.iterator->get_property(key, receiver);
             case JsType::Symbol:
-                return storage.symbol->get_property(key, *this);
+                return storage.symbol->get_property(key, receiver);
             case JsType::String:
-                return storage.str->get_property(key, *this);
+                return storage.str->get_property(key, receiver);
             case JsType::Undefined:
                 throw RuntimeError::make_error("Cannot read properties of undefined (reading '" + key + "')", "TypeError");
             case JsType::Null:
@@ -588,6 +587,12 @@ namespace jspp
             default:
                 return AnyValue::make_undefined();
             }
+        }
+
+        // --- PROPERTY ACCESS OPERATORS
+        AnyValue get_own_property(const std::string &key) const
+        {
+            return get_property_with_receiver(key, *this);
         }
         AnyValue get_own_property(uint32_t idx) const noexcept
         {
@@ -655,22 +660,26 @@ namespace jspp
             return set_own_property(key.to_std_string(), value);
         }
 
+        // --- DEFINERS (Object.defineProperty semantics)
+        void define_data_property(const std::string &key, const AnyValue &value);
+        void define_data_property(const AnyValue &key, const AnyValue &value);
+        void define_getter(const std::string &key, const AnyValue &getter);
+        void define_getter(const AnyValue &key, const AnyValue &getter);
+        void define_setter(const std::string &key, const AnyValue &setter);
+        void define_setter(const AnyValue &key, const AnyValue &setter);
+
         // --- HELPERS
         const bool is_truthy() const noexcept;
-
         const bool is_strictly_equal_to_primitive(const AnyValue &other) const noexcept;
         const bool is_equal_to_primitive(const AnyValue &other) const noexcept;
-
+        
         const AnyValue is_strictly_equal_to(const AnyValue &other) const noexcept;
         const AnyValue is_equal_to(const AnyValue &other) const noexcept;
-
         const AnyValue not_strictly_equal_to(const AnyValue &other) const noexcept;
         const AnyValue not_equal_to(const AnyValue &other) const noexcept;
 
         const AnyValue construct(const std::vector<AnyValue> &args) const;
-
         void set_prototype(const AnyValue &proto);
-
         const std::string to_std_string() const noexcept;
     };
 }

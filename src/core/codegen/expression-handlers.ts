@@ -51,7 +51,13 @@ export function visitObjectLiteralExpression(
     context: VisitContext,
 ): string {
     const obj = node as ts.ObjectLiteralExpression;
-    let props = "";
+    const objVar = this.generateUniqueName("__obj_", this.getDeclaredSymbols(node));
+    
+    let code = `([&]() {
+${this.indent()}  auto ${objVar} = jspp::AnyValue::make_object({});\n`;
+    
+    this.indentationLevel++;
+
     for (const prop of obj.properties) {
         if (ts.isPropertyAssignment(prop)) {
             const key = visitObjectPropertyName.call(this, prop.name, {
@@ -75,7 +81,7 @@ export function visitObjectLiteralExpression(
                 }
             }
 
-            props += `{${key}, ${value}},`;
+            code += `${this.indent()}${objVar}.define_data_property(${key}, ${value});\n`;
         } else if (ts.isShorthandPropertyAssignment(prop)) {
             const key = visitObjectPropertyName.call(this, prop.name, {
                 ...context,
@@ -95,7 +101,7 @@ export function visitObjectLiteralExpression(
                 );
             }
 
-            props += `{${key}, ${value}},`;
+            code += `${this.indent()}${objVar}.define_data_property(${key}, ${value});\n`;
         } else if (ts.isMethodDeclaration(prop)) {
             const key = visitObjectPropertyName.call(this, prop.name, {
                 ...context,
@@ -105,10 +111,34 @@ export function visitObjectLiteralExpression(
                 ...context,
                 isInsideFunction: true,
             });
-            props += `{${key}, ${lambda}},`;
+            code += `${this.indent()}${objVar}.define_data_property(${key}, ${lambda});\n`;
+        } else if (ts.isGetAccessor(prop)) {
+            const key = visitObjectPropertyName.call(this, prop.name, {
+                ...context,
+                isObjectLiteralExpression: true,
+            });
+            const lambda = this.generateLambda(prop, {
+                ...context,
+                isInsideFunction: true,
+            });
+            code += `${this.indent()}${objVar}.define_getter(${key}, ${lambda});\n`;
+        } else if (ts.isSetAccessor(prop)) {
+            const key = visitObjectPropertyName.call(this, prop.name, {
+                ...context,
+                isObjectLiteralExpression: true,
+            });
+            const lambda = this.generateLambda(prop, {
+                ...context,
+                isInsideFunction: true,
+            });
+            code += `${this.indent()}${objVar}.define_setter(${key}, ${lambda});\n`;
         }
     }
-    return `jspp::AnyValue::make_object({${props}})`;
+    
+    this.indentationLevel--;
+    code += `${this.indent()}  return ${objVar};\n${this.indent()}})()`;
+    
+    return code;
 }
 
 export function visitArrayLiteralExpression(

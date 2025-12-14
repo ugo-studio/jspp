@@ -1,7 +1,7 @@
 #pragma once
 
 #include "types.hpp"
-#include "well_known_symbols.hpp"
+#include "utils/well_known_symbols.hpp"
 #include "values/function.hpp"
 #include "values/symbol.hpp"
 #include "error.hpp"
