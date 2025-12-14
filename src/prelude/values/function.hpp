@@ -17,15 +17,18 @@ namespace jspp
         std::unordered_map<std::string, AnyValue> props;
         std::shared_ptr<AnyValue> proto = nullptr;
         bool is_generator;
+        bool is_class;
 
         // ---- Constructor A: infer is_generator using index() ----
         JsFunction(const JsFunctionCallable &c,
                    std::string n = {},
-                   std::unordered_map<std::string, AnyValue> p = {})
+                   std::unordered_map<std::string, AnyValue> p = {},
+                   bool is_cls = false)
             : callable(c),
               name(std::move(n)),
               props(std::move(p)),
-              is_generator(callable.index() == 1) // 1 = generator
+              is_generator(callable.index() == 1), // 1 = generator
+              is_class(is_cls)
         {
         }
 
@@ -33,11 +36,13 @@ namespace jspp
         JsFunction(const JsFunctionCallable &c,
                    bool is_gen,
                    std::string n = {},
-                   std::unordered_map<std::string, AnyValue> p = {})
+                   std::unordered_map<std::string, AnyValue> p = {},
+                   bool is_cls = false)
             : callable(c),
               name(std::move(n)),
               props(std::move(p)),
-              is_generator(is_gen)
+              is_generator(is_gen),
+              is_class(is_cls)
         {
             // Optional debug check (no RTTI, no variant visitation):
             // if (callable.index() == 1 && !is_gen) { ... }

@@ -3,7 +3,7 @@ import ts from "typescript";
 import { CodeGenerator } from "./";
 import type { VisitContext } from "./visitor";
 
-function visitObjectPropertyName(
+export function visitObjectPropertyName(
     this: CodeGenerator,
     node: ts.PropertyName,
     context: VisitContext,
@@ -41,26 +41,6 @@ function visitObjectPropertyName(
     }
     if (context.isBracketNotationPropertyAccess) {
         return this.visit(node, context);
-    }
-    if (ts.isIdentifier(node) && context.isObjectLiteralExpression) {
-        const name = node.getText();
-        if (
-            context.localScopeSymbols.has(name) ||
-            context.topLevelScopeSymbols.has(name)
-        ) {
-            const scope = this.getScopeForNode(node);
-            const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
-                node.getText(),
-                scope,
-            )!;
-            return `${
-                this.getDerefCode(
-                    node.getText(),
-                    node.getText(),
-                    typeInfo,
-                )
-            }.to_std_string()`;
-        }
     }
     return `"${node.getText()}"`;
 }
@@ -116,6 +96,16 @@ export function visitObjectLiteralExpression(
             }
 
             props += `{${key}, ${value}},`;
+        } else if (ts.isMethodDeclaration(prop)) {
+            const key = visitObjectPropertyName.call(this, prop.name, {
+                ...context,
+                isObjectLiteralExpression: true,
+            });
+            const lambda = this.generateLambda(prop, {
+                ...context,
+                isInsideFunction: true,
+            });
+            props += `{${key}, ${lambda}},`;
         }
     }
     return `jspp::AnyValue::make_object({${props}})`;

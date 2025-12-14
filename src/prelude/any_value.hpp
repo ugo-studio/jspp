@@ -355,6 +355,19 @@ namespace jspp
 
             return v;
         }
+        static AnyValue make_class(const JsFunctionCallable &call, const std::string &name) noexcept
+        {
+            AnyValue v;
+            v.storage.type = JsType::Function;
+            // use Constructor A with is_cls = true
+            new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(call, name, std::unordered_map<std::string, AnyValue>{}, true));
+
+            auto proto = make_object({});
+            proto.set_own_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
+            v.set_own_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
+
+            return v;
+        }
         static AnyValue make_generator(const JsFunctionCallable &call, const std::string &name) noexcept
         {
             AnyValue v;

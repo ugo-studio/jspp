@@ -16,6 +16,7 @@ export function generateLambda(
         isAssignment?: boolean;
         capture?: string;
         lambdaName?: string;
+        isClass?: boolean;
     },
 ): string {
     const isAssignment = options?.isAssignment || false;
@@ -119,7 +120,11 @@ export function generateLambda(
         signature =
             `jspp::AnyValue(const jspp::AnyValue&, const std::vector<jspp::AnyValue>&)`;
         callable = `std::function<${signature}>(${lambda})`;
-        method = `jspp::AnyValue::make_function`;
+        if (options?.isClass) {
+            method = `jspp::AnyValue::make_class`;
+        } else {
+            method = `jspp::AnyValue::make_function`;
+        }
     }
 
     const funcName = node.name?.getText();

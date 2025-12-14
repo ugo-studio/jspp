@@ -103,6 +103,24 @@ namespace jspp
             if (val.is_function())
             {
                 auto fn = val.as_function();
+
+                if (fn->is_class)
+                {
+                    std::string extends_part = "";
+                    if (fn->proto && !fn->proto->is_uninitialized() && !fn->proto->is_undefined() && !fn->proto->is_null())
+                    {
+                        if (fn->proto->is_function())
+                        {
+                            auto parent = fn->proto->as_function();
+                            if (!parent->name.empty())
+                            {
+                                extends_part = " extends " + parent->name;
+                            }
+                        }
+                    }
+                    return Color::CYAN + std::string("[class ") + (fn->name.empty() ? "(anonymous)" : fn->name) + extends_part + "]" + Color::RESET;
+                }
+
                 auto type_part = fn->is_generator ? "GeneratorFunction" : "Function";
                 auto name_part = fn->name.size() > 0 ? ": " + fn->name : "";
                 return Color::CYAN + "[" + type_part + name_part + "]" + Color::RESET;

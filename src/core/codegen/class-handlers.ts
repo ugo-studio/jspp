@@ -1,6 +1,7 @@
 import ts from "typescript";
 
 import { CodeGenerator } from "./";
+import { visitObjectPropertyName } from "./expression-handlers";
 import type { VisitContext } from "./visitor";
 
 export function visitClassDeclaration(
@@ -57,19 +58,19 @@ export function visitClassDeclaration(
         constructorLambda = this.generateLambda(constructor, {
             ...classContext,
             isInsideFunction: true,
-        }, { lambdaName: className });
+        }, { lambdaName: className, isClass: true });
     } else {
         // Default constructor
         if (parentName) {
             constructorLambda =
-                `jspp::AnyValue::make_function([=](const jspp::AnyValue& ${this.globalThisVar}, const std::vector<jspp::AnyValue>& args) mutable -> jspp::AnyValue {
+                `jspp::AnyValue::make_class([=](const jspp::AnyValue& ${this.globalThisVar}, const std::vector<jspp::AnyValue>& args) mutable -> jspp::AnyValue {
                  auto __parent = ${parentName};
                  __parent.as_function("super")->call(${this.globalThisVar}, args);
                  return jspp::AnyValue::make_undefined();
              }, "${className}")`;
         } else {
             constructorLambda =
-                `jspp::AnyValue::make_function([=](const jspp::AnyValue& ${this.globalThisVar}, const std::vector<jspp::AnyValue>& args) mutable -> jspp::AnyValue {
+                `jspp::AnyValue::make_class([=](const jspp::AnyValue& ${this.globalThisVar}, const std::vector<jspp::AnyValue>& args) mutable -> jspp::AnyValue {
                  return jspp::AnyValue::make_undefined();
              }, "${className}")`;
         }
@@ -88,7 +89,10 @@ export function visitClassDeclaration(
     // Members
     for (const member of node.members) {
         if (ts.isMethodDeclaration(member)) {
-            const methodName = member.name.getText();
+            const methodName = visitObjectPropertyName.call(this, member.name, {
+                ...context,
+                isObjectLiteralExpression: true, // Reuse this flag to handle computed properties
+            });
             const isStatic = member.modifiers?.some((m) =>
                 m.kind === ts.SyntaxKind.StaticKeyword
             );
@@ -100,10 +104,10 @@ export function visitClassDeclaration(
 
             if (isStatic) {
                 code +=
-                    `${this.indent()}(*${className}).set_own_property("${methodName}", ${methodLambda});\n`;
+                    `${this.indent()}(*${className}).set_own_property(${methodName}, ${methodLambda});\n`;
             } else {
                 code +=
-                    `${this.indent()}(*${className}).get_own_property("prototype").set_own_property("${methodName}", ${methodLambda});\n`;
+                    `${this.indent()}(*${className}).get_own_property("prototype").set_own_property(${methodName}, ${methodLambda});\n`;
             }
         }
     }
