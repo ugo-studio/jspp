@@ -68,7 +68,7 @@ export class CodeGenerator {
             isInsideFunction: true,
             isFunctionBody: true,
             topLevelScopeSymbols: new Map(),
-            localScopeSymbols: new Map(),
+            currentScopeSymbols: new Map(),
         });
         this.indentationLevel--;
         containerCode += "  return jspp::AnyValue::make_undefined();\n";

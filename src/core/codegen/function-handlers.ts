@@ -45,7 +45,7 @@ export function generateLambda(
 
     const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
         context.topLevelScopeSymbols,
-        context.localScopeSymbols,
+        context.currentScopeSymbols,
     );
 
     const visitContext: VisitContext = {
@@ -53,7 +53,7 @@ export function generateLambda(
         isInsideFunction: true,
         isFunctionBody: false,
         topLevelScopeSymbols,
-        localScopeSymbols: new Map(),
+        currentScopeSymbols: new Map(),
         superClassVar: context.superClassVar,
     };
 

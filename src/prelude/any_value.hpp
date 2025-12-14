@@ -434,7 +434,7 @@ namespace jspp
             return v;
         }
 
-        // property resolution helpers ---------------------------------------
+        // PROPERTY RESOLUTION HELPERS ---------------------------------------
         static AnyValue resolve_property_for_read(const AnyValue &val, const AnyValue &thisVal, const std::string &propName) noexcept
         {
             switch (val.storage.type)
@@ -495,7 +495,8 @@ namespace jspp
             }
         }
 
-        // type checkers and accessors ---------------------------------------
+        // TYPE CHECKERS AND ACCESSORS ---------------------------------------
+        JsType get_type() const noexcept { return storage.type; }
         bool is_number() const noexcept { return storage.type == JsType::Number; }
         bool is_string() const noexcept { return storage.type == JsType::String; }
         bool is_object() const noexcept { return storage.type == JsType::Object; }
@@ -564,31 +565,6 @@ namespace jspp
             return storage.accessor_desc.get();
         }
 
-        AnyValue get_property_with_receiver(const std::string &key, const AnyValue &receiver) const
-        {
-            switch (storage.type)
-            {
-            case JsType::Object:
-                return storage.object->get_property(key, receiver);
-            case JsType::Array:
-                return storage.array->get_property(key, receiver);
-            case JsType::Function:
-                return storage.function->get_property(key, receiver);
-            case JsType::Iterator:
-                return storage.iterator->get_property(key, receiver);
-            case JsType::Symbol:
-                return storage.symbol->get_property(key, receiver);
-            case JsType::String:
-                return storage.str->get_property(key, receiver);
-            case JsType::Undefined:
-                throw RuntimeError::make_error("Cannot read properties of undefined (reading '" + key + "')", "TypeError");
-            case JsType::Null:
-                throw RuntimeError::make_error("Cannot read properties of null (reading '" + key + "')", "TypeError");
-            default:
-                return AnyValue::make_undefined();
-            }
-        }
-
         // --- PROPERTY ACCESS OPERATORS
         AnyValue get_own_property(const std::string &key) const
         {
@@ -618,6 +594,31 @@ namespace jspp
                 return get_own_property(key.storage.symbol->key);
 
             return get_own_property(key.to_std_string());
+        }
+        // for getting values with a specific receiver (used in inheritance chains)
+        AnyValue get_property_with_receiver(const std::string &key, const AnyValue &receiver) const
+        {
+            switch (storage.type)
+            {
+            case JsType::Object:
+                return storage.object->get_property(key, receiver);
+            case JsType::Array:
+                return storage.array->get_property(key, receiver);
+            case JsType::Function:
+                return storage.function->get_property(key, receiver);
+            case JsType::Iterator:
+                return storage.iterator->get_property(key, receiver);
+            case JsType::Symbol:
+                return storage.symbol->get_property(key, receiver);
+            case JsType::String:
+                return storage.str->get_property(key, receiver);
+            case JsType::Undefined:
+                throw RuntimeError::make_error("Cannot read properties of undefined (reading '" + key + "')", "TypeError");
+            case JsType::Null:
+                throw RuntimeError::make_error("Cannot read properties of null (reading '" + key + "')", "TypeError");
+            default:
+                return AnyValue::make_undefined();
+            }
         }
         // for setting values
         AnyValue set_own_property(const std::string &key, const AnyValue &value) const
@@ -672,7 +673,7 @@ namespace jspp
         const bool is_truthy() const noexcept;
         const bool is_strictly_equal_to_primitive(const AnyValue &other) const noexcept;
         const bool is_equal_to_primitive(const AnyValue &other) const noexcept;
-        
+
         const AnyValue is_strictly_equal_to(const AnyValue &other) const noexcept;
         const AnyValue is_equal_to(const AnyValue &other) const noexcept;
         const AnyValue not_strictly_equal_to(const AnyValue &other) const noexcept;

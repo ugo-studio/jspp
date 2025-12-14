@@ -21,6 +21,7 @@ import {
   visitArrayLiteralExpression,
   visitBinaryExpression,
   visitCallExpression,
+  visitConditionalExpression,
   visitElementAccessExpression,
   visitNewExpression,
   visitObjectLiteralExpression,
@@ -29,6 +30,7 @@ import {
   visitPrefixUnaryExpression,
   visitPropertyAccessExpression,
   visitTemplateExpression,
+  visitTypeOfExpression,
   visitVoidExpression,
 } from "./expression-handlers";
 import {
@@ -77,7 +79,7 @@ export interface VisitContext {
     currentLabel?: string;
     switchBreakLabel?: string;
     topLevelScopeSymbols: DeclaredSymbols;
-    localScopeSymbols: DeclaredSymbols;
+    currentScopeSymbols: DeclaredSymbols;
     derefBeforeAssignment?: boolean;
     superClassVar?: string;
 }
@@ -254,6 +256,12 @@ export function visit(
                 node as ts.BinaryExpression,
                 context,
             );
+        case ts.SyntaxKind.ConditionalExpression:
+            return visitConditionalExpression.call(
+                this,
+                node as ts.ConditionalExpression,
+                context,
+            );
         case ts.SyntaxKind.ThrowStatement:
             return visitThrowStatement.call(
                 this,
@@ -311,6 +319,12 @@ export function visit(
             return visitNewExpression.call(
                 this,
                 node as ts.NewExpression,
+                context,
+            );
+        case ts.SyntaxKind.TypeOfExpression:
+            return visitTypeOfExpression.call(
+                this,
+                node as ts.TypeOfExpression,
                 context,
             );
         case ts.SyntaxKind.TrueKeyword:

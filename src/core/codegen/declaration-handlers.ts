@@ -52,7 +52,7 @@ export function visitVariableDeclaration(
     const isLetOrConst =
         (varDecl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
     const shouldDeref = context.derefBeforeAssignment &&
-        (!context.localScopeSymbols.has(name));
+        (!context.currentScopeSymbols.has(name));
 
     const assignmentTarget = shouldDeref
         ? this.getDerefCode(name, name, typeInfo)

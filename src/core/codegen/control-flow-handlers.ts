@@ -465,7 +465,7 @@ export function visitSwitchStatement(
     // Prepare scope symbols for the switch block
     const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
         context.topLevelScopeSymbols,
-        context.localScopeSymbols,
+        context.currentScopeSymbols,
     );
 
     let firstIf = true;
@@ -498,7 +498,7 @@ export function visitSwitchStatement(
                         const contextForFunction = {
                             ...context,
                             topLevelScopeSymbols,
-                            localScopeSymbols: hoistedSymbols,
+                            currentScopeSymbols: hoistedSymbols,
                         };
                         const lambda = this.generateLambda(
                             stmt,
@@ -513,7 +513,7 @@ export function visitSwitchStatement(
                         switchBreakLabel,
                         currentLabel: undefined, // Clear currentLabel for nested visits
                         topLevelScopeSymbols,
-                        localScopeSymbols: hoistedSymbols,
+                        currentScopeSymbols: hoistedSymbols,
                         derefBeforeAssignment: true,
                         isAssignmentOnly: ts.isVariableStatement(stmt),
                     });
@@ -538,7 +538,7 @@ export function visitSwitchStatement(
                     switchBreakLabel,
                     currentLabel: undefined, // Clear currentLabel for nested visits
                     topLevelScopeSymbols,
-                    localScopeSymbols: hoistedSymbols,
+                    currentScopeSymbols: hoistedSymbols,
                     derefBeforeAssignment: true,
                     isAssignmentOnly: ts.isVariableStatement(stmt),
                 });

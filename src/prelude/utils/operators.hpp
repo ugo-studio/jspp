@@ -13,15 +13,18 @@ namespace jspp
         // Implements the ToNumber abstract operation from ECMA-262.
         inline double ToNumber(const AnyValue &val)
         {
-            if (val.is_number())
+            switch (val.get_type())
+            {
+            case JsType::Number:
                 return val.as_double();
-            if (val.is_null())
+            case JsType::Null:
                 return 0.0;
-            if (val.is_undefined() || val.is_uninitialized())
+            case JsType::Uninitialized:
+            case JsType::Undefined:
                 return std::numeric_limits<double>::quiet_NaN();
-            if (val.is_boolean())
+            case JsType::Boolean:
                 return val.as_boolean() ? 1.0 : 0.0;
-            if (val.is_string())
+            case JsType::String:
             {
                 const std::string &s = val.as_string()->value;
                 // JS considers empty or whitespace-only strings as 0.
@@ -43,9 +46,11 @@ namespace jspp
                     return std::numeric_limits<double>::quiet_NaN();
                 }
             }
-            // In a full engine, objects would be converted via valueOf/toString.
-            // Here we simplify and return NaN.
-            return std::numeric_limits<double>::quiet_NaN();
+            default:
+                // In a full engine, objects would be converted via valueOf/toString.
+                // Here we simplify and return NaN.
+                return std::numeric_limits<double>::quiet_NaN();
+            }
         }
         // Implements the ToInt32 abstract operation from ECMA-262.
         inline int32_t ToInt32(const AnyValue &val)

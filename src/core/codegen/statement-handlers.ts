@@ -38,10 +38,10 @@ export function visitSourceFile(
     // 2. Assign all hoisted functions first
     const contextForFunctions = {
         ...context,
-        localScopeSymbols: new Map(context.localScopeSymbols),
+        currentScopeSymbols: new Map(context.currentScopeSymbols),
     };
     hoistedSymbols.forEach((v, k) =>
-        contextForFunctions.localScopeSymbols.set(k, v)
+        contextForFunctions.currentScopeSymbols.set(k, v)
     );
 
     funcDecls.forEach((stmt) => {
@@ -58,9 +58,9 @@ export function visitSourceFile(
     sourceFile.statements.forEach((stmt) => {
         const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
             context.topLevelScopeSymbols,
-            context.localScopeSymbols,
+            context.currentScopeSymbols,
         );
-        const localScopeSymbols = hoistedSymbols; // hoistedSymbols becomes new local
+        const currentScopeSymbols = hoistedSymbols; // hoistedSymbols becomes new local
 
         if (ts.isFunctionDeclaration(stmt)) {
             // Already handled
@@ -71,7 +71,7 @@ export function visitSourceFile(
             const contextForVisit = {
                 ...context,
                 topLevelScopeSymbols,
-                localScopeSymbols,
+                currentScopeSymbols,
                 isAssignmentOnly: !isLetOrConst,
             };
             const assignments = this.visit(
@@ -86,8 +86,8 @@ export function visitSourceFile(
                 ...context,
                 isFunctionBody: false,
                 topLevelScopeSymbols,
-                localScopeSymbols,
-                // localScopeSymbols: undefined, // clear the localScopeSymbols for nested visit
+                currentScopeSymbols,
+                // currentScopeSymbols: undefined, // clear the currentScopeSymbols for nested visit
                 // topLevelScopeSymbols: undefined, // clear the topLevelScopeSymbols for nested visit
             });
         }
@@ -131,10 +131,10 @@ export function visitBlock(
     // 2. Assign all hoisted functions first
     const contextForFunctions = {
         ...context,
-        localScopeSymbols: new Map(context.localScopeSymbols),
+        currentScopeSymbols: new Map(context.currentScopeSymbols),
     };
     hoistedSymbols.forEach((v, k) =>
-        contextForFunctions.localScopeSymbols.set(k, v)
+        contextForFunctions.currentScopeSymbols.set(k, v)
     );
 
     funcDecls.forEach((stmt) => {
@@ -151,9 +151,9 @@ export function visitBlock(
     block.statements.forEach((stmt) => {
         const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
             context.topLevelScopeSymbols,
-            context.localScopeSymbols,
+            context.currentScopeSymbols,
         );
-        const localScopeSymbols = hoistedSymbols; // hoistedSymbols becomes new local
+        const currentScopeSymbols = hoistedSymbols; // hoistedSymbols becomes new local
 
         if (ts.isFunctionDeclaration(stmt)) {
             // Do nothing, already handled
@@ -164,7 +164,7 @@ export function visitBlock(
             const contextForVisit = {
                 ...context,
                 topLevelScopeSymbols,
-                localScopeSymbols,
+                currentScopeSymbols,
                 isAssignmentOnly: !isLetOrConst,
             };
             const assignments = this.visit(
@@ -179,8 +179,8 @@ export function visitBlock(
                 ...context,
                 isFunctionBody: false,
                 topLevelScopeSymbols,
-                localScopeSymbols,
-                // localScopeSymbols: undefined, // clear the localScopeSymbols for nested visit
+                currentScopeSymbols,
+                // currentScopeSymbols: undefined, // clear the currentScopeSymbols for nested visit
                 // topLevelScopeSymbols: undefined, // clear the topLevelScopeSymbols for nested visit
             });
         }

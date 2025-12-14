@@ -51,11 +51,14 @@ export function visitObjectLiteralExpression(
     context: VisitContext,
 ): string {
     const obj = node as ts.ObjectLiteralExpression;
-    const objVar = this.generateUniqueName("__obj_", this.getDeclaredSymbols(node));
-    
+    const objVar = this.generateUniqueName(
+        "__obj_",
+        this.getDeclaredSymbols(node),
+    );
+
     let code = `([&]() {
 ${this.indent()}  auto ${objVar} = jspp::AnyValue::make_object({});\n`;
-    
+
     this.indentationLevel++;
 
     for (const prop of obj.properties) {
@@ -81,7 +84,8 @@ ${this.indent()}  auto ${objVar} = jspp::AnyValue::make_object({});\n`;
                 }
             }
 
-            code += `${this.indent()}${objVar}.define_data_property(${key}, ${value});\n`;
+            code +=
+                `${this.indent()}${objVar}.define_data_property(${key}, ${value});\n`;
         } else if (ts.isShorthandPropertyAssignment(prop)) {
             const key = visitObjectPropertyName.call(this, prop.name, {
                 ...context,
@@ -101,7 +105,8 @@ ${this.indent()}  auto ${objVar} = jspp::AnyValue::make_object({});\n`;
                 );
             }
 
-            code += `${this.indent()}${objVar}.define_data_property(${key}, ${value});\n`;
+            code +=
+                `${this.indent()}${objVar}.define_data_property(${key}, ${value});\n`;
         } else if (ts.isMethodDeclaration(prop)) {
             const key = visitObjectPropertyName.call(this, prop.name, {
                 ...context,
@@ -111,7 +116,8 @@ ${this.indent()}  auto ${objVar} = jspp::AnyValue::make_object({});\n`;
                 ...context,
                 isInsideFunction: true,
             });
-            code += `${this.indent()}${objVar}.define_data_property(${key}, ${lambda});\n`;
+            code +=
+                `${this.indent()}${objVar}.define_data_property(${key}, ${lambda});\n`;
         } else if (ts.isGetAccessor(prop)) {
             const key = visitObjectPropertyName.call(this, prop.name, {
                 ...context,
@@ -121,7 +127,8 @@ ${this.indent()}  auto ${objVar} = jspp::AnyValue::make_object({});\n`;
                 ...context,
                 isInsideFunction: true,
             });
-            code += `${this.indent()}${objVar}.define_getter(${key}, ${lambda});\n`;
+            code +=
+                `${this.indent()}${objVar}.define_getter(${key}, ${lambda});\n`;
         } else if (ts.isSetAccessor(prop)) {
             const key = visitObjectPropertyName.call(this, prop.name, {
                 ...context,
@@ -131,13 +138,14 @@ ${this.indent()}  auto ${objVar} = jspp::AnyValue::make_object({});\n`;
                 ...context,
                 isInsideFunction: true,
             });
-            code += `${this.indent()}${objVar}.define_setter(${key}, ${lambda});\n`;
+            code +=
+                `${this.indent()}${objVar}.define_setter(${key}, ${lambda});\n`;
         }
     }
-    
+
     this.indentationLevel--;
     code += `${this.indent()}  return ${objVar};\n${this.indent()}})()`;
-    
+
     return code;
 }
 
@@ -689,6 +697,24 @@ export function visitBinaryExpression(
     return `${finalLeft} ${op} ${finalRight}`;
 }
 
+export function visitConditionalExpression(
+    this: CodeGenerator,
+    node: ts.ConditionalExpression,
+    context: VisitContext,
+): string {
+    const condExpr = node as ts.ConditionalExpression;
+    const condition = this.visit(condExpr.condition, context);
+    const whenTrueStmt = this.visit(condExpr.whenTrue, {
+        ...context,
+        isFunctionBody: false,
+    });
+    const whenFalseStmt = this.visit(condExpr.whenFalse, {
+        ...context,
+        isFunctionBody: false,
+    });
+    return `(${condition}).is_truthy() ? ${whenTrueStmt} : ${whenFalseStmt}`;
+}
+
 export function visitCallExpression(
     this: CodeGenerator,
     node: ts.CallExpression,
@@ -1027,4 +1053,41 @@ export function visitNewExpression(
         : "";
 
     return `${derefExpr}.construct({${args}})`;
+}
+
+export function visitTypeOfExpression(
+    this: CodeGenerator,
+    node: ts.TypeOfExpression,
+    context: VisitContext,
+): string {
+    const typeOfExpr = node as ts.TypeOfExpression;
+    const exprText = this.visit(typeOfExpr.expression, context);
+
+    let derefExpr = exprText;
+    if (ts.isIdentifier(typeOfExpr.expression)) {
+        const scope = this.getScopeForNode(typeOfExpr.expression);
+        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+            typeOfExpr.expression.getText(),
+            scope,
+        );
+        if (
+            !typeInfo &&
+            !this.isBuiltinObject(typeOfExpr.expression as ts.Identifier)
+        ) {
+            derefExpr = `/* undeclared variable: ${
+                this.getJsVarName(
+                    typeOfExpr.expression as ts.Identifier,
+                )
+            } */`; // typeof undeclared variable is 'undefined'
+        }
+        if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
+            derefExpr = this.getDerefCode(
+                exprText,
+                this.getJsVarName(typeOfExpr.expression as ts.Identifier),
+                typeInfo,
+            );
+        }
+    }
+
+    return `jspp::Access::typeof(${derefExpr})`;
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "types.hpp"
-#include "utils/well_known_symbols.hpp"
+#include "well_known_symbols.hpp"
 #include "values/function.hpp"
 #include "values/symbol.hpp"
 #include "error.hpp"
@@ -64,6 +64,7 @@ namespace jspp
             return var;
         }
 
+        // Helper function to get enumerable own property keys/values of an object
         inline std::vector<std::string> get_object_keys(const AnyValue &obj)
         {
             std::vector<std::string> keys;
@@ -83,7 +84,13 @@ namespace jspp
                 for (const auto &pair : ptr->props)
                 {
                     if (!JsSymbol::is_internal_key(pair.first))
-                        keys.push_back(pair.first);
+                    {
+                        if (!pair.second.is_data_descriptor() && !pair.second.is_accessor_descriptor())
+                            keys.push_back(pair.first);
+                        else if ((pair.second.is_data_descriptor() && pair.second.as_data_descriptor()->enumerable) ||
+                                 (pair.second.is_accessor_descriptor() && pair.second.as_accessor_descriptor()->enumerable))
+                            keys.push_back(pair.first);
+                    }
                 }
             }
             if (obj.is_array())
@@ -123,6 +130,37 @@ namespace jspp
             }
 
             throw jspp::RuntimeError::make_error(name + " is not iterable", "TypeError");
+        }
+
+        inline AnyValue typeof(const AnyValue &val)
+        {
+            switch (val.get_type())
+            {
+            case JsType::Undefined:
+                return AnyValue::make_string("undefined");
+            case JsType::Null:
+                return AnyValue::make_string("object");
+            case JsType::Boolean:
+                return AnyValue::make_string("boolean");
+            case JsType::Number:
+                return AnyValue::make_string("number");
+            case JsType::String:
+                return AnyValue::make_string("string");
+            case JsType::Symbol:
+                return AnyValue::make_string("symbol");
+            case JsType::Function:
+                return AnyValue::make_string("function");
+            case JsType::Object:
+            case JsType::Array:
+            case JsType::Iterator:
+                return AnyValue::make_string("object");
+            default:
+                return AnyValue::make_string("undefined");
+            }
+        }
+        inline AnyValue typeof() // for undeclared variables
+        {
+            return AnyValue::make_string("undefined");
         }
     }
 }
