@@ -36,12 +36,22 @@ export function generateLambda(
         : "jspp::AnyValue";
 
     const isArrow = ts.isArrowFunction(node);
+
+    // For generators, we MUST copy arguments because the coroutine suspends immediately
+    // and references to temporary arguments would dangle.
+    const paramThisType = isInsideGeneratorFunction
+        ? "jspp::AnyValue"
+        : "const jspp::AnyValue&";
+    const paramArgsType = isInsideGeneratorFunction
+        ? "std::vector<jspp::AnyValue>"
+        : "const std::vector<jspp::AnyValue>&";
+
     const thisArgParam = isArrow
-        ? "const jspp::AnyValue&"
-        : `const jspp::AnyValue& ${this.globalThisVar}`;
+        ? "const jspp::AnyValue&" // Arrow functions are never generators in this parser
+        : `${paramThisType} ${this.globalThisVar}`;
 
     let lambda =
-        `${capture}(${thisArgParam}, const std::vector<jspp::AnyValue>& ${argsName}) mutable -> ${funcReturnType} `;
+        `${capture}(${thisArgParam}, ${paramArgsType} ${argsName}) mutable -> ${funcReturnType} `;
 
     const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
         context.topLevelScopeSymbols,
@@ -81,6 +91,13 @@ export function generateLambda(
                     this.indentationLevel++;
                     paramExtraction +=
                         `${this.indent()}std::vector<std::optional<jspp::AnyValue>> ${tempName};\n`;
+                    
+                    paramExtraction += `${this.indent()}if (${argsName}.size() > ${i}) {\n`;
+                    this.indentationLevel++;
+                    paramExtraction += `${this.indent()}${tempName}.reserve(${argsName}.size() - ${i});\n`;
+                    this.indentationLevel--;
+                    paramExtraction += `${this.indent()}}\n`;
+
                     paramExtraction +=
                         `${this.indent()}for (size_t i = ${i}; i < ${argsName}.size(); i++) {\n`;
                     this.indentationLevel++;
@@ -89,7 +106,7 @@ export function generateLambda(
                     this.indentationLevel--;
                     paramExtraction += `${this.indent()}}\n`;
                     paramExtraction +=
-                        `${this.indent()}${name} = jspp::AnyValue::make_array(${tempName});\n`;
+                        `${this.indent()}${name} = jspp::AnyValue::make_array(std::move(${tempName}));\n`;
                     this.indentationLevel--;
                     paramExtraction += `${this.indent()}}\n`;
                 } else {

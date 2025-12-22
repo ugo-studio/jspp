@@ -17,6 +17,7 @@ namespace jspp
 
         JsArray() = default;
         explicit JsArray(const std::vector<std::optional<AnyValue>> &items) : dense(items), length(items.size()) {}
+        explicit JsArray(std::vector<std::optional<AnyValue>> &&items) : dense(std::move(items)), length(dense.size()) {}
 
         std::string to_std_string() const;
         JsIterator<AnyValue> get_iterator();

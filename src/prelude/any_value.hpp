@@ -343,6 +343,13 @@ namespace jspp
             new (&v.storage.array) std::shared_ptr<JsArray>(std::make_shared<JsArray>(dense));
             return v;
         }
+        static AnyValue make_array(std::vector<std::optional<AnyValue>> &&dense) noexcept
+        {
+            AnyValue v;
+            v.storage.type = JsType::Array;
+            new (&v.storage.array) std::shared_ptr<JsArray>(std::make_shared<JsArray>(std::move(dense)));
+            return v;
+        }
         static AnyValue make_function(const JsFunctionCallable &call, const std::string &name) noexcept
         {
             AnyValue v;
