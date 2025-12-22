@@ -314,7 +314,7 @@ export function visitThrowStatement(
 ): string {
     const throwStmt = node as ts.ThrowStatement;
     const expr = this.visit(throwStmt.expression, context);
-    return `${this.indent()}throw jspp::RuntimeError(${expr});
+    return `${this.indent()}throw jspp::Exception(${expr});
 `;
 }
 
@@ -468,7 +468,7 @@ export function visitCatchClause(
 
         // The JS exception variable is always local to the catch block
         code +=
-            `${this.indent()}jspp::AnyValue ${varName} = jspp::RuntimeError::error_to_value(${exceptionName});\n`;
+            `${this.indent()}jspp::AnyValue ${varName} = jspp::Exception::exception_to_any_value(${exceptionName});\n`;
 
         // Shadow the C++ exception variable *only if* the names don't clash.
         if (varName !== exceptionName) {
@@ -506,7 +506,7 @@ export function visitYieldExpression(
                 scope,
             );
             if (!typeInfo) {
-                return `${this.indent()}jspp::RuntimeError::throw_unresolved_reference_error(${
+                return `${this.indent()}jspp::Exception::throw_unresolved_reference(${
                     this.getJsVarName(expr)
                 })\n`; // THROWS, not returns
             }
@@ -536,7 +536,7 @@ export function visitReturnStatement(
     context: VisitContext,
 ): string {
     if (context.isMainContext) {
-        return `${this.indent()}jspp::RuntimeError::throw_invalid_return_statement_error();\n`;
+        return `${this.indent()}jspp::Exception::throw_invalid_return_statement();\n`;
     }
 
     const returnStmt = node as ts.ReturnStatement;
@@ -556,7 +556,7 @@ export function visitReturnStatement(
                 );
                 if (!typeInfo) {
                     returnCode +=
-                        `${this.indent()}jspp::RuntimeError::throw_unresolved_reference_error(${
+                        `${this.indent()}jspp::Exception::throw_unresolved_reference(${
                             this.getJsVarName(expr)
                         });\n`; // THROWS, not returns
                 } else if (
@@ -590,7 +590,7 @@ export function visitReturnStatement(
                 scope,
             );
             if (!typeInfo) {
-                return `${this.indent()}jspp::RuntimeError::throw_unresolved_reference_error(${
+                return `${this.indent()}jspp::Exception::throw_unresolved_reference(${
                     this.getJsVarName(expr)
                 });\n`; // THROWS, not returns
             }

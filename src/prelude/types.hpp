@@ -36,7 +36,7 @@ namespace jspp
     struct AccessorDescriptor;
 
     // Custom runtime exception
-    struct RuntimeError;
+    struct Exception;
 
     // Dynamic AnyValue
     class AnyValue;

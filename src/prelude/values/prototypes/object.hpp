@@ -3,7 +3,7 @@
 #include "types.hpp"
 #include "values/object.hpp"
 #include "any_value.hpp"
-#include "error.hpp"
+#include "exception.hpp"
 #include "utils/operators.hpp"
 
 namespace jspp

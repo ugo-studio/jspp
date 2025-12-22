@@ -25,7 +25,7 @@
 #include "values/iterator.hpp"
 #include "values/symbol.hpp"
 #include "values/string.hpp"
-#include "error.hpp"
+#include "exception.hpp"
 #include "values/descriptors.hpp"
 #include "utils/well_known_symbols.hpp"
 
@@ -472,7 +472,7 @@ namespace jspp
                 }
                 else
                 {
-                    throw RuntimeError::make_error("Cannot assign to read only property '" + propName + "' of object '#<Object>'", "TypeError");
+                    throw Exception::make_exception("Cannot assign to read only property '" + propName + "' of object '#<Object>'", "TypeError");
                 }
             }
             case JsType::AccessorDescriptor:
@@ -484,7 +484,7 @@ namespace jspp
                 }
                 else
                 {
-                    throw RuntimeError::make_error("Cannot set property of #<Object> which has only a getter", "TypeError");
+                    throw Exception::make_exception("Cannot set property of #<Object> which has only a getter", "TypeError");
                 }
             }
             default:
@@ -542,7 +542,7 @@ namespace jspp
         {
             if (is_function())
                 return storage.function.get();
-            throw RuntimeError::make_error(expression.value_or(to_std_string()) + " is not a function", "TypeError");
+            throw Exception::make_exception(expression.value_or(to_std_string()) + " is not a function", "TypeError");
         }
         JsSymbol *as_symbol() const noexcept
         {
@@ -613,9 +613,9 @@ namespace jspp
             case JsType::String:
                 return storage.str->get_property(key, receiver);
             case JsType::Undefined:
-                throw RuntimeError::make_error("Cannot read properties of undefined (reading '" + key + "')", "TypeError");
+                throw Exception::make_exception("Cannot read properties of undefined (reading '" + key + "')", "TypeError");
             case JsType::Null:
-                throw RuntimeError::make_error("Cannot read properties of null (reading '" + key + "')", "TypeError");
+                throw Exception::make_exception("Cannot read properties of null (reading '" + key + "')", "TypeError");
             default:
                 return AnyValue::make_undefined();
             }
@@ -632,9 +632,9 @@ namespace jspp
             case JsType::Function:
                 return storage.function->set_property(key, value, *this);
             case JsType::Undefined:
-                throw RuntimeError::make_error("Cannot set properties of undefined (setting '" + key + "')", "TypeError");
+                throw Exception::make_exception("Cannot set properties of undefined (setting '" + key + "')", "TypeError");
             case JsType::Null:
-                throw RuntimeError::make_error("Cannot set properties of null (setting '" + key + "')", "TypeError");
+                throw Exception::make_exception("Cannot set properties of null (setting '" + key + "')", "TypeError");
             default:
                 return value;
             }

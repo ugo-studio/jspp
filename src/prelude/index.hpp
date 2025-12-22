@@ -12,12 +12,12 @@
 #include "values/iterator.hpp"
 #include "values/string.hpp"
 
-#include "error.hpp"
+#include "exception.hpp"
 #include "values/descriptors.hpp"
 #include "any_value.hpp"
 #include "any_value_helpers.hpp"
 #include "any_value_defines.hpp"
-#include "error_helpers.hpp"
+#include "exception_helpers.hpp"
 
 #include "values/prototypes/symbol.hpp"
 #include "values/prototypes/object.hpp"

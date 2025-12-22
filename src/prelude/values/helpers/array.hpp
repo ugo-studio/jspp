@@ -2,7 +2,7 @@
 
 #include "types.hpp"
 #include "values/array.hpp"
-#include "error.hpp"
+#include "exception.hpp"
 #include "any_value.hpp"
 #include "values/prototypes/array.hpp"
 

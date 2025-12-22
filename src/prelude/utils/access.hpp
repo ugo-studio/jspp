@@ -4,7 +4,7 @@
 #include "well_known_symbols.hpp"
 #include "values/function.hpp"
 #include "values/symbol.hpp"
-#include "error.hpp"
+#include "exception.hpp"
 #include "any_value.hpp"
 #include <ranges>
 
@@ -17,7 +17,7 @@ namespace jspp
         {
             if ((*var).is_uninitialized()) [[unlikely]]
             {
-                RuntimeError::throw_uninitialized_reference_error(name);
+                Exception::throw_uninitialized_reference(name);
             }
             return *var;
         }
@@ -25,7 +25,7 @@ namespace jspp
         {
             if ((*var).is_uninitialized()) [[unlikely]]
             {
-                RuntimeError::throw_uninitialized_reference_error(name);
+                Exception::throw_uninitialized_reference(name);
             }
             return *var;
         }
@@ -33,7 +33,7 @@ namespace jspp
         {
             if ((*var).is_uninitialized()) [[unlikely]]
             {
-                RuntimeError::throw_uninitialized_reference_error(name);
+                Exception::throw_uninitialized_reference(name);
             }
             return *var;
         }
@@ -41,7 +41,7 @@ namespace jspp
         {
             if ((*var).is_uninitialized()) [[unlikely]]
             {
-                RuntimeError::throw_uninitialized_reference_error(name);
+                Exception::throw_uninitialized_reference(name);
             }
             return *var;
         }
@@ -51,7 +51,7 @@ namespace jspp
         {
             if (var.is_uninitialized()) [[unlikely]]
             {
-                RuntimeError::throw_uninitialized_reference_error(name);
+                Exception::throw_uninitialized_reference(name);
             }
             return var;
         }
@@ -59,9 +59,40 @@ namespace jspp
         {
             if (var.is_uninitialized()) [[unlikely]]
             {
-                RuntimeError::throw_uninitialized_reference_error(name);
+                Exception::throw_uninitialized_reference(name);
             }
             return var;
+        }
+
+        inline AnyValue typeof(const AnyValue &val)
+        {
+            switch (val.get_type())
+            {
+            case JsType::Undefined:
+                return AnyValue::make_string("undefined");
+            case JsType::Null:
+                return AnyValue::make_string("object");
+            case JsType::Boolean:
+                return AnyValue::make_string("boolean");
+            case JsType::Number:
+                return AnyValue::make_string("number");
+            case JsType::String:
+                return AnyValue::make_string("string");
+            case JsType::Symbol:
+                return AnyValue::make_string("symbol");
+            case JsType::Function:
+                return AnyValue::make_string("function");
+            case JsType::Object:
+            case JsType::Array:
+            case JsType::Iterator:
+                return AnyValue::make_string("object");
+            default:
+                return AnyValue::make_string("undefined");
+            }
+        }
+        inline AnyValue typeof() // for undeclared variables
+        {
+            return AnyValue::make_string("undefined");
         }
 
         // Helper function to get enumerable own property keys/values of an object
@@ -120,47 +151,24 @@ namespace jspp
             }
 
             auto gen_fn = obj.get_own_property(WellKnownSymbols::iterator->key);
-            if (gen_fn.is_generator())
+            if (gen_fn.is_function())
             {
                 auto iter = gen_fn.as_function()->call(gen_fn, {});
                 if (iter.is_iterator())
                 {
                     return iter;
                 }
+                if (iter.is_object())
+                {
+                    auto next_fn = iter.get_own_property("next");
+                    if (next_fn.is_function())
+                    {
+                        return iter;
+                    }
+                }
             }
 
-            throw jspp::RuntimeError::make_error(name + " is not iterable", "TypeError");
-        }
-
-        inline AnyValue typeof(const AnyValue &val)
-        {
-            switch (val.get_type())
-            {
-            case JsType::Undefined:
-                return AnyValue::make_string("undefined");
-            case JsType::Null:
-                return AnyValue::make_string("object");
-            case JsType::Boolean:
-                return AnyValue::make_string("boolean");
-            case JsType::Number:
-                return AnyValue::make_string("number");
-            case JsType::String:
-                return AnyValue::make_string("string");
-            case JsType::Symbol:
-                return AnyValue::make_string("symbol");
-            case JsType::Function:
-                return AnyValue::make_string("function");
-            case JsType::Object:
-            case JsType::Array:
-            case JsType::Iterator:
-                return AnyValue::make_string("object");
-            default:
-                return AnyValue::make_string("undefined");
-            }
-        }
-        inline AnyValue typeof() // for undeclared variables
-        {
-            return AnyValue::make_string("undefined");
+            throw jspp::Exception::make_exception(name + " is not iterable", "TypeError");
         }
     }
 }

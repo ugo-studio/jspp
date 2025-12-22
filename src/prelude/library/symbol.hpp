@@ -41,7 +41,7 @@ inline auto Symbol = jspp::AnyValue::make_object({
 // // Implementation of Symbol.keyFor(sym)
 // inline auto keyForFn = jspp::AnyValue::make_function([](const std::vector<jspp::AnyValue>& args) -> jspp::AnyValue {
 //     if (args.empty() || !args[0].is_symbol()) {
-//         throw jspp::RuntimeError::make_error("Symbol.keyFor requires a symbol argument", "TypeError");
+//         throw jspp::Exception::make_exception("Symbol.keyFor requires a symbol argument", "TypeError");
 //     }
 
 //     jspp::JsSymbol* sym = args[0].as_symbol();

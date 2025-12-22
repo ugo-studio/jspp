@@ -90,7 +90,7 @@ const jspp::AnyValue jspp::AnyValue::construct(const std::vector<AnyValue> &args
 {
     if (!is_function())
     {
-        throw RuntimeError::make_error(to_std_string() + " is not a constructor", "TypeError");
+        throw Exception::make_exception(to_std_string() + " is not a constructor", "TypeError");
     }
 
     // 1. Get prototype

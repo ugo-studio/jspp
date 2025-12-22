@@ -3,7 +3,7 @@
 #include "types.hpp"
 #include "values/array.hpp"
 #include "values/string.hpp"
-#include "error.hpp"
+#include "exception.hpp"
 #include "any_value.hpp"
 #include "values/prototypes/string.hpp"
 

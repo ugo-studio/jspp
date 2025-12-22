@@ -3,7 +3,7 @@
 #include "types.hpp"
 #include "values/array.hpp"
 #include "any_value.hpp"
-#include "error.hpp"
+#include "exception.hpp"
 #include "utils/operators.hpp"
 #include <algorithm>
 #include <vector>
@@ -50,7 +50,7 @@ namespace jspp
 
                     if (new_len_double < 0 || std::isnan(new_len_double) || std::isinf(new_len_double) || new_len_double != static_cast<uint64_t>(new_len_double))
                     {
-                        throw RuntimeError::make_error("Invalid array length", "RangeError");
+                        throw Exception::make_exception("Invalid array length", "RangeError");
                     }
                     uint64_t new_len = static_cast<uint64_t>(new_len_double);
 
@@ -214,7 +214,7 @@ namespace jspp
                                                {
                                                                                            if (args.empty() || !args[0].is_function())
                                                                                            {
-                                                                                               throw RuntimeError::make_error("callback is not a function", "TypeError");
+                                                                                               throw Exception::make_exception("callback is not a function", "TypeError");
                                                                                            }
                                                                                            auto callback = args[0].as_function();
                                                                                            for (uint64_t i = 0; i < self->length; ++i)
