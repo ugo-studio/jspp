@@ -66,8 +66,36 @@ export function generateLambda(
                 const defaultValue = p.initializer
                     ? this.visit(p.initializer, visitContext)
                     : "jspp::AnyValue::make_undefined()";
-                paramExtraction +=
-                    `${this.indent()}auto ${name} = ${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue};\n`;
+
+                if (!!p.dotDotDotToken) {
+                    if (node.parameters.length - 1 !== i) {
+                        throw new SyntaxError(
+                            "Rest parameter must be last formal parameter.",
+                        );
+                    }
+                    const tempName = `temp_${name}`;
+                    paramExtraction +=
+                        `${this.indent()}auto ${name} = jspp::AnyValue::make_undefined();\n`;
+
+                    paramExtraction += `${this.indent()}{\n`;
+                    this.indentationLevel++;
+                    paramExtraction +=
+                        `${this.indent()}std::vector<std::optional<jspp::AnyValue>> ${tempName};\n`;
+                    paramExtraction +=
+                        `${this.indent()}for (size_t i = ${i}; i < ${argsName}.size(); i++) {\n`;
+                    this.indentationLevel++;
+                    paramExtraction +=
+                        `${this.indent()}${tempName}.push_back(${argsName}[i]);\n`;
+                    this.indentationLevel--;
+                    paramExtraction += `${this.indent()}}\n`;
+                    paramExtraction +=
+                        `${this.indent()}${name} = jspp::AnyValue::make_array(${tempName});\n`;
+                    this.indentationLevel--;
+                    paramExtraction += `${this.indent()}}\n`;
+                } else {
+                    paramExtraction +=
+                        `${this.indent()}auto ${name} = ${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue};\n`;
+                }
             });
             this.indentationLevel--;
 
