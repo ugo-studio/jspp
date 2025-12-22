@@ -36,7 +36,6 @@ export function visitObjectPropertyName(
                 typeInfo,
             );
         }
-        propName += ".to_std_string()";
         return propName;
     }
     if (context.isBracketNotationPropertyAccess) {
@@ -953,12 +952,11 @@ export function visitTemplateExpression(
                 scope,
             );
             if (!typeInfo && !this.isBuiltinObject(expr)) {
-                finalExpr =
-                    `jspp::Exception::throw_unresolved_reference(${
-                        this.getJsVarName(
-                            expr as ts.Identifier,
-                        )
-                    })`;
+                finalExpr = `jspp::Exception::throw_unresolved_reference(${
+                    this.getJsVarName(
+                        expr as ts.Identifier,
+                    )
+                })`;
             } else if (
                 typeInfo &&
                 !typeInfo.isParameter &&

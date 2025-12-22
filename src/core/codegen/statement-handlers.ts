@@ -498,7 +498,7 @@ export function visitYieldExpression(
 ): string {
     if (node.expression) {
         const expr = node.expression;
-        const exprText = this.visit(expr, context);
+        let exprText = this.visit(expr, context);
         if (ts.isIdentifier(expr)) {
             const scope = this.getScopeForNode(expr);
             const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
@@ -515,15 +515,56 @@ export function visitYieldExpression(
                 !typeInfo.isParameter &&
                 !typeInfo.isBuiltin
             ) {
-                return `${this.indent()}co_yield ${
-                    this.getDerefCode(
-                        exprText,
-                        this.getJsVarName(expr),
-                        typeInfo,
-                    )
-                }`;
+                exprText = this.getDerefCode(
+                    exprText,
+                    this.getJsVarName(expr),
+                    typeInfo,
+                );
             }
         }
+
+        // Handle `yield*` expression
+        if (!!node.asteriskToken) {
+            let code = `${this.indent()}{\n`;
+            this.indentationLevel++;
+
+            const declaredSymbols = this.getDeclaredSymbols(expr);
+            const iterableRef = this.generateUniqueName(
+                "__iter_ref",
+                declaredSymbols,
+            );
+            const iterator = this.generateUniqueName("__iter", declaredSymbols);
+            const nextFunc = this.generateUniqueName(
+                "__next_func",
+                declaredSymbols,
+            );
+            const nextRes = this.generateUniqueName(
+                "__next_res",
+                declaredSymbols,
+            );
+
+            const varName = this.getJsVarName(expr as ts.Identifier);
+            code += `${this.indent()}auto ${iterableRef} = ${exprText};\n`;
+            code +=
+                `${this.indent()}auto ${iterator} = jspp::Access::get_object_value_iterator(${iterableRef}, ${varName});\n`;
+            code +=
+                `${this.indent()}auto ${nextFunc} = ${iterator}.get_own_property("next").as_function();\n`;
+            code +=
+                `${this.indent()}auto ${nextRes} = ${nextFunc}->call(${iterator}, {});\n`;
+            code +=
+                `${this.indent()}while (!${nextRes}.get_own_property("done").is_truthy()) {\n`;
+            this.indentationLevel++;
+            code +=
+                `${this.indent()}co_yield ${nextRes}.get_own_property("value");\n`;
+            code +=
+                `${this.indent()}${nextRes} = ${nextFunc}->call(${iterator}, {});\n`;
+
+            this.indentationLevel--;
+            code += `${this.indent()}}}\n`;
+
+            return code;
+        }
+
         return `${this.indent()}co_yield ${exprText}`;
     }
 

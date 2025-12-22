@@ -263,17 +263,24 @@ export function visitForOfStatement(
     }
 
     const declaredSymbols = this.getDeclaredSymbols(forOf.statement);
-    const iteratorPtr = this.generateUniqueName("__iter_ptr_", declaredSymbols);
-    const nextRes = this.generateUniqueName("__res__", declaredSymbols);
+    const iterableRef = this.generateUniqueName("__iter_ref", declaredSymbols);
+    const iterator = this.generateUniqueName("__iter", declaredSymbols);
+    const nextFunc = this.generateUniqueName("__next_func", declaredSymbols);
+    const nextRes = this.generateUniqueName("__next_res", declaredSymbols);
 
     const varName = this.getJsVarName(forOf.expression as ts.Identifier);
+    code += `${this.indent()}auto ${iterableRef} = ${derefIterable};\n`;
     code +=
-        `${this.indent()}auto ${iteratorPtr} = jspp::Access::get_object_value_iterator(${derefIterable}, ${varName}).as_iterator();\n`;
-    code += `${this.indent()}auto ${nextRes} = ${iteratorPtr}->next();\n`;
-    code += `${this.indent()}while (!${nextRes}.done) {\n`;
+        `${this.indent()}auto ${iterator} = jspp::Access::get_object_value_iterator(${iterableRef}, ${varName});\n`;
+    code +=
+        `${this.indent()}auto ${nextFunc} = ${iterator}.get_own_property("next").as_function();\n`;
+    code +=
+        `${this.indent()}auto ${nextRes} = ${nextFunc}->call(${iterator}, {});\n`;
+    code +=
+        `${this.indent()}while (!${nextRes}.get_own_property("done").is_truthy()) {\n`;
     this.indentationLevel++;
     code +=
-        `${this.indent()}${assignmentTarget} = ${nextRes}.value.value_or(jspp::AnyValue::make_undefined());\n`;
+        `${this.indent()}${assignmentTarget} = ${nextRes}.get_own_property("value");\n`;
     code += this.visit(forOf.statement, {
         ...context,
         currentLabel: undefined,
@@ -282,7 +289,8 @@ export function visitForOfStatement(
     if (context.currentLabel) {
         code += `${this.indent()}${context.currentLabel}_continue:;\n`;
     }
-    code += `${this.indent()}${nextRes} = ${iteratorPtr}->next();\n`;
+    code +=
+        `${this.indent()}${nextRes} = ${nextFunc}->call(${iterator}, {});\n`;
     this.indentationLevel--;
     code += `${this.indent()}}\n`;
     this.indentationLevel--; // Exit the scope for the for-of loop
