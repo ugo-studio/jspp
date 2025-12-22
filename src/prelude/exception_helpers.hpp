@@ -11,21 +11,11 @@ const char *jspp::Exception::what() const noexcept
 
 jspp::Exception jspp::Exception::make_exception(const std::string &message, const std::string &name = "Error")
 {
-    auto errorObj = std::make_shared<AnyValue>(AnyValue::make_object({{"message", AnyValue::make_string(message)}, {"name", AnyValue::make_string(name)}}));
-    (*errorObj).set_own_property("toString", AnyValue::make_function([errorObj](const AnyValue &thisVal, const std::vector<AnyValue> &) -> AnyValue
-                                                                     {
-                                                                                  AnyValue name = (*errorObj).get_own_property("name");
-                                                                                  AnyValue message = (*errorObj).get_own_property("message");
-                                                                                  std::string str = "";
-                                                                                  if (name.is_string())
-                                                                                      str = name.to_std_string();
-                                                                                  else
-                                                                                      str = "Error";
-                                                                                  str += ": ";
-                                                                                  if (message.is_string())
-                                                                                      str += message.to_std_string();
-                                                                                  return AnyValue::make_string(str); },
-                                                                     "toString"));
+    // Use the global Error object to construct the exception
+    std::vector<AnyValue> args = { AnyValue::make_string(message) };
+    AnyValue errorObj = ::Error.construct(args);
+    errorObj.define_data_property("name", AnyValue::make_string(name));
+    
     return Exception(errorObj);
 }
 jspp::AnyValue jspp::Exception::exception_to_any_value(const std::exception &ex)

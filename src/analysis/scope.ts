@@ -14,6 +14,7 @@ export const BUILTIN_OBJECTS = new Set([
     { name: "performance", isConst: false },
     { name: "global", isConst: false },
     { name: "globalThis", isConst: false },
+    { name: "Error", isConst: false },
 ]);
 
 // Represents a single scope (e.g., a function body or a block statement)

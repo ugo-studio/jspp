@@ -17,6 +17,7 @@
 #include "any_value.hpp"
 #include "any_value_helpers.hpp"
 #include "any_value_defines.hpp"
+#include "library/error.hpp"
 #include "exception_helpers.hpp"
 
 #include "values/prototypes/symbol.hpp"

@@ -16,19 +16,29 @@ namespace jspp
         {
             auto obj = val.as_object();
 
-            // If custom toString exists on the object, prefer it
-            auto itToString = obj->props.find("toString");
-            if (itToString != obj->props.end() && itToString->second.is_function())
+            // Check for toString in prototype chain
+            try
             {
-                try
+                AnyValue toStringVal = val.get_property_with_receiver("toString", val);
+                if (toStringVal.is_function())
                 {
-                    auto result = itToString->second.as_function()->call(itToString->second, {});
-                    return to_log_string(result, visited, depth);
+                    auto result = toStringVal.as_function()->call(val, {});
+                    if (result.is_string())
+                    {
+                        std::string s = result.to_std_string();
+                        // If it's a custom toString (not the default [Object Object]), use it.
+                        // Also, if it is an Error object (has 'message' and 'name' usually, or stack), we prefer toString.
+                        // Since we implemented Error.prototype.toString to return "Name: Message", it won't be "[Object Object]".
+                        if (s != "[Object Object]")
+                        {
+                            return s;
+                        }
+                    }
                 }
-                catch (...)
-                {
-                    // ignore and fallback to manual formatting
-                }
+            }
+            catch (...)
+            {
+                // ignore
             }
 
             size_t prop_count = obj->props.size();

@@ -268,6 +268,16 @@ const cases: { name: string; expected: string[] }[] = [
         ],
     },
     {
+        name: "errors",
+        expected: [
+            "--- Errors ---",
+            "Error: my message",
+            "a string error",
+            "123",
+            "CustomError: m",
+        ],
+    },
+    {
         name: "for-loops",
         expected: [
             "--- For Loops ---",

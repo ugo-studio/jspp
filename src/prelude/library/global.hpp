@@ -9,4 +9,5 @@
 inline auto global = jspp::AnyValue::make_object({
     {"console", console},
     {"performance", performance},
+    {"Error", Error},
 });
