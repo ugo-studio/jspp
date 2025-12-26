@@ -525,6 +525,17 @@ const cases: { name: string; expected: string[] }[] = [
             "Class getter after set: 200",
             "Static getter: static",
         ],
+    },
+    {
+        name: "async",
+        expected: [
+            "before foo",
+            "start foo",
+            "delay result: done",
+            "after foo: foo result",
+            "Promise.all: 10,20",
+            "end script (async main continues)",
+        ],
     }
 ];
 

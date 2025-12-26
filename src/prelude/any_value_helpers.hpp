@@ -43,6 +43,10 @@ const bool jspp::AnyValue::is_strictly_equal_to_primitive(const AnyValue &other)
             return (storage.object == other.storage.object);
         case JsType::Function:
             return (storage.function == other.storage.function);
+        case JsType::Iterator:
+            return (storage.iterator == other.storage.iterator);
+        case JsType::Promise:
+            return (storage.promise == other.storage.promise);
         case JsType::Symbol:
             // Symbols are unique by reference/pointer identity
             return (storage.symbol == other.storage.symbol);
@@ -122,13 +126,13 @@ const bool jspp::AnyValue::is_equal_to_primitive(const AnyValue &other) const no
     }
     // Step 8 & 9: object == (string or number or symbol)
     // Simplified: Objects convert to primitives.
-    if ((is_object() || is_array() || is_function()) && (other.is_string() || other.is_number() || other.is_symbol()))
+    if ((is_object() || is_array() || is_function() || is_promise() || is_iterator()) && (other.is_string() || other.is_number() || other.is_symbol()))
     {
         // Convert object to primitive (string) and re-compare.
         // This is a simplification of JS's ToPrimitive.
         return AnyValue::make_string(to_std_string()).is_equal_to_primitive(other);
     }
-    if ((other.is_object() || other.is_array() || other.is_function()) && (is_string() || is_number() || is_symbol()))
+    if ((other.is_object() || other.is_array() || other.is_function() || other.is_promise() || other.is_iterator()) && (is_string() || is_number() || is_symbol()))
     {
         return other.is_equal_to_primitive(*this);
     }
@@ -179,6 +183,8 @@ const std::string jspp::AnyValue::to_std_string() const noexcept
         return storage.function->to_std_string();
     case JsType::Iterator:
         return storage.iterator->to_std_string();
+    case JsType::Promise:
+        return storage.promise->to_std_string();
     case JsType::Symbol:
         return storage.symbol->to_std_string();
     case JsType::DataDescriptor:

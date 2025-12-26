@@ -16,6 +16,7 @@
 #include <functional>
 #include <cmath>
 #include <optional>
+#include <coroutine>
 
 #include "types.hpp"
 #include "values/non_values.hpp"
@@ -23,6 +24,7 @@
 #include "values/array.hpp"
 #include "values/function.hpp"
 #include "values/iterator.hpp"
+#include "values/promise.hpp"
 #include "values/symbol.hpp"
 #include "values/string.hpp"
 #include "exception.hpp"
@@ -44,8 +46,9 @@ namespace jspp
         Function = 8,
         Iterator = 9,
         Symbol = 10,
-        DataDescriptor = 11,
-        AccessorDescriptor = 12,
+        Promise = 11,
+        DataDescriptor = 12,
+        AccessorDescriptor = 13,
     };
 
     // Tagged storage with a union for payload
@@ -65,6 +68,7 @@ namespace jspp
             std::shared_ptr<JsFunction> function;
             std::shared_ptr<JsIterator<AnyValue>> iterator;
             std::shared_ptr<JsSymbol> symbol;
+            std::shared_ptr<JsPromise> promise;
             std::shared_ptr<DataDescriptor> data_desc;
             std::shared_ptr<AccessorDescriptor> accessor_desc;
         };
@@ -99,6 +103,9 @@ namespace jspp
                 break;
             case JsType::Symbol:
                 storage.symbol.~shared_ptr();
+                break;
+            case JsType::Promise:
+                storage.promise.~shared_ptr();
                 break;
             case JsType::DataDescriptor:
                 storage.data_desc.~shared_ptr();
@@ -156,6 +163,9 @@ namespace jspp
             case JsType::Symbol:
                 new (&storage.symbol) std::shared_ptr<JsSymbol>(std::move(other.storage.symbol));
                 break;
+            case JsType::Promise:
+                new (&storage.promise) std::shared_ptr<JsPromise>(std::move(other.storage.promise));
+                break;
             case JsType::DataDescriptor:
                 new (&storage.data_desc) std::shared_ptr<DataDescriptor>(std::move(other.storage.data_desc));
                 break;
@@ -202,6 +212,9 @@ namespace jspp
                 break;
             case JsType::Symbol:
                 new (&storage.symbol) std::shared_ptr<JsSymbol>(other.storage.symbol); // shallow copy (shared)
+                break;
+            case JsType::Promise:
+                new (&storage.promise) std::shared_ptr<JsPromise>(other.storage.promise); // shallow copy
                 break;
             case JsType::DataDescriptor:
                 new (&storage.data_desc) std::shared_ptr<DataDescriptor>(other.storage.data_desc); // shallow copy
@@ -394,6 +407,13 @@ namespace jspp
             new (&v.storage.symbol) std::shared_ptr<JsSymbol>(std::make_shared<JsSymbol>(description));
             return v;
         }
+        static AnyValue make_promise(const JsPromise &promise) noexcept
+        {
+            AnyValue v;
+            v.storage.type = JsType::Promise;
+            new (&v.storage.promise) std::shared_ptr<JsPromise>(std::make_shared<JsPromise>(promise));
+            return v;
+        }
         static AnyValue make_data_descriptor(const AnyValue &value, bool writable, bool enumerable, bool configurable) noexcept
         {
             AnyValue v;
@@ -512,6 +532,7 @@ namespace jspp
         bool is_iterator() const noexcept { return storage.type == JsType::Iterator; }
         bool is_boolean() const noexcept { return storage.type == JsType::Boolean; }
         bool is_symbol() const noexcept { return storage.type == JsType::Symbol; }
+        bool is_promise() const noexcept { return storage.type == JsType::Promise; }
         bool is_null() const noexcept { return storage.type == JsType::Null; }
         bool is_undefined() const noexcept { return storage.type == JsType::Undefined; }
         bool is_uninitialized() const noexcept { return storage.type == JsType::Uninitialized; }
@@ -556,6 +577,11 @@ namespace jspp
             assert(is_symbol());
             return storage.symbol.get();
         }
+        JsPromise *as_promise() const noexcept
+        {
+            assert(is_promise());
+            return storage.promise.get();
+        }
         std::shared_ptr<JsIterator<AnyValue>> as_iterator() const
         {
             assert(is_iterator());
@@ -572,101 +598,19 @@ namespace jspp
             return storage.accessor_desc.get();
         }
 
+        // --- CO_AWAIT Operator ---
+        auto operator co_await() const;
+
         // --- PROPERTY ACCESS OPERATORS
-        AnyValue get_own_property(const std::string &key) const
-        {
-            return get_property_with_receiver(key, *this);
-        }
-        AnyValue get_own_property(uint32_t idx) const noexcept
-        {
-            switch (storage.type)
-            {
-            case JsType::Array:
-                return storage.array->get_property(idx);
-            case JsType::String:
-                return storage.str->get_property(idx);
-            default:
-                return get_own_property(std::to_string(idx));
-            }
-        }
-        AnyValue get_own_property(const AnyValue &key) const noexcept
-        {
-            if (key.storage.type == JsType::Number && storage.type == JsType::Array)
-                return storage.array->get_property(key.storage.number);
-            if (key.storage.type == JsType::Number && storage.type == JsType::String)
-                return storage.str->get_property(key.storage.number);
-
-            // If the key is a Symbol, use its internal key string
-            if (key.storage.type == JsType::Symbol)
-                return get_own_property(key.storage.symbol->key);
-
-            return get_own_property(key.to_std_string());
-        }
+        AnyValue get_own_property(const std::string &key) const;
+        AnyValue get_own_property(uint32_t idx) const noexcept;
+        AnyValue get_own_property(const AnyValue &key) const noexcept;
         // for getting values with a specific receiver (used in inheritance chains)
-        AnyValue get_property_with_receiver(const std::string &key, const AnyValue &receiver) const
-        {
-            switch (storage.type)
-            {
-            case JsType::Object:
-                return storage.object->get_property(key, receiver);
-            case JsType::Array:
-                return storage.array->get_property(key, receiver);
-            case JsType::Function:
-                return storage.function->get_property(key, receiver);
-            case JsType::Iterator:
-                return storage.iterator->get_property(key, receiver);
-            case JsType::Symbol:
-                return storage.symbol->get_property(key, receiver);
-            case JsType::String:
-                return storage.str->get_property(key, receiver);
-            case JsType::Undefined:
-                throw Exception::make_exception("Cannot read properties of undefined (reading '" + key + "')", "TypeError");
-            case JsType::Null:
-                throw Exception::make_exception("Cannot read properties of null (reading '" + key + "')", "TypeError");
-            default:
-                return AnyValue::make_undefined();
-            }
-        }
+        AnyValue get_property_with_receiver(const std::string &key, const AnyValue &receiver) const;
         // for setting values
-        AnyValue set_own_property(const std::string &key, const AnyValue &value) const
-        {
-            switch (storage.type)
-            {
-            case JsType::Object:
-                return storage.object->set_property(key, value, *this);
-            case JsType::Array:
-                return storage.array->set_property(key, value, *this);
-            case JsType::Function:
-                return storage.function->set_property(key, value, *this);
-            case JsType::Undefined:
-                throw Exception::make_exception("Cannot set properties of undefined (setting '" + key + "')", "TypeError");
-            case JsType::Null:
-                throw Exception::make_exception("Cannot set properties of null (setting '" + key + "')", "TypeError");
-            default:
-                return value;
-            }
-        }
-        AnyValue set_own_property(uint32_t idx, const AnyValue &value) const
-        {
-            if (storage.type == JsType::Array)
-            {
-                return storage.array->set_property(idx, value);
-            }
-            return set_own_property(std::to_string(idx), value);
-        }
-        AnyValue set_own_property(const AnyValue &key, const AnyValue &value) const
-        {
-            if (key.storage.type == JsType::Number && storage.type == JsType::Array)
-            {
-                return storage.array->set_property(key.storage.number, value);
-            }
-
-            // If the key is a Symbol, use its internal key string
-            if (key.storage.type == JsType::Symbol)
-                return set_own_property(key.storage.symbol->key, value);
-
-            return set_own_property(key.to_std_string(), value);
-        }
+        AnyValue set_own_property(const std::string &key, const AnyValue &value) const;
+        AnyValue set_own_property(uint32_t idx, const AnyValue &value) const;
+        AnyValue set_own_property(const AnyValue &key, const AnyValue &value) const;
 
         // --- DEFINERS (Object.defineProperty semantics)
         void define_data_property(const std::string &key, const AnyValue &value);
@@ -690,4 +634,10 @@ namespace jspp
         void set_prototype(const AnyValue &proto);
         const std::string to_std_string() const noexcept;
     };
+
+    // Inline implementation of operator co_await
+    inline auto AnyValue::operator co_await() const
+    {
+        return AnyValueAwaiter{*this};
+    }
 }

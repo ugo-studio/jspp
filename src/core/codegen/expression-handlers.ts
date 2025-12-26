@@ -1089,3 +1089,45 @@ export function visitTypeOfExpression(
 
     return `jspp::Access::typeof(${derefExpr})`;
 }
+
+export function visitAwaitExpression(
+    this: CodeGenerator,
+    node: ts.AwaitExpression,
+    context: VisitContext,
+): string {
+    const awaitExpr = node as ts.AwaitExpression;
+    const exprText = this.visit(awaitExpr.expression, context);
+
+    let derefExpr = exprText;
+    if (ts.isIdentifier(awaitExpr.expression)) {
+        const scope = this.getScopeForNode(awaitExpr.expression);
+        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+            awaitExpr.expression.getText(),
+            scope,
+        );
+        if (
+            !typeInfo &&
+            !this.isBuiltinObject(awaitExpr.expression as ts.Identifier)
+        ) {
+            // This assumes co_awaiting the result of throw_unresolved_reference (which throws)
+            // But throw_unresolved_reference returns AnyValue (void-ish).
+            // We can just throw before co_await.
+            // But we need to return a string expression.
+            // Using comma operator: (throw..., AnyValue())
+            return `(jspp::Exception::throw_unresolved_reference(${
+                this.getJsVarName(
+                    awaitExpr.expression as ts.Identifier,
+                )
+            }), co_await jspp::AnyValue::make_undefined())`; 
+        }
+        if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
+            derefExpr = this.getDerefCode(
+                exprText,
+                this.getJsVarName(awaitExpr.expression as ts.Identifier),
+                typeInfo,
+            );
+        }
+    }
+
+    return `co_await ${derefExpr}`;
+}

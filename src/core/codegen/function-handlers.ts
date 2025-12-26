@@ -28,21 +28,23 @@ export function generateLambda(
     const argsName = this.generateUniqueName("__args_", declaredSymbols);
 
     const isInsideGeneratorFunction = this.isGeneratorFunction(node);
+    const isInsideAsyncFunction = this.isAsyncFunction(node);
     const returnCmd = this.getReturnCommand({
         isInsideGeneratorFunction: isInsideGeneratorFunction,
+        isInsideAsyncFunction: isInsideAsyncFunction,
     });
     const funcReturnType = isInsideGeneratorFunction
         ? "jspp::JsIterator<jspp::AnyValue>"
-        : "jspp::AnyValue";
+        : (isInsideAsyncFunction ? "jspp::JsPromise" : "jspp::AnyValue");
 
     const isArrow = ts.isArrowFunction(node);
 
-    // For generators, we MUST copy arguments because the coroutine suspends immediately
+    // For generators and async functions, we MUST copy arguments because the coroutine suspends immediately
     // and references to temporary arguments would dangle.
-    const paramThisType = isInsideGeneratorFunction
+    const paramThisType = (isInsideGeneratorFunction || isInsideAsyncFunction)
         ? "jspp::AnyValue"
         : "const jspp::AnyValue&";
-    const paramArgsType = isInsideGeneratorFunction
+    const paramArgsType = (isInsideGeneratorFunction || isInsideAsyncFunction)
         ? "std::vector<jspp::AnyValue>"
         : "const std::vector<jspp::AnyValue>&";
 
@@ -122,6 +124,7 @@ export function generateLambda(
                 isInsideFunction: true,
                 isFunctionBody: true,
                 isInsideGeneratorFunction: isInsideGeneratorFunction,
+                isInsideAsyncFunction: isInsideAsyncFunction,
             });
             // The block visitor already adds braces, so we need to inject the param extraction.
             lambda += "{\n" + paramExtraction + blockContent.substring(2);
@@ -142,6 +145,8 @@ export function generateLambda(
                     isMainContext: false,
                     isInsideFunction: true,
                     isFunctionBody: false,
+                    isInsideGeneratorFunction: isInsideGeneratorFunction,
+                    isInsideAsyncFunction: isInsideAsyncFunction,
                 })
             };
 `;
@@ -162,6 +167,12 @@ export function generateLambda(
             "jspp::JsIterator<jspp::AnyValue>(const jspp::AnyValue&, const std::vector<jspp::AnyValue>&)";
         callable = `std::function<${signature}>(${lambda})`;
         method = `jspp::AnyValue::make_generator`;
+    } // Handle async function
+    else if (isInsideAsyncFunction) {
+        signature =
+            "jspp::JsPromise(const jspp::AnyValue&, const std::vector<jspp::AnyValue>&)";
+        callable = `std::function<${signature}>(${lambda})`;
+        method = `jspp::AnyValue::make_function`;
     } // Handle normal function
     else {
         signature =

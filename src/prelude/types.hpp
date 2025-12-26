@@ -26,6 +26,7 @@ namespace jspp
     struct JsObject;        // can set property
     struct JsArray;         // can set property
     struct JsFunction;      // can set property
+    struct JsPromise;       // can set property
     struct JsSymbol;        // can set property (but usually doesn't have own props)
 
     template <typename T>
@@ -60,6 +61,10 @@ namespace jspp
     namespace FunctionPrototypes
     {
         inline std::optional<AnyValue> get(const std::string &key, JsFunction *self);
+    }
+    namespace PromisePrototypes
+    {
+        inline std::optional<AnyValue> get(const std::string &key, JsPromise *self);
     }
     namespace IteratorPrototypes
     {

@@ -12,6 +12,7 @@ import {
   getScopeForNode,
   hoistDeclaration,
   indent,
+  isAsyncFunction,
   isBuiltinObject,
   isGeneratorFunction,
   prepareScopeSymbolsForVisit,
@@ -42,6 +43,7 @@ export class CodeGenerator {
     public getReturnCommand = getReturnCommand;
     public isBuiltinObject = isBuiltinObject;
     public isGeneratorFunction = isGeneratorFunction;
+    public isAsyncFunction = isAsyncFunction;
     public prepareScopeSymbolsForVisit = prepareScopeSymbolsForVisit;
 
     // function handlers
@@ -79,6 +81,7 @@ export class CodeGenerator {
         mainCode += `  std::cin.tie(nullptr);\n`;
         mainCode += `  try {\n`;
         mainCode += `    ${CONTAINER_FUNCTION_NAME}();\n`;
+        mainCode += `    jspp::Scheduler::instance().run();\n`;
         mainCode += `  } catch (const std::exception& ex) {\n`;
         mainCode +=
             "    auto error = std::make_shared<jspp::AnyValue>(jspp::Exception::exception_to_any_value(ex));\n{\n";

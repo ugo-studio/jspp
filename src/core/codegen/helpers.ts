@@ -121,7 +121,7 @@ export function getReturnCommand(
     this: CodeGenerator,
     context: Partial<VisitContext>,
 ) {
-    return context.isInsideGeneratorFunction ? "co_return" : "return";
+    return (context.isInsideGeneratorFunction || context.isInsideAsyncFunction) ? "co_return" : "return";
 }
 
 export function hoistDeclaration(
@@ -183,6 +183,16 @@ export function isGeneratorFunction(node: ts.Node): boolean {
             ts.isFunctionExpression(node) ||
             ts.isMethodDeclaration(node)) &&
         !!node.asteriskToken // generator indicator
+    );
+}
+
+export function isAsyncFunction(node: ts.Node): boolean {
+    return (
+        (ts.isFunctionDeclaration(node) ||
+            ts.isFunctionExpression(node) ||
+            ts.isMethodDeclaration(node) ||
+            ts.isArrowFunction(node)) &&
+        (ts.getCombinedModifierFlags(node as ts.Declaration) & ts.ModifierFlags.Async) !== 0
     );
 }
 

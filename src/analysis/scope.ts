@@ -1,3 +1,4 @@
+import * as ts from "typescript";
 import type { TypeInfo } from "./typeAnalyzer";
 
 export const RESERVED_KEYWORDS = new Set([
@@ -5,6 +6,7 @@ export const RESERVED_KEYWORDS = new Set([
     "std",
     "co_yield",
     "co_return",
+    "co_await",
 ]);
 export const BUILTIN_OBJECTS = new Set([
     { name: "undefined", isConst: true },
@@ -15,13 +17,17 @@ export const BUILTIN_OBJECTS = new Set([
     { name: "global", isConst: false },
     { name: "globalThis", isConst: false },
     { name: "Error", isConst: false },
+    { name: "Promise", isConst: false },
 ]);
 
 // Represents a single scope (e.g., a function body or a block statement)
 export class Scope {
     public readonly symbols = new Map<string, TypeInfo>();
     public readonly children: Scope[] = [];
-    constructor(public readonly parent: Scope | null) {}
+    constructor(
+        public readonly parent: Scope | null,
+        public readonly ownerFunction: ts.Node | null,
+    ) {}
 
     // Defines a variable in this scope.
     define(name: string, type: TypeInfo): boolean {
@@ -48,7 +54,7 @@ export class ScopeManager {
     private readonly reservedKeywords = new Set(RESERVED_KEYWORDS);
 
     constructor() {
-        const rootScope = new Scope(null); // The global scope
+        const rootScope = new Scope(null, null); // The global scope
         this.currentScope = rootScope;
         this.allScopes.push(rootScope); // Add the root scope to our list
 
@@ -62,8 +68,8 @@ export class ScopeManager {
     }
 
     // Enters a new, nested scope.
-    enterScope() {
-        const newScope = new Scope(this.currentScope);
+    enterScope(ownerFunction: ts.Node | null) {
+        const newScope = new Scope(this.currentScope, ownerFunction);
         this.currentScope.children.push(newScope);
         this.currentScope = newScope;
         this.allScopes.push(newScope); // Add every new scope to the list

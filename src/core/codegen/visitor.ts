@@ -19,6 +19,7 @@ import {
 } from "./declaration-handlers";
 import {
   visitArrayLiteralExpression,
+  visitAwaitExpression,
   visitBinaryExpression,
   visitCallExpression,
   visitConditionalExpression,
@@ -73,6 +74,7 @@ export interface VisitContext {
     exceptionName?: string;
     isInsideTryCatchLambda?: boolean;
     isInsideGeneratorFunction?: boolean;
+    isInsideAsyncFunction?: boolean;
     hasReturnedFlag?: string;
     isBracketNotationPropertyAccess?: boolean;
     isObjectLiteralExpression?: boolean;
@@ -313,6 +315,12 @@ export function visit(
             return visitTemplateExpression.call(
                 this,
                 node as ts.TemplateExpression,
+                context,
+            );
+        case ts.SyntaxKind.AwaitExpression:
+            return visitAwaitExpression.call(
+                this,
+                node as ts.AwaitExpression,
                 context,
             );
         case ts.SyntaxKind.NewExpression:

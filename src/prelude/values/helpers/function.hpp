@@ -9,6 +9,9 @@
 
 std::string jspp::JsFunction::to_std_string() const
 {
+    if (is_async) {
+        return "async function " + name + "() { [native code] }";
+    }
     if (is_generator)
     {
         return "function* " + name + "() { [native code] }";
@@ -25,6 +28,10 @@ jspp::AnyValue jspp::JsFunction::call(const AnyValue &thisVal, const std::vector
     else if (std::function<jspp::JsIterator<jspp::AnyValue>(const AnyValue &, const std::vector<jspp::AnyValue> &)> *func = std::get_if<1>(&callable))
     {
         return AnyValue::from_iterator((*func)(thisVal, args));
+    }
+    else if (std::function<jspp::JsPromise(const AnyValue &, const std::vector<jspp::AnyValue> &)> *func = std::get_if<2>(&callable))
+    {
+        return AnyValue::make_promise((*func)(thisVal, args));
     }
     else
     {
@@ -110,7 +117,7 @@ const jspp::AnyValue jspp::AnyValue::construct(const std::vector<AnyValue> &args
     AnyValue result = as_function()->call(instance, args);
 
     // 4. Return result if object, else instance
-    if (result.is_object() || result.is_function() || result.is_array())
+    if (result.is_object() || result.is_function() || result.is_array() || result.is_promise())
     {
         return result;
     }

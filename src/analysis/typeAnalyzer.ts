@@ -52,13 +52,14 @@ export class TypeAnalyzer {
                 const name = node.getText();
                 const definingScope = this.scopeManager.currentScope
                     .findScopeFor(name);
-                if (
-                    definingScope &&
-                    definingScope !== this.scopeManager.currentScope
-                ) {
-                    const typeInfo = this.scopeManager.lookup(name);
-                    if (typeInfo) {
-                        typeInfo.needsHeapAllocation = true;
+                if (definingScope) {
+                    const currentFuncNode = this.functionStack[this.functionStack.length - 1] ?? null;
+                    const definingFunc = definingScope.ownerFunction;
+                    if (definingFunc !== currentFuncNode) {
+                        const typeInfo = this.scopeManager.lookup(name);
+                        if (typeInfo) {
+                            typeInfo.needsHeapAllocation = true;
+                        }
                     }
                 }
             }
@@ -68,7 +69,8 @@ export class TypeAnalyzer {
             // Enter new scope for any block-like structure
             Block: {
                 enter: (node, parent) => {
-                    this.scopeManager.enterScope();
+                    const currentFuncNode = this.functionStack[this.functionStack.length - 1] ?? null;
+                    this.scopeManager.enterScope(currentFuncNode);
                     this.nodeToScope.set(node, this.scopeManager.currentScope);
                     if (
                         parent && ts.isCatchClause(parent) &&
@@ -92,7 +94,8 @@ export class TypeAnalyzer {
             ForStatement: {
                 enter: (node) => {
                     this.loopDepth++;
-                    this.scopeManager.enterScope();
+                    const currentFuncNode = this.functionStack[this.functionStack.length - 1] ?? null;
+                    this.scopeManager.enterScope(currentFuncNode);
                     this.nodeToScope.set(node, this.scopeManager.currentScope);
                 },
                 exit: () => {
@@ -103,7 +106,8 @@ export class TypeAnalyzer {
             ForOfStatement: {
                 enter: (node) => {
                     this.loopDepth++;
-                    this.scopeManager.enterScope();
+                    const currentFuncNode = this.functionStack[this.functionStack.length - 1] ?? null;
+                    this.scopeManager.enterScope(currentFuncNode);
                     this.nodeToScope.set(node, this.scopeManager.currentScope);
                 },
                 exit: () => {
@@ -114,7 +118,8 @@ export class TypeAnalyzer {
             ForInStatement: {
                 enter: (node) => {
                     this.loopDepth++;
-                    this.scopeManager.enterScope();
+                    const currentFuncNode = this.functionStack[this.functionStack.length - 1] ?? null;
+                    this.scopeManager.enterScope(currentFuncNode);
                     this.nodeToScope.set(node, this.scopeManager.currentScope);
                     const forIn = node as ts.ForInStatement;
                     if (ts.isVariableDeclarationList(forIn.initializer)) {
@@ -144,7 +149,8 @@ export class TypeAnalyzer {
             WhileStatement: {
                 enter: (node) => {
                     this.loopDepth++;
-                    this.scopeManager.enterScope();
+                    const currentFuncNode = this.functionStack[this.functionStack.length - 1] ?? null;
+                    this.scopeManager.enterScope(currentFuncNode);
                     this.nodeToScope.set(node, this.scopeManager.currentScope);
                 },
                 exit: () => {
@@ -155,7 +161,8 @@ export class TypeAnalyzer {
             DoStatement: {
                 enter: (node) => {
                     this.loopDepth++;
-                    this.scopeManager.enterScope();
+                    const currentFuncNode = this.functionStack[this.functionStack.length - 1] ?? null;
+                    this.scopeManager.enterScope(currentFuncNode);
                     this.nodeToScope.set(node, this.scopeManager.currentScope);
                 },
                 exit: () => {
@@ -167,7 +174,8 @@ export class TypeAnalyzer {
             SwitchStatement: {
                 enter: (node) => {
                     this.switchDepth++;
-                    this.scopeManager.enterScope();
+                    const currentFuncNode = this.functionStack[this.functionStack.length - 1] ?? null;
+                    this.scopeManager.enterScope(currentFuncNode);
                     this.nodeToScope.set(node, this.scopeManager.currentScope);
                 },
                 exit: () => {
@@ -240,7 +248,7 @@ export class TypeAnalyzer {
                         };
                         this.functionTypeInfo.set(node, funcType);
 
-                        this.scopeManager.enterScope();
+                        this.scopeManager.enterScope(node);
                         this.nodeToScope.set(
                             node,
                             this.scopeManager.currentScope,
@@ -276,7 +284,7 @@ export class TypeAnalyzer {
                         };
                         this.functionTypeInfo.set(node, funcType);
 
-                        this.scopeManager.enterScope();
+                        this.scopeManager.enterScope(node);
                         this.nodeToScope.set(
                             node,
                             this.scopeManager.currentScope,
@@ -326,7 +334,7 @@ export class TypeAnalyzer {
                             this.functionTypeInfo.set(node, funcType);
                         }
 
-                        this.scopeManager.enterScope();
+                        this.scopeManager.enterScope(node);
                         this.nodeToScope.set(
                             node,
                             this.scopeManager.currentScope,
@@ -363,7 +371,8 @@ export class TypeAnalyzer {
                         };
                         this.scopeManager.define(name, typeInfo);
                     }
-                    this.scopeManager.enterScope();
+                    const currentFuncNode = this.functionStack[this.functionStack.length - 1] ?? null;
+                    this.scopeManager.enterScope(currentFuncNode);
                     this.nodeToScope.set(node, this.scopeManager.currentScope);
                 },
                 exit: () => {
@@ -385,7 +394,7 @@ export class TypeAnalyzer {
                         // but we need to track them for captures.
                         this.functionTypeInfo.set(node, funcType);
 
-                        this.scopeManager.enterScope();
+                        this.scopeManager.enterScope(node);
                         this.nodeToScope.set(
                             node,
                             this.scopeManager.currentScope,
@@ -420,7 +429,7 @@ export class TypeAnalyzer {
                         };
                         this.functionTypeInfo.set(node, funcType);
 
-                        this.scopeManager.enterScope();
+                        this.scopeManager.enterScope(node);
                         this.nodeToScope.set(
                             node,
                             this.scopeManager.currentScope,
@@ -483,7 +492,7 @@ export class TypeAnalyzer {
                         if (isBuiltinObject.call(this, node)) return;
 
                         const currentFuncNode =
-                            this.functionStack[this.functionStack.length - 1];
+                            this.functionStack[this.functionStack.length - 1] ?? null;
                         if (
                             currentFuncNode &&
                             (ts.isFunctionDeclaration(currentFuncNode) ||
@@ -497,24 +506,21 @@ export class TypeAnalyzer {
                         // And see if it belongs to an outer scope
                         const definingScope = this.scopeManager.currentScope
                             .findScopeFor(node.text);
-                        if (
-                            definingScope &&
-                            definingScope !== this.scopeManager.currentScope
-                        ) {
-                            // This is a potential capture!
-                            // Find which function we are currently in and mark the capture.
-                            if (currentFuncNode) {
-                                const type = this.scopeManager.lookup(
-                                    node.text,
-                                );
+                        if (definingScope) {
+                            const definingFunc = definingScope.ownerFunction;
+                            if (definingFunc !== currentFuncNode) {
+                                // This is a capture!
+                                const type = this.scopeManager.lookup(node.text);
                                 if (type) {
                                     type.needsHeapAllocation = true;
-                                    const info = this.functionTypeInfo.get(
-                                        currentFuncNode,
-                                    );
-                                    if (info) {
-                                        info.isClosure = true;
-                                        info.captures?.set(node.text, type);
+                                    if (currentFuncNode) {
+                                        const info = this.functionTypeInfo.get(
+                                            currentFuncNode,
+                                        );
+                                        if (info) {
+                                            info.isClosure = true;
+                                            info.captures?.set(node.text, type);
+                                        }
                                     }
                                 }
                             }
