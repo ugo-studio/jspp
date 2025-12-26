@@ -2,7 +2,6 @@
 
 #include "types.hpp"
 #include "any_value.hpp"
-#include "values/string.hpp"
 
 jspp::AnyValue jspp::AnyValue::get_own_property(const std::string &key) const
 {
