@@ -511,5 +511,16 @@
             "Promise.all: 10,20",
             "end script (async main continues)"
         ]
+    },
+    {
+        "name": "timers",
+        "expected": [
+            "--- Timers ---",
+            "start",
+            "end",
+            "timeout 50ms",
+            "interval 75ms",
+            "timeout 100ms"
+        ]
     }
 ]

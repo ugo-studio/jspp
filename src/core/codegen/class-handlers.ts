@@ -58,7 +58,8 @@ export function visitClassDeclaration(
         constructorLambda = this.generateLambda(constructor, {
             ...classContext,
             isInsideFunction: true,
-        }, { lambdaName: className, isClass: true });
+            lambdaName: className,
+        }, { isClass: true });
     } else {
         // Default constructor
         if (parentName) {
@@ -123,9 +124,11 @@ export function visitClassDeclaration(
             });
 
             if (isStatic) {
-                 code += `${this.indent()}(*${className}).define_getter(${methodName}, ${lambda});\n`;
+                code +=
+                    `${this.indent()}(*${className}).define_getter(${methodName}, ${lambda});\n`;
             } else {
-                 code += `${this.indent()}(*${className}).get_own_property("prototype").define_getter(${methodName}, ${lambda});\n`;
+                code +=
+                    `${this.indent()}(*${className}).get_own_property("prototype").define_getter(${methodName}, ${lambda});\n`;
             }
         } else if (ts.isSetAccessor(member)) {
             const methodName = visitObjectPropertyName.call(this, member.name, {
@@ -141,9 +144,11 @@ export function visitClassDeclaration(
             });
 
             if (isStatic) {
-                 code += `${this.indent()}(*${className}).define_setter(${methodName}, ${lambda});\n`;
+                code +=
+                    `${this.indent()}(*${className}).define_setter(${methodName}, ${lambda});\n`;
             } else {
-                 code += `${this.indent()}(*${className}).get_own_property("prototype").define_setter(${methodName}, ${lambda});\n`;
+                code +=
+                    `${this.indent()}(*${className}).get_own_property("prototype").define_setter(${methodName}, ${lambda});\n`;
             }
         }
     }

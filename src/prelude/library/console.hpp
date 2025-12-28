@@ -22,7 +22,7 @@ auto logFn = jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, con
                                                    if (i < args.size() - 1)
                                                        std::cout << " ";
                                                }
-                                               std::cout << "\n";
+                                               std::cout << "\n" << std::flush;
                                                return jspp::AnyValue::make_undefined(); }, "log");
 auto warnFn = jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, const std::vector<jspp::AnyValue> &args)
                                             {
@@ -33,7 +33,7 @@ auto warnFn = jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, co
                                                     if (i < args.size() - 1)
                                                         std::cout << " ";
                                                 }
-                                                std::cerr << "\033[0m" << "\n"; // reset
+                                                std::cerr << "\033[0m" << "\n" << std::flush; // reset
                                                 return jspp::AnyValue::make_undefined(); }, "warn");
 auto errorFn = jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, const std::vector<jspp::AnyValue> &args)
                                              {
@@ -44,7 +44,7 @@ auto errorFn = jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, c
                                                      if (i < args.size() - 1)
                                                          std::cout << " ";
                                                  }
-                                                 std::cerr << "\033[0m" << "\n"; // reset
+                                                 std::cerr << "\033[0m" << "\n" << std::flush; // reset
                                                  return jspp::AnyValue::make_undefined(); }, "error");
 auto timeFn = jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, const std::vector<jspp::AnyValue> &args)
                                             {

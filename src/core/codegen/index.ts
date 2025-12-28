@@ -77,8 +77,8 @@ export class CodeGenerator {
         containerCode += "}\n\n";
 
         let mainCode = "int main() {\n";
-        mainCode += `  std::ios::sync_with_stdio(false);\n`;
-        mainCode += `  std::cin.tie(nullptr);\n`;
+        // std::ios::sync_with_stdio(false); // Removed to fix console output buffering
+        // std::cin.tie(nullptr);            // Removed to fix console output buffering
         mainCode += `  try {\n`;
         mainCode += `    ${CONTAINER_FUNCTION_NAME}();\n`;
         mainCode += `    jspp::Scheduler::instance().run();\n`;
