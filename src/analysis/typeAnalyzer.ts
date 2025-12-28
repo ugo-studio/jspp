@@ -456,6 +456,8 @@ export class TypeAnalyzer {
                 enter: (node) => {
                     if (ts.isVariableDeclaration(node)) {
                         const name = node.name.getText();
+                        const isBlockScoped =
+                            (node.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
                         const isConst =
                             (node.parent.flags & ts.NodeFlags.Const) !== 0;
 
@@ -481,7 +483,12 @@ export class TypeAnalyzer {
                             isConst,
                             needsHeapAllocation: needsHeap,
                         };
-                        this.scopeManager.define(name, typeInfo);
+                        
+                        if (isBlockScoped) {
+                            this.scopeManager.define(name, typeInfo);
+                        } else {
+                            this.scopeManager.defineVar(name, typeInfo);
+                        }
                     }
                 },
             },

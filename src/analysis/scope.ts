@@ -94,6 +94,18 @@ export class ScopeManager {
         this.currentScope.define(name, type);
     }
 
+    // Defines a `var` variable (hoisted to function or global scope).
+    defineVar(name: string, type: TypeInfo) {
+        if (this.reservedKeywords.has(name) && !type.isBuiltin) {
+            throw new Error(`SyntaxError: Unexpected reserved word "${name}"`);
+        }
+        let scope = this.currentScope;
+        while (scope.parent && scope.ownerFunction === scope.parent.ownerFunction) {
+            scope = scope.parent;
+        }
+        scope.define(name, type);
+    }
+
     // Looks up a variable's type information from the current scope upwards.
     lookup(name: string): TypeInfo | null {
         const scope = this.currentScope.findScopeFor(name);

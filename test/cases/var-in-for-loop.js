@@ -6,3 +6,4 @@ for (var i = 0; i < arr.length; ++i) {
   var propertyName = arr[i];
   console.log(propertyName);
 }
+console.log(i);
