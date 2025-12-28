@@ -20,15 +20,17 @@ namespace jspp
             size_t prop_count = obj->props.size();
             bool use_horizontal_layout = prop_count > 0 && prop_count <= HORIZONTAL_OBJECT_MAX_PROPS;
 
-            if (use_horizontal_layout)
+            for (const auto &pair : obj->props)
             {
-                for (const auto &pair : obj->props)
+                if (!is_enumerable_property(pair.second))
                 {
-                    if (!is_simple_value(pair.second))
-                    {
-                        use_horizontal_layout = false;
-                        break;
-                    }
+                    prop_count--;
+                    continue;
+                }
+                if (use_horizontal_layout && !is_simple_value(pair.second))
+                {
+                    use_horizontal_layout = false;
+                    break;
                 }
             }
 
@@ -45,7 +47,12 @@ namespace jspp
                     auto result = errorToStringFn.as_function()->call(val, {});
                     if (result.is_string())
                     {
-                        ss << result.to_std_string() << " ";
+                        ss << result.to_std_string();
+                        if (prop_count == 0)
+                        {
+                            return ss.str();
+                        }
+                        ss << " ";
                     }
                 }
             }

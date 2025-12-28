@@ -12,10 +12,10 @@ const char *jspp::Exception::what() const noexcept
 jspp::Exception jspp::Exception::make_exception(const std::string &message, const std::string &name = "Error")
 {
     // Use the global Error object to construct the exception
-    std::vector<AnyValue> args = { AnyValue::make_string(message) };
+    std::vector<AnyValue> args = {AnyValue::make_string(message)};
     AnyValue errorObj = ::Error.construct(args);
-    errorObj.define_data_property("name", AnyValue::make_string(name));
-    
+    errorObj.define_data_property("name", AnyValue::make_string(name), true, false, true);
+
     return Exception(errorObj);
 }
 jspp::AnyValue jspp::Exception::exception_to_any_value(const std::exception &ex)

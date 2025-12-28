@@ -11,9 +11,7 @@ export function visitSourceFile(
 ): string {
     const sourceFile = node as ts.SourceFile;
     let code = "";
-    const varDecls = sourceFile.statements
-        .filter(ts.isVariableStatement)
-        .flatMap((stmt) => stmt.declarationList.declarations);
+    const varDecls = collectHoistedDeclarations(sourceFile.statements);
 
     const funcDecls = sourceFile.statements.filter(ts.isFunctionDeclaration);
     const classDecls = sourceFile.statements.filter(ts.isClassDeclaration);
@@ -104,9 +102,7 @@ export function visitBlock(
     this.indentationLevel++;
     const block = node as ts.Block;
 
-    const varDecls = block.statements
-        .filter(ts.isVariableStatement)
-        .flatMap((stmt) => stmt.declarationList.declarations);
+    const varDecls = collectHoistedDeclarations(block.statements);
 
     const funcDecls = block.statements.filter(ts.isFunctionDeclaration);
     const classDecls = block.statements.filter(ts.isClassDeclaration);
@@ -189,8 +185,8 @@ export function visitBlock(
     if (context.isFunctionBody) {
         const lastStatement = block.statements[block.statements.length - 1];
         if (!lastStatement || !ts.isReturnStatement(lastStatement)) {
-            code += `${this.indent()}${
-                this.getReturnCommand(context)
+            code += `${this.indent()}${ 
+                this.getReturnCommand(context) 
             } jspp::AnyValue::make_undefined();\n`;
         }
     }
@@ -355,21 +351,26 @@ export function visitTryStatement(
         let code = `${this.indent()}{\n`;
         this.indentationLevel++;
 
-        code += `${this.indent()}jspp::AnyValue ${resultVarName};\n`;
-        code += `${this.indent()}bool ${hasReturnedFlagName} = false;\n`;
+        code += `${this.indent()}jspp::AnyValue ${resultVarName};
+`;
+        code += `${this.indent()}bool ${hasReturnedFlagName} = false;
+`;
 
         const finallyBlockCode = this.visit(tryStmt.finallyBlock, {
             ...context,
             isFunctionBody: false,
         });
         code +=
-            `${this.indent()}auto ${finallyLambdaName} = [=]() ${finallyBlockCode.trim()};\n`;
+            `${this.indent()}auto ${finallyLambdaName} = [=]() ${finallyBlockCode.trim()};
+`;
 
-        code += `${this.indent()}try {\n`;
+        code += `${this.indent()}try {
+`;
         this.indentationLevel++;
 
         code +=
-            `${this.indent()}${resultVarName} = ([=, &${hasReturnedFlagName}]() -> jspp::AnyValue {\n`;
+            `${this.indent()}${resultVarName} = ([=, &${hasReturnedFlagName}]() -> jspp::AnyValue {
+`;
         this.indentationLevel++;
 
         const innerContext: VisitContext = {
@@ -379,7 +380,8 @@ export function visitTryStatement(
             hasReturnedFlag: hasReturnedFlagName,
         };
 
-        code += `${this.indent()}try {\n`;
+        code += `${this.indent()}try {
+`;
         this.indentationLevel++;
         code += this.visit(tryStmt.tryBlock, innerContext);
         this.indentationLevel--;
@@ -391,7 +393,8 @@ export function visitTryStatement(
             );
             const catchContext = { ...innerContext, exceptionName };
             code +=
-                `${this.indent()}catch (const std::exception& ${exceptionName}) {\n`;
+                `${this.indent()}catch (const std::exception& ${exceptionName}) {
+`;
             this.indentationLevel++;
             code += this.visit(tryStmt.catchClause.block, catchContext);
             this.indentationLevel--;
@@ -400,15 +403,16 @@ export function visitTryStatement(
             code += `${this.indent()}catch (...) { throw; }\n`;
         }
 
-        code += `${this.indent()}${
-            this.getReturnCommand(context)
+        code += `${this.indent()}${ 
+            this.getReturnCommand(context) 
         } jspp::AnyValue::make_undefined();\n`;
 
         this.indentationLevel--;
         code += `${this.indent()}})();\n`;
 
         this.indentationLevel--;
-        code += `${this.indent()}} catch (...) {\n`;
+        code += `${this.indent()}} catch (...) {
+`;
         this.indentationLevel++;
         code += `${this.indent()}${finallyLambdaName}();\n`;
         code += `${this.indent()}throw;\n`;
@@ -417,7 +421,8 @@ export function visitTryStatement(
 
         code += `${this.indent()}${finallyLambdaName}();\n`;
 
-        code += `${this.indent()}if (${hasReturnedFlagName}) {\n`;
+        code += `${this.indent()}if (${hasReturnedFlagName}) {
+`;
         this.indentationLevel++;
         code += `${this.indent()}return ${resultVarName};\n`;
         this.indentationLevel--;
@@ -506,8 +511,8 @@ export function visitYieldExpression(
                 scope,
             );
             if (!typeInfo) {
-                return `${this.indent()}jspp::Exception::throw_unresolved_reference(${
-                    this.getJsVarName(expr)
+                return `${this.indent()}jspp::Exception::throw_unresolved_reference(${ 
+                    this.getJsVarName(expr) 
                 })\n`; // THROWS, not returns
             }
             if (
@@ -560,7 +565,7 @@ export function visitYieldExpression(
                 `${this.indent()}${nextRes} = ${nextFunc}->call(${iterator}, {});\n`;
 
             this.indentationLevel--;
-            code += `${this.indent()}}}\n`;
+            code += `${this.indent()}}\n`;
 
             return code;
         }
@@ -597,8 +602,8 @@ export function visitReturnStatement(
                 );
                 if (!typeInfo) {
                     returnCode +=
-                        `${this.indent()}jspp::Exception::throw_unresolved_reference(${
-                            this.getJsVarName(expr)
+                        `${this.indent()}jspp::Exception::throw_unresolved_reference(${ 
+                            this.getJsVarName(expr) 
                         });\n`; // THROWS, not returns
                 } else if (
                     typeInfo &&
@@ -631,8 +636,8 @@ export function visitReturnStatement(
                 scope,
             );
             if (!typeInfo) {
-                return `${this.indent()}jspp::Exception::throw_unresolved_reference(${
-                    this.getJsVarName(expr)
+                return `${this.indent()}jspp::Exception::throw_unresolved_reference(${ 
+                    this.getJsVarName(expr) 
                 });\n`; // THROWS, not returns
             }
             if (
@@ -650,4 +655,80 @@ export function visitReturnStatement(
         return `${this.indent()}${returnCmd} ${finalExpr};\n`;
     }
     return `${this.indent()}${returnCmd} jspp::AnyValue::make_undefined();\n`;
+}
+
+function collectHoistedDeclarations(
+    statements: ts.NodeArray<ts.Statement> | ts.Statement[],
+): ts.VariableDeclaration[] {
+    const decls: ts.VariableDeclaration[] = [];
+    for (const stmt of statements) {
+        if (ts.isVariableStatement(stmt)) {
+            // Collect ALL variable statements (var, let, const)
+            decls.push(...stmt.declarationList.declarations);
+        } else if (ts.isForStatement(stmt)) {
+            // Only collect VAR from loops
+            if (
+                stmt.initializer && ts.isVariableDeclarationList(stmt.initializer)
+            ) {
+                if (
+                    (stmt.initializer.flags &
+                        (ts.NodeFlags.Let | ts.NodeFlags.Const)) === 0
+                ) {
+                    decls.push(...stmt.initializer.declarations);
+                }
+            }
+        } else if (ts.isForInStatement(stmt)) {
+            if (ts.isVariableDeclarationList(stmt.initializer)) {
+                if (
+                    (stmt.initializer.flags &
+                        (ts.NodeFlags.Let | ts.NodeFlags.Const)) === 0
+                ) {
+                    decls.push(...stmt.initializer.declarations);
+                }
+            }
+        } else if (ts.isForOfStatement(stmt)) {
+            if (ts.isVariableDeclarationList(stmt.initializer)) {
+                if (
+                    (stmt.initializer.flags &
+                        (ts.NodeFlags.Let | ts.NodeFlags.Const)) === 0
+                ) {
+                    decls.push(...stmt.initializer.declarations);
+                }
+            }
+        } else if (ts.isLabeledStatement(stmt)) {
+            const inner = stmt.statement;
+            if (ts.isForStatement(inner)) {
+                if (
+                    inner.initializer &&
+                    ts.isVariableDeclarationList(inner.initializer)
+                ) {
+                    if (
+                        (inner.initializer.flags &
+                            (ts.NodeFlags.Let | ts.NodeFlags.Const)) === 0
+                    ) {
+                        decls.push(...inner.initializer.declarations);
+                    }
+                }
+            } else if (ts.isForInStatement(inner)) {
+                if (ts.isVariableDeclarationList(inner.initializer)) {
+                    if (
+                        (inner.initializer.flags &
+                            (ts.NodeFlags.Let | ts.NodeFlags.Const)) === 0
+                    ) {
+                        decls.push(...inner.initializer.declarations);
+                    }
+                }
+            } else if (ts.isForOfStatement(inner)) {
+                if (ts.isVariableDeclarationList(inner.initializer)) {
+                    if (
+                        (inner.initializer.flags &
+                            (ts.NodeFlags.Let | ts.NodeFlags.Const)) === 0
+                    ) {
+                        decls.push(...inner.initializer.declarations);
+                    }
+                }
+            }
+        }
+    }
+    return decls;
 }

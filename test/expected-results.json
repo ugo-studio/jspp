@@ -522,5 +522,14 @@
             "interval 75ms",
             "timeout 100ms"
         ]
+    },
+    {
+        "name": "var-in-for-loop",
+        "expected": [
+            "--- Var in For Loop ---",
+            "undefined",
+            "NaN",
+            "Infinity"
+        ]
     }
 ]
