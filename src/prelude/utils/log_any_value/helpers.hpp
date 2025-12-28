@@ -36,6 +36,20 @@ namespace jspp
                    val.is_boolean() || val.is_number() || val.is_string();
         }
 
+        inline bool is_enumerable_property(const AnyValue &val)
+        {
+            if (val.is_data_descriptor())
+            {
+                return val.as_data_descriptor()->enumerable;
+            }
+            else if (
+                val.is_accessor_descriptor())
+            {
+                return val.as_accessor_descriptor()->enumerable;
+            }
+            return true;
+        }
+
         inline std::string truncate_string(const std::string &str)
         {
             if (str.length() > MAX_STRING_LENGTH)

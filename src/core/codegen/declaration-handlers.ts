@@ -30,7 +30,11 @@ export function visitVariableDeclaration(
     let initializer = "";
     if (varDecl.initializer) {
         const initExpr = varDecl.initializer;
-        let initText = this.visit(initExpr, context);
+        const initContext: VisitContext = {
+            ...context,
+            lambdaName: ts.isArrowFunction(initExpr) ? name : undefined, // Pass the variable name for arrow functions
+        };
+        let initText = this.visit(initExpr, initContext);
         if (ts.isIdentifier(initExpr)) {
             const initScope = this.getScopeForNode(initExpr);
             const initTypeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(

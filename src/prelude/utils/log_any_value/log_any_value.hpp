@@ -82,7 +82,8 @@ namespace jspp
                 }
                 else
                 {
-                    return "";
+                    // Will not be printed if the method works well
+                    return Color::BRIGHT_BLACK + "<non-enumerable>" + Color::RESET;
                 }
             }
 

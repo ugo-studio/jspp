@@ -18,21 +18,22 @@ namespace jspp
         {
             auto arr = val.as_array();
             size_t item_count = static_cast<size_t>(arr->length);
+            size_t prop_count = arr->props.size();
 
-            // If custom toString exists on the object, prefer it
-            auto itToString = arr->props.find("toString");
-            if (depth > 0 && itToString != arr->props.end() && itToString->second.is_function())
-            {
-                try
-                {
-                    auto result = itToString->second.as_function()->call(itToString->second, {});
-                    return to_log_string(result, visited, depth);
-                }
-                catch (...)
-                {
-                    // ignore and fallback to manual formatting
-                }
-            }
+            // // If custom toString exists on the object, prefer it
+            // auto itToString = arr->props.find("toString");
+            // if (depth > 0 && itToString != arr->props.end() && itToString->second.is_function())
+            // {
+            //     try
+            //     {
+            //         auto result = itToString->second.as_function()->call(itToString->second, {});
+            //         return to_log_string(result, visited, depth);
+            //     }
+            //     catch (...)
+            //     {
+            //         // ignore and fallback to manual formatting
+            //     }
+            // }
 
             std::string indent(depth * 2, ' ');
             std::string next_indent((depth + 1) * 2, ' ');
@@ -115,6 +116,31 @@ namespace jspp
                     ss << Color::BRIGHT_BLACK << empty_count << " x empty item" << (empty_count > 1 ? "s" : "") << Color::RESET;
                 }
 
+                // Print properties
+                if (prop_count > 0)
+                {
+                    ss << Color::BRIGHT_BLACK << ", " << Color::RESET;
+
+                    size_t current_prop = 0;
+                    for (const auto &pair : arr->props)
+                    {
+                        if (!is_enumerable_property(pair.second))
+                            continue;
+
+                        if (is_valid_js_identifier(pair.first))
+                        {
+                            ss << pair.first;
+                        }
+                        else
+                        {
+                            ss << "\"" << pair.first << "\"";
+                        }
+                        ss << ": " << to_log_string(pair.second, visited, depth + 1);
+                        if (++current_prop < prop_count)
+                            ss << Color::BRIGHT_BLACK << ", " << Color::RESET;
+                    }
+                }
+
                 ss << " ]";
                 return ss.str();
             }
@@ -180,6 +206,36 @@ namespace jspp
                     ss << Color::BRIGHT_BLACK << ",\n"
                        << Color::RESET;
                 ss << next_indent << Color::BRIGHT_BLACK << "... " << (item_count - items_to_show) << " more items" << Color::RESET;
+            }
+            // Print properties
+            else if (prop_count > 0)
+            {
+                if (first_item_printed)
+                    ss << Color::BRIGHT_BLACK << ",\n"
+                       << Color::RESET;
+
+                size_t current_prop = 0;
+                for (const auto &pair : arr->props)
+                {
+                    if (current_prop >= MAX_OBJECT_PROPS)
+                        break;
+                    if (!is_enumerable_property(pair.second))
+                        continue;
+
+                    ss << next_indent;
+                    if (is_valid_js_identifier(pair.first))
+                    {
+                        ss << pair.first;
+                    }
+                    else
+                    {
+                        ss << "\"" << pair.first << "\"";
+                    }
+                    ss << ": " << to_log_string(pair.second, visited, depth + 1);
+                    if (++current_prop < prop_count)
+                        ss << Color::BRIGHT_BLACK << ",\n"
+                           << Color::RESET;
+                }
             }
             ss << "\n";
             ss << indent << "]";

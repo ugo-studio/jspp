@@ -30,7 +30,7 @@ namespace jspp
             }
 
             auto type_part = fn->is_generator ? "GeneratorFunction" : "Function";
-            auto name_part = fn->name.size() > 0 ? ": " + fn->name : "";
+            auto name_part = fn->name.size() > 0 ? ": " + fn->name : " (anonymous)";
             return Color::CYAN + "[" + type_part + name_part + "]" + Color::RESET;
         }
     }

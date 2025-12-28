@@ -35,16 +35,16 @@ inline auto errorConstructor = [](const jspp::AnyValue &thisVal, const std::vect
         message = args[0].to_std_string();
     }
 
-    target.define_data_property("message", jspp::AnyValue::make_string(message));
-    target.define_data_property("name", jspp::AnyValue::make_string("Error"));
-    target.define_data_property("stack", jspp::AnyValue::make_string("Error: " + message + "\n    at <unknown>"));
+    target.define_data_property("message", jspp::AnyValue::make_string(message), true, false, true);
+    target.define_data_property("name", jspp::AnyValue::make_string("Error"), true, false, true);
+    target.define_data_property("stack", jspp::AnyValue::make_string("Error: " + message + "\n    at <unknown>"), true, false, true);
 
     if (args.size() > 1 && args[1].is_object())
     {
         jspp::AnyValue cause = args[1].get_own_property("cause");
         if (!cause.is_undefined())
         {
-            target.define_data_property("cause", cause);
+            target.define_data_property("cause", cause, true, false, true);
         }
     }
 
@@ -103,9 +103,9 @@ struct ErrorInit
 
         // Define Error.prototype.toString
         auto proto = Error.get_own_property("prototype");
-        proto.define_data_property("toString", errorToStringFn);
+        proto.define_data_property("toString", errorToStringFn, true, false, true);
 
         // Define static Error.isError
-        Error.define_data_property("isError", isErrorFn);
+        Error.define_data_property("isError", isErrorFn,true ,false,true);
     }
 } errorInit;

@@ -83,7 +83,7 @@
         "expected": [
             "--- Log function ---",
             "[Function: myFunc]",
-            "[Function]"
+            "[Function: myArrow]"
         ]
     },
     {

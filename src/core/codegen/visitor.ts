@@ -84,6 +84,7 @@ export interface VisitContext {
     currentScopeSymbols: DeclaredSymbols;
     derefBeforeAssignment?: boolean;
     superClassVar?: string;
+    lambdaName?: string;
 }
 
 export function visit(

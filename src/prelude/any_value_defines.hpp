@@ -28,6 +28,11 @@ namespace jspp
             define_data_property(key.to_std_string(), value);
     }
 
+    inline void AnyValue::define_data_property(const std::string &key, const AnyValue &value, bool writable, bool enumerable, bool configurable)
+    {
+        define_data_property(key, AnyValue::make_data_descriptor(value, writable, enumerable, configurable));
+    }
+
     inline void AnyValue::define_getter(const std::string &key, const AnyValue &getter)
     {
         if (is_object())
@@ -93,7 +98,8 @@ namespace jspp
                 auto desc = it->second.as_accessor_descriptor();
                 desc->set = [setter](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
                 {
-                    if (args.empty()) return AnyValue::make_undefined();
+                    if (args.empty())
+                        return AnyValue::make_undefined();
                     return setter.as_function()->call(thisVal, args);
                 };
             }
@@ -101,7 +107,8 @@ namespace jspp
             {
                 auto setFunc = [setter](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
                 {
-                    if (args.empty()) return AnyValue::make_undefined();
+                    if (args.empty())
+                        return AnyValue::make_undefined();
                     return setter.as_function()->call(thisVal, args);
                 };
                 props[key] = AnyValue::make_accessor_descriptor(std::nullopt, setFunc, true, true);
@@ -116,7 +123,8 @@ namespace jspp
                 auto desc = it->second.as_accessor_descriptor();
                 desc->set = [setter](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
                 {
-                    if (args.empty()) return AnyValue::make_undefined();
+                    if (args.empty())
+                        return AnyValue::make_undefined();
                     return setter.as_function()->call(thisVal, args);
                 };
             }
@@ -124,7 +132,8 @@ namespace jspp
             {
                 auto setFunc = [setter](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
                 {
-                    if (args.empty()) return AnyValue::make_undefined();
+                    if (args.empty())
+                        return AnyValue::make_undefined();
                     return setter.as_function()->call(thisVal, args);
                 };
                 props[key] = AnyValue::make_accessor_descriptor(std::nullopt, setFunc, true, true);

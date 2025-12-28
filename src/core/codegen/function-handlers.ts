@@ -17,7 +17,6 @@ export function generateLambda(
     options?: {
         isAssignment?: boolean;
         capture?: string;
-        lambdaName?: string;
         isClass?: boolean;
     },
 ): string {
@@ -64,6 +63,7 @@ export function generateLambda(
         isMainContext: false,
         isInsideFunction: true,
         isFunctionBody: false,
+        lambdaName: undefined,
         topLevelScopeSymbols,
         currentScopeSymbols: new Map(),
         superClassVar: context.superClassVar,
@@ -93,10 +93,12 @@ export function generateLambda(
                     this.indentationLevel++;
                     paramExtraction +=
                         `${this.indent()}std::vector<std::optional<jspp::AnyValue>> ${tempName};\n`;
-                    
-                    paramExtraction += `${this.indent()}if (${argsName}.size() > ${i}) {\n`;
+
+                    paramExtraction +=
+                        `${this.indent()}if (${argsName}.size() > ${i}) {\n`;
                     this.indentationLevel++;
-                    paramExtraction += `${this.indent()}${tempName}.reserve(${argsName}.size() - ${i});\n`;
+                    paramExtraction +=
+                        `${this.indent()}${tempName}.reserve(${argsName}.size() - ${i});\n`;
                     this.indentationLevel--;
                     paramExtraction += `${this.indent()}}\n`;
 
@@ -172,7 +174,7 @@ export function generateLambda(
         signature =
             "jspp::JsPromise(const jspp::AnyValue&, const std::vector<jspp::AnyValue>&)";
         callable = `std::function<${signature}>(${lambda})`;
-        method = `jspp::AnyValue::make_function`;
+        method = `jspp::AnyValue::make_async_function`;
     } // Handle normal function
     else {
         signature =
@@ -187,7 +189,7 @@ export function generateLambda(
 
     const funcName = node.name?.getText();
     const fullExpression = `${method}(${callable}, "${
-        options?.lambdaName || funcName || ""
+        context?.lambdaName || funcName || ""
     }")`;
 
     if (ts.isFunctionDeclaration(node) && !isAssignment && funcName) {
@@ -230,10 +232,12 @@ export function visitFunctionExpression(
         this.indentationLevel++;
         code +=
             `${this.indent()}auto ${funcName} = std::make_shared<jspp::AnyValue>();\n`;
-        const lambda = this.generateLambda(funcExpr, context, {
+        const lambda = this.generateLambda(funcExpr, {
+            ...context,
+            lambdaName: funcName,
+        }, {
             isAssignment: true,
             capture: "[=]",
-            lambdaName: funcName,
         });
         code += `${this.indent()}*${funcName} = ${lambda};\n`;
         code += `${this.indent()}return *${funcName};\n`;

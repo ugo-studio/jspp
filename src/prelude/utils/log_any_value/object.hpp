@@ -17,31 +17,6 @@ namespace jspp
         {
             auto obj = val.as_object();
 
-            // Check for toString in prototype chain
-            try
-            {
-                auto is_error = isErrorFn.as_function()->call(isErrorFn, {val}).is_truthy();
-                if (is_error)
-                {
-                    auto result = errorToStringFn.as_function()->call(val, {});
-                    if (result.is_string())
-                    {
-                        std::string s = result.to_std_string();
-                        // If it's a custom toString (not the default [Object Object]), use it.
-                        // Also, if it is an Error object (has 'message' and 'name' usually, or stack), we prefer toString.
-                        // Since we implemented Error.prototype.toString to return "Name: Message", it won't be "[Object Object]".
-                        if (s != "[Object Object]")
-                        {
-                            return s;
-                        }
-                    }
-                }
-            }
-            catch (...)
-            {
-                // ignore
-            }
-
             size_t prop_count = obj->props.size();
             bool use_horizontal_layout = prop_count > 0 && prop_count <= HORIZONTAL_OBJECT_MAX_PROPS;
 
@@ -61,12 +36,33 @@ namespace jspp
             std::string next_indent((depth + 1) * 2, ' ');
             std::stringstream ss;
 
+            // Special handling for Error objects
+            try
+            {
+                auto is_error = isErrorFn.as_function()->call(isErrorFn, {val}).is_truthy();
+                if (is_error)
+                {
+                    auto result = errorToStringFn.as_function()->call(val, {});
+                    if (result.is_string())
+                    {
+                        ss << result.to_std_string() << " ";
+                    }
+                }
+            }
+            catch (...)
+            {
+                // ignore
+            }
+
             if (use_horizontal_layout)
             {
                 ss << "{ ";
                 size_t current_prop = 0;
                 for (const auto &pair : obj->props)
                 {
+                    if (!is_enumerable_property(pair.second))
+                        continue;
+
                     if (is_valid_js_identifier(pair.first))
                     {
                         ss << pair.first;
@@ -94,6 +90,8 @@ namespace jspp
                             break;
                         if (props_shown > 0)
                             ss << ",\n";
+                        if (!is_enumerable_property(pair.second))
+                            continue;
 
                         ss << next_indent;
                         if (is_valid_js_identifier(pair.first))

@@ -392,7 +392,21 @@ namespace jspp
         {
             AnyValue v;
             v.storage.type = JsType::Function;
+            // use Constructor B with is_gen = true
             new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(call, true, name));
+
+            auto proto = make_object({});
+            proto.set_own_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
+            v.set_own_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
+
+            return v;
+        }
+        static AnyValue make_async_function(const JsFunctionCallable &call, const std::string &name) noexcept
+        {
+            AnyValue v;
+            v.storage.type = JsType::Function;
+            // use Constructor C with is_async_func = true
+            new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(call, false, true, name));
 
             auto proto = make_object({});
             proto.set_own_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
@@ -615,6 +629,7 @@ namespace jspp
         // --- DEFINERS (Object.defineProperty semantics)
         void define_data_property(const std::string &key, const AnyValue &value);
         void define_data_property(const AnyValue &key, const AnyValue &value);
+        void define_data_property(const std::string &key, const AnyValue &value, bool writable, bool enumerable, bool configurable);
         void define_getter(const std::string &key, const AnyValue &getter);
         void define_getter(const AnyValue &key, const AnyValue &getter);
         void define_setter(const std::string &key, const AnyValue &setter);
