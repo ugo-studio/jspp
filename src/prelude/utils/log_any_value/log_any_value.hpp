@@ -75,7 +75,15 @@ namespace jspp
             // 6. DataDescriptor
             if (val.is_data_descriptor())
             {
-                return to_log_string((*val.as_data_descriptor()->value), visited, depth);
+                auto desc = val.as_data_descriptor();
+                if (desc->enumerable)
+                {
+                    return to_log_string((*desc->value), visited, depth);
+                }
+                else
+                {
+                    return "";
+                }
             }
 
             // Fallback

@@ -7,37 +7,44 @@
 inline jspp::AnyValue Error;
 
 // Constructor logic
-inline auto errorConstructor = [](const jspp::AnyValue& thisVal, const std::vector<jspp::AnyValue>& args) -> jspp::AnyValue {
+inline auto errorConstructor = [](const jspp::AnyValue &thisVal, const std::vector<jspp::AnyValue> &args) -> jspp::AnyValue
+{
     // Access global Error to get prototype
     jspp::AnyValue proto = Error.get_own_property("prototype");
-    
+
     jspp::AnyValue target = thisVal;
     bool is_construct_call = false;
 
-    if (target.is_object()) {
+    if (target.is_object())
+    {
         auto obj = target.as_object();
-        if (obj->proto && (*obj->proto).is_strictly_equal_to_primitive(proto)) {
+        if (obj->proto && (*obj->proto).is_strictly_equal_to_primitive(proto))
+        {
             is_construct_call = true;
         }
     }
 
-    if (!is_construct_call) {
+    if (!is_construct_call)
+    {
         target = jspp::AnyValue::make_object_with_proto({}, proto);
     }
 
     std::string message = "";
-    if (!args.empty() && !args[0].is_undefined()) {
+    if (!args.empty() && !args[0].is_undefined())
+    {
         message = args[0].to_std_string();
     }
-    
+
     target.define_data_property("message", jspp::AnyValue::make_string(message));
     target.define_data_property("name", jspp::AnyValue::make_string("Error"));
     target.define_data_property("stack", jspp::AnyValue::make_string("Error: " + message + "\n    at <unknown>"));
 
-    if (args.size() > 1 && args[1].is_object()) {
+    if (args.size() > 1 && args[1].is_object())
+    {
         jspp::AnyValue cause = args[1].get_own_property("cause");
-        if (!cause.is_undefined()) {
-             target.define_data_property("cause", cause);
+        if (!cause.is_undefined())
+        {
+            target.define_data_property("cause", cause);
         }
     }
 
@@ -45,7 +52,8 @@ inline auto errorConstructor = [](const jspp::AnyValue& thisVal, const std::vect
 };
 
 // Static Error.isError(val) implementation
-inline auto isErrorFn = jspp::AnyValue::make_function([](const jspp::AnyValue& thisVal, const std::vector<jspp::AnyValue>& args) -> jspp::AnyValue {
+inline auto isErrorFn = jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, const std::vector<jspp::AnyValue> &args) -> jspp::AnyValue
+                                                      {
     if (args.empty()) return jspp::AnyValue::make_boolean(false);
     
     jspp::AnyValue val = args[0];
@@ -65,34 +73,38 @@ inline auto isErrorFn = jspp::AnyValue::make_function([](const jspp::AnyValue& t
         }
     }
     
-    return jspp::AnyValue::make_boolean(false);
-}, "isError");
+    return jspp::AnyValue::make_boolean(false); }, "isError");
 
+// toString method for Error.prototype
+inline auto errorToStringFn = jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, const std::vector<jspp::AnyValue> &args) -> jspp::AnyValue
+                                                            {
+    std::string name = "Error";
+    std::string msg = "";
+    
+    jspp::AnyValue n = thisVal.get_own_property("name");
+    if (!n.is_undefined()) name = n.to_std_string();
+    
+    jspp::AnyValue m = thisVal.get_own_property("message");
+    if (!m.is_undefined()) msg = m.to_std_string();
+    
+    if (name.empty() && msg.empty()) return jspp::AnyValue::make_string("Error");
+    if (name.empty()) return jspp::AnyValue::make_string(msg);
+    if (msg.empty()) return jspp::AnyValue::make_string(name);
+    
+    return jspp::AnyValue::make_string(name + ": " + msg); }, "toString");
 
-struct ErrorInit {
-    ErrorInit() {
+// Initialize Error class and its prototype
+struct ErrorInit
+{
+    ErrorInit()
+    {
         // Initialize Error class
         Error = jspp::AnyValue::make_class(errorConstructor, "Error");
-        
+
         // Define Error.prototype.toString
         auto proto = Error.get_own_property("prototype");
-        proto.define_data_property("toString", jspp::AnyValue::make_function([](const jspp::AnyValue& thisVal, const std::vector<jspp::AnyValue>& args) -> jspp::AnyValue {
-            std::string name = "Error";
-            std::string msg = "";
-            
-            jspp::AnyValue n = thisVal.get_own_property("name");
-            if (!n.is_undefined()) name = n.to_std_string();
-            
-            jspp::AnyValue m = thisVal.get_own_property("message");
-            if (!m.is_undefined()) msg = m.to_std_string();
-            
-            if (name.empty() && msg.empty()) return jspp::AnyValue::make_string("Error");
-            if (name.empty()) return jspp::AnyValue::make_string(msg);
-            if (msg.empty()) return jspp::AnyValue::make_string(name);
-            
-            return jspp::AnyValue::make_string(name + ": " + msg);
-        }, "toString"));
-        
+        proto.define_data_property("toString", errorToStringFn);
+
         // Define static Error.isError
         Error.define_data_property("isError", isErrorFn);
     }

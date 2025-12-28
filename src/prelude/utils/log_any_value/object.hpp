@@ -1,6 +1,7 @@
 #pragma once
 #include "types.hpp"
 #include "any_value.hpp"
+#include "library/error.hpp"
 #include "utils/log_any_value/config.hpp"
 #include "utils/log_any_value/helpers.hpp"
 #include "utils/log_any_value/fwd.hpp" // Required for recursive to_log_string call
@@ -19,10 +20,10 @@ namespace jspp
             // Check for toString in prototype chain
             try
             {
-                AnyValue toStringVal = val.get_property_with_receiver("toString", val);
-                if (toStringVal.is_function())
+                auto is_error = isErrorFn.as_function()->call(isErrorFn, {val}).is_truthy();
+                if (is_error)
                 {
-                    auto result = toStringVal.as_function()->call(val, {});
+                    auto result = errorToStringFn.as_function()->call(val, {});
                     if (result.is_string())
                     {
                         std::string s = result.to_std_string();
