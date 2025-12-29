@@ -10,6 +10,7 @@
 #include "library/timer.hpp"
 
 inline auto global = jspp::AnyValue::make_object({
+    {"Symbol", Symbol},
     {"console", console},
     {"performance", performance},
     {"Error", Error},

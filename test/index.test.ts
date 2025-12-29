@@ -10,37 +10,7 @@ import cases from "./expected-results.json";
 // --- Configuration ---
 // Dynamically set concurrency based on the number of logical CPU cores
 // Using Math.max to ensure at least 1 core is used even on small VMs
-const CONCURRENCY = Math.max(1, Math.floor(os.cpus().length / 2));
-
-// --- Helper: Concurrency Limiter ---
-const pLimit = (concurrency: number) => {
-    let active = 0;
-    const queue: (() => void)[] = [];
-
-    return <T>(fn: () => Promise<T>): Promise<T> => {
-        return new Promise((resolve, reject) => {
-            const run = async () => {
-                active++;
-                try {
-                    resolve(await fn());
-                } catch (e) {
-                    reject(e);
-                } finally {
-                    active--;
-                    if (queue.length > 0) {
-                        queue.shift()!();
-                    }
-                }
-            };
-
-            if (active < concurrency) {
-                run();
-            } else {
-                queue.push(run);
-            }
-        });
-    };
-};
+const CONCURRENCY = Math.max(1, Math.floor(os.cpus().length / 1.5));
 
 // --- Helper: Strip ANSI Codes ---
 const stripAnsi = (str: string) =>
@@ -50,10 +20,40 @@ const stripAnsi = (str: string) =>
     );
 
 describe("Interpreter tests", () => {
-    const limit = pLimit(CONCURRENCY);
+    const caseQueue = cases.map((c, i) => ({ c, i }));
+    const casePromises: {
+        case: typeof cases[number];
+        promise: Promise<
+            {
+                output: string;
+                expected: string[];
+                error?: undefined;
+            } | {
+                error: any;
+                output?: undefined;
+                expected?: undefined;
+            }
+        >;
+        resolve: (value: any) => void;
+    }[] = cases.map((c) => {
+        let resolve: (value: any) => void = undefined as any;
+        const promise = new Promise<any>((res) => (resolve = res));
+        return {
+            case: c,
+            promise,
+            resolve,
+        };
+    });
 
-    const executions = cases.map(({ name: caseName, expected }) =>
-        limit(async () => {
+    const worker = async () => {
+        while (caseQueue.length > 0) {
+            const chunk = caseQueue.shift();
+            if (!chunk) continue;
+
+            const caseName = chunk.c.name;
+            const expected = chunk.c.expected;
+            const resolve = casePromises[chunk.i].resolve;
+
             const inputFile = path.join(
                 process.cwd(),
                 "test",
@@ -123,14 +123,12 @@ describe("Interpreter tests", () => {
                 const stderr = stderrText.trim().replace(/\r\n/g, "\n");
                 const output = stripAnsi(`${stdout}\n${stderr}`.trim());
 
-                return { output, expected };
+                resolve({ output, expected });
             } catch (e: any) {
                 // Return the error rather than throwing it inside the limit() wrapper.
                 // This ensures the promise rejects cleanly for the specific test case
                 // instead of crashing the process or leaking.
-                return {
-                    error: e,
-                };
+                resolve({ error: e });
             } finally {
                 // Ignore errors during cleanup (e.g., if file doesn't exist)
                 try {
@@ -140,16 +138,20 @@ describe("Interpreter tests", () => {
                     // no-op
                 }
             }
-        })
-    );
+        }
+    };
 
-    cases.forEach((caseItem, index) => {
+    // Start test promises with concurrency
+    Promise.all(Array(CONCURRENCY).fill(0).map(worker));
+
+    // Wait for promises one by one
+    casePromises.forEach(({ case: caseItem, promise }) => {
         test(
             `should correctly interpret and run ${caseItem.name}.js`,
             async () => {
                 // If the execution promise rejected, this await will throw the Error
                 // created in the catch block above, failing ONLY this test.
-                const { output, expected, error } = await executions[index];
+                const { output, expected, error } = await promise;
 
                 if (output && expected) {
                     for (const expectedString of expected!) {

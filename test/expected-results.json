@@ -532,5 +532,25 @@
             "Infinity",
             "3"
         ]
+    },
+    {
+        "name": "symbol-full",
+        "expected": [
+            "--- Symbol Full Test ---",
+            "false",
+            "Symbol(foo)",
+            "foo",
+            "Symbol()",
+            "undefined",
+            "true",
+            "bar",
+            "undefined",
+            "symbol",
+            "symbol",
+            "Symbol(Symbol.iterator)",
+            "true",
+            "symbol",
+            "foo"
+        ]
     }
 ]

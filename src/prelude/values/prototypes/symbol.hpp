@@ -3,6 +3,7 @@
 #include "types.hpp"
 #include "values/symbol.hpp"
 #include "any_value.hpp"
+#include "utils/well_known_symbols.hpp"
 
 namespace jspp
 {
@@ -11,11 +12,30 @@ namespace jspp
         inline std::optional<AnyValue> get(const std::string &key, JsSymbol *self)
         {
             // --- toString() method ---
-            if (key == "toString" )
+            if (key == "toString" || key == WellKnownSymbols::toStringTag->key)
             {
                 return AnyValue::make_function([self](const AnyValue &thisVal, const std::vector<AnyValue> &) -> AnyValue
                                                { return AnyValue::make_string(self->to_std_string()); },
                                                key);
+            }
+
+            // --- valueOf() method ---
+            if (key == "valueOf")
+            {
+                return AnyValue::make_function([self](const AnyValue &thisVal, const std::vector<AnyValue> &) -> AnyValue
+                                               { 
+                                                   return thisVal; 
+                                               },
+                                               key);
+            }
+
+            // --- [Symbol.toPrimitive] ---
+            if (key == WellKnownSymbols::toPrimitive->key) {
+                 return AnyValue::make_function([self](const AnyValue &thisVal, const std::vector<AnyValue> &) -> AnyValue
+                                               { 
+                                                   return thisVal;
+                                               },
+                                               "[Symbol.toPrimitive]");
             }
 
             // --- description property ---
