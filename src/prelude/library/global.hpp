@@ -8,6 +8,7 @@
 
 #include "library/promise.hpp"
 #include "library/timer.hpp"
+#include "library/math.hpp"
 
 inline auto global = jspp::AnyValue::make_object({
     {"Symbol", Symbol},
@@ -19,4 +20,5 @@ inline auto global = jspp::AnyValue::make_object({
     {"clearTimeout", clearTimeout},
     {"setInterval", setInterval},
     {"clearInterval", clearInterval},
+    {"Math", Math},
 });

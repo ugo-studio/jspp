@@ -553,5 +553,38 @@
             "foo",
             "Caught expected error: TypeError"
         ]
+    },
+    {
+        "name": "math",
+        "expected": [
+            "--- Math Object ---",
+            "Math.PI: 3.14159",
+            "Math.E: 2.71828",
+            "Math.SQRT2: 1.41421",
+            "Math.abs(-5): 5",
+            "Math.ceil(4.2): 5",
+            "Math.floor(4.8): 4",
+            "Math.round(4.5): 5",
+            "Math.round(4.4): 4",
+            "Math.round(-4.5): -4",
+            "Math.round(-4.51): -5",
+            "Math.max(1, 5, 2): 5",
+            "Math.min(1, 5, 2): 1",
+            "Math.pow(2, 3): 8",
+            "Math.sqrt(9): 3",
+            "Math.sign(-10): -1",
+            "Math.sign(0): 0",
+            "Math.sign(10): 1",
+            "Math.imul(5, 5): 25",
+            "Math.clz32(1): 31",
+            "Math.hypot(3, 4): 5",
+            "Math.f16round(1.5): 1.5",
+            "Math.f16round(1.337): 1.33691",
+            "Math.sumPrecise([1, 2, 3]): 6",
+            "Math.sumPrecise([0.1, 0.2]): 0.3",
+            "Math.random() is number: true",
+            "Math.random() >= 0: true",
+            "Math.random() < 1: true"
+        ]
     }
 ]

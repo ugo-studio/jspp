@@ -49,4 +49,5 @@
 #include "library/console.hpp"
 #include "library/performance.hpp"
 #include "library/promise.hpp"
+#include "library/math.hpp"
 #include "library/global.hpp"

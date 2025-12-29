@@ -54,6 +54,10 @@ namespace jspp
     {
         inline std::optional<AnyValue> get(const std::string &key, JsString *self);
     }
+    namespace NumberPrototypes
+    {
+        inline std::optional<AnyValue> get(const std::string &key, double self);
+    }
     namespace ArrayPrototypes
     {
         inline std::optional<AnyValue> get(const std::string &key, JsArray *self);

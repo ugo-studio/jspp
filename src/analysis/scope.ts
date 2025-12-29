@@ -22,6 +22,7 @@ export const BUILTIN_OBJECTS = new Set([
     { name: "clearTimeout", isConst: false },
     { name: "setInterval", isConst: false },
     { name: "clearInterval", isConst: false },
+    { name: "Math", isConst: false },
 ]);
 
 // Represents a single scope (e.g., a function body or a block statement)
