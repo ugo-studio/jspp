@@ -749,7 +749,7 @@ export function visitCallExpression(
                         )
                     })`;
                 }
-                if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
+                if (typeInfo && !typeInfo.isBuiltin) {
                     return this.getDerefCode(
                         argText,
                         this.getJsVarName(arg),
@@ -1118,7 +1118,7 @@ export function visitAwaitExpression(
                 this.getJsVarName(
                     awaitExpr.expression as ts.Identifier,
                 )
-            }), co_await jspp::AnyValue::make_undefined())`; 
+            }), co_await jspp::AnyValue::make_undefined())`;
         }
         if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
             derefExpr = this.getDerefCode(

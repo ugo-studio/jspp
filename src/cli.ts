@@ -67,7 +67,7 @@ async function main() {
 
         console.log(`Successfully ran ${exeFilePath}`);
     } catch (error: any) {
-        console.error(`Error: ${error.message}`);
+        console.error(error);
         process.exit(1);
     }
 }

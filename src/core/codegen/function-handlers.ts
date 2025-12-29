@@ -69,55 +69,85 @@ export function generateLambda(
         superClassVar: context.superClassVar,
     };
 
+    const paramExtractor = (
+        parameters: ts.NodeArray<ts.ParameterDeclaration>,
+    ): string => {
+        let code = "";
+        parameters.forEach((p, i) => {
+            const name = p.name.getText();
+            const defaultValue = p.initializer
+                ? this.visit(p.initializer, visitContext)
+                : "jspp::AnyValue::make_undefined()";
+
+            const scope = this.getScopeForNode(p);
+            const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                name,
+                scope,
+            )!;
+
+            // Handle rest parameters
+            if (!!p.dotDotDotToken) {
+                if (parameters.length - 1 !== i) {
+                    throw new SyntaxError(
+                        "Rest parameter must be last formal parameter.",
+                    );
+                }
+
+                if (typeInfo.needsHeapAllocation) {
+                    code +=
+                        `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+                } else {
+                    code +=
+                        `${this.indent()}jspp::AnyValue ${name} = jspp::AnyValue::make_undefined();\n`;
+                }
+
+                // Extract rest parameters
+                const tempName = `temp_${name}`;
+
+                code += `${this.indent()}{\n`;
+                this.indentationLevel++;
+                code +=
+                    `${this.indent()}std::vector<std::optional<jspp::AnyValue>> ${tempName};\n`;
+
+                code += `${this.indent()}if (${argsName}.size() > ${i}) {\n`;
+                this.indentationLevel++;
+                code +=
+                    `${this.indent()}${tempName}.reserve(${argsName}.size() - ${i});\n`;
+                this.indentationLevel--;
+                code += `${this.indent()}}\n`;
+
+                code +=
+                    `${this.indent()}for (size_t i = ${i}; i < ${argsName}.size(); i++) {\n`;
+                this.indentationLevel++;
+                code +=
+                    `${this.indent()}${tempName}.push_back(${argsName}[i]);\n`;
+                this.indentationLevel--;
+                code += `${this.indent()}}\n`;
+                code +=
+                    `${this.indent()}${name} = jspp::AnyValue::make_array(std::move(${tempName}));\n`;
+                this.indentationLevel--;
+                code += `${this.indent()}}\n`;
+                return;
+            }
+
+            // Normal parameter
+            const initValue =
+                `${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue}`;
+            if (typeInfo && typeInfo.needsHeapAllocation) {
+                code +=
+                    `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initValue});\n`;
+            } else {
+                code +=
+                    `${this.indent()}jspp::AnyValue ${name} = ${initValue};\n`;
+            }
+        });
+        return code;
+    };
+
     if (node.body) {
         if (ts.isBlock(node.body)) {
-            let paramExtraction = "";
             this.indentationLevel++;
-            node.parameters.forEach((p, i) => {
-                const name = p.name.getText();
-                const defaultValue = p.initializer
-                    ? this.visit(p.initializer, visitContext)
-                    : "jspp::AnyValue::make_undefined()";
-
-                if (!!p.dotDotDotToken) {
-                    if (node.parameters.length - 1 !== i) {
-                        throw new SyntaxError(
-                            "Rest parameter must be last formal parameter.",
-                        );
-                    }
-                    const tempName = `temp_${name}`;
-                    paramExtraction +=
-                        `${this.indent()}auto ${name} = jspp::AnyValue::make_undefined();\n`;
-
-                    paramExtraction += `${this.indent()}{\n`;
-                    this.indentationLevel++;
-                    paramExtraction +=
-                        `${this.indent()}std::vector<std::optional<jspp::AnyValue>> ${tempName};\n`;
-
-                    paramExtraction +=
-                        `${this.indent()}if (${argsName}.size() > ${i}) {\n`;
-                    this.indentationLevel++;
-                    paramExtraction +=
-                        `${this.indent()}${tempName}.reserve(${argsName}.size() - ${i});\n`;
-                    this.indentationLevel--;
-                    paramExtraction += `${this.indent()}}\n`;
-
-                    paramExtraction +=
-                        `${this.indent()}for (size_t i = ${i}; i < ${argsName}.size(); i++) {\n`;
-                    this.indentationLevel++;
-                    paramExtraction +=
-                        `${this.indent()}${tempName}.push_back(${argsName}[i]);\n`;
-                    this.indentationLevel--;
-                    paramExtraction += `${this.indent()}}\n`;
-                    paramExtraction +=
-                        `${this.indent()}${name} = jspp::AnyValue::make_array(std::move(${tempName}));\n`;
-                    this.indentationLevel--;
-                    paramExtraction += `${this.indent()}}\n`;
-                } else {
-                    paramExtraction +=
-                        `${this.indent()}auto ${name} = ${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue};\n`;
-                }
-            });
+            const paramExtraction = paramExtractor(node.parameters);
             this.indentationLevel--;
 
             const blockContent = this.visit(node.body, {
@@ -133,14 +163,7 @@ export function generateLambda(
         } else {
             lambda += "{\n";
             this.indentationLevel++;
-            node.parameters.forEach((p, i) => {
-                const name = p.name.getText();
-                const defaultValue = p.initializer
-                    ? this.visit(p.initializer, visitContext)
-                    : "jspp::AnyValue::make_undefined()";
-                lambda +=
-                    `${this.indent()}auto ${name} = ${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue};\n`;
-            });
+            lambda += paramExtractor(node.parameters);
             lambda += `${this.indent()}${returnCmd} ${
                 this.visit(node.body, {
                     ...visitContext,
@@ -150,8 +173,7 @@ export function generateLambda(
                     isInsideGeneratorFunction: isInsideGeneratorFunction,
                     isInsideAsyncFunction: isInsideAsyncFunction,
                 })
-            };
-`;
+            };\n`;
             this.indentationLevel--;
             lambda += `${this.indent()}}`;
         }
@@ -187,12 +209,13 @@ export function generateLambda(
         }
     }
 
-    const funcName = node.name?.getText();
-    const fullExpression = `${method}(${callable}, "${
-        context?.lambdaName || funcName || ""
-    }")`;
+    const funcName = context?.lambdaName || node.name?.getText();
+    const hasName = !!funcName && funcName.length > 0;
+    const namePart = hasName ? `, "${funcName}"` : "";
+    const fullExpression = `${method}(${callable}${namePart})`;
 
-    if (ts.isFunctionDeclaration(node) && !isAssignment && funcName) {
+    if (ts.isFunctionDeclaration(node) && !isAssignment && node.name) {
+        const funcName = node.name?.getText();
         return `${this.indent()}auto ${funcName} = ${fullExpression};\n`;
     }
     return fullExpression;

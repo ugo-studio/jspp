@@ -9,14 +9,10 @@
 
 std::string jspp::JsFunction::to_std_string() const
 {
-    if (is_async) {
-        return "async function " + name + "() { [native code] }";
-    }
-    if (is_generator)
-    {
-        return "function* " + name + "() { [native code] }";
-    }
-    return "function " + name + "() { [native code] }";
+    std::string type_part = this->is_async ? "async function" : this->is_generator ? "function*"
+                                                                                   : "function";
+    std::string name_part = this->name.value_or("");
+    return type_part + " " + name_part + "() { [native code] }";
 }
 
 jspp::AnyValue jspp::JsFunction::call(const AnyValue &thisVal, const std::vector<AnyValue> &args)

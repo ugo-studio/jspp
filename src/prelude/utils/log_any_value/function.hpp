@@ -20,17 +20,19 @@ namespace jspp
                     if (fn->proto->is_function())
                     {
                         auto parent = fn->proto->as_function();
-                        if (!parent->name.empty())
+                        std::string name = parent->name.value_or("");
+                        if (!name.empty())
                         {
-                            extends_part = " extends " + parent->name;
+                            extends_part = " extends " + name;
                         }
                     }
                 }
-                return Color::CYAN + std::string("[class ") + (fn->name.empty() ? "(anonymous)" : fn->name) + extends_part + "]" + Color::RESET;
+                std::string name = fn->name.value_or("");
+                return Color::CYAN + std::string("[class ") + (name.empty() ? "(anonymous)" : name) + extends_part + "]" + Color::RESET;
             }
 
             auto type_part = fn->is_generator ? "GeneratorFunction" : "Function";
-            auto name_part = fn->name.size() > 0 ? ": " + fn->name : " (anonymous)";
+            auto name_part = fn->name.has_value() ? ": " + fn->name.value() : " (anonymous)";
             return Color::CYAN + "[" + type_part + name_part + "]" + Color::RESET;
         }
     }

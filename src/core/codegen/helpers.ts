@@ -121,7 +121,9 @@ export function getReturnCommand(
     this: CodeGenerator,
     context: Partial<VisitContext>,
 ) {
-    return (context.isInsideGeneratorFunction || context.isInsideAsyncFunction) ? "co_return" : "return";
+    return (context.isInsideGeneratorFunction || context.isInsideAsyncFunction)
+        ? "co_return"
+        : "return";
 }
 
 export function hoistDeclaration(
@@ -141,7 +143,9 @@ export function hoistDeclaration(
         ? DeclaredSymbolType.letOrConst
         : (ts.isFunctionDeclaration(decl)
             ? DeclaredSymbolType.function
-            : (ts.isClassDeclaration(decl) ? DeclaredSymbolType.letOrConst : DeclaredSymbolType.var));
+            : (ts.isClassDeclaration(decl)
+                ? DeclaredSymbolType.letOrConst
+                : DeclaredSymbolType.var));
 
     if (hoistedSymbols.has(name)) {
         const existingType = hoistedSymbols.get(name);
@@ -192,7 +196,8 @@ export function isAsyncFunction(node: ts.Node): boolean {
             ts.isFunctionExpression(node) ||
             ts.isMethodDeclaration(node) ||
             ts.isArrowFunction(node)) &&
-        (ts.getCombinedModifierFlags(node as ts.Declaration) & ts.ModifierFlags.Async) !== 0
+        (ts.getCombinedModifierFlags(node as ts.Declaration) &
+                ts.ModifierFlags.Async) !== 0
     );
 }
 

@@ -363,7 +363,7 @@ namespace jspp
             new (&v.storage.array) std::shared_ptr<JsArray>(std::make_shared<JsArray>(std::move(dense)));
             return v;
         }
-        static AnyValue make_function(const JsFunctionCallable &call, const std::string &name) noexcept
+        static AnyValue make_function(const JsFunctionCallable &call, const std::optional<std::string> &name = std::nullopt) noexcept
         {
             AnyValue v;
             v.storage.type = JsType::Function;
@@ -375,7 +375,7 @@ namespace jspp
 
             return v;
         }
-        static AnyValue make_class(const JsFunctionCallable &call, const std::string &name) noexcept
+        static AnyValue make_class(const JsFunctionCallable &call, const std::optional<std::string> &name = std::nullopt) noexcept
         {
             AnyValue v;
             v.storage.type = JsType::Function;
@@ -388,7 +388,7 @@ namespace jspp
 
             return v;
         }
-        static AnyValue make_generator(const JsFunctionCallable &call, const std::string &name) noexcept
+        static AnyValue make_generator(const JsFunctionCallable &call, const std::optional<std::string> &name = std::nullopt) noexcept
         {
             AnyValue v;
             v.storage.type = JsType::Function;
@@ -401,7 +401,7 @@ namespace jspp
 
             return v;
         }
-        static AnyValue make_async_function(const JsFunctionCallable &call, const std::string &name) noexcept
+        static AnyValue make_async_function(const JsFunctionCallable &call, const std::optional<std::string> &name = std::nullopt) noexcept
         {
             AnyValue v;
             v.storage.type = JsType::Function;

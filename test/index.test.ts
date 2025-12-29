@@ -128,9 +128,9 @@ describe("Interpreter tests", () => {
                 // Return the error rather than throwing it inside the limit() wrapper.
                 // This ensures the promise rejects cleanly for the specific test case
                 // instead of crashing the process or leaking.
-                throw new Error(
-                    `Execution failed for ${caseName}: ${e.message}`,
-                );
+                return {
+                    error: e,
+                };
             } finally {
                 // Ignore errors during cleanup (e.g., if file doesn't exist)
                 try {
@@ -149,10 +149,18 @@ describe("Interpreter tests", () => {
             async () => {
                 // If the execution promise rejected, this await will throw the Error
                 // created in the catch block above, failing ONLY this test.
-                const { output, expected } = await executions[index];
+                const { output, expected, error } = await executions[index];
 
-                for (const expectedString of expected) {
-                    expect(output).toInclude(expectedString);
+                if (output && expected) {
+                    for (const expectedString of expected!) {
+                        expect(output).toInclude(expectedString);
+                    }
+                }
+
+                if (error) {
+                    error.message =
+                        `Execution failed for ${caseItem.name}: ${error.message}`;
+                    throw error;
                 }
             },
             60000,
