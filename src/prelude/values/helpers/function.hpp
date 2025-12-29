@@ -1,6 +1,7 @@
 #pragma once
 
 #include <variant>
+#include <optional>
 
 #include "types.hpp"
 #include "values/function.hpp"
@@ -89,11 +90,11 @@ jspp::AnyValue jspp::JsFunction::set_property(const std::string &key, const AnyV
 }
 
 // AnyValue::construct implementation
-const jspp::AnyValue jspp::AnyValue::construct(const std::vector<AnyValue> &args) const
+const jspp::AnyValue jspp::AnyValue::construct(const std::vector<AnyValue> &args, const std::optional<std::string> &name) const
 {
-    if (!is_function())
+    if (!is_function() || !as_function()->is_constructor)
     {
-        throw Exception::make_exception(to_std_string() + " is not a constructor", "TypeError");
+        throw Exception::make_exception(name.value_or(to_std_string()) + " is not a constructor", "TypeError");
     }
 
     // 1. Get prototype

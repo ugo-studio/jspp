@@ -992,7 +992,11 @@ export function visitNewExpression(
     const exprText = this.visit(newExpr.expression, context);
 
     let derefExpr = exprText;
+    let name = `"${exprText}"`;
+
     if (ts.isIdentifier(newExpr.expression)) {
+        name = this.getJsVarName(newExpr.expression);
+
         const scope = this.getScopeForNode(newExpr.expression);
         const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
             newExpr.expression.getText(),
@@ -1002,16 +1006,12 @@ export function visitNewExpression(
             !typeInfo &&
             !this.isBuiltinObject(newExpr.expression as ts.Identifier)
         ) {
-            return `jspp::Exception::throw_unresolved_reference(${
-                this.getJsVarName(
-                    newExpr.expression as ts.Identifier,
-                )
-            })`;
+            return `jspp::Exception::throw_unresolved_reference(${name})`;
         }
         if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
             derefExpr = this.getDerefCode(
                 exprText,
-                this.getJsVarName(newExpr.expression as ts.Identifier),
+                name,
                 typeInfo,
             );
         }
@@ -1050,7 +1050,7 @@ export function visitNewExpression(
             .join(", ")
         : "";
 
-    return `${derefExpr}.construct({${args}})`;
+    return `${derefExpr}.construct({${args}}, ${name})`;
 }
 
 export function visitTypeOfExpression(

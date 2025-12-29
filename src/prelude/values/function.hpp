@@ -22,18 +22,21 @@ namespace jspp
     bool is_generator;
     bool is_async;
     bool is_class;
+    bool is_constructor;
 
     // ---- Constructor A: infer flags ----
     JsFunction(const JsFunctionCallable &c,
                std::optional<std::string> n = std::nullopt,
                std::unordered_map<std::string, AnyValue> p = {},
-               bool is_cls = false)
+               bool is_cls = false,
+               bool is_ctor = true)
         : callable(c),
           name(std::move(n)),
           props(std::move(p)),
           is_generator(callable.index() == 1),
           is_async(callable.index() == 2),
-          is_class(is_cls)
+          is_class(is_cls),
+          is_constructor(is_ctor && !is_generator && !is_async) // Generators and asyncs are never constructors
     {
     }
 
@@ -42,13 +45,15 @@ namespace jspp
                bool is_gen,
                std::optional<std::string> n = std::nullopt,
                std::unordered_map<std::string, AnyValue> p = {},
-               bool is_cls = false)
+               bool is_cls = false,
+               bool is_ctor = true)
         : callable(c),
           name(std::move(n)),
           props(std::move(p)),
           is_generator(is_gen),
           is_async(callable.index() == 2),
-          is_class(is_cls)
+          is_class(is_cls),
+          is_constructor(is_ctor && !is_gen && !is_async)
     {
     }
 
@@ -58,13 +63,15 @@ namespace jspp
                bool is_async_func,
                std::optional<std::string> n = std::nullopt,
                std::unordered_map<std::string, AnyValue> p = {},
-               bool is_cls = false)
+               bool is_cls = false,
+               bool is_ctor = true)
         : callable(c),
           name(std::move(n)),
           props(std::move(p)),
           is_generator(is_gen),
           is_async(is_async_func),
-          is_class(is_cls)
+          is_class(is_cls),
+          is_constructor(is_ctor && !is_gen && !is_async_func)
     {
     }
 

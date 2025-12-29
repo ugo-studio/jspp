@@ -13,7 +13,7 @@ jspp::Exception jspp::Exception::make_exception(const std::string &message, cons
 {
     // Use the global Error object to construct the exception
     std::vector<AnyValue> args = {AnyValue::make_string(message)};
-    AnyValue errorObj = ::Error.construct(args);
+    AnyValue errorObj = ::Error.construct(args, name);
     errorObj.define_data_property("name", AnyValue::make_string(name), true, false, true);
 
     return Exception(errorObj);

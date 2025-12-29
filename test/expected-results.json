@@ -550,7 +550,8 @@
             "Symbol(Symbol.iterator)",
             "true",
             "symbol",
-            "foo"
+            "foo",
+            "Caught expected error: TypeError"
         ]
     }
 ]

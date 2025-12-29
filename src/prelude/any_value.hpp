@@ -363,11 +363,11 @@ namespace jspp
             new (&v.storage.array) std::shared_ptr<JsArray>(std::make_shared<JsArray>(std::move(dense)));
             return v;
         }
-        static AnyValue make_function(const JsFunctionCallable &call, const std::optional<std::string> &name = std::nullopt) noexcept
+        static AnyValue make_function(const JsFunctionCallable &call, const std::optional<std::string> &name = std::nullopt, bool is_constructor = true) noexcept
         {
             AnyValue v;
             v.storage.type = JsType::Function;
-            new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(call, name));
+            new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(call, name, std::unordered_map<std::string, AnyValue>{}, false, is_constructor));
 
             auto proto = make_object({});
             proto.set_own_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
@@ -645,7 +645,7 @@ namespace jspp
         const AnyValue not_strictly_equal_to(const AnyValue &other) const noexcept;
         const AnyValue not_equal_to(const AnyValue &other) const noexcept;
 
-        const AnyValue construct(const std::vector<AnyValue> &args) const;
+        const AnyValue construct(const std::vector<AnyValue> &args, const std::optional<std::string> &name) const;
         void set_prototype(const AnyValue &proto);
         const std::string to_std_string() const noexcept;
     };

@@ -12,7 +12,7 @@ inline auto Symbol = jspp::AnyValue::make_function([](const jspp::AnyValue& this
         description = args[0].to_std_string();
     }
     return jspp::AnyValue::make_symbol(description);
-}, "Symbol");
+}, "Symbol", false);
 
 // Initialize Symbol properties
 struct SymbolInit {

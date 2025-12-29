@@ -30,4 +30,12 @@ console.log(s1.valueOf() === s1);
 console.log(typeof s1); 
 
 // Check property access on symbol
-console.log(s1["description"]); 
+console.log(s1["description"]);
+
+// Check new Symbol() throws TypeError
+try {
+    new Symbol();
+} catch (e) {
+    console.log("Caught expected error:", e.name);
+}
+ 

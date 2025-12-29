@@ -39,6 +39,7 @@ async function main() {
                 preludePath,
                 "-O3",
                 "-DNDEBUG",
+                // // precompiled header
                 // "-include",
                 // path.join(process.cwd(), "prelude-build", "index.hpp"),
             ],

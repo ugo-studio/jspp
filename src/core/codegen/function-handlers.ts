@@ -211,8 +211,32 @@ export function generateLambda(
 
     const funcName = context?.lambdaName || node.name?.getText();
     const hasName = !!funcName && funcName.length > 0;
-    const namePart = hasName ? `, "${funcName}"` : "";
-    const fullExpression = `${method}(${callable}${namePart})`;
+
+    let args = callable;
+
+    const isMethod = ts.isMethodDeclaration(node);
+    const isAccessor = ts.isGetAccessor(node) || ts.isSetAccessor(node);
+    const isConstructor = !isArrow && !isMethod && !isAccessor;
+
+    // make_function(callable, name, is_constructor)
+    if (method === `jspp::AnyValue::make_function`) {
+        if (hasName) {
+            args += `, "${funcName}"`;
+        } else if (!isConstructor) {
+            args += `, std::nullopt`;
+        }
+
+        if (!isConstructor) {
+            args += `, false`;
+        }
+    } else {
+        // make_class, make_generator, make_async_function
+        if (hasName) {
+            args += `, "${funcName}"`;
+        }
+    }
+
+    const fullExpression = `${method}(${args})`;
 
     if (ts.isFunctionDeclaration(node) && !isAssignment && node.name) {
         const funcName = node.name?.getText();
