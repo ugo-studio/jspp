@@ -586,5 +586,23 @@
             "Math.random() >= 0: true",
             "Math.random() < 1: true"
         ]
+    },
+    {
+        "name": "number-prototype",
+        "expected": [
+            "--- Number Prototype ---",
+            "toFixed(0): 123",
+            "toFixed(2): 123.46",
+            "toFixed(5): 123.45600",
+            "toExponential(1): 1.2e+02",
+            "toExponential(): 1.234560e+05",
+            "toPrecision(2): 1.2e+02",
+            "toPrecision(5): 123.46",
+            "toString(16): ff",
+            "toString(2): 11111111",
+            "toString(10): 255",
+            "valueOf: 123.456 true",
+            "toLocaleString: 123.456"
+        ]
     }
 ]

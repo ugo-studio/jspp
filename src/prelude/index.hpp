@@ -30,6 +30,7 @@
 #include "values/prototypes/iterator.hpp"
 #include "values/prototypes/promise.hpp"
 #include "values/prototypes/string.hpp"
+#include "values/prototypes/number.hpp"
 
 #include "values/helpers/symbol.hpp"
 #include "values/helpers/object.hpp"

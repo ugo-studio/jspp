@@ -15,6 +15,8 @@ jspp::AnyValue jspp::AnyValue::get_own_property(uint32_t idx) const noexcept
         return storage.array->get_property(idx);
     case JsType::String:
         return storage.str->get_property(idx);
+    case JsType::Number:
+        return get_own_property(std::to_string(idx));
     default:
         return get_own_property(std::to_string(idx));
     }
@@ -51,6 +53,15 @@ jspp::AnyValue jspp::AnyValue::get_property_with_receiver(const std::string &key
         return storage.symbol->get_property(key, receiver);
     case JsType::String:
         return storage.str->get_property(key, receiver);
+    case JsType::Number:
+    {
+        auto proto_it = NumberPrototypes::get(key, storage.number);
+        if (proto_it.has_value())
+        {
+            return AnyValue::resolve_property_for_read(proto_it.value(), receiver, key);
+        }
+        return AnyValue::make_undefined();
+    }
     case JsType::Undefined:
         throw Exception::make_exception("Cannot read properties of undefined (reading '" + key + "')", "TypeError");
     case JsType::Null:
