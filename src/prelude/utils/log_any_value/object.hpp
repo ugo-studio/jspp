@@ -41,7 +41,7 @@ namespace jspp
             // Special handling for Error objects
             try
             {
-                auto is_error = isErrorFn.as_function()->call(isErrorFn, {val}).is_truthy();
+                auto is_error = is_truthy(isErrorFn.as_function()->call(isErrorFn, {val}));
                 if (is_error)
                 {
                     auto result = errorToStringFn.as_function()->call(val, {});

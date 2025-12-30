@@ -77,7 +77,7 @@ export function generateLambda(
             const name = p.name.getText();
             const defaultValue = p.initializer
                 ? this.visit(p.initializer, visitContext)
-                : "jspp::AnyValue::make_undefined()";
+                : "jspp::UNDEFINED";
 
             const scope = this.getScopeForNode(p);
             const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
@@ -95,10 +95,10 @@ export function generateLambda(
 
                 if (typeInfo.needsHeapAllocation) {
                     code +=
-                        `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+                        `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(jspp::UNDEFINED);\n`;
                 } else {
                     code +=
-                        `${this.indent()}jspp::AnyValue ${name} = jspp::AnyValue::make_undefined();\n`;
+                        `${this.indent()}jspp::AnyValue ${name} = jspp::UNDEFINED;\n`;
                 }
 
                 // Extract rest parameters
@@ -178,7 +178,7 @@ export function generateLambda(
             lambda += `${this.indent()}}`;
         }
     } else {
-        lambda += `{ ${returnCmd} jspp::AnyValue::make_undefined(); }\n`;
+        lambda += `{ ${returnCmd} jspp::UNDEFINED; }\n`;
     }
 
     let signature = "";

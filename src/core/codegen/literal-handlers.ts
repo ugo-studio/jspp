@@ -7,10 +7,11 @@ export function visitIdentifier(
     node: ts.Identifier,
 ): string {
     if (node.text === "NaN") {
-        return "jspp::AnyValue::make_nan()";
+        // return "jspp::AnyValue::make_nan()";
+        return "jspp::NaN";
     }
     if (node.text === "undefined") {
-        return "jspp::AnyValue::make_undefined()";
+        return visitUndefinedKeyword();
     }
 
     return node.text;
@@ -40,19 +41,23 @@ export function visitNoSubstitutionTemplateLiteral(
 }
 
 export function visitTrueKeyword(): string {
-    return "jspp::AnyValue::make_boolean(true)";
+    // return "jspp::AnyValue::make_boolean(true)";
+    return "jspp::TRUE";
 }
 
 export function visitFalseKeyword(): string {
-    return "jspp::AnyValue::make_boolean(false)";
+    // return "jspp::AnyValue::make_boolean(false)";
+    return "jspp::FALSE";
 }
 
 export function visitUndefinedKeyword(): string {
-    return "jspp::AnyValue::make_undefined()";
+    // return "jspp::AnyValue::make_undefined()";
+    return "jspp::UNDEFINED";
 }
 
 export function visitNullKeyword(): string {
-    return "jspp::AnyValue::make_null()";
+    // return "jspp::AnyValue::make_null()";
+    return "jspp::Null";
 }
 
 export function visitThisKeyword(this: CodeGenerator): string {

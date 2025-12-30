@@ -34,7 +34,9 @@ export function visitVariableDeclaration(
             ...context,
             lambdaName: ts.isArrowFunction(initExpr) ? name : undefined, // Pass the variable name for arrow functions
         };
-        let initText = this.visit(initExpr, initContext);
+        let initText = ts.isNumericLiteral(initExpr)
+            ? initExpr.getText()
+            : this.visit(initExpr, initContext);
         if (ts.isIdentifier(initExpr)) {
             const initScope = this.getScopeForNode(initExpr);
             const initTypeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
@@ -65,7 +67,7 @@ export function visitVariableDeclaration(
     if (isLetOrConst) {
         // If there's no initializer, it should be assigned undefined.
         if (!initializer) {
-            return `${assignmentTarget} = jspp::AnyValue::make_undefined()`;
+            return `${assignmentTarget} = jspp::UNDEFINED`;
         }
         return `${assignmentTarget}${initializer}`;
     }
@@ -79,7 +81,7 @@ export function visitVariableDeclaration(
         // but is kept for safety.
         const initValue = initializer
             ? initializer.substring(3)
-            : "jspp::AnyValue::make_undefined()";
+            : "jspp::UNDEFINED";
         if (typeInfo.needsHeapAllocation) {
             return `auto ${name} = std::make_shared<jspp::AnyValue>(${initValue})`;
         } else {

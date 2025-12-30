@@ -112,9 +112,11 @@ export function getDerefCode(
     if (!varName.endsWith('"')) varName = varName + '"';
 
     if (typeInfo && typeInfo.needsHeapAllocation) {
-        return `jspp::Access::deref_ptr(${nodeText}, ${varName})`;
+        // return `jspp::Access::deref_ptr(${nodeText}, ${varName})`;
+        return `(*${nodeText})`;
     }
-    return `jspp::Access::deref_stack(${nodeText}, ${varName})`;
+    // return `jspp::Access::deref_stack(${nodeText}, ${varName})`;
+    return `(${nodeText})`;
 }
 
 export function getReturnCommand(
@@ -172,7 +174,7 @@ export function hoistDeclaration(
 
     const initializer = isLetOrConst || ts.isClassDeclaration(decl)
         ? "jspp::AnyValue::make_uninitialized()"
-        : "jspp::AnyValue::make_undefined()";
+        : "jspp::UNDEFINED";
 
     if (typeInfo.needsHeapAllocation) {
         return `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;

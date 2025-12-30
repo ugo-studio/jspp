@@ -67,8 +67,7 @@ namespace jspp
         std::shared_ptr<JsSymbol>,
         std::shared_ptr<JsPromise>,
         std::shared_ptr<DataDescriptor>,
-        std::shared_ptr<AccessorDescriptor>
-    >;
+        std::shared_ptr<AccessorDescriptor>>;
 
     class AnyValue
     {
@@ -86,6 +85,13 @@ namespace jspp
         AnyValue &operator=(AnyValue &&) noexcept = default;
 
         ~AnyValue() = default;
+
+        // Assignments
+        AnyValue &operator=(const double &val)
+        {
+            storage = val;
+            return *this;
+        };
 
         friend void swap(AnyValue &a, AnyValue &b) noexcept
         {
@@ -422,15 +428,6 @@ namespace jspp
         void define_setter(const AnyValue &key, const AnyValue &setter);
 
         // --- HELPERS
-        const bool is_truthy() const noexcept;
-        const bool is_strictly_equal_to_primitive(const AnyValue &other) const noexcept;
-        const bool is_equal_to_primitive(const AnyValue &other) const noexcept;
-
-        const AnyValue is_strictly_equal_to(const AnyValue &other) const noexcept;
-        const AnyValue is_equal_to(const AnyValue &other) const noexcept;
-        const AnyValue not_strictly_equal_to(const AnyValue &other) const noexcept;
-        const AnyValue not_equal_to(const AnyValue &other) const noexcept;
-
         const AnyValue construct(const std::vector<AnyValue> &args, const std::optional<std::string> &name) const;
         void set_prototype(const AnyValue &proto);
         const std::string to_std_string() const noexcept;
@@ -443,6 +440,11 @@ namespace jspp
     }
 
     // Global Constants for Optimization
+    inline const AnyValue TRUE = AnyValue::make_boolean(true);
+    inline const AnyValue FALSE = AnyValue::make_boolean(false);
+    inline const AnyValue UNDEFINED = AnyValue::make_undefined();
+    inline const AnyValue Null = AnyValue::make_null();
+    inline const AnyValue NaN = AnyValue::make_nan();
     inline const AnyValue ZERO = AnyValue::make_number(0.0);
     inline const AnyValue ONE = AnyValue::make_number(1.0);
 }

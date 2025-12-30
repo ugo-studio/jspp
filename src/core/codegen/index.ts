@@ -73,7 +73,7 @@ export class CodeGenerator {
             currentScopeSymbols: new Map(),
         });
         this.indentationLevel--;
-        containerCode += "  return jspp::AnyValue::make_undefined();\n";
+        containerCode += "  return jspp::UNDEFINED;\n";
         containerCode += "}\n\n";
 
         let mainCode = "int main() {\n";

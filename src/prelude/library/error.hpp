@@ -18,7 +18,7 @@ inline auto errorConstructor = [](const jspp::AnyValue &thisVal, const std::vect
     if (target.is_object())
     {
         auto obj = target.as_object();
-        if (obj->proto && (*obj->proto).is_strictly_equal_to_primitive(proto))
+        if (obj->proto && is_strictly_equal_to_primitive((*obj->proto), proto))
         {
             is_construct_call = true;
         }
@@ -67,7 +67,7 @@ inline auto isErrorFn = jspp::AnyValue::make_function([](const jspp::AnyValue &t
     if (val.is_object()) {
         auto current = val.as_object()->proto;
         while (current && !(*current).is_null()) {
-             if ((*current).is_strictly_equal_to_primitive(proto)) return jspp::AnyValue::make_boolean(true);
+             if (is_strictly_equal_to_primitive((*current),proto)) return jspp::AnyValue::make_boolean(true);
              if ((*current).is_object()) current = (*current).as_object()->proto;
              else break;
         }

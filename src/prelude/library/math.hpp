@@ -1,9 +1,5 @@
 #pragma once
 
-#include "types.hpp"
-#include "any_value.hpp"
-#include "utils/operators.hpp"
-#include "utils/access.hpp"
 #include <cmath>
 #include <limits>
 #include <random>
@@ -11,6 +7,11 @@
 #include <bit>
 #include <numbers>
 #include <stdfloat>
+
+#include "types.hpp"
+#include "any_value.hpp"
+#include "utils/operators.hpp"
+#include "utils/access.hpp"
 
 namespace jspp {
     namespace Library {
@@ -272,7 +273,7 @@ struct MathInit {
             
             while (true) {
                 auto nextRes = nextFunc->call(iterObj, {});
-                if (nextRes.get_own_property("done").is_truthy()) break;
+                if (is_truthy(nextRes.get_own_property("done"))) break;
                 
                 double val = Operators_Private::ToNumber(nextRes.get_own_property("value"));
                 if (std::isnan(val)) {

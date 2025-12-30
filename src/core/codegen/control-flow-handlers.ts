@@ -33,7 +33,7 @@ export function visitForStatement(
                     const name = decl.name.getText();
                     const initValue = decl.initializer
                         ? this.visit(decl.initializer, context)
-                        : "jspp::AnyValue::make_undefined()";
+                        : "jspp::UNDEFINED";
 
                     const scope = this.getScopeForNode(decl);
                     const typeInfo = this.typeAnalyzer.scopeManager
@@ -63,7 +63,7 @@ export function visitForStatement(
 
     code += `${this.indent()}for (${initializerCode}; `;
     if (forStmt.condition) {
-        code += `(${this.visit(forStmt.condition, context)}).is_truthy()`;
+        code += `is_truthy(${this.visit(forStmt.condition, context)})`;
     }
     code += "; ";
     if (forStmt.incrementor) {
@@ -134,11 +134,11 @@ export function visitForInStatement(
             )!;
             if (typeInfo.needsHeapAllocation) {
                 code +=
-                    `${this.indent()}auto ${varName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+                    `${this.indent()}auto ${varName} = std::make_shared<jspp::AnyValue>(jspp::UNDEFINED);\n`;
                 assignmentTarget = `*${varName}`;
             } else {
                 code +=
-                    `${this.indent()}jspp::AnyValue ${varName} = jspp::AnyValue::make_undefined();\n`;
+                    `${this.indent()}jspp::AnyValue ${varName} = jspp::UNDEFINED;\n`;
                 assignmentTarget = varName;
             }
         }
@@ -230,11 +230,11 @@ export function visitForOfStatement(
             )!;
             if (typeInfo.needsHeapAllocation) {
                 code +=
-                    `${this.indent()}auto ${elemName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+                    `${this.indent()}auto ${elemName} = std::make_shared<jspp::AnyValue>(jspp::UNDEFINED);\n`;
                 assignmentTarget = `*${elemName}`;
             } else {
                 code +=
-                    `${this.indent()}jspp::AnyValue ${elemName} = jspp::AnyValue::make_undefined();\n`;
+                    `${this.indent()}jspp::AnyValue ${elemName} = jspp::UNDEFINED;\n`;
                 assignmentTarget = elemName;
             }
         }
@@ -277,7 +277,7 @@ export function visitForOfStatement(
     code +=
         `${this.indent()}auto ${nextRes} = ${nextFunc}->call(${iterator}, {});\n`;
     code +=
-        `${this.indent()}while (!${nextRes}.get_own_property("done").is_truthy()) {\n`;
+        `${this.indent()}while (!is_truthy(${nextRes}.get_own_property("done"))) {\n`;
     this.indentationLevel++;
     code +=
         `${this.indent()}${assignmentTarget} = ${nextRes}.get_own_property("value");\n`;
@@ -315,7 +315,7 @@ export function visitWhileStatement(
     const conditionText = condition.kind === ts.SyntaxKind.TrueKeyword ||
             condition.kind === ts.SyntaxKind.FalseKeyword
         ? condition.getText()
-        : `(${this.visit(condition, context)}).is_truthy()`;
+        : `is_truthy(${this.visit(condition, context)})`;
 
     let code = "";
     if (context.currentLabel) {
@@ -365,7 +365,7 @@ export function visitDoStatement(
     context: VisitContext,
 ): string {
     const condition = node.expression;
-    const conditionText = `(${this.visit(condition, context)}).is_truthy()`;
+    const conditionText = `is_truthy(${this.visit(condition, context)})`;
 
     let code = "";
     if (context.currentLabel) {
@@ -488,12 +488,12 @@ export function visitSwitchStatement(
 
             if (firstIf) {
                 condition =
-                    `(${fallthroughVar} || ${switchValueVar}.is_strictly_equal_to_primitive(${caseExprCode}))`;
+                    `(${fallthroughVar} || jspp::is_strictly_equal_to_primitive(${switchValueVar}, ${caseExprCode}))`;
                 code += `${this.indent()}if ${condition} {\n`;
                 firstIf = false;
             } else {
                 condition =
-                    `(${fallthroughVar} || ${switchValueVar}.is_strictly_equal_to_primitive(${caseExprCode}))`;
+                    `(${fallthroughVar} || jspp::is_strictly_equal_to_primitive(${switchValueVar}, ${caseExprCode}))`;
                 code += `${this.indent()}if ${condition} {\n`;
             }
 

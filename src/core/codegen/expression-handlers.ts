@@ -409,7 +409,10 @@ export function visitBinaryExpression(
 
     if (assignmentOperators.includes(opToken.kind)) {
         const leftText = this.visit(binExpr.left, context);
-        let rightText = this.visit(binExpr.right, context);
+        let rightText = ts.isNumericLiteral(binExpr.right)
+            ? binExpr.right.getText()
+            : this.visit(binExpr.right, context);
+
         if (ts.isIdentifier(binExpr.right)) {
             const scope = this.getScopeForNode(binExpr.right);
             const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
@@ -440,7 +443,7 @@ export function visitBinaryExpression(
     }
 
     if (opToken.kind === ts.SyntaxKind.EqualsToken) {
-        const rightText = this.visit(binExpr.right, context);
+        let rightText = this.visit(binExpr.right, context);
 
         if (ts.isPropertyAccessExpression(binExpr.left)) {
             const propAccess = binExpr.left;
@@ -607,6 +610,9 @@ export function visitBinaryExpression(
         if (typeInfo?.isConst) {
             return `jspp::Exception::throw_immutable_assignment()`;
         }
+        if (ts.isNumericLiteral(binExpr.right)) {
+            rightText = binExpr.right.getText();
+        }
         const target = context.derefBeforeAssignment
             ? this.getDerefCode(leftText, leftText, typeInfo)
             : (typeInfo.needsHeapAllocation ? `*${leftText}` : leftText);
@@ -665,20 +671,35 @@ export function visitBinaryExpression(
         }
     }
 
+    // Optimizations to prevent calling make_number multiple times
+    if (ts.isNumericLiteral(binExpr.left)) {
+        finalLeft = binExpr.left.getText();
+    }
+    if (ts.isNumericLiteral(binExpr.right)) {
+        finalRight = binExpr.right.getText();
+    }
+
     if (opToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken) {
-        return `${finalLeft}.is_strictly_equal_to(${finalRight})`;
+        return `jspp::is_strictly_equal_to(${finalLeft}, ${finalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.EqualsEqualsToken) {
-        return `${finalLeft}.is_equal_to(${finalRight})`;
+        return `jspp::is_equal_to(${finalLeft}, ${finalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken) {
-        return `${finalLeft}.not_strictly_equal_to(${finalRight})`;
+        return `jspp::not_strictly_equal_to(${finalLeft}, ${finalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.ExclamationEqualsToken) {
-        return `${finalLeft}.not_equal_to(${finalRight})`;
+        return `jspp::not_equal_to(${finalLeft}, ${finalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.AsteriskAsteriskToken) {
         return `jspp::pow(${finalLeft}, ${finalRight})`;
+    }
+
+    // Optimizations to prevent calling make_number multiple times
+    if (
+        ts.isNumericLiteral(binExpr.left) && ts.isNumericLiteral(binExpr.right)
+    ) {
+        return `jspp::AnyValue::make_number(${finalLeft} ${op} ${finalRight})`;
     }
 
     if (
@@ -711,7 +732,7 @@ export function visitConditionalExpression(
         ...context,
         isFunctionBody: false,
     });
-    return `(${condition}).is_truthy() ? ${whenTrueStmt} : ${whenFalseStmt}`;
+    return `is_truthy(${condition}) ? ${whenTrueStmt} : ${whenFalseStmt}`;
 }
 
 export function visitCallExpression(
@@ -914,7 +935,10 @@ export function visitCallExpression(
     }
 
     // Pass undefined as 'this' for normal function calls
-    return `${derefCallee}.as_function("${calleeName}")->call(jspp::AnyValue::make_undefined(), {${args}})`;
+    const calleeNamePart = calleeName && calleeName.length > 0
+        ? `"${calleeName}"`
+        : "";
+    return `${derefCallee}.as_function(${calleeNamePart})->call(jspp::UNDEFINED, {${args}})`;
 }
 
 export function visitVoidExpression(
@@ -924,7 +948,7 @@ export function visitVoidExpression(
 ): string {
     const voidExpr = node as ts.VoidExpression;
     const exprText = this.visit(voidExpr.expression, context);
-    return `(${exprText}, jspp::AnyValue::make_undefined())`;
+    return `(${exprText}, jspp::UNDEFINED)`;
 }
 
 export function visitTemplateExpression(
@@ -1118,7 +1142,7 @@ export function visitAwaitExpression(
                 this.getJsVarName(
                     awaitExpr.expression as ts.Identifier,
                 )
-            }), co_await jspp::AnyValue::make_undefined())`;
+            }), co_await jspp::UNDEFINED)`;
         }
         if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
             derefExpr = this.getDerefCode(

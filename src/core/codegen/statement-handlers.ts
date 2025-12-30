@@ -187,7 +187,7 @@ export function visitBlock(
         if (!lastStatement || !ts.isReturnStatement(lastStatement)) {
             code += `${this.indent()}${ 
                 this.getReturnCommand(context) 
-            } jspp::AnyValue::make_undefined();\n`;
+            } jspp::UNDEFINED;\n`;
         }
     }
 
@@ -288,7 +288,7 @@ export function visitIfStatement(
                 isFunctionBody: false,
             });
     }
-    return `${this.indent()}if ((${condition}).is_truthy()) ${thenStmt}${elseStmt}`;
+    return `${this.indent()}if (is_truthy(${condition})) ${thenStmt}${elseStmt}`;
 }
 
 export function visitExpressionStatement(
@@ -405,7 +405,7 @@ export function visitTryStatement(
 
         code += `${this.indent()}${ 
             this.getReturnCommand(context) 
-        } jspp::AnyValue::make_undefined();\n`;
+        } jspp::UNDEFINED;\n`;
 
         this.indentationLevel--;
         code += `${this.indent()}})();\n`;
@@ -478,7 +478,7 @@ export function visitCatchClause(
         // Shadow the C++ exception variable *only if* the names don't clash.
         if (varName !== exceptionName) {
             code +=
-                `${this.indent()}auto ${exceptionName} = std::make_shared<jspp::AnyValue>(jspp::AnyValue::make_undefined());\n`;
+                `${this.indent()}auto ${exceptionName} = std::make_shared<jspp::AnyValue>(jspp::UNDEFINED);\n`;
         }
 
         code += this.visit(catchClause.block, context);
@@ -557,7 +557,7 @@ export function visitYieldExpression(
             code +=
                 `${this.indent()}auto ${nextRes} = ${nextFunc}->call(${iterator}, {});\n`;
             code +=
-                `${this.indent()}while (!${nextRes}.get_own_property("done").is_truthy()) {\n`;
+                `${this.indent()}while (!is_truthy(${nextRes}.get_own_property("done"))) {\n`;
             this.indentationLevel++;
             code +=
                 `${this.indent()}co_yield ${nextRes}.get_own_property("value");\n`;
@@ -573,7 +573,7 @@ export function visitYieldExpression(
         return `${this.indent()}co_yield ${exprText}`;
     }
 
-    return `${this.indent()}co_yield jspp::AnyValue::make_undefined()`;
+    return `${this.indent()}co_yield jspp::UNDEFINED`;
 }
 
 export function visitReturnStatement(
@@ -620,7 +620,7 @@ export function visitReturnStatement(
             returnCode += `${this.indent()}${returnCmd} ${finalExpr};\n`;
         } else {
             returnCode +=
-                `${this.indent()}${returnCmd} jspp::AnyValue::make_undefined();\n`;
+                `${this.indent()}${returnCmd} jspp::UNDEFINED;\n`;
         }
         return returnCode;
     }
@@ -654,7 +654,7 @@ export function visitReturnStatement(
         }
         return `${this.indent()}${returnCmd} ${finalExpr};\n`;
     }
-    return `${this.indent()}${returnCmd} jspp::AnyValue::make_undefined();\n`;
+    return `${this.indent()}${returnCmd} jspp::UNDEFINED;\n`;
 }
 
 function collectHoistedDeclarations(

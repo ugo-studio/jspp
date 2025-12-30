@@ -42,7 +42,45 @@ namespace jspp
     // Dynamic AnyValue
     class AnyValue;
 
+    // Truthiness checker
+    const bool is_truthy(const double &val) noexcept;
+    const bool is_truthy(const std::string &val) noexcept;
+    const bool is_truthy(const AnyValue &val) noexcept;
+
+    // Basic equality operators
+    inline const bool is_strictly_equal_to_primitive(const AnyValue &lhs, const double &rhs) noexcept;
+    inline const bool is_strictly_equal_to_primitive(const double &lhs, const AnyValue &rhs) noexcept;
+    inline const bool is_strictly_equal_to_primitive(const double &lhs, const double &rhs) noexcept;
+    inline const bool is_strictly_equal_to_primitive(const AnyValue &lhs, const AnyValue &rhs) noexcept;
+
+    inline const bool is_equal_to_primitive(const AnyValue &lhs, const double &rhs) noexcept;
+    inline const bool is_equal_to_primitive(const double &lhs, const AnyValue &rhs) noexcept;
+    inline const bool is_equal_to_primitive(const double &lhs, const double &rhs) noexcept;
+    inline const bool is_equal_to_primitive(const AnyValue &lhs, const AnyValue &rhs) noexcept;
+
+    inline const AnyValue is_strictly_equal_to(const AnyValue &lhs, const double &rhs) noexcept;
+    inline const AnyValue is_strictly_equal_to(const double &lhs, const AnyValue &rhs) noexcept;
+    inline const AnyValue is_strictly_equal_to(const double &lhs, const double &rhs) noexcept;
+    inline const AnyValue is_strictly_equal_to(const AnyValue &lhs, const AnyValue &rhs) noexcept;
+
+    inline const AnyValue is_equal_to(const AnyValue &lhs, const double &rhs) noexcept;
+    inline const AnyValue is_equal_to(const double &lhs, const AnyValue &rhs) noexcept;
+    inline const AnyValue is_equal_to(const double &lhs, const double &rhs) noexcept;
+    inline const AnyValue is_equal_to(const AnyValue &lhs, const AnyValue &rhs) noexcept;
+
+    inline const AnyValue not_strictly_equal_to(const AnyValue &lhs, const double &rhs) noexcept;
+    inline const AnyValue not_strictly_equal_to(const double &lhs, const AnyValue &rhs) noexcept;
+    inline const AnyValue not_strictly_equal_to(const double &lhs, const double &rhs) noexcept;
+    inline const AnyValue not_strictly_equal_to(const AnyValue &lhs, const AnyValue &rhs) noexcept;
+
+    inline const AnyValue not_equal_to(const AnyValue &lhs, const double &rhs) noexcept;
+    inline const AnyValue not_equal_to(const double &lhs, const AnyValue &rhs) noexcept;
+    inline const AnyValue not_equal_to(const double &lhs, const double &rhs) noexcept;
+    inline const AnyValue not_equal_to(const AnyValue &lhs, const AnyValue &rhs) noexcept;
+
     // Arithemetic operators
+    inline AnyValue pow(const double &lhs, const double &rhs);
+    inline AnyValue pow(const AnyValue &lhs, const double &rhs);
     inline AnyValue pow(const AnyValue &lhs, const AnyValue &rhs);
 
     // AnyValue prototypes
