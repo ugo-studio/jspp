@@ -75,10 +75,15 @@ namespace jspp
 
     inline const AnyValue not_equal_to(const AnyValue &lhs, const double &rhs) noexcept;
     inline const AnyValue not_equal_to(const double &lhs, const AnyValue &rhs) noexcept;
-    inline const AnyValue not_equal_to(const double &lhs, const double &rhs) noexcept;
     inline const AnyValue not_equal_to(const AnyValue &lhs, const AnyValue &rhs) noexcept;
 
+    // Bitwise operators
+    inline AnyValue unsigned_right_shift(const AnyValue &lhs, const AnyValue &rhs);
+    inline AnyValue unsigned_right_shift(const AnyValue &lhs, const double &rhs);
+    inline AnyValue unsigned_right_shift(const double &lhs, const AnyValue &rhs);
+
     // Arithemetic operators
+
     inline AnyValue pow(const double &lhs, const double &rhs);
     inline AnyValue pow(const AnyValue &lhs, const double &rhs);
     inline AnyValue pow(const AnyValue &lhs, const AnyValue &rhs);

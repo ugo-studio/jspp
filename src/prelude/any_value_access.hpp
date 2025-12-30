@@ -7,6 +7,36 @@ jspp::AnyValue jspp::AnyValue::get_own_property(const std::string &key) const
 {
     return get_property_with_receiver(key, *this);
 }
+bool jspp::AnyValue::has_property(const std::string &key) const
+{
+    switch (get_type())
+    {
+    case JsType::Object:
+        return std::get<std::shared_ptr<JsObject>>(storage)->has_property(key);
+    case JsType::Array:
+        return std::get<std::shared_ptr<JsArray>>(storage)->has_property(key);
+    case JsType::Function:
+        return std::get<std::shared_ptr<JsFunction>>(storage)->has_property(key);
+    case JsType::Promise:
+        // Promises don't have their own props usually, but could.
+        return false; 
+    case JsType::Iterator:
+        return false;
+    case JsType::Symbol:
+        return false;
+    case JsType::String:
+        if (key == "length") return true;
+        if (JsArray::is_array_index(key)) {
+            uint32_t idx = static_cast<uint32_t>(std::stoull(key));
+            return idx < std::get<std::shared_ptr<JsString>>(storage)->value.length();
+        }
+        return false;
+    case JsType::Number:
+        return false;
+    default:
+        return false;
+    }
+}
 jspp::AnyValue jspp::AnyValue::get_own_property(uint32_t idx) const noexcept
 {
     switch (storage.index())

@@ -13,15 +13,17 @@ namespace jspp
         std::vector<std::optional<AnyValue>> dense;                   // dense storage for small/contiguous indices
         std::unordered_map<uint32_t, std::optional<AnyValue>> sparse; // sparse indices (very large indices)
         std::unordered_map<std::string, AnyValue> props;              // non-index string properties
+        std::shared_ptr<AnyValue> proto;
         uint64_t length = 0;
 
-        JsArray() = default;
-        explicit JsArray(const std::vector<std::optional<AnyValue>> &items) : dense(items), length(items.size()) {}
-        explicit JsArray(std::vector<std::optional<AnyValue>> &&items) : dense(std::move(items)), length(dense.size()) {}
+        JsArray() : proto(nullptr) {}
+        explicit JsArray(const std::vector<std::optional<AnyValue>> &items) : dense(items), proto(nullptr), length(items.size()) {}
+        explicit JsArray(std::vector<std::optional<AnyValue>> &&items) : dense(std::move(items)), proto(nullptr), length(dense.size()) {}
 
         std::string to_std_string() const;
         JsIterator<AnyValue> get_iterator();
 
+        bool has_property(const std::string &key) const;
         AnyValue get_property(const std::string &key, const AnyValue &thisVal);
         AnyValue get_property(uint32_t idx);
         AnyValue set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal);

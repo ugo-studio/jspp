@@ -23,6 +23,7 @@ import {
   visitBinaryExpression,
   visitCallExpression,
   visitConditionalExpression,
+  visitDeleteExpression,
   visitElementAccessExpression,
   visitNewExpression,
   visitObjectLiteralExpression,
@@ -263,6 +264,12 @@ export function visit(
             return visitConditionalExpression.call(
                 this,
                 node as ts.ConditionalExpression,
+                context,
+            );
+        case ts.SyntaxKind.DeleteExpression:
+            return visitDeleteExpression.call(
+                this,
+                node as ts.DeleteExpression,
                 context,
             );
         case ts.SyntaxKind.ThrowStatement:

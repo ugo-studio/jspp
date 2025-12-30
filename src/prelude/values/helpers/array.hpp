@@ -57,6 +57,29 @@ jspp::JsIterator<jspp::AnyValue> jspp::JsArray::get_iterator()
     co_return AnyValue::make_undefined();
 }
 
+bool jspp::JsArray::has_property(const std::string &key) const
+{
+    if (key == "length")
+        return true;
+    if (is_array_index(key))
+    {
+        uint32_t idx = static_cast<uint32_t>(std::stoull(key));
+        if (idx < dense.size() && dense[idx].has_value())
+            return true;
+        if (sparse.find(idx) != sparse.end())
+            return true;
+    }
+    if (props.find(key) != props.end())
+        return true;
+
+    if (proto && !(*proto).is_null() && !(*proto).is_undefined())
+        return (*proto).has_property(key);
+
+    if (ArrayPrototypes::get(key, const_cast<JsArray *>(this)).has_value())
+        return true;
+    return false;
+}
+
 jspp::AnyValue jspp::JsArray::get_property(const std::string &key, const AnyValue &thisVal)
 {
     if (
@@ -71,7 +94,13 @@ jspp::AnyValue jspp::JsArray::get_property(const std::string &key, const AnyValu
         auto it = props.find(key);
         if (it == props.end())
         {
-            // check prototype
+            // check explicit proto chain
+            if (proto && !(*proto).is_null() && !(*proto).is_undefined())
+            {
+                return (*proto).get_property_with_receiver(key, thisVal);
+            }
+
+            // check prototype (implicit Array.prototype)
             auto proto_it = ArrayPrototypes::get(key, this);
             if (proto_it.has_value())
             {
@@ -111,6 +140,12 @@ jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const AnyValu
     {
         // set prototype property if accessor descriptor
         auto proto_val_opt = ArrayPrototypes::get(key, this);
+        if (!proto_val_opt.has_value() && proto && !(*proto).is_null() && !(*proto).is_undefined())
+        {
+            // This is a bit simplified, ideally we should call get_property on proto to check descriptors
+            // For now, let's assume if it's not in ArrayPrototypes, it might be in the explicit proto chain
+        }
+
         if (proto_val_opt.has_value())
         {
             auto proto_value = proto_val_opt.value();

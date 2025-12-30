@@ -64,9 +64,12 @@ namespace jspp
             return var;
         }
 
-        inline AnyValue typeof(const AnyValue &val)
+        inline const AnyValue type_of(const std::optional<AnyValue> &val = std::nullopt)
         {
-            switch (val.get_type())
+            if (!val.has_value())
+                return AnyValue::make_string("undefined");
+
+            switch (val.value().get_type())
             {
             case JsType::Undefined:
                 return AnyValue::make_string("undefined");
@@ -83,16 +86,14 @@ namespace jspp
             case JsType::Function:
                 return AnyValue::make_string("function");
             case JsType::Object:
+                return AnyValue::make_string("object");
             case JsType::Array:
+                return AnyValue::make_string("object");
             case JsType::Iterator:
                 return AnyValue::make_string("object");
             default:
                 return AnyValue::make_string("undefined");
             }
-        }
-        inline AnyValue typeof() // for undeclared variables
-        {
-            return AnyValue::make_string("undefined");
         }
 
         // Helper function to get enumerable own property keys/values of an object
@@ -170,5 +171,146 @@ namespace jspp
 
             throw jspp::Exception::make_exception(name + " is not iterable", "TypeError");
         }
+
+        inline AnyValue in(const AnyValue &lhs, const AnyValue &rhs)
+        {
+            if (!rhs.is_object() && !rhs.is_array() && !rhs.is_function() && !rhs.is_promise() && !rhs.is_iterator())
+            {
+                throw jspp::Exception::make_exception("Cannot use 'in' operator to search for '" + lhs.to_std_string() + "' in " + rhs.to_std_string(), "TypeError");
+            }
+            return AnyValue::make_boolean(rhs.has_property(lhs.to_std_string()));
+        }
+
+        inline AnyValue instance_of(const AnyValue &lhs, const AnyValue &rhs)
+        {
+            if (!rhs.is_function())
+            {
+                throw jspp::Exception::make_exception("Right-hand side of 'instanceof' is not callable", "TypeError");
+            }
+            if (!lhs.is_object() && !lhs.is_array() && !lhs.is_function() && !lhs.is_promise() && !lhs.is_iterator())
+            {
+                return FALSE;
+            }
+            AnyValue targetProto = rhs.get_own_property("prototype");
+            if (!targetProto.is_object() && !targetProto.is_array() && !targetProto.is_function())
+            {
+                throw jspp::Exception::make_exception("Function has non-object prototype in instanceof check", "TypeError");
+            }
+            // Walk prototype chain of lhs
+            AnyValue current = lhs;
+
+            while (true)
+            {
+                AnyValue proto;
+                if (current.is_object())
+                {
+                    auto p = current.as_object()->proto;
+                    if (p)
+                        proto = *p;
+                    else
+                        break;
+                }
+                else if (current.is_array())
+                {
+                    auto p = current.as_array()->proto;
+                    if (p)
+                        proto = *p;
+                    else
+                        break;
+                }
+                else if (current.is_function())
+                {
+                    auto p = current.as_function()->proto;
+                    if (p)
+                        proto = *p;
+                    else
+                        break;
+                }
+                else if (current.is_promise())
+                {
+                    // Promises don't store explicit proto yet in our impl
+                    break;
+                }
+                else
+                {
+                    break;
+                }
+                if (proto.is_null() || proto.is_undefined())
+                    break;
+                if (is_strictly_equal_to_primitive(proto, targetProto))
+                    return TRUE;
+                current = proto;
+            }
+            return FALSE;
+        }
+
+        inline AnyValue delete_property(const AnyValue &obj, const AnyValue &key)
+        {
+            if (obj.is_object())
+            {
+                auto ptr = obj.as_object();
+                ptr->props.erase(key.to_std_string());
+                return TRUE;
+            }
+            if (obj.is_array())
+            {
+                auto ptr = obj.as_array();
+                std::string key_str = key.to_std_string();
+                if (JsArray::is_array_index(key_str))
+                {
+                    uint32_t idx = static_cast<uint32_t>(std::stoull(key_str));
+                    if (idx < ptr->dense.size())
+                    {
+                        ptr->dense[idx] = std::nullopt;
+                    }
+                    else
+                    {
+                        ptr->sparse.erase(idx);
+                    }
+                }
+                else
+                {
+                    ptr->props.erase(key_str);
+                }
+                return TRUE;
+            }
+            if (obj.is_function())
+            {
+                auto ptr = obj.as_function();
+                ptr->props.erase(key.to_std_string());
+                return TRUE;
+            }
+            return TRUE;
+        }
+
+        inline AnyValue optional_get_property(const AnyValue &obj, const std::string &key)
+        {
+            if (obj.is_null() || obj.is_undefined())
+                return UNDEFINED;
+            return obj.get_own_property(key);
+        }
+
+        inline AnyValue optional_get_element(const AnyValue &obj, const AnyValue &key)
+        {
+            if (obj.is_null() || obj.is_undefined())
+                return UNDEFINED;
+            return obj.get_own_property(key);
+        }
+
+        inline AnyValue optional_get_element(const AnyValue &obj, const double &key)
+        {
+            if (obj.is_null() || obj.is_undefined())
+                return UNDEFINED;
+            return obj.get_own_property(static_cast<uint32_t>(key));
+        }
+
+        inline AnyValue optional_call(const AnyValue &fn, const AnyValue &thisVal, const std::vector<AnyValue> &args, const std::optional<std::string> &name = std::nullopt)
+        {
+            if (fn.is_null() || fn.is_undefined())
+                return UNDEFINED;
+            return fn.as_function(name)->call(thisVal, args);
+        }
+
     }
+
 }

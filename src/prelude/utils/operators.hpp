@@ -71,12 +71,22 @@ namespace jspp
             else
                 return static_cast<int32_t>(int32bit);
         }
+        // Implements the ToUint32 abstract operation from ECMA-262.
+        inline uint32_t ToUint32(const AnyValue &val)
+        {
+            double num = ToNumber(val);
+            if (std::isnan(num) || std::isinf(num) || num == 0)
+                return 0;
+            double posInt = std::signbit(num) ? -std::floor(std::abs(num)) : std::floor(std::abs(num));
+            uint32_t uint32bit = static_cast<uint32_t>(fmod(posInt, 4294967296.0));
+            return uint32bit;
+        }
     }
 
     // --- TRUTHY CHECKER ---
     const bool is_truthy(const double &val) noexcept
     {
-        return val != 0.0;
+        return val != 0.0 && !std::isnan(val);
     }
     const bool is_truthy(const std::string &val) noexcept
     {
@@ -89,7 +99,7 @@ namespace jspp
         case JsType::Boolean:
             return val.as_boolean();
         case JsType::Number:
-            return val.as_double() != 0.0;
+            return is_truthy(val.as_double());
         case JsType::String:
             return !val.as_string()->value.empty();
         case JsType::Undefined:
@@ -448,6 +458,10 @@ namespace jspp
     }
 
     // --- UNARY OPERATORS ---
+    inline AnyValue operator+(const AnyValue &val)
+    {
+        return AnyValue::make_number(Operators_Private::ToNumber(val));
+    }
     inline AnyValue operator-(const AnyValue &val)
     {
         return AnyValue::make_number(-Operators_Private::ToNumber(val));
@@ -455,6 +469,10 @@ namespace jspp
     inline AnyValue operator~(const AnyValue &val)
     {
         return AnyValue::make_number(~Operators_Private::ToInt32(val));
+    }
+    inline AnyValue operator!(const AnyValue &val)
+    {
+        return AnyValue::make_boolean(!is_truthy(val));
     }
 
     // --- EXPONENTIATION ---
@@ -606,13 +624,39 @@ namespace jspp
     {
         return AnyValue::make_number(Operators_Private::ToInt32(lhs) ^ Operators_Private::ToInt32(rhs));
     }
+    inline AnyValue operator^(const AnyValue &lhs, const double &rhs)
+    {
+        return AnyValue::make_number(Operators_Private::ToInt32(lhs) ^ static_cast<int32_t>(rhs));
+    }
+    inline AnyValue operator^(const double &lhs, const AnyValue &rhs)
+    {
+        return AnyValue::make_number(static_cast<int32_t>(lhs) ^ Operators_Private::ToInt32(rhs));
+    }
+
     inline AnyValue operator&(const AnyValue &lhs, const AnyValue &rhs)
     {
         return AnyValue::make_number(Operators_Private::ToInt32(lhs) & Operators_Private::ToInt32(rhs));
     }
+    inline AnyValue operator&(const AnyValue &lhs, const double &rhs)
+    {
+        return AnyValue::make_number(Operators_Private::ToInt32(lhs) & static_cast<int32_t>(rhs));
+    }
+    inline AnyValue operator&(const double &lhs, const AnyValue &rhs)
+    {
+        return AnyValue::make_number(static_cast<int32_t>(lhs) & Operators_Private::ToInt32(rhs));
+    }
+
     inline AnyValue operator|(const AnyValue &lhs, const AnyValue &rhs)
     {
         return AnyValue::make_number(Operators_Private::ToInt32(lhs) | Operators_Private::ToInt32(rhs));
+    }
+    inline AnyValue operator|(const AnyValue &lhs, const double &rhs)
+    {
+        return AnyValue::make_number(Operators_Private::ToInt32(lhs) | static_cast<int32_t>(rhs));
+    }
+    inline AnyValue operator|(const double &lhs, const AnyValue &rhs)
+    {
+        return AnyValue::make_number(static_cast<int32_t>(lhs) | Operators_Private::ToInt32(rhs));
     }
 
     // --- SHIFT OPERATORS ---
@@ -620,188 +664,88 @@ namespace jspp
     {
         return AnyValue::make_number(Operators_Private::ToInt32(lhs) << (Operators_Private::ToInt32(rhs) & 0x1F));
     }
+    inline AnyValue operator<<(const AnyValue &lhs, const double &rhs)
+    {
+        return AnyValue::make_number(Operators_Private::ToInt32(lhs) << (static_cast<int32_t>(rhs) & 0x1F));
+    }
+    inline AnyValue operator<<(const double &lhs, const AnyValue &rhs)
+    {
+        return AnyValue::make_number(static_cast<int32_t>(lhs) << (Operators_Private::ToInt32(rhs) & 0x1F));
+    }
+
     inline AnyValue operator>>(const AnyValue &lhs, const AnyValue &rhs)
     {
         return AnyValue::make_number(Operators_Private::ToInt32(lhs) >> (Operators_Private::ToInt32(rhs) & 0x1F));
     }
-
-    // --- INCREMENT / DECREMENT ---
-    inline AnyValue &operator++(AnyValue &val) // pre-increment
+    inline AnyValue operator>>(const AnyValue &lhs, const double &rhs)
     {
-        if (val.is_number())
-        {
-            std::get<double>(val.storage) += 1.0;
-            return val;
-        }
-        double num = Operators_Private::ToNumber(val);
-        val = AnyValue::make_number(num + 1.0);
-        return val;
+        return AnyValue::make_number(Operators_Private::ToInt32(lhs) >> (static_cast<int32_t>(rhs) & 0x1F));
     }
-    inline AnyValue operator++(AnyValue &val, int) // post-increment
+    inline AnyValue operator>>(const double &lhs, const AnyValue &rhs)
     {
-        if (val.is_number())
-        {
-            AnyValue old = val; // copy
-            std::get<double>(val.storage) += 1.0;
-            return old;
-        }
-        AnyValue old = AnyValue::make_number(Operators_Private::ToNumber(val));
-        ++val;
-        return old;
-    }
-    inline AnyValue &operator--(AnyValue &val) // pre-decrement
-    {
-        if (val.is_number())
-        {
-            std::get<double>(val.storage) -= 1.0;
-            return val;
-        }
-        double num = Operators_Private::ToNumber(val);
-        val = AnyValue::make_number(num - 1.0);
-        return val;
-    }
-    inline AnyValue operator--(AnyValue &val, int) // post-decrement
-    {
-        if (val.is_number())
-        {
-            AnyValue old = val; // copy
-            std::get<double>(val.storage) -= 1.0;
-            return old;
-        }
-        AnyValue old = AnyValue::make_number(Operators_Private::ToNumber(val));
-        --val;
-        return old;
+        return AnyValue::make_number(static_cast<int32_t>(lhs) >> (Operators_Private::ToInt32(rhs) & 0x1F));
     }
 
-    // --- COMPOUND ASSIGNMENT ---
-    inline AnyValue &operator+=(AnyValue &lhs, const double &rhs)
+    inline AnyValue unsigned_right_shift(const AnyValue &lhs, const AnyValue &rhs)
     {
-        // Optimization: direct math
-        if (lhs.is_number())
-        {
-            lhs = lhs.as_double() + rhs;
+        return AnyValue::make_number(static_cast<double>(Operators_Private::ToUint32(lhs) >> (Operators_Private::ToInt32(rhs) & 0x1F)));
+    }
+    inline AnyValue unsigned_right_shift(const AnyValue &lhs, const double &rhs)
+    {
+        return AnyValue::make_number(static_cast<double>(Operators_Private::ToUint32(lhs) >> (static_cast<int32_t>(rhs) & 0x1F)));
+    }
+    inline AnyValue unsigned_right_shift(const double &lhs, const AnyValue &rhs)
+    {
+        uint32_t l = static_cast<uint32_t>(fmod(lhs, 4294967296.0));
+        return AnyValue::make_number(static_cast<double>(l >> (Operators_Private::ToInt32(rhs) & 0x1F)));
+    }
+    inline AnyValue unsigned_right_shift(const double &lhs, const double &rhs)
+    {
+        uint32_t l = static_cast<uint32_t>(fmod(lhs, 4294967296.0));
+        return AnyValue::make_number(static_cast<double>(l >> (static_cast<int32_t>(rhs) & 0x1F)));
+    }
+
+    // --- LOGICAL SHORT-CIRCUITING HELPERS ---
+    inline AnyValue logical_and(const AnyValue &lhs, const AnyValue &rhs)
+    {
+        if (!is_truthy(lhs))
             return lhs;
-        }
-        lhs = lhs + rhs;
-        return lhs;
+        return rhs;
     }
-    inline AnyValue &operator+=(AnyValue &lhs, const AnyValue &rhs)
+
+    inline AnyValue logical_or(const AnyValue &lhs, const AnyValue &rhs)
     {
-        if (lhs.is_number() && rhs.is_number())
-        {
-            std::get<double>(lhs.storage) += std::get<double>(rhs.storage);
+        if (is_truthy(lhs))
             return lhs;
-        }
-        lhs = lhs + rhs;
-        return lhs;
+        return rhs;
     }
-    inline AnyValue &operator-=(AnyValue &lhs, const double &rhs)
+
+    inline AnyValue nullish_coalesce(const AnyValue &lhs, const AnyValue &rhs)
     {
-        // Optimization: direct math
-        if (lhs.is_number())
-        {
-            lhs = lhs.as_double() - rhs;
+        if (!lhs.is_null() && !lhs.is_undefined())
             return lhs;
-        }
-        lhs = lhs - rhs;
+        return rhs;
+    }
+
+    // --- LOGICAL ASSIGNMENT HELPERS ---
+    inline AnyValue &logical_and_assign(AnyValue &lhs, const AnyValue &rhs)
+    {
+        if (is_truthy(lhs))
+            lhs = rhs;
         return lhs;
     }
-    inline AnyValue &operator-=(AnyValue &lhs, const AnyValue &rhs)
+
+    inline AnyValue &logical_or_assign(AnyValue &lhs, const AnyValue &rhs)
     {
-        if (lhs.is_number() && rhs.is_number())
-        {
-            std::get<double>(lhs.storage) -= std::get<double>(rhs.storage);
-            return lhs;
-        }
-        lhs = lhs - rhs;
+        if (!is_truthy(lhs))
+            lhs = rhs;
         return lhs;
     }
-    inline AnyValue &operator*=(AnyValue &lhs, const double &rhs)
+
+    inline AnyValue &nullish_coalesce_assign(AnyValue &lhs, const AnyValue &rhs)
     {
-        // Optimization: direct math
-        if (lhs.is_number())
-        {
-            lhs = lhs.as_double() * rhs;
-            return lhs;
-        }
-        lhs = lhs * rhs;
-        return lhs;
-    }
-    inline AnyValue &operator*=(AnyValue &lhs, const AnyValue &rhs)
-    {
-        if (lhs.is_number() && rhs.is_number())
-        {
-            std::get<double>(lhs.storage) *= std::get<double>(rhs.storage);
-            return lhs;
-        }
-        lhs = lhs * rhs;
-        return lhs;
-    }
-    inline AnyValue &operator/=(AnyValue &lhs, const double &rhs)
-    {
-        // Optimization: direct math
-        if (lhs.is_number())
-        {
-            lhs = lhs.as_double() / rhs;
-            return lhs;
-        }
-        lhs = lhs / rhs;
-        return lhs;
-    }
-    inline AnyValue &operator/=(AnyValue &lhs, const AnyValue &rhs)
-    {
-        if (lhs.is_number() && rhs.is_number())
-        {
-            std::get<double>(lhs.storage) /= std::get<double>(rhs.storage);
-            return lhs;
-        }
-        lhs = lhs / rhs;
-        return lhs;
-    }
-    inline AnyValue &operator%=(AnyValue &lhs, const double &rhs)
-    {
-        // Optimization: direct math
-        if (lhs.is_number())
-        {
-            lhs = std::fmod(lhs.as_double(), rhs);
-            return lhs;
-        }
-        lhs = lhs % rhs;
-        return lhs;
-    }
-    inline AnyValue &operator%=(AnyValue &lhs, const AnyValue &rhs)
-    {
-        if (lhs.is_number() && rhs.is_number())
-        {
-            std::get<double>(lhs.storage) = std::fmod(std::get<double>(lhs.storage), std::get<double>(rhs.storage));
-            return lhs;
-        }
-        lhs = lhs % rhs;
-        return lhs;
-    }
-    inline AnyValue &operator^=(AnyValue &lhs, const AnyValue &rhs)
-    {
-        lhs = lhs ^ rhs;
-        return lhs;
-    }
-    inline AnyValue &operator&=(AnyValue &lhs, const AnyValue &rhs)
-    {
-        lhs = lhs & rhs;
-        return lhs;
-    }
-    inline AnyValue &operator|=(AnyValue &lhs, const AnyValue &rhs)
-    {
-        lhs = lhs | rhs;
-        return lhs;
-    }
-    inline AnyValue &operator<<=(AnyValue &lhs, const AnyValue &rhs)
-    {
-        lhs = lhs << rhs;
-        return lhs;
-    }
-    inline AnyValue &operator>>=(AnyValue &lhs, const AnyValue &rhs)
-    {
-        lhs = lhs >> rhs;
+        if (lhs.is_null() || lhs.is_undefined())
+            lhs = rhs;
         return lhs;
     }
 }

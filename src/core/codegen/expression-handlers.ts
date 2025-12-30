@@ -308,6 +308,10 @@ export function visitPropertyAccessExpression(
         );
     }
 
+    if (propAccess.questionDotToken) {
+        return `jspp::Access::optional_get_property(${finalExpr}, "${propName}")`;
+    }
+
     return `${finalExpr}.get_own_property("${propName}")`;
 }
 
@@ -387,6 +391,10 @@ export function visitElementAccessExpression(
         }
     }
 
+    if (elemAccess.questionDotToken) {
+        return `jspp::Access::optional_get_element(${finalExpr}, ${argText})`;
+    }
+
     return `${finalExpr}.get_own_property(${argText})`;
 }
 
@@ -405,9 +413,85 @@ export function visitBinaryExpression(
         ts.SyntaxKind.AsteriskEqualsToken,
         ts.SyntaxKind.SlashEqualsToken,
         ts.SyntaxKind.PercentEqualsToken,
+        ts.SyntaxKind.AsteriskAsteriskEqualsToken,
+        ts.SyntaxKind.LessThanLessThanEqualsToken,
+        ts.SyntaxKind.GreaterThanGreaterThanEqualsToken,
+        ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken,
+        ts.SyntaxKind.AmpersandEqualsToken,
+        ts.SyntaxKind.BarEqualsToken,
+        ts.SyntaxKind.CaretEqualsToken,
+        ts.SyntaxKind.AmpersandAmpersandEqualsToken,
+        ts.SyntaxKind.BarBarEqualsToken,
+        ts.SyntaxKind.QuestionQuestionEqualsToken,
     ];
 
     if (assignmentOperators.includes(opToken.kind)) {
+        if (
+            opToken.kind ===
+                ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken
+        ) {
+            const leftText = this.visit(binExpr.left, context);
+            const rightText = this.visit(binExpr.right, context);
+            let target = leftText;
+            if (ts.isIdentifier(binExpr.left)) {
+                const scope = this.getScopeForNode(binExpr.left);
+                const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                    binExpr.left.text,
+                    scope,
+                )!;
+                target = typeInfo.needsHeapAllocation
+                    ? `*${leftText}`
+                    : leftText;
+                return `${target} = jspp::unsigned_right_shift(${target}, ${rightText})`;
+            }
+        }
+        if (opToken.kind === ts.SyntaxKind.AsteriskAsteriskEqualsToken) {
+            const leftText = this.visit(binExpr.left, context);
+            const rightText = this.visit(binExpr.right, context);
+            let target = leftText;
+            if (ts.isIdentifier(binExpr.left)) {
+                const scope = this.getScopeForNode(binExpr.left);
+                const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                    binExpr.left.text,
+                    scope,
+                )!;
+                target = typeInfo.needsHeapAllocation
+                    ? `*${leftText}`
+                    : leftText;
+                return `${target} = jspp::pow(${target}, ${rightText})`;
+            }
+            // For complex LHS, we need a different approach, but this is a start.
+        }
+        if (
+            opToken.kind === ts.SyntaxKind.AmpersandAmpersandEqualsToken ||
+            opToken.kind === ts.SyntaxKind.BarBarEqualsToken ||
+            opToken.kind === ts.SyntaxKind.QuestionQuestionEqualsToken
+        ) {
+            const leftText = this.visit(binExpr.left, context);
+            const rightText = this.visit(binExpr.right, context);
+            let target = leftText;
+            if (ts.isIdentifier(binExpr.left)) {
+                const scope = this.getScopeForNode(binExpr.left);
+                const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                    binExpr.left.text,
+                    scope,
+                )!;
+                target = typeInfo.needsHeapAllocation
+                    ? `*${leftText}`
+                    : leftText;
+
+                if (
+                    opToken.kind === ts.SyntaxKind.AmpersandAmpersandEqualsToken
+                ) {
+                    return `jspp::logical_and_assign(${target}, ${rightText})`;
+                } else if (opToken.kind === ts.SyntaxKind.BarBarEqualsToken) {
+                    return `jspp::logical_or_assign(${target}, ${rightText})`;
+                } else {
+                    return `jspp::nullish_coalesce_assign(${target}, ${rightText})`;
+                }
+            }
+        }
+
         const leftText = this.visit(binExpr.left, context);
         let rightText = ts.isNumericLiteral(binExpr.right)
             ? binExpr.right.getText()
@@ -671,6 +755,22 @@ export function visitBinaryExpression(
         }
     }
 
+    if (opToken.kind === ts.SyntaxKind.InKeyword) {
+        return `jspp::Access::in(${finalLeft}, ${finalRight})`;
+    }
+    if (opToken.kind === ts.SyntaxKind.InstanceOfKeyword) {
+        return `jspp::Access::instance_of(${finalLeft}, ${finalRight})`;
+    }
+    if (opToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
+        return `jspp::logical_and(${finalLeft}, ${finalRight})`;
+    }
+    if (opToken.kind === ts.SyntaxKind.BarBarToken) {
+        return `jspp::logical_or(${finalLeft}, ${finalRight})`;
+    }
+    if (opToken.kind === ts.SyntaxKind.QuestionQuestionToken) {
+        return `jspp::nullish_coalesce(${finalLeft}, ${finalRight})`;
+    }
+
     // Optimizations to prevent calling make_number multiple times
     if (ts.isNumericLiteral(binExpr.left)) {
         finalLeft = binExpr.left.getText();
@@ -694,6 +794,9 @@ export function visitBinaryExpression(
     if (opToken.kind === ts.SyntaxKind.AsteriskAsteriskToken) {
         return `jspp::pow(${finalLeft}, ${finalRight})`;
     }
+    if (opToken.kind === ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken) {
+        return `jspp::unsigned_right_shift(${finalLeft}, ${finalRight})`;
+    }
 
     // Optimizations to prevent calling make_number multiple times
     if (
@@ -710,7 +813,9 @@ export function visitBinaryExpression(
         op === "%" ||
         op === "^" ||
         op === "&" ||
-        op === "|"
+        op === "|" ||
+        op === "<<" ||
+        op === ">>"
     ) {
         return `(${finalLeft} ${op} ${finalRight})`;
     }
@@ -824,6 +929,12 @@ export function visitCallExpression(
             }
         }
 
+        if (callExpr.questionDotToken) {
+            return `jspp::Access::optional_call(${derefObj}.get_own_property("${propName}"), ${derefObj}, {${args}}, "${
+                this.escapeString(propName)
+            }")`;
+        }
+
         return `([&](){ auto __obj = ${derefObj}; return __obj.get_own_property("${propName}").as_function("${
             this.escapeString(propName)
         }")->call(__obj, {${args}}); })()`;
@@ -893,6 +1004,10 @@ export function visitCallExpression(
             }
         }
 
+        if (callExpr.questionDotToken) {
+            return `jspp::Access::optional_call(${derefObj}.get_own_property(${argText}), ${derefObj}, {${args}})`;
+        }
+
         return `([&](){ auto __obj = ${derefObj}; return __obj.get_own_property(${argText}).as_function()->call(__obj, {${args}}); })()`;
     }
 
@@ -938,6 +1053,11 @@ export function visitCallExpression(
     const calleeNamePart = calleeName && calleeName.length > 0
         ? `"${calleeName}"`
         : "";
+
+    if (callExpr.questionDotToken) {
+        return `jspp::Access::optional_call(${derefCallee}, jspp::UNDEFINED, {${args}}, ${calleeNamePart})`;
+    }
+
     return `${derefCallee}.as_function(${calleeNamePart})->call(jspp::UNDEFINED, {${args}})`;
 }
 
@@ -1111,7 +1231,7 @@ export function visitTypeOfExpression(
         }
     }
 
-    return `jspp::Access::typeof(${derefExpr})`;
+    return `jspp::Access::type_of(${derefExpr})`;
 }
 
 export function visitAwaitExpression(
@@ -1154,4 +1274,22 @@ export function visitAwaitExpression(
     }
 
     return `co_await ${derefExpr}`;
+}
+
+export function visitDeleteExpression(
+    this: CodeGenerator,
+    node: ts.DeleteExpression,
+    context: VisitContext,
+): string {
+    const expr = node.expression;
+    if (ts.isPropertyAccessExpression(expr)) {
+        const obj = this.visit(expr.expression, context);
+        const prop = `jspp::AnyValue::make_string("${expr.name.getText()}")`;
+        return `jspp::Access::delete_property(${obj}, ${prop})`;
+    } else if (ts.isElementAccessExpression(expr)) {
+        const obj = this.visit(expr.expression, context);
+        const prop = this.visit(expr.argumentExpression, context);
+        return `jspp::Access::delete_property(${obj}, ${prop})`;
+    }
+    return "jspp::TRUE"; // delete on non-property is true in JS
 }

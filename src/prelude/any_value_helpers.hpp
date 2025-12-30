@@ -80,6 +80,10 @@ namespace jspp
         {
             std::get<std::shared_ptr<JsObject>>(storage)->proto = std::make_shared<AnyValue>(proto);
         }
+        else if (is_array())
+        {
+            std::get<std::shared_ptr<JsArray>>(storage)->proto = std::make_shared<AnyValue>(proto);
+        }
         else if (is_function())
         {
             std::get<std::shared_ptr<JsFunction>>(storage)->proto = std::make_shared<AnyValue>(proto);

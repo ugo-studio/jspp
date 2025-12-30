@@ -9,6 +9,15 @@ std::string jspp::JsObject::to_std_string() const
     return "[Object Object]";
 }
 
+bool jspp::JsObject::has_property(const std::string &key) const
+{
+    if (props.find(key) != props.end())
+        return true;
+    if (proto && !(*proto).is_null() && !(*proto).is_undefined())
+        return (*proto).has_property(key);
+    return false;
+}
+
 jspp::AnyValue jspp::JsObject::get_property(const std::string &key, const AnyValue &thisVal)
 {
     auto it = props.find(key);

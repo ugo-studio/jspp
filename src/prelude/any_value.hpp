@@ -408,6 +408,7 @@ namespace jspp
         auto operator co_await() const;
 
         // --- PROPERTY ACCESS OPERATORS
+        bool has_property(const std::string &key) const;
         AnyValue get_own_property(const std::string &key) const;
         AnyValue get_own_property(uint32_t idx) const noexcept;
         AnyValue get_own_property(const AnyValue &key) const noexcept;
