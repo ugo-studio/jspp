@@ -20,6 +20,8 @@ export function visitNumericLiteral(
     this: CodeGenerator,
     node: ts.NumericLiteral,
 ): string {
+    if (node.text === "0") return "jspp::ZERO";
+    if (node.text === "1") return "jspp::ONE";
     return `jspp::AnyValue::make_number(${this.escapeString(node.text)})`;
 }
 

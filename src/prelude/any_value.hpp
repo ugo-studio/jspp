@@ -17,6 +17,7 @@
 #include <cmath>
 #include <optional>
 #include <coroutine>
+#include <variant>
 
 #include "types.hpp"
 #include "values/non_values.hpp"
@@ -51,323 +52,129 @@ namespace jspp
         AccessorDescriptor = 13,
     };
 
-    // Tagged storage with a union for payload
-    struct TaggedValue
-    {
-        JsType type;
-        union
-        {
-            JsUndefined undefined;
-            JsNull null;
-            JsUninitialized uninitialized;
-            bool boolean;
-            double number;
-            std::shared_ptr<JsString> str;
-            std::shared_ptr<JsObject> object;
-            std::shared_ptr<JsArray> array;
-            std::shared_ptr<JsFunction> function;
-            std::shared_ptr<JsIterator<AnyValue>> iterator;
-            std::shared_ptr<JsSymbol> symbol;
-            std::shared_ptr<JsPromise> promise;
-            std::shared_ptr<DataDescriptor> data_desc;
-            std::shared_ptr<AccessorDescriptor> accessor_desc;
-        };
-
-        TaggedValue() noexcept : type(JsType::Undefined), undefined{} {}
-        ~TaggedValue() {}
-    };
+    // The variant order MUST match JsType
+    using AnyValueVariant = std::variant<
+        JsUndefined,
+        JsNull,
+        JsUninitialized,
+        bool,
+        double,
+        std::shared_ptr<JsString>,
+        std::shared_ptr<JsObject>,
+        std::shared_ptr<JsArray>,
+        std::shared_ptr<JsFunction>,
+        std::shared_ptr<JsIterator<AnyValue>>,
+        std::shared_ptr<JsSymbol>,
+        std::shared_ptr<JsPromise>,
+        std::shared_ptr<DataDescriptor>,
+        std::shared_ptr<AccessorDescriptor>
+    >;
 
     class AnyValue
     {
     private:
-        TaggedValue storage;
-
-        void destroy_value() noexcept
-        {
-            switch (storage.type)
-            {
-            case JsType::String:
-                storage.str.~shared_ptr();
-                break;
-            case JsType::Object:
-                storage.object.~shared_ptr();
-                break;
-            case JsType::Array:
-                storage.array.~shared_ptr();
-                break;
-            case JsType::Function:
-                storage.function.~shared_ptr();
-                break;
-            case JsType::Iterator:
-                storage.iterator.~shared_ptr();
-                break;
-            case JsType::Symbol:
-                storage.symbol.~shared_ptr();
-                break;
-            case JsType::Promise:
-                storage.promise.~shared_ptr();
-                break;
-            case JsType::DataDescriptor:
-                storage.data_desc.~shared_ptr();
-                break;
-            case JsType::AccessorDescriptor:
-                storage.accessor_desc.~shared_ptr();
-                break;
-            default:
-                break;
-            }
-        }
-
-        void reset_to_undefined() noexcept
-        {
-            destroy_value();
-            storage.type = JsType::Undefined;
-            storage.undefined = JsUndefined{};
-        }
-
-        void move_from(AnyValue &other) noexcept
-        {
-            storage.type = other.storage.type;
-            switch (other.storage.type)
-            {
-            case JsType::Undefined:
-                storage.undefined = JsUndefined{};
-                break;
-            case JsType::Null:
-                storage.null = JsNull{};
-                break;
-            case JsType::Uninitialized:
-                storage.uninitialized = JsUninitialized{};
-                break;
-            case JsType::Boolean:
-                storage.boolean = other.storage.boolean;
-                break;
-            case JsType::Number:
-                storage.number = other.storage.number;
-                break;
-            case JsType::String:
-                new (&storage.str) std::shared_ptr<JsString>(std::move(other.storage.str));
-                break;
-            case JsType::Object:
-                new (&storage.object) std::shared_ptr<JsObject>(std::move(other.storage.object));
-                break;
-            case JsType::Array:
-                new (&storage.array) std::shared_ptr<JsArray>(std::move(other.storage.array));
-                break;
-            case JsType::Function:
-                new (&storage.function) std::shared_ptr<JsFunction>(std::move(other.storage.function));
-                break;
-            case JsType::Iterator:
-                new (&storage.iterator) std::shared_ptr<JsIterator<AnyValue>>(std::move(other.storage.iterator));
-                break;
-            case JsType::Symbol:
-                new (&storage.symbol) std::shared_ptr<JsSymbol>(std::move(other.storage.symbol));
-                break;
-            case JsType::Promise:
-                new (&storage.promise) std::shared_ptr<JsPromise>(std::move(other.storage.promise));
-                break;
-            case JsType::DataDescriptor:
-                new (&storage.data_desc) std::shared_ptr<DataDescriptor>(std::move(other.storage.data_desc));
-                break;
-            case JsType::AccessorDescriptor:
-                new (&storage.accessor_desc) std::shared_ptr<AccessorDescriptor>(std::move(other.storage.accessor_desc));
-                break;
-            }
-        }
-
-        void copy_from(const AnyValue &other)
-        {
-            storage.type = other.storage.type;
-            switch (other.storage.type)
-            {
-            case JsType::Undefined:
-                storage.undefined = JsUndefined{};
-                break;
-            case JsType::Null:
-                storage.null = JsNull{};
-                break;
-            case JsType::Uninitialized:
-                storage.uninitialized = JsUninitialized{};
-                break;
-            case JsType::Boolean:
-                storage.boolean = other.storage.boolean;
-                break;
-            case JsType::Number:
-                storage.number = other.storage.number;
-                break;
-            case JsType::String:
-                new (&storage.str) std::shared_ptr<JsString>(std::make_shared<JsString>(*other.storage.str));
-                break;
-            case JsType::Object:
-                new (&storage.object) std::shared_ptr<JsObject>(other.storage.object); // shallow copy
-                break;
-            case JsType::Array:
-                new (&storage.array) std::shared_ptr<JsArray>(other.storage.array); // shallow copy
-                break;
-            case JsType::Function:
-                new (&storage.function) std::shared_ptr<JsFunction>(other.storage.function); // shallow copy
-                break;
-            case JsType::Iterator:
-                new (&storage.iterator) std::shared_ptr<JsIterator<AnyValue>>(other.storage.iterator); // shallow copy
-                break;
-            case JsType::Symbol:
-                new (&storage.symbol) std::shared_ptr<JsSymbol>(other.storage.symbol); // shallow copy (shared)
-                break;
-            case JsType::Promise:
-                new (&storage.promise) std::shared_ptr<JsPromise>(other.storage.promise); // shallow copy
-                break;
-            case JsType::DataDescriptor:
-                new (&storage.data_desc) std::shared_ptr<DataDescriptor>(other.storage.data_desc); // shallow copy
-                break;
-            case JsType::AccessorDescriptor:
-                new (&storage.accessor_desc) std::shared_ptr<AccessorDescriptor>(other.storage.accessor_desc); // shallow copy
-                break;
-            }
-        }
+        AnyValueVariant storage;
 
     public:
         // default ctor (Undefined)
-        AnyValue() noexcept
-        {
-            storage.type = JsType::Undefined;
-            storage.undefined = JsUndefined{};
-        }
+        AnyValue() noexcept = default;
 
-        // 1. Destructor
-        ~AnyValue() noexcept
-        {
-            destroy_value();
-        }
+        // Copy/Move handled by std::variant
+        AnyValue(const AnyValue &) = default;
+        AnyValue(AnyValue &&) noexcept = default;
+        AnyValue &operator=(const AnyValue &) = default;
+        AnyValue &operator=(AnyValue &&) noexcept = default;
 
-        // 2. Copy Constructor (deep copy)
-        AnyValue(const AnyValue &other)
-        {
-            copy_from(other);
-        }
-
-        // 3. Copy Assignment Operator
-        AnyValue &operator=(const AnyValue &other)
-        {
-            if (this != &other)
-            {
-                destroy_value();
-                copy_from(other);
-            }
-            return *this;
-        }
-
-        // 4. Move Constructor
-        AnyValue(AnyValue &&other) noexcept
-        {
-            storage.type = JsType::Undefined;
-            storage.undefined = JsUndefined{};
-            move_from(other);
-            other.reset_to_undefined();
-        }
-
-        // 5. Move Assignment Operator
-        AnyValue &operator=(AnyValue &&other) noexcept
-        {
-            if (this != &other)
-            {
-                destroy_value();
-                move_from(other);
-                other.reset_to_undefined();
-            }
-            return *this;
-        }
+        ~AnyValue() = default;
 
         friend void swap(AnyValue &a, AnyValue &b) noexcept
         {
-            AnyValue tmp(std::move(a));
-            a = std::move(b);
-            b = std::move(tmp);
+            std::swap(a.storage, b.storage);
         }
+
+        // --- FRIENDS for Optimized Operators
+        friend AnyValue &operator+=(AnyValue &lhs, const AnyValue &rhs);
+        friend AnyValue &operator-=(AnyValue &lhs, const AnyValue &rhs);
+        friend AnyValue &operator*=(AnyValue &lhs, const AnyValue &rhs);
+        friend AnyValue &operator/=(AnyValue &lhs, const AnyValue &rhs);
+        friend AnyValue &operator%=(AnyValue &lhs, const AnyValue &rhs);
+        friend AnyValue &operator++(AnyValue &val);
+        friend AnyValue operator++(AnyValue &val, int);
+        friend AnyValue &operator--(AnyValue &val);
+        friend AnyValue operator--(AnyValue &val, int);
 
         // factories -------------------------------------------------------
         static AnyValue make_number(double d) noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::Number;
-            v.storage.number = d;
+            v.storage = d;
             return v;
         }
         static AnyValue make_nan() noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::Number;
-            v.storage.number = std::numeric_limits<double>::quiet_NaN();
+            v.storage = std::numeric_limits<double>::quiet_NaN();
             return v;
         }
         static AnyValue make_uninitialized() noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::Uninitialized;
-            v.storage.uninitialized = JsUninitialized{};
+            v.storage = JsUninitialized{};
             return v;
         }
         static AnyValue make_undefined() noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::Undefined;
-            v.storage.undefined = JsUndefined{};
+            v.storage = JsUndefined{};
             return v;
         }
         static AnyValue make_null() noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::Null;
-            v.storage.null = JsNull{};
+            v.storage = JsNull{};
             return v;
         }
         static AnyValue make_boolean(bool b) noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::Boolean;
-            v.storage.boolean = b;
+            v.storage = b;
             return v;
         }
         static AnyValue make_string(const std::string &raw_s) noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::String;
-            new (&v.storage.str) std::shared_ptr<JsString>(std::make_shared<JsString>(raw_s));
+            v.storage = std::make_shared<JsString>(raw_s);
             return v;
         }
         static AnyValue make_object(const std::map<std::string, AnyValue> &props) noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::Object;
-            new (&v.storage.object) std::shared_ptr<JsObject>(std::make_shared<JsObject>(props));
+            v.storage = std::make_shared<JsObject>(props);
             return v;
         }
         static AnyValue make_object_with_proto(const std::map<std::string, AnyValue> &props, const AnyValue &proto) noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::Object;
             auto protoPtr = std::make_shared<AnyValue>(proto);
-            new (&v.storage.object) std::shared_ptr<JsObject>(std::make_shared<JsObject>(props, protoPtr));
+            v.storage = std::make_shared<JsObject>(props, protoPtr);
             return v;
         }
         static AnyValue make_array(const std::vector<std::optional<AnyValue>> &dense) noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::Array;
-            new (&v.storage.array) std::shared_ptr<JsArray>(std::make_shared<JsArray>(dense));
+            v.storage = std::make_shared<JsArray>(dense);
             return v;
         }
         static AnyValue make_array(std::vector<std::optional<AnyValue>> &&dense) noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::Array;
-            new (&v.storage.array) std::shared_ptr<JsArray>(std::make_shared<JsArray>(std::move(dense)));
+            v.storage = std::make_shared<JsArray>(std::move(dense));
             return v;
         }
         static AnyValue make_function(const JsFunctionCallable &call, const std::optional<std::string> &name = std::nullopt, bool is_constructor = true) noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::Function;
-            new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(call, name, std::unordered_map<std::string, AnyValue>{}, false, is_constructor));
+            v.storage = std::make_shared<JsFunction>(call, name, std::unordered_map<std::string, AnyValue>{}, false, is_constructor);
 
             auto proto = make_object({});
             proto.set_own_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
@@ -378,9 +185,8 @@ namespace jspp
         static AnyValue make_class(const JsFunctionCallable &call, const std::optional<std::string> &name = std::nullopt) noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::Function;
             // use Constructor A with is_cls = true
-            new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(call, name, std::unordered_map<std::string, AnyValue>{}, true));
+            v.storage = std::make_shared<JsFunction>(call, name, std::unordered_map<std::string, AnyValue>{}, true);
 
             auto proto = make_object({});
             proto.set_own_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
@@ -391,9 +197,8 @@ namespace jspp
         static AnyValue make_generator(const JsFunctionCallable &call, const std::optional<std::string> &name = std::nullopt) noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::Function;
             // use Constructor B with is_gen = true
-            new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(call, true, name));
+            v.storage = std::make_shared<JsFunction>(call, true, name);
 
             auto proto = make_object({});
             proto.set_own_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
@@ -404,9 +209,8 @@ namespace jspp
         static AnyValue make_async_function(const JsFunctionCallable &call, const std::optional<std::string> &name = std::nullopt) noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::Function;
             // use Constructor C with is_async_func = true
-            new (&v.storage.function) std::shared_ptr<JsFunction>(std::make_shared<JsFunction>(call, false, true, name));
+            v.storage = std::make_shared<JsFunction>(call, false, true, name);
 
             auto proto = make_object({});
             proto.set_own_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
@@ -417,22 +221,19 @@ namespace jspp
         static AnyValue make_symbol(const std::string &description = "") noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::Symbol;
-            new (&v.storage.symbol) std::shared_ptr<JsSymbol>(std::make_shared<JsSymbol>(description));
+            v.storage = std::make_shared<JsSymbol>(description);
             return v;
         }
         static AnyValue make_promise(const JsPromise &promise) noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::Promise;
-            new (&v.storage.promise) std::shared_ptr<JsPromise>(std::make_shared<JsPromise>(promise));
+            v.storage = std::make_shared<JsPromise>(promise);
             return v;
         }
         static AnyValue make_data_descriptor(const AnyValue &value, bool writable, bool enumerable, bool configurable) noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::DataDescriptor;
-            new (&v.storage.data_desc) std::shared_ptr<DataDescriptor>(std::make_shared<DataDescriptor>(std::make_shared<AnyValue>(value), writable, enumerable, configurable));
+            v.storage = std::make_shared<DataDescriptor>(std::make_shared<AnyValue>(value), writable, enumerable, configurable);
             return v;
         }
         static AnyValue make_accessor_descriptor(const std::optional<std::function<AnyValue(const AnyValue &, const std::vector<AnyValue> &)>> &get,
@@ -441,53 +242,48 @@ namespace jspp
                                                  bool configurable) noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::AccessorDescriptor;
-            new (&v.storage.accessor_desc) std::shared_ptr<AccessorDescriptor>(std::make_shared<AccessorDescriptor>(get, set, enumerable, configurable));
+            v.storage = std::make_shared<AccessorDescriptor>(get, set, enumerable, configurable);
             return v;
         }
 
         static AnyValue from_symbol(std::shared_ptr<JsSymbol> sym) noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::Symbol;
-            new (&v.storage.symbol) std::shared_ptr<JsSymbol>(std::move(sym));
+            v.storage = std::move(sym);
             return v;
         }
         static AnyValue from_string(std::shared_ptr<JsString> str) noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::String;
-            new (&v.storage.str) std::shared_ptr<JsString>(std::move(str));
+            v.storage = std::move(str);
             return v;
         }
         static AnyValue from_iterator(JsIterator<AnyValue> &&iterator) noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::Iterator;
-            new (&v.storage.iterator) std::shared_ptr<JsIterator<AnyValue>>(std::make_shared<JsIterator<AnyValue>>(std::move(iterator)));
+            v.storage = std::make_shared<JsIterator<AnyValue>>(std::move(iterator));
             return v;
         }
         static AnyValue from_iterator_ref(JsIterator<AnyValue> *iterator) noexcept
         {
             AnyValue v;
-            v.storage.type = JsType::Iterator;
-            new (&v.storage.iterator) std::shared_ptr<JsIterator<AnyValue>>(iterator, [](JsIterator<AnyValue> *) {});
+            v.storage = std::shared_ptr<JsIterator<AnyValue>>(iterator, [](JsIterator<AnyValue> *) {});
             return v;
         }
 
         // PROPERTY RESOLUTION HELPERS ---------------------------------------
         static AnyValue resolve_property_for_read(const AnyValue &val, const AnyValue &thisVal, const std::string &propName) noexcept
         {
-            switch (val.storage.type)
+            switch (val.get_type())
             {
             case JsType::DataDescriptor:
             {
-                return *(val.storage.data_desc->value);
+                return *(val.as_data_descriptor()->value);
             }
             case JsType::AccessorDescriptor:
             {
-                if (val.storage.accessor_desc->get.has_value())
-                    return val.storage.accessor_desc->get.value()(thisVal, {});
+                if (val.as_accessor_descriptor()->get.has_value())
+                    return val.as_accessor_descriptor()->get.value()(thisVal, {});
                 else
                 {
                     static AnyValue undefined = AnyValue{};
@@ -502,13 +298,13 @@ namespace jspp
         }
         static AnyValue resolve_property_for_write(AnyValue &val, const AnyValue &thisVal, const AnyValue &new_val, const std::string &propName)
         {
-            switch (val.storage.type)
+            switch (val.get_type())
             {
             case JsType::DataDescriptor:
             {
-                if (val.storage.data_desc->writable)
+                if (val.as_data_descriptor()->writable)
                 {
-                    *(val.storage.data_desc->value) = new_val;
+                    *(val.as_data_descriptor()->value) = new_val;
                     return new_val;
                 }
                 else
@@ -518,9 +314,9 @@ namespace jspp
             }
             case JsType::AccessorDescriptor:
             {
-                if (val.storage.accessor_desc->set.has_value())
+                if (val.as_accessor_descriptor()->set.has_value())
                 {
-                    val.storage.accessor_desc->set.value()(thisVal, {new_val});
+                    val.as_accessor_descriptor()->set.value()(thisVal, {new_val});
                     return new_val;
                 }
                 else
@@ -537,79 +333,69 @@ namespace jspp
         }
 
         // TYPE CHECKERS AND ACCESSORS ---------------------------------------
-        JsType get_type() const noexcept { return storage.type; }
-        bool is_number() const noexcept { return storage.type == JsType::Number; }
-        bool is_string() const noexcept { return storage.type == JsType::String; }
-        bool is_object() const noexcept { return storage.type == JsType::Object; }
-        bool is_array() const noexcept { return storage.type == JsType::Array; }
-        bool is_function() const noexcept { return storage.type == JsType::Function; }
-        bool is_iterator() const noexcept { return storage.type == JsType::Iterator; }
-        bool is_boolean() const noexcept { return storage.type == JsType::Boolean; }
-        bool is_symbol() const noexcept { return storage.type == JsType::Symbol; }
-        bool is_promise() const noexcept { return storage.type == JsType::Promise; }
-        bool is_null() const noexcept { return storage.type == JsType::Null; }
-        bool is_undefined() const noexcept { return storage.type == JsType::Undefined; }
-        bool is_uninitialized() const noexcept { return storage.type == JsType::Uninitialized; }
-        bool is_data_descriptor() const noexcept { return storage.type == JsType::DataDescriptor; }
-        bool is_accessor_descriptor() const noexcept { return storage.type == JsType::AccessorDescriptor; }
-        bool is_generator() const noexcept { return storage.type == JsType::Function && storage.function->is_generator; }
+        JsType get_type() const noexcept { return static_cast<JsType>(storage.index()); }
+        bool is_number() const noexcept { return storage.index() == 4; }
+        bool is_string() const noexcept { return storage.index() == 5; }
+        bool is_object() const noexcept { return storage.index() == 6; }
+        bool is_array() const noexcept { return storage.index() == 7; }
+        bool is_function() const noexcept { return storage.index() == 8; }
+        bool is_iterator() const noexcept { return storage.index() == 9; }
+        bool is_boolean() const noexcept { return storage.index() == 3; }
+        bool is_symbol() const noexcept { return storage.index() == 10; }
+        bool is_promise() const noexcept { return storage.index() == 11; }
+        bool is_null() const noexcept { return storage.index() == 1; }
+        bool is_undefined() const noexcept { return storage.index() == 0; }
+        bool is_uninitialized() const noexcept { return storage.index() == 2; }
+        bool is_data_descriptor() const noexcept { return storage.index() == 12; }
+        bool is_accessor_descriptor() const noexcept { return storage.index() == 13; }
+        bool is_generator() const noexcept { return is_function() && as_function()->is_generator; }
 
         // --- TYPE CASTERS
         double as_double() const noexcept
         {
-            assert(is_number());
-            return storage.number;
+            return std::get<double>(storage);
         }
         bool as_boolean() const noexcept
         {
-            assert(is_boolean());
-            return storage.boolean;
+            return std::get<bool>(storage);
         }
         JsString *as_string() const noexcept
         {
-            assert(is_string());
-            return storage.str.get();
+            return std::get<std::shared_ptr<JsString>>(storage).get();
         }
         JsObject *as_object() const noexcept
         {
-            assert(is_object());
-            return storage.object.get();
+            return std::get<std::shared_ptr<JsObject>>(storage).get();
         }
         JsArray *as_array() const noexcept
         {
-            assert(is_array());
-            return storage.array.get();
+            return std::get<std::shared_ptr<JsArray>>(storage).get();
         }
         JsFunction *as_function(const std::optional<std::string> &expression = std::nullopt) const
         {
             if (is_function())
-                return storage.function.get();
+                return std::get<std::shared_ptr<JsFunction>>(storage).get();
             throw Exception::make_exception(expression.value_or(to_std_string()) + " is not a function", "TypeError");
         }
         JsSymbol *as_symbol() const noexcept
         {
-            assert(is_symbol());
-            return storage.symbol.get();
+            return std::get<std::shared_ptr<JsSymbol>>(storage).get();
         }
         JsPromise *as_promise() const noexcept
         {
-            assert(is_promise());
-            return storage.promise.get();
+            return std::get<std::shared_ptr<JsPromise>>(storage).get();
         }
         std::shared_ptr<JsIterator<AnyValue>> as_iterator() const
         {
-            assert(is_iterator());
-            return storage.iterator; // Returns the shared_ptr, incrementing ref count
+            return std::get<std::shared_ptr<JsIterator<AnyValue>>>(storage);
         }
         DataDescriptor *as_data_descriptor() const noexcept
         {
-            assert(is_data_descriptor());
-            return storage.data_desc.get();
+            return std::get<std::shared_ptr<DataDescriptor>>(storage).get();
         }
         AccessorDescriptor *as_accessor_descriptor() const noexcept
         {
-            assert(is_accessor_descriptor());
-            return storage.accessor_desc.get();
+            return std::get<std::shared_ptr<AccessorDescriptor>>(storage).get();
         }
 
         // --- CO_AWAIT Operator ---
@@ -655,4 +441,8 @@ namespace jspp
     {
         return AnyValueAwaiter{*this};
     }
+
+    // Global Constants for Optimization
+    inline const AnyValue ZERO = AnyValue::make_number(0.0);
+    inline const AnyValue ONE = AnyValue::make_number(1.0);
 }

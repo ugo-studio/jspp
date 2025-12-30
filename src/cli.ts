@@ -25,7 +25,7 @@ async function main() {
         console.log(`Generated C++ code ${cppFilePath}...`);
 
         await fs.mkdir(outputDir, { recursive: true });
-        await fs.writeFile(cppFilePath, cppCode);
+        // await fs.writeFile(cppFilePath, cppCode);
 
         console.log(`Compiling ${cppFilePath}...`);
         const compile = Bun.spawnSync({

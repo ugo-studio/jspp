@@ -83,18 +83,26 @@ namespace jspp
     }
     inline AnyValue operator-(const AnyValue &lhs, const AnyValue &rhs)
     {
+        if (lhs.is_number() && rhs.is_number())
+            return AnyValue::make_number(lhs.as_double() - rhs.as_double());
         return AnyValue::make_number(Operators_Private::ToNumber(lhs) - Operators_Private::ToNumber(rhs));
     }
     inline AnyValue operator*(const AnyValue &lhs, const AnyValue &rhs)
     {
+        if (lhs.is_number() && rhs.is_number())
+            return AnyValue::make_number(lhs.as_double() * rhs.as_double());
         return AnyValue::make_number(Operators_Private::ToNumber(lhs) * Operators_Private::ToNumber(rhs));
     }
     inline AnyValue operator/(const AnyValue &lhs, const AnyValue &rhs)
     {
+        if (lhs.is_number() && rhs.is_number())
+            return AnyValue::make_number(lhs.as_double() / rhs.as_double());
         return AnyValue::make_number(Operators_Private::ToNumber(lhs) / Operators_Private::ToNumber(rhs));
     }
     inline AnyValue operator%(const AnyValue &lhs, const AnyValue &rhs)
     {
+        if (lhs.is_number() && rhs.is_number())
+            return AnyValue::make_number(std::fmod(lhs.as_double(), rhs.as_double()));
         return AnyValue::make_number(std::fmod(Operators_Private::ToNumber(lhs), Operators_Private::ToNumber(rhs)));
     }
 
@@ -120,6 +128,9 @@ namespace jspp
     inline AnyValue operator<(const AnyValue &lhs, const AnyValue &rhs)
     {
         // Simplified Abstract Relational Comparison
+        if (lhs.is_number() && rhs.is_number())
+            return AnyValue::make_boolean(lhs.as_double() < rhs.as_double());
+
         if (lhs.is_string() && rhs.is_string())
             return AnyValue::make_boolean(lhs.as_string()->value < rhs.as_string()->value);
 
@@ -198,24 +209,46 @@ namespace jspp
     // --- INCREMENT / DECREMENT
     inline AnyValue &operator++(AnyValue &val) // pre-increment
     {
+        if (val.is_number())
+        {
+            std::get<double>(val.storage) += 1.0;
+            return val;
+        }
         double num = Operators_Private::ToNumber(val);
         val = AnyValue::make_number(num + 1.0);
         return val;
     }
     inline AnyValue operator++(AnyValue &val, int) // post-increment
     {
+        if (val.is_number())
+        {
+            AnyValue old = val; // copy
+            std::get<double>(val.storage) += 1.0;
+            return old;
+        }
         AnyValue old = AnyValue::make_number(Operators_Private::ToNumber(val));
         ++val;
         return old;
     }
     inline AnyValue &operator--(AnyValue &val) // pre-decrement
     {
+        if (val.is_number())
+        {
+            std::get<double>(val.storage) -= 1.0;
+            return val;
+        }
         double num = Operators_Private::ToNumber(val);
         val = AnyValue::make_number(num - 1.0);
         return val;
     }
     inline AnyValue operator--(AnyValue &val, int) // post-decrement
     {
+        if (val.is_number())
+        {
+            AnyValue old = val; // copy
+            std::get<double>(val.storage) -= 1.0;
+            return old;
+        }
         AnyValue old = AnyValue::make_number(Operators_Private::ToNumber(val));
         --val;
         return old;
@@ -224,26 +257,51 @@ namespace jspp
     // --- COMPOUND ASSIGNMENT
     inline AnyValue &operator+=(AnyValue &lhs, const AnyValue &rhs)
     {
+        if (lhs.is_number() && rhs.is_number())
+        {
+            std::get<double>(lhs.storage) += std::get<double>(rhs.storage);
+            return lhs;
+        }
         lhs = lhs + rhs;
         return lhs;
     }
     inline AnyValue &operator-=(AnyValue &lhs, const AnyValue &rhs)
     {
+        if (lhs.is_number() && rhs.is_number())
+        {
+            std::get<double>(lhs.storage) -= std::get<double>(rhs.storage);
+            return lhs;
+        }
         lhs = lhs - rhs;
         return lhs;
     }
     inline AnyValue &operator*=(AnyValue &lhs, const AnyValue &rhs)
     {
+        if (lhs.is_number() && rhs.is_number())
+        {
+            std::get<double>(lhs.storage) *= std::get<double>(rhs.storage);
+            return lhs;
+        }
         lhs = lhs * rhs;
         return lhs;
     }
     inline AnyValue &operator/=(AnyValue &lhs, const AnyValue &rhs)
     {
+        if (lhs.is_number() && rhs.is_number())
+        {
+            std::get<double>(lhs.storage) /= std::get<double>(rhs.storage);
+            return lhs;
+        }
         lhs = lhs / rhs;
         return lhs;
     }
     inline AnyValue &operator%=(AnyValue &lhs, const AnyValue &rhs)
     {
+        if (lhs.is_number() && rhs.is_number())
+        {
+            std::get<double>(lhs.storage) = std::fmod(std::get<double>(lhs.storage), std::get<double>(rhs.storage));
+            return lhs;
+        }
         lhs = lhs % rhs;
         return lhs;
     }

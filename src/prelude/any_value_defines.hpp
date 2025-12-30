@@ -12,11 +12,11 @@ namespace jspp
     {
         if (is_object())
         {
-            storage.object->props[key] = value;
+            std::get<std::shared_ptr<JsObject>>(storage)->props[key] = value;
         }
         else if (is_function())
         {
-            storage.function->props[key] = value;
+            std::get<std::shared_ptr<JsFunction>>(storage)->props[key] = value;
         }
     }
 
@@ -37,7 +37,7 @@ namespace jspp
     {
         if (is_object())
         {
-            auto &props = storage.object->props;
+            auto &props = std::get<std::shared_ptr<JsObject>>(storage)->props;
             auto it = props.find(key);
             if (it != props.end() && it->second.is_accessor_descriptor())
             {
@@ -58,7 +58,7 @@ namespace jspp
         }
         else if (is_function())
         {
-            auto &props = storage.function->props;
+            auto &props = std::get<std::shared_ptr<JsFunction>>(storage)->props;
             auto it = props.find(key);
             if (it != props.end() && it->second.is_accessor_descriptor())
             {
@@ -91,7 +91,7 @@ namespace jspp
     {
         if (is_object())
         {
-            auto &props = storage.object->props;
+            auto &props = std::get<std::shared_ptr<JsObject>>(storage)->props;
             auto it = props.find(key);
             if (it != props.end() && it->second.is_accessor_descriptor())
             {
@@ -116,7 +116,7 @@ namespace jspp
         }
         else if (is_function())
         {
-            auto &props = storage.function->props;
+            auto &props = std::get<std::shared_ptr<JsFunction>>(storage)->props;
             auto it = props.find(key);
             if (it != props.end() && it->second.is_accessor_descriptor())
             {

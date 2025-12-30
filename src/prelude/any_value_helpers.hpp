@@ -8,14 +8,14 @@ namespace jspp
 {
     const bool AnyValue::is_truthy() const noexcept
     {
-        switch (storage.type)
+        switch (get_type())
         {
         case JsType::Boolean:
-            return storage.boolean;
+            return std::get<bool>(storage);
         case JsType::Number:
-            return storage.number != 0.0;
+            return std::get<double>(storage) != 0.0;
         case JsType::String:
-            return !storage.str->value.empty();
+            return !std::get<std::shared_ptr<JsString>>(storage)->value.empty();
         case JsType::Undefined:
             return false;
         case JsType::Null:
@@ -29,33 +29,33 @@ namespace jspp
 
     const bool AnyValue::is_strictly_equal_to_primitive(const AnyValue &other) const noexcept
     {
-        if (storage.type == other.storage.type)
+        if (storage.index() == other.storage.index())
         {
-            switch (storage.type)
+            switch (get_type())
             {
             case JsType::Boolean:
-                return storage.boolean == other.storage.boolean;
+                return std::get<bool>(storage) == std::get<bool>(other.storage);
             case JsType::Number:
-                return storage.number == other.storage.number;
+                return std::get<double>(storage) == std::get<double>(other.storage);
             case JsType::String:
-                return (storage.str->value == other.storage.str->value);
+                return (std::get<std::shared_ptr<JsString>>(storage)->value == std::get<std::shared_ptr<JsString>>(other.storage)->value);
             case JsType::Array:
-                return (storage.array == other.storage.array);
+                return (std::get<std::shared_ptr<JsArray>>(storage) == std::get<std::shared_ptr<JsArray>>(other.storage));
             case JsType::Object:
-                return (storage.object == other.storage.object);
+                return (std::get<std::shared_ptr<JsObject>>(storage) == std::get<std::shared_ptr<JsObject>>(other.storage));
             case JsType::Function:
-                return (storage.function == other.storage.function);
+                return (std::get<std::shared_ptr<JsFunction>>(storage) == std::get<std::shared_ptr<JsFunction>>(other.storage));
             case JsType::Iterator:
-                return (storage.iterator == other.storage.iterator);
+                return (std::get<std::shared_ptr<JsIterator<AnyValue>>>(storage) == std::get<std::shared_ptr<JsIterator<AnyValue>>>(other.storage));
             case JsType::Promise:
-                return (storage.promise == other.storage.promise);
+                return (std::get<std::shared_ptr<JsPromise>>(storage) == std::get<std::shared_ptr<JsPromise>>(other.storage));
             case JsType::Symbol:
                 // Symbols are unique by reference/pointer identity
-                return (storage.symbol == other.storage.symbol);
+                return (std::get<std::shared_ptr<JsSymbol>>(storage) == std::get<std::shared_ptr<JsSymbol>>(other.storage));
             case JsType::DataDescriptor:
-                return storage.data_desc == other.storage.data_desc;
+                return std::get<std::shared_ptr<DataDescriptor>>(storage) == std::get<std::shared_ptr<DataDescriptor>>(other.storage);
             case JsType::AccessorDescriptor:
-                return storage.accessor_desc == other.storage.accessor_desc;
+                return std::get<std::shared_ptr<AccessorDescriptor>>(storage) == std::get<std::shared_ptr<AccessorDescriptor>>(other.storage);
             default:
                 return true;
             }
@@ -66,7 +66,7 @@ namespace jspp
     {
         // Implements JavaScript's Abstract Equality Comparison Algorithm (==)
         // Step 1: If types are the same, use strict equality (===)
-        if (storage.type == other.storage.type)
+        if (storage.index() == other.storage.index())
         {
             return is_strictly_equal_to_primitive(other);
         }
@@ -167,53 +167,54 @@ namespace jspp
 
     const std::string AnyValue::to_std_string() const noexcept
     {
-        switch (storage.type)
+        switch (get_type())
         {
         case JsType::Undefined:
             return "undefined";
         case JsType::Null:
             return "null";
         case JsType::Boolean:
-            return storage.boolean ? "true" : "false";
+            return std::get<bool>(storage) ? "true" : "false";
         case JsType::String:
-            return storage.str->to_std_string();
+            return std::get<std::shared_ptr<JsString>>(storage)->to_std_string();
         case JsType::Object:
-            return storage.object->to_std_string();
+            return std::get<std::shared_ptr<JsObject>>(storage)->to_std_string();
         case JsType::Array:
-            return storage.array->to_std_string();
+            return std::get<std::shared_ptr<JsArray>>(storage)->to_std_string();
         case JsType::Function:
-            return storage.function->to_std_string();
+            return std::get<std::shared_ptr<JsFunction>>(storage)->to_std_string();
         case JsType::Iterator:
-            return storage.iterator->to_std_string();
+            return std::get<std::shared_ptr<JsIterator<AnyValue>>>(storage)->to_std_string();
         case JsType::Promise:
-            return storage.promise->to_std_string();
+            return std::get<std::shared_ptr<JsPromise>>(storage)->to_std_string();
         case JsType::Symbol:
-            return storage.symbol->to_std_string();
+            return std::get<std::shared_ptr<JsSymbol>>(storage)->to_std_string();
         case JsType::DataDescriptor:
-            return storage.data_desc->value->to_std_string();
+            return std::get<std::shared_ptr<DataDescriptor>>(storage)->value->to_std_string();
         case JsType::AccessorDescriptor:
         {
-            if (storage.accessor_desc->get.has_value())
-                return storage.accessor_desc->get.value()(*this, {}).to_std_string();
+            if (std::get<std::shared_ptr<AccessorDescriptor>>(storage)->get.has_value())
+                return std::get<std::shared_ptr<AccessorDescriptor>>(storage)->get.value()(*this, {}).to_std_string();
             else
                 return "undefined";
         }
         case JsType::Number:
         {
-            if (std::isnan(storage.number))
+            double num = std::get<double>(storage);
+            if (std::isnan(num))
             {
                 return "NaN";
             }
-            if (std::abs(storage.number) >= 1e21 || (std::abs(storage.number) > 0 && std::abs(storage.number) < 1e-6))
+            if (std::abs(num) >= 1e21 || (std::abs(num) > 0 && std::abs(num) < 1e-6))
             {
                 std::ostringstream oss;
-                oss << std::scientific << std::setprecision(4) << storage.number;
+                oss << std::scientific << std::setprecision(4) << num;
                 return oss.str();
             }
             else
             {
                 std::ostringstream oss;
-                oss << std::setprecision(6) << std::fixed << storage.number;
+                oss << std::setprecision(6) << std::fixed << num;
                 std::string s = oss.str();
                 s.erase(s.find_last_not_of('0') + 1, std::string::npos);
                 if (!s.empty() && s.back() == '.')
@@ -235,11 +236,11 @@ namespace jspp
     {
         if (is_object())
         {
-            storage.object->proto = std::make_shared<AnyValue>(proto);
+            std::get<std::shared_ptr<JsObject>>(storage)->proto = std::make_shared<AnyValue>(proto);
         }
         else if (is_function())
         {
-            storage.function->proto = std::make_shared<AnyValue>(proto);
+            std::get<std::shared_ptr<JsFunction>>(storage)->proto = std::make_shared<AnyValue>(proto);
         }
     }
 
