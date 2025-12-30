@@ -41,7 +41,10 @@ bool jspp::JsFunction::has_property(const std::string &key) const
     if (props.find(key) != props.end())
         return true;
     if (proto && !(*proto).is_null() && !(*proto).is_undefined())
-        return (*proto).has_property(key);
+    {
+        if ((*proto).has_property(key))
+            return true;
+    }
     if (FunctionPrototypes::get(key, const_cast<JsFunction *>(this)).has_value())
         return true;
     return false;
@@ -55,7 +58,10 @@ jspp::AnyValue jspp::JsFunction::get_property(const std::string &key, const AnyV
         // check explicit proto chain (e.g. for classes extending other classes)
         if (proto && !(*proto).is_null() && !(*proto).is_undefined())
         {
-            return (*proto).get_property_with_receiver(key, thisVal);
+            if ((*proto).has_property(key))
+            {
+                return (*proto).get_property_with_receiver(key, thisVal);
+            }
         }
 
         // check prototype (implicit Function.prototype)

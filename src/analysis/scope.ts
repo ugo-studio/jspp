@@ -1,4 +1,5 @@
 import * as ts from "typescript";
+
 import type { TypeInfo } from "./typeAnalyzer";
 
 export const RESERVED_KEYWORDS = new Set([
@@ -18,10 +19,13 @@ export const BUILTIN_OBJECTS = new Set([
     { name: "globalThis", isConst: false },
     { name: "Error", isConst: false },
     { name: "Promise", isConst: false },
+    { name: "Function", isConst: false },
     { name: "setTimeout", isConst: false },
     { name: "clearTimeout", isConst: false },
     { name: "setInterval", isConst: false },
     { name: "clearInterval", isConst: false },
+    { name: "Array", isConst: false },
+    { name: "Object", isConst: false },
     { name: "Math", isConst: false },
 ]);
 

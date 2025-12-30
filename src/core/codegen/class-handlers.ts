@@ -85,6 +85,9 @@ export function visitClassDeclaration(
             `${this.indent()}(*${className}).set_prototype(${parentName});\n`;
         code +=
             `${this.indent()}(*${className}).get_own_property("prototype").set_prototype(${parentName}.get_own_property("prototype"));\n`;
+    } else {
+        code +=
+            `${this.indent()}(*${className}).get_own_property("prototype").set_prototype(::Object.get_own_property("prototype"));\n`;
     }
 
     // Members

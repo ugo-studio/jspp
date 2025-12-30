@@ -73,7 +73,10 @@ bool jspp::JsArray::has_property(const std::string &key) const
         return true;
 
     if (proto && !(*proto).is_null() && !(*proto).is_undefined())
-        return (*proto).has_property(key);
+    {
+        if ((*proto).has_property(key))
+            return true;
+    }
 
     if (ArrayPrototypes::get(key, const_cast<JsArray *>(this)).has_value())
         return true;
@@ -94,10 +97,23 @@ jspp::AnyValue jspp::JsArray::get_property(const std::string &key, const AnyValu
         auto it = props.find(key);
         if (it == props.end())
         {
+            // check special own properties (length)
+            if (key == "length")
+            {
+                auto proto_it = ArrayPrototypes::get(key, this);
+                if (proto_it.has_value())
+                {
+                    return AnyValue::resolve_property_for_read(proto_it.value(), thisVal, key);
+                }
+            }
+
             // check explicit proto chain
             if (proto && !(*proto).is_null() && !(*proto).is_undefined())
             {
-                return (*proto).get_property_with_receiver(key, thisVal);
+                if ((*proto).has_property(key))
+                {
+                    return (*proto).get_property_with_receiver(key, thisVal);
+                }
             }
 
             // check prototype (implicit Array.prototype)

@@ -14,7 +14,12 @@ bool jspp::JsObject::has_property(const std::string &key) const
     if (props.find(key) != props.end())
         return true;
     if (proto && !(*proto).is_null() && !(*proto).is_undefined())
-        return (*proto).has_property(key);
+    {
+        if ((*proto).has_property(key))
+            return true;
+    }
+    if (ObjectPrototypes::get(key, const_cast<JsObject *>(this)).has_value())
+        return true;
     return false;
 }
 
@@ -26,11 +31,13 @@ jspp::AnyValue jspp::JsObject::get_property(const std::string &key, const AnyVal
         // check prototype chain
         if (proto && !(*proto).is_null() && !(*proto).is_undefined())
         {
-            return (*proto).get_property_with_receiver(key, thisVal);
+            if ((*proto).has_property(key))
+            {
+                return (*proto).get_property_with_receiver(key, thisVal);
+            }
         }
 
         // check built-in prototype methods (Object.prototype)
-        // ideally these should be on the root prototype object, but for now we keep this fallback
         auto proto_it = ObjectPrototypes::get(key, this);
         if (proto_it.has_value())
         {

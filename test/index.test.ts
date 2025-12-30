@@ -10,7 +10,7 @@ import cases from "./expected-results.json";
 // --- Configuration ---
 // Dynamically set concurrency based on the number of logical CPU cores
 // Using Math.max to ensure at least 1 core is used even on small VMs
-const CONCURRENCY = Math.max(1, Math.floor(os.cpus().length / 1.5));
+const CONCURRENCY = Math.max(1, Math.floor(os.cpus().length / 2));
 
 // --- Helper: Strip ANSI Codes ---
 const stripAnsi = (str: string) =>
@@ -85,7 +85,10 @@ describe("Interpreter tests", () => {
 
                 const compile = Bun.spawn(
                     [
+                        "ccache",
                         "g++",
+                        "-g",
+                        "-Og",
                         "-std=c++23",
                         outputFile,
                         "-o",

@@ -56,7 +56,7 @@ export function visitObjectLiteralExpression(
     );
 
     let code = `([&]() {
-${this.indent()}  auto ${objVar} = jspp::AnyValue::make_object({});\n`;
+${this.indent()}  auto ${objVar} = jspp::AnyValue::make_object_with_proto({}, ::Object.get_own_property("prototype"));\n`;
 
     this.indentationLevel++;
 
@@ -173,7 +173,7 @@ export function visitArrayLiteralExpression(
             return elemText;
         })
         .join(", ");
-    return `jspp::AnyValue::make_array({${elements}})`;
+    return `jspp::AnyValue::make_array_with_proto({${elements}}, ::Array.get_own_property("prototype"))`;
 }
 
 export function visitPrefixUnaryExpression(

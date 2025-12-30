@@ -42,13 +42,17 @@
 
 // utilities
 #include "utils/operators.hpp"
+#include "utils/assignment_operators.hpp"
 #include "utils/access.hpp"
 #include "utils/log_any_value/log_any_value.hpp"
 
 // js standard libraries
 #include "library/symbol.hpp"
+#include "library/function.hpp"
 #include "library/console.hpp"
 #include "library/performance.hpp"
 #include "library/promise.hpp"
 #include "library/math.hpp"
+#include "library/object.hpp"
+#include "library/array.hpp"
 #include "library/global.hpp"

@@ -12,6 +12,7 @@
 
 inline auto global = jspp::AnyValue::make_object({
     {"Symbol", Symbol},
+    {"Function", Function},
     {"console", console},
     {"performance", performance},
     {"Error", Error},
@@ -21,4 +22,19 @@ inline auto global = jspp::AnyValue::make_object({
     {"setInterval", setInterval},
     {"clearInterval", clearInterval},
     {"Math", Math},
+    {"Object", Object},
+    {"Array", Array},
 });
+
+struct GlobalInit {
+    GlobalInit() {
+        auto objectProto = ::Object.get_own_property("prototype");
+        
+        // Tie built-in prototypes to Object.prototype
+        ::Array.get_own_property("prototype").set_prototype(objectProto);
+        ::Function.get_own_property("prototype").set_prototype(objectProto);
+        ::Error.get_own_property("prototype").set_prototype(objectProto);
+        ::Promise.get_own_property("prototype").set_prototype(objectProto);
+        ::Symbol.get_own_property("prototype").set_prototype(objectProto);
+    }
+} globalInit;

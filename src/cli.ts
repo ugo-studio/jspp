@@ -30,15 +30,16 @@ async function main() {
         console.log(`Compiling ${cppFilePath}...`);
         const compile = Bun.spawnSync({
             cmd: [
+                "ccache",
                 "g++",
+                "-O3",
+                "-DNDEBUG",
                 "-std=c++23",
                 cppFilePath,
                 "-o",
                 exeFilePath,
                 "-I",
                 preludePath,
-                "-O3",
-                "-DNDEBUG",
                 // // precompiled header
                 // "-include",
                 // path.join(process.cwd(), "prelude-build", "index.hpp"),
