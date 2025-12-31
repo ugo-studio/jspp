@@ -27,6 +27,13 @@ export function visitVariableDeclaration(
         scope,
     )!;
 
+    // Mark the symbol as checked
+    this.markSymbolAsChecked(
+        name,
+        context.topLevelScopeSymbols,
+        context.localScopeSymbols,
+    );
+
     let initializer = "";
     if (varDecl.initializer) {
         const initExpr = varDecl.initializer;
@@ -63,7 +70,7 @@ export function visitVariableDeclaration(
     const isLetOrConst =
         (varDecl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
     const shouldDeref = context.derefBeforeAssignment &&
-        (!context.currentScopeSymbols.has(name));
+        (!context.localScopeSymbols.has(name));
 
     const assignmentTarget = shouldDeref
         ? this.getDerefCode(name, name, context, typeInfo)

@@ -16,6 +16,7 @@ import {
   isAsyncFunction,
   isBuiltinObject,
   isGeneratorFunction,
+  markSymbolAsChecked,
   prepareScopeSymbolsForVisit,
 } from "./helpers";
 import { visit } from "./visitor";
@@ -46,6 +47,7 @@ export class CodeGenerator {
     public isGeneratorFunction = isGeneratorFunction;
     public isAsyncFunction = isAsyncFunction;
     public prepareScopeSymbolsForVisit = prepareScopeSymbolsForVisit;
+    public markSymbolAsChecked = markSymbolAsChecked;
 
     // function handlers
     public generateLambda = generateLambda;
@@ -71,7 +73,7 @@ export class CodeGenerator {
             isInsideFunction: true,
             isFunctionBody: true,
             topLevelScopeSymbols: new DeclaredSymbols(),
-            currentScopeSymbols: new DeclaredSymbols(),
+            localScopeSymbols: new DeclaredSymbols(),
         });
         this.indentationLevel--;
         containerCode += "  return jspp::Constants::UNDEFINED;\n";

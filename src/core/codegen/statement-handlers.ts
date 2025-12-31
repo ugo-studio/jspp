@@ -33,11 +33,18 @@ export function visitSourceFile(
         code += this.hoistDeclaration(decl, hoistedSymbols);
     });
 
+    // Compile symbols forother statements (excluding function)
+    const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
+        context.topLevelScopeSymbols,
+        context.localScopeSymbols,
+    );
+    const localScopeSymbols = new DeclaredSymbols(hoistedSymbols); // hoistedSymbols becomes new local
+
     // 2. Assign all hoisted functions first
     const contextForFunctions = {
         ...context,
-        currentScopeSymbols: new DeclaredSymbols(
-            context.currentScopeSymbols,
+        localScopeSymbols: new DeclaredSymbols(
+            context.localScopeSymbols,
             hoistedSymbols,
         ),
     };
@@ -45,6 +52,16 @@ export function visitSourceFile(
     funcDecls.forEach((stmt) => {
         const funcName = stmt.name?.getText();
         if (funcName) {
+            this.markSymbolAsChecked(
+                funcName,
+                contextForFunctions.topLevelScopeSymbols,
+                contextForFunctions.localScopeSymbols,
+            );
+            this.markSymbolAsChecked(
+                funcName,
+                topLevelScopeSymbols,
+                localScopeSymbols,
+            );
             const lambda = this.generateLambda(stmt, contextForFunctions, {
                 isAssignment: true,
             });
@@ -54,12 +71,6 @@ export function visitSourceFile(
 
     // 3. Process other statements
     sourceFile.statements.forEach((stmt) => {
-        const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
-            context.topLevelScopeSymbols,
-            context.currentScopeSymbols,
-        );
-        const currentScopeSymbols = hoistedSymbols; // hoistedSymbols becomes new local
-
         if (ts.isFunctionDeclaration(stmt)) {
             // Already handled
         } else if (ts.isVariableStatement(stmt)) {
@@ -69,7 +80,7 @@ export function visitSourceFile(
             const contextForVisit = {
                 ...context,
                 topLevelScopeSymbols,
-                currentScopeSymbols,
+                localScopeSymbols,
                 isAssignmentOnly: !isLetOrConst,
             };
             const assignments = this.visit(
@@ -84,7 +95,7 @@ export function visitSourceFile(
                 ...context,
                 isFunctionBody: false,
                 topLevelScopeSymbols,
-                currentScopeSymbols,
+                localScopeSymbols,
             });
         }
     });
@@ -122,11 +133,18 @@ export function visitBlock(
         code += this.hoistDeclaration(decl, hoistedSymbols);
     });
 
+    // Compile symbols forother statements (excluding function)
+    const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
+        context.topLevelScopeSymbols,
+        context.localScopeSymbols,
+    );
+    const localScopeSymbols = new DeclaredSymbols(hoistedSymbols); // hoistedSymbols becomes new local
+
     // 2. Assign all hoisted functions first
     const contextForFunctions = {
         ...context,
-        currentScopeSymbols: new DeclaredSymbols(
-            context.currentScopeSymbols,
+        localScopeSymbols: new DeclaredSymbols(
+            context.localScopeSymbols,
             hoistedSymbols,
         ),
     };
@@ -134,6 +152,16 @@ export function visitBlock(
     funcDecls.forEach((stmt) => {
         const funcName = stmt.name?.getText();
         if (funcName) {
+            this.markSymbolAsChecked(
+                funcName,
+                contextForFunctions.topLevelScopeSymbols,
+                contextForFunctions.localScopeSymbols,
+            );
+            this.markSymbolAsChecked(
+                funcName,
+                topLevelScopeSymbols,
+                localScopeSymbols,
+            );
             const lambda = this.generateLambda(stmt, contextForFunctions, {
                 isAssignment: true,
             });
@@ -143,12 +171,6 @@ export function visitBlock(
 
     // 3. Process other statements
     block.statements.forEach((stmt) => {
-        const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
-            context.topLevelScopeSymbols,
-            context.currentScopeSymbols,
-        );
-        const currentScopeSymbols = hoistedSymbols; // hoistedSymbols becomes new local
-
         if (ts.isFunctionDeclaration(stmt)) {
             // Do nothing, already handled
         } else if (ts.isVariableStatement(stmt)) {
@@ -158,7 +180,7 @@ export function visitBlock(
             const contextForVisit = {
                 ...context,
                 topLevelScopeSymbols,
-                currentScopeSymbols,
+                localScopeSymbols,
                 isAssignmentOnly: !isLetOrConst,
             };
             const assignments = this.visit(
@@ -173,7 +195,7 @@ export function visitBlock(
                 ...context,
                 isFunctionBody: false,
                 topLevelScopeSymbols,
-                currentScopeSymbols,
+                localScopeSymbols,
             });
         }
     });

@@ -1,6 +1,6 @@
 import ts from "typescript";
 
-import { DeclaredSymbols } from "../../ast/symbols";
+import { DeclaredSymbols, DeclaredSymbolType } from "../../ast/symbols";
 import { CodeGenerator } from "./";
 import type { VisitContext } from "./visitor";
 
@@ -21,6 +21,13 @@ export function visitForStatement(
 
     // Handle initializer
     let initializerCode = "";
+    let conditionContext: VisitContext = {
+        ...context,
+        topLevelScopeSymbols: this.prepareScopeSymbolsForVisit(
+            context.topLevelScopeSymbols,
+            context.localScopeSymbols,
+        ),
+    };
     if (forStmt.initializer) {
         if (ts.isVariableDeclarationList(forStmt.initializer)) {
             const varDeclList = forStmt.initializer;
@@ -41,6 +48,12 @@ export function visitForStatement(
                             name,
                             scope,
                         )!;
+
+                    conditionContext.localScopeSymbols = new DeclaredSymbols();
+                    conditionContext.localScopeSymbols.set(name, {
+                        type: DeclaredSymbolType.letOrConst,
+                        checkedIfUninitialized: true,
+                    });
 
                     if (typeInfo.needsHeapAllocation) {
                         initializerCode =
@@ -63,7 +76,7 @@ export function visitForStatement(
 
     code += `${this.indent()}for (${initializerCode}; `;
     if (forStmt.condition) {
-        code += `is_truthy(${this.visit(forStmt.condition, context)})`;
+        code += `is_truthy(${this.visit(forStmt.condition, conditionContext)})`;
     }
     code += "; ";
     if (forStmt.incrementor) {
@@ -479,7 +492,7 @@ export function visitSwitchStatement(
     // Prepare scope symbols for the switch block
     const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
         context.topLevelScopeSymbols,
-        context.currentScopeSymbols,
+        context.localScopeSymbols,
     );
 
     let firstIf = true;
@@ -512,7 +525,7 @@ export function visitSwitchStatement(
                         const contextForFunction = {
                             ...context,
                             topLevelScopeSymbols,
-                            currentScopeSymbols: hoistedSymbols,
+                            localScopeSymbols: hoistedSymbols,
                         };
                         const lambda = this.generateLambda(
                             stmt,
@@ -527,7 +540,7 @@ export function visitSwitchStatement(
                         switchBreakLabel,
                         currentLabel: undefined, // Clear currentLabel for nested visits
                         topLevelScopeSymbols,
-                        currentScopeSymbols: hoistedSymbols,
+                        localScopeSymbols: hoistedSymbols,
                         derefBeforeAssignment: true,
                         isAssignmentOnly: ts.isVariableStatement(stmt),
                     });
@@ -552,7 +565,7 @@ export function visitSwitchStatement(
                     switchBreakLabel,
                     currentLabel: undefined, // Clear currentLabel for nested visits
                     topLevelScopeSymbols,
-                    currentScopeSymbols: hoistedSymbols,
+                    localScopeSymbols: hoistedSymbols,
                     derefBeforeAssignment: true,
                     isAssignmentOnly: ts.isVariableStatement(stmt),
                 });

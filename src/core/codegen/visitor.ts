@@ -83,7 +83,7 @@ export interface VisitContext {
     currentLabel?: string;
     switchBreakLabel?: string;
     topLevelScopeSymbols: DeclaredSymbols;
-    currentScopeSymbols: DeclaredSymbols;
+    localScopeSymbols: DeclaredSymbols;
     derefBeforeAssignment?: boolean;
     superClassVar?: string;
     lambdaName?: string;

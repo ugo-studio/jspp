@@ -44,10 +44,10 @@ export function getDeclaredSymbols(
 export function generateUniqueName(
     this: CodeGenerator,
     prefix: string,
-    namesToAvoid: Set<string>,
+    ...namesToAvoid: (Set<string> | DeclaredSymbols)[]
 ): string {
     let name = `${prefix}${this.exceptionCounter}`;
-    while (namesToAvoid.has(name)) {
+    while (namesToAvoid.some((names) => names.has(name))) {
         this.exceptionCounter++;
         name = `${prefix}${this.exceptionCounter}`;
     }
@@ -113,45 +113,45 @@ export function getDerefCode(
     if (!varName.endsWith('"')) varName = varName + '"';
 
     const symbolName = varName.slice(1).slice(0, -1);
-    const symbol = context.currentScopeSymbols.get(symbolName) ??
+    const symbol = context.localScopeSymbols.get(symbolName) ??
         context.topLevelScopeSymbols.get(symbolName);
     const checkedIfUninitialized: boolean = symbol?.checkedIfUninitialized ||
         false;
 
-    console.log(
-        "top: ",
-        context.topLevelScopeSymbols.get(symbolName),
-        "\nlocal: ",
-        context.currentScopeSymbols.get(symbolName),
-        "\n",
-        checkedIfUninitialized,
-        symbolName,
-        "\n",
-        "\n",
-    );
-
     // Mark the symbol as checked
-    if (context.currentScopeSymbols.has(symbolName)) {
-        context.currentScopeSymbols.update(symbolName, {
-            checkedIfUninitialized: true,
-        });
-    } else if (context.topLevelScopeSymbols.has(symbolName)) {
-        context.topLevelScopeSymbols.update(symbolName, {
-            checkedIfUninitialized: true,
-        });
-    }
+    this.markSymbolAsChecked(
+        symbolName,
+        context.topLevelScopeSymbols,
+        context.localScopeSymbols,
+    );
 
     // Apply deref code
     if (checkedIfUninitialized) {
         if (typeInfo && typeInfo.needsHeapAllocation) {
             return `(*${nodeText})`;
         }
-        return `(${nodeText})`;
+        return `${nodeText}`;
     } else {
         if (typeInfo && typeInfo.needsHeapAllocation) {
             return `jspp::Access::deref_ptr(${nodeText}, ${varName})`;
         }
         return `jspp::Access::deref_stack(${nodeText}, ${varName})`;
+    }
+}
+
+export function markSymbolAsChecked(
+    name: string,
+    topLevel: DeclaredSymbols,
+    local: DeclaredSymbols,
+) {
+    if (topLevel.has(name)) {
+        topLevel.update(name, {
+            checkedIfUninitialized: true,
+        });
+    } else if (local.has(name)) {
+        local.update(name, {
+            checkedIfUninitialized: true,
+        });
     }
 }
 
