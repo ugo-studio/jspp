@@ -5,6 +5,6 @@
 
 // Define Function constructor
 // In a full implementation, this would support 'new Function(args, body)'
-inline auto Function = jspp::AnyValue::make_class([](const jspp::AnyValue& thisVal, const std::vector<jspp::AnyValue>& args) -> jspp::AnyValue {
-    return jspp::UNDEFINED;
+inline auto Function = jspp::AnyValue::make_class([](const jspp::AnyValue& thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue {
+    return jspp::Constants::UNDEFINED;
 }, "Function");

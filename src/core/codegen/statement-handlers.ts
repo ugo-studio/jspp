@@ -1,6 +1,6 @@
 import ts from "typescript";
 
-import type { DeclaredSymbols } from "../../ast/types";
+import { DeclaredSymbols } from "../../ast/symbols";
 import { CodeGenerator } from "./";
 import type { VisitContext } from "./visitor";
 
@@ -16,7 +16,7 @@ export function visitSourceFile(
     const funcDecls = sourceFile.statements.filter(ts.isFunctionDeclaration);
     const classDecls = sourceFile.statements.filter(ts.isClassDeclaration);
 
-    const hoistedSymbols: DeclaredSymbols = new Map();
+    const hoistedSymbols = new DeclaredSymbols();
 
     // 1. Hoist function declarations
     funcDecls.forEach((func) => {
@@ -36,11 +36,11 @@ export function visitSourceFile(
     // 2. Assign all hoisted functions first
     const contextForFunctions = {
         ...context,
-        currentScopeSymbols: new Map(context.currentScopeSymbols),
+        currentScopeSymbols: new DeclaredSymbols(
+            context.currentScopeSymbols,
+            hoistedSymbols,
+        ),
     };
-    hoistedSymbols.forEach((v, k) =>
-        contextForFunctions.currentScopeSymbols.set(k, v)
-    );
 
     funcDecls.forEach((stmt) => {
         const funcName = stmt.name?.getText();
@@ -85,8 +85,6 @@ export function visitSourceFile(
                 isFunctionBody: false,
                 topLevelScopeSymbols,
                 currentScopeSymbols,
-                // currentScopeSymbols: undefined, // clear the currentScopeSymbols for nested visit
-                // topLevelScopeSymbols: undefined, // clear the topLevelScopeSymbols for nested visit
             });
         }
     });
@@ -107,7 +105,7 @@ export function visitBlock(
     const funcDecls = block.statements.filter(ts.isFunctionDeclaration);
     const classDecls = block.statements.filter(ts.isClassDeclaration);
 
-    const hoistedSymbols: DeclaredSymbols = new Map();
+    const hoistedSymbols = new DeclaredSymbols();
 
     // 1. Hoist all function declarations
     funcDecls.forEach((func) => {
@@ -127,11 +125,11 @@ export function visitBlock(
     // 2. Assign all hoisted functions first
     const contextForFunctions = {
         ...context,
-        currentScopeSymbols: new Map(context.currentScopeSymbols),
+        currentScopeSymbols: new DeclaredSymbols(
+            context.currentScopeSymbols,
+            hoistedSymbols,
+        ),
     };
-    hoistedSymbols.forEach((v, k) =>
-        contextForFunctions.currentScopeSymbols.set(k, v)
-    );
 
     funcDecls.forEach((stmt) => {
         const funcName = stmt.name?.getText();
@@ -176,8 +174,6 @@ export function visitBlock(
                 isFunctionBody: false,
                 topLevelScopeSymbols,
                 currentScopeSymbols,
-                // currentScopeSymbols: undefined, // clear the currentScopeSymbols for nested visit
-                // topLevelScopeSymbols: undefined, // clear the topLevelScopeSymbols for nested visit
             });
         }
     });
@@ -185,9 +181,9 @@ export function visitBlock(
     if (context.isFunctionBody) {
         const lastStatement = block.statements[block.statements.length - 1];
         if (!lastStatement || !ts.isReturnStatement(lastStatement)) {
-            code += `${this.indent()}${ 
-                this.getReturnCommand(context) 
-            } jspp::UNDEFINED;\n`;
+            code += `${this.indent()}${
+                this.getReturnCommand(context)
+            } jspp::Constants::UNDEFINED;\n`;
         }
     }
 
@@ -403,9 +399,9 @@ export function visitTryStatement(
             code += `${this.indent()}catch (...) { throw; }\n`;
         }
 
-        code += `${this.indent()}${ 
-            this.getReturnCommand(context) 
-        } jspp::UNDEFINED;\n`;
+        code += `${this.indent()}${
+            this.getReturnCommand(context)
+        } jspp::Constants::UNDEFINED;\n`;
 
         this.indentationLevel--;
         code += `${this.indent()}})();\n`;
@@ -478,7 +474,7 @@ export function visitCatchClause(
         // Shadow the C++ exception variable *only if* the names don't clash.
         if (varName !== exceptionName) {
             code +=
-                `${this.indent()}auto ${exceptionName} = std::make_shared<jspp::AnyValue>(jspp::UNDEFINED);\n`;
+                `${this.indent()}auto ${exceptionName} = std::make_shared<jspp::AnyValue>(jspp::Constants::UNDEFINED);\n`;
         }
 
         code += this.visit(catchClause.block, context);
@@ -511,8 +507,8 @@ export function visitYieldExpression(
                 scope,
             );
             if (!typeInfo) {
-                return `${this.indent()}jspp::Exception::throw_unresolved_reference(${ 
-                    this.getJsVarName(expr) 
+                return `${this.indent()}jspp::Exception::throw_unresolved_reference(${
+                    this.getJsVarName(expr)
                 })\n`; // THROWS, not returns
             }
             if (
@@ -523,6 +519,7 @@ export function visitYieldExpression(
                 exprText = this.getDerefCode(
                     exprText,
                     this.getJsVarName(expr),
+                    context,
                     typeInfo,
                 );
             }
@@ -573,7 +570,7 @@ export function visitYieldExpression(
         return `${this.indent()}co_yield ${exprText}`;
     }
 
-    return `${this.indent()}co_yield jspp::UNDEFINED`;
+    return `${this.indent()}co_yield jspp::Constants::UNDEFINED`;
 }
 
 export function visitReturnStatement(
@@ -602,8 +599,8 @@ export function visitReturnStatement(
                 );
                 if (!typeInfo) {
                     returnCode +=
-                        `${this.indent()}jspp::Exception::throw_unresolved_reference(${ 
-                            this.getJsVarName(expr) 
+                        `${this.indent()}jspp::Exception::throw_unresolved_reference(${
+                            this.getJsVarName(expr)
                         });\n`; // THROWS, not returns
                 } else if (
                     typeInfo &&
@@ -613,6 +610,7 @@ export function visitReturnStatement(
                     finalExpr = this.getDerefCode(
                         exprText,
                         this.getJsVarName(expr),
+                        context,
                         typeInfo,
                     );
                 }
@@ -620,7 +618,7 @@ export function visitReturnStatement(
             returnCode += `${this.indent()}${returnCmd} ${finalExpr};\n`;
         } else {
             returnCode +=
-                `${this.indent()}${returnCmd} jspp::UNDEFINED;\n`;
+                `${this.indent()}${returnCmd} jspp::Constants::UNDEFINED;\n`;
         }
         return returnCode;
     }
@@ -636,8 +634,8 @@ export function visitReturnStatement(
                 scope,
             );
             if (!typeInfo) {
-                return `${this.indent()}jspp::Exception::throw_unresolved_reference(${ 
-                    this.getJsVarName(expr) 
+                return `${this.indent()}jspp::Exception::throw_unresolved_reference(${
+                    this.getJsVarName(expr)
                 });\n`; // THROWS, not returns
             }
             if (
@@ -648,13 +646,14 @@ export function visitReturnStatement(
                 finalExpr = this.getDerefCode(
                     exprText,
                     this.getJsVarName(expr),
+                    context,
                     typeInfo,
                 );
             }
         }
         return `${this.indent()}${returnCmd} ${finalExpr};\n`;
     }
-    return `${this.indent()}${returnCmd} jspp::UNDEFINED;\n`;
+    return `${this.indent()}${returnCmd} jspp::Constants::UNDEFINED;\n`;
 }
 
 function collectHoistedDeclarations(
@@ -668,7 +667,8 @@ function collectHoistedDeclarations(
         } else if (ts.isForStatement(stmt)) {
             // Only collect VAR from loops
             if (
-                stmt.initializer && ts.isVariableDeclarationList(stmt.initializer)
+                stmt.initializer &&
+                ts.isVariableDeclarationList(stmt.initializer)
             ) {
                 if (
                     (stmt.initializer.flags &

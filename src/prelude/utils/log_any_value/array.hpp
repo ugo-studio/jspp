@@ -45,7 +45,7 @@ namespace jspp
             {
                 for (size_t i = 0; i < item_count; ++i)
                 {
-                    std::optional<AnyValue> itemVal;
+                    AnyValue itemVal = AnyValue::make_uninitialized();
                     if (i < arr->dense.size())
                     {
                         itemVal = arr->dense[i];
@@ -58,7 +58,7 @@ namespace jspp
                             itemVal = it->second;
                         }
                     }
-                    if (itemVal.has_value() && !is_simple_value(itemVal.value()))
+                    if (!itemVal.is_uninitialized() && !is_simple_value(itemVal))
                     {
                         use_horizontal_layout = false;
                         break;
@@ -74,7 +74,7 @@ namespace jspp
 
                 for (size_t i = 0; i < item_count; ++i)
                 {
-                    std::optional<AnyValue> itemVal;
+                    AnyValue itemVal = AnyValue::make_uninitialized();
                     if (i < arr->dense.size())
                     {
                         itemVal = arr->dense[i];
@@ -88,7 +88,7 @@ namespace jspp
                         }
                     }
 
-                    if (itemVal.has_value())
+                    if (!itemVal.is_uninitialized())
                     {
                         if (empty_count > 0)
                         {
@@ -100,7 +100,7 @@ namespace jspp
                         }
                         if (needs_comma)
                             ss << Color::BRIGHT_BLACK << ", " << Color::RESET;
-                        ss << to_log_string(itemVal.value(), visited, depth + 1);
+                        ss << to_log_string(itemVal, visited, depth + 1);
                         needs_comma = true;
                     }
                     else
@@ -154,7 +154,7 @@ namespace jspp
 
             for (size_t i = 0; i < items_to_show; ++i)
             {
-                std::optional<AnyValue> itemVal;
+                AnyValue itemVal = AnyValue::make_uninitialized();
                 if (i < arr->dense.size())
                 {
                     itemVal = arr->dense[i];
@@ -168,7 +168,7 @@ namespace jspp
                     }
                 }
 
-                if (itemVal.has_value())
+                if (!itemVal.is_uninitialized())
                 {
                     if (empty_count > 0)
                     {
@@ -182,7 +182,7 @@ namespace jspp
                     if (first_item_printed)
                         ss << Color::BRIGHT_BLACK << ",\n"
                            << Color::RESET;
-                    ss << next_indent << to_log_string(itemVal.value(), visited, depth + 1);
+                    ss << next_indent << to_log_string(itemVal, visited, depth + 1);
                     first_item_printed = true;
                 }
                 else

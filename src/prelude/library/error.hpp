@@ -7,7 +7,7 @@
 inline jspp::AnyValue Error;
 
 // Constructor logic
-inline auto errorConstructor = [](const jspp::AnyValue &thisVal, const std::vector<jspp::AnyValue> &args) -> jspp::AnyValue
+inline auto errorConstructor = [](const jspp::AnyValue &thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
 {
     // Access global Error to get prototype
     jspp::AnyValue proto = Error.get_own_property("prototype");
@@ -29,15 +29,21 @@ inline auto errorConstructor = [](const jspp::AnyValue &thisVal, const std::vect
         target = jspp::AnyValue::make_object_with_proto({}, proto);
     }
 
+    std::string name = "Error";
     std::string message = "";
     if (!args.empty() && !args[0].is_undefined())
     {
         message = args[0].to_std_string();
     }
 
+
+    const jspp::AnyValue errorArgs[] = {jspp::AnyValue::make_string(message)};
+    jspp::AnyValue errorObj = ::Error.construct(std::span<const jspp::AnyValue>(errorArgs, 1), name);
+    target = errorObj;
+
     target.define_data_property("message", jspp::AnyValue::make_string(message), true, false, true);
-    target.define_data_property("name", jspp::AnyValue::make_string("Error"), true, false, true);
-    target.define_data_property("stack", jspp::AnyValue::make_string("Error: " + message + "\n    at <unknown>"), true, false, true);
+    target.define_data_property("name", jspp::AnyValue::make_string(name), true, false, true);
+    target.define_data_property("stack", jspp::AnyValue::make_string(name + ": " + message + "\n    at <unknown>"), true, false, true);
 
     if (args.size() > 1 && args[1].is_object())
     {
@@ -52,7 +58,7 @@ inline auto errorConstructor = [](const jspp::AnyValue &thisVal, const std::vect
 };
 
 // Static Error.isError(val) implementation
-inline auto isErrorFn = jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, const std::vector<jspp::AnyValue> &args) -> jspp::AnyValue
+inline auto isErrorFn = jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                       {
     if (args.empty()) return jspp::AnyValue::make_boolean(false);
     
@@ -76,7 +82,7 @@ inline auto isErrorFn = jspp::AnyValue::make_function([](const jspp::AnyValue &t
     return jspp::AnyValue::make_boolean(false); }, "isError");
 
 // toString method for Error.prototype
-inline auto errorToStringFn = jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, const std::vector<jspp::AnyValue> &args) -> jspp::AnyValue
+inline auto errorToStringFn = jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                             {
     std::string name = "Error";
     std::string msg = "";

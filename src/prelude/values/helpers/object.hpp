@@ -4,6 +4,28 @@
 #include "values/object.hpp"
 #include "any_value.hpp"
 
+namespace jspp {
+    JsObject::JsObject() : shape(Shape::empty_shape()), proto(nullptr) {}
+
+    JsObject::JsObject(std::initializer_list<std::pair<std::string, AnyValue>> p, std::shared_ptr<AnyValue> pr) : proto(pr) {
+        shape = Shape::empty_shape();
+        storage.reserve(p.size());
+        for (const auto& pair : p) {
+            shape = shape->transition(pair.first);
+            storage.push_back(pair.second);
+        }
+    }
+
+    JsObject::JsObject(const std::map<std::string, AnyValue> &p, std::shared_ptr<AnyValue> pr) : proto(pr) {
+        shape = Shape::empty_shape();
+        storage.reserve(p.size());
+        for (const auto& pair : p) {
+            shape = shape->transition(pair.first);
+            storage.push_back(pair.second);
+        }
+    }
+}
+
 std::string jspp::JsObject::to_std_string() const
 {
     return "[Object Object]";
@@ -11,7 +33,7 @@ std::string jspp::JsObject::to_std_string() const
 
 bool jspp::JsObject::has_property(const std::string &key) const
 {
-    if (props.find(key) != props.end())
+    if (shape->get_offset(key).has_value())
         return true;
     if (proto && !(*proto).is_null() && !(*proto).is_undefined())
     {
@@ -25,8 +47,8 @@ bool jspp::JsObject::has_property(const std::string &key) const
 
 jspp::AnyValue jspp::JsObject::get_property(const std::string &key, const AnyValue &thisVal)
 {
-    auto it = props.find(key);
-    if (it == props.end())
+    auto offset = shape->get_offset(key);
+    if (!offset.has_value())
     {
         // check prototype chain
         if (proto && !(*proto).is_null() && !(*proto).is_undefined())
@@ -46,7 +68,7 @@ jspp::AnyValue jspp::JsObject::get_property(const std::string &key, const AnyVal
         // not found
         return AnyValue::make_undefined();
     }
-    return AnyValue::resolve_property_for_read(it->second, thisVal, key);
+    return AnyValue::resolve_property_for_read(storage[offset.value()], thisVal, key);
 }
 
 jspp::AnyValue jspp::JsObject::set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal)
@@ -67,14 +89,15 @@ jspp::AnyValue jspp::JsObject::set_property(const std::string &key, const AnyVal
     }
 
     // set own property
-    auto it = props.find(key);
-    if (it != props.end())
+    auto offset = shape->get_offset(key);
+    if (offset.has_value())
     {
-        return AnyValue::resolve_property_for_write(it->second, thisVal, value, key);
+        return AnyValue::resolve_property_for_write(storage[offset.value()], thisVal, value, key);
     }
     else
     {
-        props[key] = value;
+        shape = shape->transition(key);
+        storage.push_back(value);
         return value;
     }
 }

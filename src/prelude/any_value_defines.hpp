@@ -12,7 +12,14 @@ namespace jspp
     {
         if (is_object())
         {
-            std::get<std::shared_ptr<JsObject>>(storage)->props[key] = value;
+            auto obj = std::get<std::shared_ptr<JsObject>>(storage);
+            auto offset = obj->shape->get_offset(key);
+            if (offset.has_value()) {
+                obj->storage[offset.value()] = value;
+            } else {
+                obj->shape = obj->shape->transition(key);
+                obj->storage.push_back(value);
+            }
         }
         else if (is_function())
         {
@@ -37,23 +44,37 @@ namespace jspp
     {
         if (is_object())
         {
-            auto &props = std::get<std::shared_ptr<JsObject>>(storage)->props;
-            auto it = props.find(key);
-            if (it != props.end() && it->second.is_accessor_descriptor())
+            auto obj = std::get<std::shared_ptr<JsObject>>(storage);
+            auto offset = obj->shape->get_offset(key);
+            
+            if (offset.has_value())
             {
-                auto desc = it->second.as_accessor_descriptor();
-                desc->get = [getter](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
+                auto& val = obj->storage[offset.value()];
+                if (val.is_accessor_descriptor())
                 {
-                    return getter.as_function()->call(thisVal, args);
-                };
+                    auto desc = val.as_accessor_descriptor();
+                    desc->get = [getter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                    {
+                        return getter.as_function()->call(thisVal, args);
+                    };
+                }
+                else
+                {
+                    auto getFunc = [getter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                    {
+                        return getter.as_function()->call(thisVal, args);
+                    };
+                    obj->storage[offset.value()] = AnyValue::make_accessor_descriptor(getFunc, std::nullopt, true, true);
+                }
             }
             else
             {
-                auto getFunc = [getter](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
+                auto getFunc = [getter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                 {
                     return getter.as_function()->call(thisVal, args);
                 };
-                props[key] = AnyValue::make_accessor_descriptor(getFunc, std::nullopt, true, true);
+                obj->shape = obj->shape->transition(key);
+                obj->storage.push_back(AnyValue::make_accessor_descriptor(getFunc, std::nullopt, true, true));
             }
         }
         else if (is_function())
@@ -63,14 +84,14 @@ namespace jspp
             if (it != props.end() && it->second.is_accessor_descriptor())
             {
                 auto desc = it->second.as_accessor_descriptor();
-                desc->get = [getter](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
+                desc->get = [getter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                 {
                     return getter.as_function()->call(thisVal, args);
                 };
             }
             else
             {
-                auto getFunc = [getter](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
+                auto getFunc = [getter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                 {
                     return getter.as_function()->call(thisVal, args);
                 };
@@ -91,27 +112,43 @@ namespace jspp
     {
         if (is_object())
         {
-            auto &props = std::get<std::shared_ptr<JsObject>>(storage)->props;
-            auto it = props.find(key);
-            if (it != props.end() && it->second.is_accessor_descriptor())
+            auto obj = std::get<std::shared_ptr<JsObject>>(storage);
+            auto offset = obj->shape->get_offset(key);
+
+            if (offset.has_value())
             {
-                auto desc = it->second.as_accessor_descriptor();
-                desc->set = [setter](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
+                auto& val = obj->storage[offset.value()];
+                if (val.is_accessor_descriptor())
                 {
-                    if (args.empty())
-                        return AnyValue::make_undefined();
-                    return setter.as_function()->call(thisVal, args);
-                };
+                    auto desc = val.as_accessor_descriptor();
+                    desc->set = [setter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                    {
+                        if (args.empty())
+                            return AnyValue::make_undefined();
+                        return setter.as_function()->call(thisVal, args);
+                    };
+                }
+                else
+                {
+                    auto setFunc = [setter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                    {
+                        if (args.empty())
+                            return AnyValue::make_undefined();
+                        return setter.as_function()->call(thisVal, args);
+                    };
+                    obj->storage[offset.value()] = AnyValue::make_accessor_descriptor(std::nullopt, setFunc, true, true);
+                }
             }
             else
             {
-                auto setFunc = [setter](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
+                auto setFunc = [setter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                 {
                     if (args.empty())
-                        return AnyValue::make_undefined();
+                            return AnyValue::make_undefined();
                     return setter.as_function()->call(thisVal, args);
                 };
-                props[key] = AnyValue::make_accessor_descriptor(std::nullopt, setFunc, true, true);
+                obj->shape = obj->shape->transition(key);
+                obj->storage.push_back(AnyValue::make_accessor_descriptor(std::nullopt, setFunc, true, true));
             }
         }
         else if (is_function())
@@ -121,7 +158,7 @@ namespace jspp
             if (it != props.end() && it->second.is_accessor_descriptor())
             {
                 auto desc = it->second.as_accessor_descriptor();
-                desc->set = [setter](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
+                desc->set = [setter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                 {
                     if (args.empty())
                         return AnyValue::make_undefined();
@@ -130,7 +167,7 @@ namespace jspp
             }
             else
             {
-                auto setFunc = [setter](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
+                auto setFunc = [setter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                 {
                     if (args.empty())
                         return AnyValue::make_undefined();

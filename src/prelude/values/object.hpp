@@ -1,6 +1,8 @@
 #pragma once
 
 #include "types.hpp"
+#include "shape.hpp"
+#include <vector>
 
 namespace jspp
 {
@@ -9,11 +11,13 @@ namespace jspp
 
     struct JsObject
     {
-        std::map<std::string, AnyValue> props;
+        std::shared_ptr<Shape> shape;
+        std::vector<AnyValue> storage;
         std::shared_ptr<AnyValue> proto;
 
-        JsObject() : proto(nullptr) {}
-        explicit JsObject(const std::map<std::string, AnyValue> &p, std::shared_ptr<AnyValue> pr = nullptr) : props(p), proto(pr) {}
+        JsObject();
+        JsObject(std::initializer_list<std::pair<std::string, AnyValue>> p, std::shared_ptr<AnyValue> pr = nullptr);
+        JsObject(const std::map<std::string, AnyValue> &p, std::shared_ptr<AnyValue> pr = nullptr);
 
         std::string to_std_string() const;
         bool has_property(const std::string &key) const;

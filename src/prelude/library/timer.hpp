@@ -7,7 +7,7 @@
 #include "exception.hpp"
 
 // setTimeout(callback, delay, ...args)
-inline auto setTimeout = jspp::AnyValue::make_function([](const jspp::AnyValue& thisVal, const std::vector<jspp::AnyValue>& args) -> jspp::AnyValue {
+inline auto setTimeout = jspp::AnyValue::make_function([](const jspp::AnyValue& thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue {
     if (args.empty() || !args[0].is_function()) {
         throw jspp::Exception::make_exception("Callback must be a function", "TypeError");
     }
@@ -26,7 +26,7 @@ inline auto setTimeout = jspp::AnyValue::make_function([](const jspp::AnyValue& 
 
     auto task = [callback, callArgs]() {
          try {
-             callback.as_function()->call(jspp::AnyValue::make_undefined(), callArgs);
+             callback.as_function()->call(jspp::Constants::UNDEFINED, std::span<const jspp::AnyValue>(callArgs));
          } catch (const jspp::Exception& e) {
              std::cerr << "Uncaught exception in setTimeout: " << e.what() << "\n";
          } catch (const std::exception& e) {
@@ -41,7 +41,7 @@ inline auto setTimeout = jspp::AnyValue::make_function([](const jspp::AnyValue& 
 }, "setTimeout");
 
 // clearTimeout(id)
-inline auto clearTimeout = jspp::AnyValue::make_function([](const jspp::AnyValue& thisVal, const std::vector<jspp::AnyValue>& args) -> jspp::AnyValue {
+inline auto clearTimeout = jspp::AnyValue::make_function([](const jspp::AnyValue& thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue {
     if (!args.empty() && args[0].is_number()) {
         size_t id = static_cast<size_t>(args[0].as_double());
         jspp::Scheduler::instance().clear_timer(id);
@@ -50,7 +50,7 @@ inline auto clearTimeout = jspp::AnyValue::make_function([](const jspp::AnyValue
 }, "clearTimeout");
 
 // setInterval(callback, delay, ...args)
-inline auto setInterval = jspp::AnyValue::make_function([](const jspp::AnyValue& thisVal, const std::vector<jspp::AnyValue>& args) -> jspp::AnyValue {
+inline auto setInterval = jspp::AnyValue::make_function([](const jspp::AnyValue& thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue {
     if (args.empty() || !args[0].is_function()) {
         throw jspp::Exception::make_exception("Callback must be a function", "TypeError");
     }
@@ -68,7 +68,7 @@ inline auto setInterval = jspp::AnyValue::make_function([](const jspp::AnyValue&
 
     auto task = [callback, callArgs]() {
          try {
-             callback.as_function()->call(jspp::AnyValue::make_undefined(), callArgs);
+             callback.as_function()->call(jspp::Constants::UNDEFINED, std::span<const jspp::AnyValue>(callArgs));
          } catch (const jspp::Exception& e) {
              std::cerr << "Uncaught exception in setInterval: " << e.what() << "\n";
          } catch (const std::exception& e) {
@@ -83,7 +83,7 @@ inline auto setInterval = jspp::AnyValue::make_function([](const jspp::AnyValue&
 }, "setInterval");
 
 // clearInterval(id)
-inline auto clearInterval = jspp::AnyValue::make_function([](const jspp::AnyValue& thisVal, const std::vector<jspp::AnyValue>& args) -> jspp::AnyValue {
+inline auto clearInterval = jspp::AnyValue::make_function([](const jspp::AnyValue& thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue {
     if (!args.empty() && args[0].is_number()) {
         size_t id = static_cast<size_t>(args[0].as_double());
         jspp::Scheduler::instance().clear_timer(id);

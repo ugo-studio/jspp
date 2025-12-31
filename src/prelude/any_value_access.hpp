@@ -19,19 +19,24 @@ bool jspp::AnyValue::has_property(const std::string &key) const
         return std::get<std::shared_ptr<JsFunction>>(storage)->has_property(key);
     case JsType::Promise:
         // Promises don't have their own props usually, but could.
-        return false; 
+        return false;
     case JsType::Iterator:
         return false;
     case JsType::Symbol:
         return false;
     case JsType::String:
-        if (key == "length") return true;
-        if (JsArray::is_array_index(key)) {
+        if (key == "length")
+            return true;
+        if (JsArray::is_array_index(key))
+        {
             uint32_t idx = static_cast<uint32_t>(std::stoull(key));
             return idx < std::get<std::shared_ptr<JsString>>(storage)->value.length();
         }
         return false;
     case JsType::Number:
+        return false;
+    case JsType::Uninitialized:
+        Exception::throw_uninitialized_reference("#<Object>");
         return false;
     default:
         return false;
@@ -96,6 +101,8 @@ jspp::AnyValue jspp::AnyValue::get_property_with_receiver(const std::string &key
         throw Exception::make_exception("Cannot read properties of undefined (reading '" + key + "')", "TypeError");
     case JsType::Null:
         throw Exception::make_exception("Cannot read properties of null (reading '" + key + "')", "TypeError");
+    case JsType::Uninitialized:
+        Exception::throw_uninitialized_reference("#<Object>");
     default:
         return AnyValue::make_undefined();
     }

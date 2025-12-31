@@ -10,15 +10,15 @@ namespace jspp
 
     struct JsArray
     {
-        std::vector<std::optional<AnyValue>> dense;                   // dense storage for small/contiguous indices
-        std::unordered_map<uint32_t, std::optional<AnyValue>> sparse; // sparse indices (very large indices)
-        std::unordered_map<std::string, AnyValue> props;              // non-index string properties
+        std::vector<AnyValue> dense;                     // dense storage for small/contiguous indices
+        std::unordered_map<uint32_t, AnyValue> sparse;   // sparse indices (very large indices)
+        std::unordered_map<std::string, AnyValue> props; // non-index string properties
         std::shared_ptr<AnyValue> proto;
         uint64_t length = 0;
 
         JsArray() : proto(nullptr) {}
-        explicit JsArray(const std::vector<std::optional<AnyValue>> &items) : dense(items), proto(nullptr), length(items.size()) {}
-        explicit JsArray(std::vector<std::optional<AnyValue>> &&items) : dense(std::move(items)), proto(nullptr), length(dense.size()) {}
+        explicit JsArray(const std::vector<AnyValue> &items) : dense(items), proto(nullptr), length(items.size()) {}
+        explicit JsArray(std::vector<AnyValue> &&items) : dense(std::move(items)), proto(nullptr), length(dense.size()) {}
 
         std::string to_std_string() const;
         JsIterator<AnyValue> get_iterator();

@@ -13,7 +13,7 @@ inline auto performance = jspp::AnyValue::make_object({
          // [C++14 Feature] Generalized Lambda Capture
          // We initialize 'startTime' RIGHT HERE inside the [].
          // It acts like a private variable stored inside this specific function.
-         [startTime = std::chrono::steady_clock::now()](const jspp::AnyValue &thisVal, const std::vector<jspp::AnyValue> &)
+         [startTime = std::chrono::steady_clock::now()](const jspp::AnyValue &thisVal, std::span<const jspp::AnyValue>)
          {
              // We calculate the diff against the captured startTime
              std::chrono::duration<double, std::milli> duration =

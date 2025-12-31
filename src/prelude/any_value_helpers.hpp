@@ -3,10 +3,11 @@
 #include "types.hpp"
 #include "any_value.hpp"
 #include "values/string.hpp"
+#include "exception.hpp"
 
 namespace jspp
 {
-    const std::string AnyValue::to_std_string() const noexcept
+    std::string AnyValue::to_std_string() const noexcept
     {
         switch (get_type())
         {
@@ -65,9 +66,7 @@ namespace jspp
                 return s;
             }
         }
-        // Uninitialized and default should not be reached under normal circumstances
         case JsType::Uninitialized:
-            // return "<uninitialized>";
             Exception::throw_uninitialized_reference("#<Object>");
         default:
             return "";
@@ -87,6 +86,10 @@ namespace jspp
         else if (is_function())
         {
             std::get<std::shared_ptr<JsFunction>>(storage)->proto = std::make_shared<AnyValue>(proto);
+        }
+        else if (is_uninitialized())
+        {
+            Exception::throw_uninitialized_reference("#<Object>");
         }
     }
 

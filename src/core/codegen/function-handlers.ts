@@ -1,5 +1,6 @@
 import ts from "typescript";
 
+import { DeclaredSymbols } from "../../ast/symbols";
 import { CodeGenerator } from "./";
 import type { VisitContext } from "./visitor";
 
@@ -45,7 +46,7 @@ export function generateLambda(
         : "const jspp::AnyValue&";
     const paramArgsType = (isInsideGeneratorFunction || isInsideAsyncFunction)
         ? "std::vector<jspp::AnyValue>"
-        : "const std::vector<jspp::AnyValue>&";
+        : "std::span<const jspp::AnyValue>";
 
     const thisArgParam = isArrow
         ? "const jspp::AnyValue&" // Arrow functions are never generators in this parser
@@ -65,7 +66,7 @@ export function generateLambda(
         isFunctionBody: false,
         lambdaName: undefined,
         topLevelScopeSymbols,
-        currentScopeSymbols: new Map(),
+        currentScopeSymbols: new DeclaredSymbols(),
         superClassVar: context.superClassVar,
     };
 
@@ -77,7 +78,7 @@ export function generateLambda(
             const name = p.name.getText();
             const defaultValue = p.initializer
                 ? this.visit(p.initializer, visitContext)
-                : "jspp::UNDEFINED";
+                : "jspp::Constants::UNDEFINED";
 
             const scope = this.getScopeForNode(p);
             const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
@@ -95,10 +96,10 @@ export function generateLambda(
 
                 if (typeInfo.needsHeapAllocation) {
                     code +=
-                        `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(jspp::UNDEFINED);\n`;
+                        `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(jspp::Constants::UNDEFINED);\n`;
                 } else {
                     code +=
-                        `${this.indent()}jspp::AnyValue ${name} = jspp::UNDEFINED;\n`;
+                        `${this.indent()}jspp::AnyValue ${name} = jspp::Constants::UNDEFINED;\n`;
                 }
 
                 // Extract rest parameters
@@ -117,14 +118,15 @@ export function generateLambda(
                 code += `${this.indent()}}\n`;
 
                 code +=
-                    `${this.indent()}for (size_t i = ${i}; i < ${argsName}.size(); i++) {\n`;
+                    `${this.indent()}for (size_t j = ${i}; j < ${argsName}.size(); j++) {\n`;
                 this.indentationLevel++;
                 code +=
-                    `${this.indent()}${tempName}.push_back(${argsName}[i]);\n`;
+                    `${this.indent()}${tempName}.push_back(${argsName}[j]);\n`;
                 this.indentationLevel--;
                 code += `${this.indent()}}\n`;
-                code +=
-                    `${this.indent()}${name} = jspp::AnyValue::make_array(std::move(${tempName}));\n`;
+                code += `${this.indent()}${
+                    typeInfo.needsHeapAllocation ? "*" : ""
+                }${name} = jspp::AnyValue::make_array(std::move(${tempName}));\n`;
                 this.indentationLevel--;
                 code += `${this.indent()}}\n`;
                 return;
@@ -178,7 +180,7 @@ export function generateLambda(
             lambda += `${this.indent()}}`;
         }
     } else {
-        lambda += `{ ${returnCmd} jspp::UNDEFINED; }\n`;
+        lambda += `{ ${returnCmd} jspp::Constants::UNDEFINED; }\n`;
     }
 
     let signature = "";
@@ -188,19 +190,19 @@ export function generateLambda(
     // Handle generator function
     if (isInsideGeneratorFunction) {
         signature =
-            "jspp::JsIterator<jspp::AnyValue>(const jspp::AnyValue&, const std::vector<jspp::AnyValue>&)";
+            "jspp::JsIterator<jspp::AnyValue>(const jspp::AnyValue&, std::span<const jspp::AnyValue>)";
         callable = `std::function<${signature}>(${lambda})`;
         method = `jspp::AnyValue::make_generator`;
     } // Handle async function
     else if (isInsideAsyncFunction) {
         signature =
-            "jspp::JsPromise(const jspp::AnyValue&, const std::vector<jspp::AnyValue>&)";
+            "jspp::JsPromise(const jspp::AnyValue&, std::span<const jspp::AnyValue>)";
         callable = `std::function<${signature}>(${lambda})`;
         method = `jspp::AnyValue::make_async_function`;
     } // Handle normal function
     else {
         signature =
-            `jspp::AnyValue(const jspp::AnyValue&, const std::vector<jspp::AnyValue>&)`;
+            `jspp::AnyValue(const jspp::AnyValue&, std::span<const jspp::AnyValue>)`;
         callable = `std::function<${signature}>(${lambda})`;
         if (options?.isClass) {
             method = `jspp::AnyValue::make_class`;

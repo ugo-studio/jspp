@@ -15,7 +15,7 @@ namespace jspp
             // --- toString() method ---
             if (key == "toString" || key == WellKnownSymbols::toStringTag->key)
             {
-                return AnyValue::make_function([self](const AnyValue &thisVal, const std::vector<AnyValue> &_) -> AnyValue
+                return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> _) -> AnyValue
                                                { return AnyValue::make_string(self->to_std_string()); },
                                                key);
             }

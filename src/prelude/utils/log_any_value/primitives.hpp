@@ -13,10 +13,9 @@ namespace jspp
     {
         inline std::optional<std::string> format_primitive(const AnyValue &val, int depth)
         {
-            if (val.is_uninitialized()) {
+            if (val.is_uninitialized())
+                // THROW
                 Exception::throw_uninitialized_reference("#<Object>");
-                // return Color::BRIGHT_BLACK + std::string("<uninitialized>") + Color::RESET;
-            }
             if (val.is_undefined())
                 return Color::BRIGHT_BLACK + std::string("undefined") + Color::RESET;
             if (val.is_null())

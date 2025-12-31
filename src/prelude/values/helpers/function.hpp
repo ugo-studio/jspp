@@ -16,17 +16,17 @@ std::string jspp::JsFunction::to_std_string() const
     return type_part + " " + name_part + "() { [native code] }";
 }
 
-jspp::AnyValue jspp::JsFunction::call(const AnyValue &thisVal, const std::vector<AnyValue> &args)
+jspp::AnyValue jspp::JsFunction::call(const AnyValue &thisVal, std::span<const AnyValue> args)
 {
-    if (std::function<AnyValue(const AnyValue &, const std::vector<AnyValue> &)> *func = std::get_if<0>(&callable))
+    if (std::function<AnyValue(const AnyValue &, std::span<const AnyValue>)> *func = std::get_if<0>(&callable))
     {
         return (*func)(thisVal, args);
     }
-    else if (std::function<jspp::JsIterator<jspp::AnyValue>(const AnyValue &, const std::vector<jspp::AnyValue> &)> *func = std::get_if<1>(&callable))
+    else if (std::function<jspp::JsIterator<jspp::AnyValue>(const AnyValue &, std::span<const AnyValue>)> *func = std::get_if<1>(&callable))
     {
         return AnyValue::from_iterator((*func)(thisVal, args));
     }
-    else if (std::function<jspp::JsPromise(const AnyValue &, const std::vector<jspp::AnyValue> &)> *func = std::get_if<2>(&callable))
+    else if (std::function<jspp::JsPromise(const AnyValue &, std::span<const AnyValue>)> *func = std::get_if<2>(&callable))
     {
         return AnyValue::make_promise((*func)(thisVal, args));
     }
@@ -107,7 +107,7 @@ jspp::AnyValue jspp::JsFunction::set_property(const std::string &key, const AnyV
 }
 
 // AnyValue::construct implementation
-const jspp::AnyValue jspp::AnyValue::construct(const std::vector<AnyValue> &args, const std::optional<std::string> &name) const
+const jspp::AnyValue jspp::AnyValue::construct(std::span<const AnyValue> args, const std::optional<std::string> &name) const
 {
     if (!is_function() || !as_function()->is_constructor)
     {

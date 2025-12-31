@@ -35,9 +35,9 @@ jspp::JsIterator<T>::NextResult jspp::JsIterator<T>::next(const T &val)
 }
 
 template <typename T>
-std::vector<std::optional<T>> jspp::JsIterator<T>::to_vector()
+std::vector<T> jspp::JsIterator<T>::to_vector()
 {
-    std::vector<std::optional<AnyValue>> result;
+    std::vector<T> result;
     while (true)
     {
         auto next = this->next();
@@ -45,7 +45,7 @@ std::vector<std::optional<T>> jspp::JsIterator<T>::to_vector()
         {
             break;
         }
-        result.push_back(next.value);
+        result.push_back(next.value.value_or(AnyValue::make_undefined()));
     }
     return result;
 }

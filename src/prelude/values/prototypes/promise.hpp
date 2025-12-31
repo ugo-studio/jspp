@@ -9,7 +9,7 @@ namespace jspp {
         inline std::optional<AnyValue> get(const std::string& key, JsPromise* self) {
             
             if (key == "then") {
-                return AnyValue::make_function([self](const AnyValue& thisVal, const std::vector<AnyValue>& args) -> AnyValue {
+                return AnyValue::make_function([self](const AnyValue& thisVal, std::span<const AnyValue> args) -> AnyValue {
                     AnyValue onFulfilled = (args.size() > 0 && args[0].is_function()) ? args[0] : AnyValue::make_undefined();
                     AnyValue onRejected = (args.size() > 1 && args[1].is_function()) ? args[1] : AnyValue::make_undefined();
                     
@@ -31,16 +31,17 @@ namespace jspp {
 
 
                     // Resolve handler
-                    auto resolveHandler = [resolveNew, rejectNew, onFulfilled](AnyValue val) mutable {
+                    auto resolveHandler = [resolveNew, rejectNew, onFulfilled](const AnyValue& val) mutable {
                         if (onFulfilled.is_function()) {
                             try {
-                                auto res = onFulfilled.as_function()->call(AnyValue::make_undefined(), {val});
+                                const AnyValue cbArgs[] = {val};
+                                auto res = onFulfilled.as_function()->call(AnyValue::make_undefined(), cbArgs);
                                 if (res.is_promise()) {
                                     // Chaining: newPromise follows res
                                     auto chained = res.as_promise();
                                     chained->then(
-                                        [resolveNew](AnyValue v) { resolveNew(v); },
-                                        [rejectNew](AnyValue e) { rejectNew(e); }
+                                        [resolveNew](const AnyValue& v) { resolveNew(v); },
+                                        [rejectNew](const AnyValue& e) { rejectNew(e); }
                                     );
                                 } else {
                                     resolveNew(res);
@@ -56,15 +57,16 @@ namespace jspp {
                     };
 
                     // Reject handler
-                    auto rejectHandler = [resolveNew, rejectNew, onRejected](AnyValue reason) mutable {
+                    auto rejectHandler = [resolveNew, rejectNew, onRejected](const AnyValue& reason) mutable {
                          if (onRejected.is_function()) {
                             try {
-                                auto res = onRejected.as_function()->call(AnyValue::make_undefined(), {reason});
+                                const AnyValue cbArgs[] = {reason};
+                                auto res = onRejected.as_function()->call(AnyValue::make_undefined(), cbArgs);
                                 if (res.is_promise()) {
                                     auto chained = res.as_promise();
                                     chained->then(
-                                        [resolveNew](AnyValue v) { resolveNew(v); },
-                                        [rejectNew](AnyValue e) { rejectNew(e); }
+                                        [resolveNew](const AnyValue& v) { resolveNew(v); },
+                                        [rejectNew](const AnyValue& e) { rejectNew(e); }
                                     );
                                 } else {
                                     resolveNew(res); // Recovered
@@ -85,36 +87,38 @@ namespace jspp {
             }
 
             if (key == "catch") {
-                 return AnyValue::make_function([self](const AnyValue& thisVal, const std::vector<AnyValue>& args) -> AnyValue {
+                 return AnyValue::make_function([self](const AnyValue& thisVal, std::span<const AnyValue> args) -> AnyValue {
                     // catch(onRejected) is then(undefined, onRejected)
                     AnyValue onRejected = (args.size() > 0 && args[0].is_function()) ? args[0] : AnyValue::make_undefined();
-                    return thisVal.get_own_property("then").as_function()->call(thisVal, {AnyValue::make_undefined(), onRejected});
+                    const AnyValue thenArgs[] = {AnyValue::make_undefined(), onRejected};
+                    return thisVal.get_own_property("then").as_function()->call(thisVal, thenArgs);
                  }, "catch");
             }
 
             if (key == "finally") {
-                return AnyValue::make_function([self](const AnyValue& thisVal, const std::vector<AnyValue>& args) -> AnyValue {
+                return AnyValue::make_function([self](const AnyValue& thisVal, std::span<const AnyValue> args) -> AnyValue {
                     AnyValue onFinally = (args.size() > 0 && args[0].is_function()) ? args[0] : AnyValue::make_undefined();
                     
                     // finally(onFinally) returns a promise that passes through value/reason, 
                     // but executes onFinally first.
                     
-                    return thisVal.get_own_property("then").as_function()->call(thisVal, {
-                        AnyValue::make_function([onFinally](const AnyValue&, const std::vector<AnyValue>& args) -> AnyValue {
+                    const AnyValue thenArgs[] = {
+                        AnyValue::make_function([onFinally](const AnyValue&, std::span<const AnyValue> args) -> AnyValue {
                             AnyValue val = args.empty() ? AnyValue::make_undefined() : args[0];
                             if (onFinally.is_function()) {
                                 onFinally.as_function()->call(AnyValue::make_undefined(), {});
                             }
                             return val;
                         }, ""),
-                        AnyValue::make_function([onFinally](const AnyValue&, const std::vector<AnyValue>& args) -> AnyValue {
+                        AnyValue::make_function([onFinally](const AnyValue&, std::span<const AnyValue> args) -> AnyValue {
                             AnyValue reason = args.empty() ? AnyValue::make_undefined() : args[0];
                             if (onFinally.is_function()) {
                                 onFinally.as_function()->call(AnyValue::make_undefined(), {});
                             }
                             throw Exception(reason);
                         }, "")
-                    });
+                    };
+                    return thisVal.get_own_property("then").as_function()->call(thisVal, thenArgs);
                 }, "finally");
             }
             

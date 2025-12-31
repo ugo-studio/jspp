@@ -33,6 +33,7 @@ async function main() {
                 "ccache",
                 "g++",
                 "-O3",
+                "-flto=auto",
                 "-DNDEBUG",
                 "-std=c++23",
                 cppFilePath,

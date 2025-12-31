@@ -28,8 +28,8 @@
 #include "values/promise.hpp"
 #include "values/symbol.hpp"
 #include "values/string.hpp"
-#include "exception.hpp"
 #include "values/descriptors.hpp"
+#include "exception.hpp"
 #include "utils/well_known_symbols.hpp"
 
 namespace jspp
@@ -152,10 +152,23 @@ namespace jspp
             v.storage = std::make_shared<JsString>(raw_s);
             return v;
         }
+        static AnyValue make_object(std::initializer_list<std::pair<std::string, AnyValue>> props) noexcept
+        {
+            AnyValue v;
+            v.storage = std::make_shared<JsObject>(props);
+            return v;
+        }
         static AnyValue make_object(const std::map<std::string, AnyValue> &props) noexcept
         {
             AnyValue v;
             v.storage = std::make_shared<JsObject>(props);
+            return v;
+        }
+        static AnyValue make_object_with_proto(std::initializer_list<std::pair<std::string, AnyValue>> props, const AnyValue &proto) noexcept
+        {
+            AnyValue v;
+            auto protoPtr = std::make_shared<AnyValue>(proto);
+            v.storage = std::make_shared<JsObject>(props, protoPtr);
             return v;
         }
         static AnyValue make_object_with_proto(const std::map<std::string, AnyValue> &props, const AnyValue &proto) noexcept
@@ -165,19 +178,40 @@ namespace jspp
             v.storage = std::make_shared<JsObject>(props, protoPtr);
             return v;
         }
-        static AnyValue make_array(const std::vector<std::optional<AnyValue>> &dense) noexcept
+        static AnyValue make_array(std::span<const AnyValue> dense) noexcept
+        {
+            AnyValue v;
+            std::vector<AnyValue> vec;
+            vec.reserve(dense.size());
+            for (const auto &item : dense)
+                vec.push_back(item);
+            v.storage = std::make_shared<JsArray>(std::move(vec));
+            return v;
+        }
+        static AnyValue make_array(const std::vector<AnyValue> &dense) noexcept
         {
             AnyValue v;
             v.storage = std::make_shared<JsArray>(dense);
             return v;
         }
-        static AnyValue make_array(std::vector<std::optional<AnyValue>> &&dense) noexcept
+        static AnyValue make_array(std::vector<AnyValue> &&dense) noexcept
         {
             AnyValue v;
             v.storage = std::make_shared<JsArray>(std::move(dense));
             return v;
         }
-        static AnyValue make_array_with_proto(const std::vector<std::optional<AnyValue>> &dense, const AnyValue &proto) noexcept
+        static AnyValue make_array_with_proto(std::span<const AnyValue> dense, const AnyValue &proto) noexcept
+        {
+            AnyValue v;
+            std::vector<AnyValue> vec;
+            vec.reserve(dense.size());
+            for (const auto &item : dense)
+                vec.push_back(item);
+            v.storage = std::make_shared<JsArray>(std::move(vec));
+            std::get<std::shared_ptr<JsArray>>(v.storage)->proto = std::make_shared<AnyValue>(proto);
+            return v;
+        }
+        static AnyValue make_array_with_proto(const std::vector<AnyValue> &dense, const AnyValue &proto) noexcept
         {
             AnyValue v;
             v.storage = std::make_shared<JsArray>(dense);
@@ -190,8 +224,8 @@ namespace jspp
             v.storage = std::make_shared<JsFunction>(call, name, std::unordered_map<std::string, AnyValue>{}, false, is_constructor);
 
             auto proto = make_object({});
-            proto.set_own_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
-            v.set_own_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
+            proto.define_data_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
+            v.define_data_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
 
             return v;
         }
@@ -202,8 +236,8 @@ namespace jspp
             v.storage = std::make_shared<JsFunction>(call, name, std::unordered_map<std::string, AnyValue>{}, true);
 
             auto proto = make_object({});
-            proto.set_own_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
-            v.set_own_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
+            proto.define_data_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
+            v.define_data_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
 
             return v;
         }
@@ -214,8 +248,8 @@ namespace jspp
             v.storage = std::make_shared<JsFunction>(call, true, name);
 
             auto proto = make_object({});
-            proto.set_own_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
-            v.set_own_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
+            proto.define_data_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
+            v.define_data_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
 
             return v;
         }
@@ -226,8 +260,8 @@ namespace jspp
             v.storage = std::make_shared<JsFunction>(call, false, true, name);
 
             auto proto = make_object({});
-            proto.set_own_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
-            v.set_own_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
+            proto.define_data_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
+            v.define_data_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
 
             return v;
         }
@@ -249,8 +283,8 @@ namespace jspp
             v.storage = std::make_shared<DataDescriptor>(std::make_shared<AnyValue>(value), writable, enumerable, configurable);
             return v;
         }
-        static AnyValue make_accessor_descriptor(const std::optional<std::function<AnyValue(const AnyValue &, const std::vector<AnyValue> &)>> &get,
-                                                 const std::optional<std::function<AnyValue(const AnyValue &, const std::vector<AnyValue> &)>> &set,
+        static AnyValue make_accessor_descriptor(const std::optional<std::function<AnyValue(const AnyValue &, std::span<const AnyValue>)>> &get,
+                                                 const std::optional<std::function<AnyValue(const AnyValue &, std::span<const AnyValue>)>> &set,
                                                  bool enumerable,
                                                  bool configurable) noexcept
         {
@@ -295,8 +329,9 @@ namespace jspp
             }
             case JsType::AccessorDescriptor:
             {
-                if (val.as_accessor_descriptor()->get.has_value())
-                    return val.as_accessor_descriptor()->get.value()(thisVal, {});
+                const auto &accessor = val.as_accessor_descriptor();
+                if (accessor->get.has_value())
+                    return accessor->get.value()(thisVal, std::span<const AnyValue>{});
                 else
                 {
                     static AnyValue undefined = AnyValue{};
@@ -315,9 +350,10 @@ namespace jspp
             {
             case JsType::DataDescriptor:
             {
-                if (val.as_data_descriptor()->writable)
+                const auto &data = val.as_data_descriptor();
+                if (data->writable)
                 {
-                    *(val.as_data_descriptor()->value) = new_val;
+                    *(data->value) = new_val;
                     return new_val;
                 }
                 else
@@ -327,9 +363,11 @@ namespace jspp
             }
             case JsType::AccessorDescriptor:
             {
-                if (val.as_accessor_descriptor()->set.has_value())
+                const auto &accessor = val.as_accessor_descriptor();
+                if (accessor->set.has_value())
                 {
-                    val.as_accessor_descriptor()->set.value()(thisVal, {new_val});
+                    const AnyValue args[] = {new_val};
+                    accessor->set.value()(thisVal, args);
                     return new_val;
                 }
                 else
@@ -436,9 +474,9 @@ namespace jspp
         void define_setter(const AnyValue &key, const AnyValue &setter);
 
         // --- HELPERS
-        const AnyValue construct(const std::vector<AnyValue> &args, const std::optional<std::string> &name) const;
+        const AnyValue construct(std::span<const AnyValue> args, const std::optional<std::string> &name) const;
         void set_prototype(const AnyValue &proto);
-        const std::string to_std_string() const noexcept;
+        std::string to_std_string() const noexcept;
     };
 
     // Inline implementation of operator co_await
@@ -448,11 +486,15 @@ namespace jspp
     }
 
     // Global Constants for Optimization
-    inline const AnyValue TRUE = AnyValue::make_boolean(true);
-    inline const AnyValue FALSE = AnyValue::make_boolean(false);
-    inline const AnyValue UNDEFINED = AnyValue::make_undefined();
-    inline const AnyValue Null = AnyValue::make_null();
-    inline const AnyValue NaN = AnyValue::make_nan();
-    inline const AnyValue ZERO = AnyValue::make_number(0.0);
-    inline const AnyValue ONE = AnyValue::make_number(1.0);
+    namespace Constants
+    {
+        inline const AnyValue UNINITIALIZED = AnyValue::make_uninitialized();
+        inline const AnyValue UNDEFINED = AnyValue::make_undefined();
+        inline const AnyValue Null = AnyValue::make_null();
+        inline const AnyValue NaN = AnyValue::make_nan();
+        inline const AnyValue TRUE = AnyValue::make_boolean(true);
+        inline const AnyValue FALSE = AnyValue::make_boolean(false);
+        inline const AnyValue ZERO = AnyValue::make_number(0.0);
+        inline const AnyValue ONE = AnyValue::make_number(1.0);
+    }
 }

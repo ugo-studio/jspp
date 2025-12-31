@@ -52,7 +52,7 @@ namespace jspp
             // --- toExponential(fractionDigits) ---
             if (key == "toExponential")
             {
-                return AnyValue::make_function([self](const AnyValue&, const std::vector<AnyValue>& args) -> AnyValue {
+                return AnyValue::make_function([self](const AnyValue&, std::span<const AnyValue> args) -> AnyValue {
                     int digits = -1;
                     if (!args.empty() && !args[0].is_undefined()) {
                         digits = Operators_Private::ToInt32(args[0]);
@@ -76,7 +76,7 @@ namespace jspp
             // --- toFixed(digits) ---
             if (key == "toFixed")
             {
-                return AnyValue::make_function([self](const AnyValue&, const std::vector<AnyValue>& args) -> AnyValue {
+                return AnyValue::make_function([self](const AnyValue&, std::span<const AnyValue> args) -> AnyValue {
                     int digits = 0;
                     if (!args.empty() && !args[0].is_undefined()) {
                         digits = Operators_Private::ToInt32(args[0]);
@@ -94,7 +94,7 @@ namespace jspp
             // --- toPrecision(precision) ---
             if (key == "toPrecision")
             {
-                return AnyValue::make_function([self](const AnyValue&, const std::vector<AnyValue>& args) -> AnyValue {
+                return AnyValue::make_function([self](const AnyValue&, std::span<const AnyValue> args) -> AnyValue {
                     if (args.empty() || args[0].is_undefined()) {
                         return AnyValue::make_number(self).get_own_property("toString").as_function()->call(AnyValue::make_number(self), {});
                     }
@@ -112,7 +112,7 @@ namespace jspp
             // --- toString(radix) ---
             if (key == "toString")
             {
-                return AnyValue::make_function([self](const AnyValue&, const std::vector<AnyValue>& args) -> AnyValue {
+                return AnyValue::make_function([self](const AnyValue&, std::span<const AnyValue> args) -> AnyValue {
                     int radix = 10;
                     if (!args.empty() && !args[0].is_undefined()) {
                         radix = Operators_Private::ToInt32(args[0]);
@@ -128,7 +128,7 @@ namespace jspp
             // --- valueOf() ---
             if (key == "valueOf")
             {
-                return AnyValue::make_function([self](const AnyValue&, const std::vector<AnyValue>&) -> AnyValue {
+                return AnyValue::make_function([self](const AnyValue&, std::span<const AnyValue>) -> AnyValue {
                     return AnyValue::make_number(self);
                 }, "valueOf");
             }
@@ -136,7 +136,7 @@ namespace jspp
             // --- toLocaleString() ---
             if (key == "toLocaleString")
             {
-                return AnyValue::make_function([self](const AnyValue&, const std::vector<AnyValue>&) -> AnyValue {
+                return AnyValue::make_function([self](const AnyValue&, std::span<const AnyValue>) -> AnyValue {
                     return AnyValue::make_string(AnyValue::make_number(self).to_std_string());
                 }, "toLocaleString");
             }

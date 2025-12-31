@@ -15,14 +15,14 @@ namespace jspp
             // --- toString() method ---
             if (key == "toString" || key == WellKnownSymbols::toStringTag->key)
             {
-                return AnyValue::make_function([self](const AnyValue &thisVal, const std::vector<AnyValue> &) -> AnyValue
+                return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue>) -> AnyValue
                                                { return AnyValue::make_string(self->to_std_string()); },
                                                key);
             }
             // --- [Symbol.iterator]() method ---
             if (key == WellKnownSymbols::iterator->key)
             {
-                return AnyValue::make_generator([self](const AnyValue &thisVal, const std::vector<AnyValue> &) -> AnyValue
+                return AnyValue::make_generator([self](const AnyValue &thisVal, std::span<const AnyValue>) -> AnyValue
                                                 {
                                                    // An iterator's iterator is itself.
                                                    // We need to return an AnyValue that holds a shared_ptr to this JsIterator.
@@ -37,7 +37,7 @@ namespace jspp
             // --- next() method ---
             if (key == "next")
             {
-                return AnyValue::make_function([self](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
                                                 AnyValue val = args.empty() ? AnyValue::make_undefined() : args[0];
                                                 auto res = self->next(val);
@@ -47,7 +47,7 @@ namespace jspp
             // --- toArray() method ---
             if (key == "toArray")
             {
-                return AnyValue::make_function([self](const AnyValue &thisVal, const std::vector<AnyValue> &) -> AnyValue
+                return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue>) -> AnyValue
                                                { return AnyValue::make_array(self->to_vector()); },
                                                key);
             }

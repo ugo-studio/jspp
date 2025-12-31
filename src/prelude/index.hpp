@@ -4,6 +4,7 @@
 #include "utils/well_known_symbols.hpp"
 
 // values
+#include "values/shape.hpp"
 #include "values/symbol.hpp"
 #include "values/non_values.hpp"
 #include "values/object.hpp"
@@ -13,9 +14,8 @@
 #include "values/promise.hpp"
 #include "values/string.hpp"
 
-#include "exception.hpp"
-#include "values/descriptors.hpp"
 #include "any_value.hpp"
+#include "values/descriptors.hpp"
 #include "any_value_helpers.hpp"
 #include "any_value_access.hpp"
 #include "any_value_defines.hpp"

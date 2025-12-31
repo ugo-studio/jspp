@@ -8,13 +8,3 @@ export interface Visitor {
         exit?: (node: Node, parent: Node | null) => void;
     };
 }
-
-export enum DeclaredSymbolType {
-    letOrConst = "letOrConst",
-    function = "function",
-    var = "var",
-}
-export type DeclaredSymbols = Map<
-    string,
-    DeclaredSymbolType
->;

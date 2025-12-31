@@ -16,23 +16,23 @@ std::string jspp::JsArray::to_std_string() const
     std::string result = "";
     for (uint64_t i = 0; i < length; ++i)
     {
-        std::optional<AnyValue> itemVal;
+        const AnyValue *itemPtr = nullptr;
         if (i < dense.size())
         {
-            itemVal = dense[i];
+            itemPtr = &dense[i];
         }
         else
         {
             auto it = sparse.find(static_cast<uint32_t>(i));
             if (it != sparse.end())
             {
-                itemVal = it->second;
+                itemPtr = &it->second;
             }
         }
 
-        if (itemVal.has_value())
+        if (itemPtr && !itemPtr->is_uninitialized())
         {
-            const auto &item = itemVal.value();
+            const auto &item = *itemPtr;
             if (!item.is_undefined() && !item.is_null())
             {
                 result += item.to_std_string();
@@ -64,7 +64,7 @@ bool jspp::JsArray::has_property(const std::string &key) const
     if (is_array_index(key))
     {
         uint32_t idx = static_cast<uint32_t>(std::stoull(key));
-        if (idx < dense.size() && dense[idx].has_value())
+        if (idx < dense.size())
             return true;
         if (sparse.find(idx) != sparse.end())
             return true;
@@ -133,12 +133,14 @@ jspp::AnyValue jspp::JsArray::get_property(uint32_t idx)
 {
     if (idx < dense.size())
     {
-        return dense[idx].value_or(AnyValue::make_undefined());
+        const auto &val = dense[idx];
+        return val.is_uninitialized() ? AnyValue::make_undefined() : val;
     }
     const auto &it = sparse.find(idx);
     if (it != sparse.end())
     {
-        return it->second.value_or(AnyValue::make_undefined());
+        const auto &val = it->second;
+        return val.is_uninitialized() ? AnyValue::make_undefined() : val;
     }
     return AnyValue::make_undefined();
 }
@@ -198,35 +200,18 @@ jspp::AnyValue jspp::JsArray::set_property(uint32_t idx, const AnyValue &value)
     const uint32_t DENSE_GROW_THRESHOLD = 1024;
     if (idx < dense.size())
     {
-        if (!dense[idx].has_value())
-        {
-            dense[idx] = AnyValue::make_undefined();
-        }
         dense[idx] = value;
         return value;
     }
     else if (idx <= dense.size() + DENSE_GROW_THRESHOLD)
     {
-        dense.resize(idx + 1);
+        dense.resize(idx + 1, AnyValue::make_uninitialized());
         dense[idx] = value;
         return value;
     }
     else
     {
-        auto it = sparse.find(idx);
-        if (it != sparse.end())
-        {
-            if (!it->second.has_value())
-            {
-                it->second = AnyValue::make_undefined();
-            }
-            it->second = value;
-            return value;
-        }
-        else
-        {
-            sparse[idx] = value;
-            return value;
-        }
+        sparse[idx] = value;
+        return value;
     }
 }

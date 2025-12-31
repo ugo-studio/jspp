@@ -49,7 +49,12 @@ export function visitVariableDeclaration(
                 !initTypeInfo.isParameter &&
                 !initTypeInfo.isBuiltin
             ) {
-                initText = this.getDerefCode(initText, varName, initTypeInfo);
+                initText = this.getDerefCode(
+                    initText,
+                    varName,
+                    initContext,
+                    initTypeInfo,
+                );
             }
         }
         initializer = " = " + initText;
@@ -61,13 +66,13 @@ export function visitVariableDeclaration(
         (!context.currentScopeSymbols.has(name));
 
     const assignmentTarget = shouldDeref
-        ? this.getDerefCode(name, name, typeInfo)
+        ? this.getDerefCode(name, name, context, typeInfo)
         : (typeInfo.needsHeapAllocation ? `*${name}` : name);
 
     if (isLetOrConst) {
         // If there's no initializer, it should be assigned undefined.
         if (!initializer) {
-            return `${assignmentTarget} = jspp::UNDEFINED`;
+            return `${assignmentTarget} = jspp::Constants::UNDEFINED`;
         }
         return `${assignmentTarget}${initializer}`;
     }
@@ -81,7 +86,7 @@ export function visitVariableDeclaration(
         // but is kept for safety.
         const initValue = initializer
             ? initializer.substring(3)
-            : "jspp::UNDEFINED";
+            : "jspp::Constants::UNDEFINED";
         if (typeInfo.needsHeapAllocation) {
             return `auto ${name} = std::make_shared<jspp::AnyValue>(${initValue})`;
         } else {

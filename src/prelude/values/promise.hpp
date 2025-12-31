@@ -20,8 +20,8 @@ namespace jspp
     {
         PromiseStatus status = PromiseStatus::Pending;
         std::shared_ptr<AnyValue> result; // Value if fulfilled, reason if rejected
-        std::vector<std::function<void(AnyValue)>> onFulfilled;
-        std::vector<std::function<void(AnyValue)>> onRejected;
+        std::vector<std::function<void(const AnyValue&)>> onFulfilled;
+        std::vector<std::function<void(const AnyValue&)>> onRejected;
         
         PromiseState(); // Defined in helpers
     };
@@ -40,7 +40,7 @@ namespace jspp
         // --- Promise Logic ---
         void resolve(const AnyValue& value);
         void reject(const AnyValue& reason);
-        void then(std::function<void(AnyValue)> onFulfilled, std::function<void(AnyValue)> onRejected = nullptr);
+        void then(std::function<void(const AnyValue&)> onFulfilled, std::function<void(const AnyValue&)> onRejected = nullptr);
         
         // --- Methods ---
         std::string to_std_string() const;

@@ -1,6 +1,6 @@
 import ts from "typescript";
 
-import type { DeclaredSymbols } from "../../ast/types";
+import { DeclaredSymbols } from "../../ast/symbols";
 import { CodeGenerator } from "./";
 import type { VisitContext } from "./visitor";
 
@@ -33,7 +33,7 @@ export function visitForStatement(
                     const name = decl.name.getText();
                     const initValue = decl.initializer
                         ? this.visit(decl.initializer, context)
-                        : "jspp::UNDEFINED";
+                        : "jspp::Constants::UNDEFINED";
 
                     const scope = this.getScopeForNode(decl);
                     const typeInfo = this.typeAnalyzer.scopeManager
@@ -134,11 +134,11 @@ export function visitForInStatement(
             )!;
             if (typeInfo.needsHeapAllocation) {
                 code +=
-                    `${this.indent()}auto ${varName} = std::make_shared<jspp::AnyValue>(jspp::UNDEFINED);\n`;
+                    `${this.indent()}auto ${varName} = std::make_shared<jspp::AnyValue>(jspp::Constants::UNDEFINED);\n`;
                 assignmentTarget = `*${varName}`;
             } else {
                 code +=
-                    `${this.indent()}jspp::AnyValue ${varName} = jspp::UNDEFINED;\n`;
+                    `${this.indent()}jspp::AnyValue ${varName} = jspp::Constants::UNDEFINED;\n`;
                 assignmentTarget = varName;
             }
         }
@@ -167,6 +167,7 @@ export function visitForInStatement(
         derefExpr = this.getDerefCode(
             exprText,
             this.getJsVarName(expr),
+            context,
             typeInfo,
         );
     }
@@ -230,11 +231,11 @@ export function visitForOfStatement(
             )!;
             if (typeInfo.needsHeapAllocation) {
                 code +=
-                    `${this.indent()}auto ${elemName} = std::make_shared<jspp::AnyValue>(jspp::UNDEFINED);\n`;
+                    `${this.indent()}auto ${elemName} = std::make_shared<jspp::AnyValue>(jspp::Constants::UNDEFINED);\n`;
                 assignmentTarget = `*${elemName}`;
             } else {
                 code +=
-                    `${this.indent()}jspp::AnyValue ${elemName} = jspp::UNDEFINED;\n`;
+                    `${this.indent()}jspp::AnyValue ${elemName} = jspp::Constants::UNDEFINED;\n`;
                 assignmentTarget = elemName;
             }
         }
@@ -259,7 +260,12 @@ export function visitForOfStatement(
             scope,
         )!;
         const varName = this.getJsVarName(forOf.expression as ts.Identifier);
-        derefIterable = this.getDerefCode(iterableExpr, varName, typeInfo);
+        derefIterable = this.getDerefCode(
+            iterableExpr,
+            varName,
+            context,
+            typeInfo,
+        );
     }
 
     const declaredSymbols = this.getDeclaredSymbols(forOf.statement);
@@ -448,7 +454,7 @@ export function visitSwitchStatement(
     code += `${this.indent()}bool ${fallthroughVar} = false;\n`;
 
     // Hoist variable declarations
-    const hoistedSymbols: DeclaredSymbols = new Map();
+    const hoistedSymbols = new DeclaredSymbols();
     for (const clause of switchStmt.caseBlock.clauses) {
         if (ts.isCaseClause(clause) || ts.isDefaultClause(clause)) {
             for (const stmt of clause.statements) {

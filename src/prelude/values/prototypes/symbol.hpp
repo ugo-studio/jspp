@@ -14,7 +14,7 @@ namespace jspp
             // --- toString() method ---
             if (key == "toString" || key == WellKnownSymbols::toStringTag->key)
             {
-                return AnyValue::make_function([self](const AnyValue &thisVal, const std::vector<AnyValue> &) -> AnyValue
+                return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue>) -> AnyValue
                                                { return AnyValue::make_string(self->to_std_string()); },
                                                key);
             }
@@ -22,19 +22,16 @@ namespace jspp
             // --- valueOf() method ---
             if (key == "valueOf")
             {
-                return AnyValue::make_function([self](const AnyValue &thisVal, const std::vector<AnyValue> &) -> AnyValue
-                                               { 
-                                                   return thisVal; 
-                                               },
+                return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue>) -> AnyValue
+                                               { return thisVal; },
                                                key);
             }
 
             // --- [Symbol.toPrimitive] ---
-            if (key == WellKnownSymbols::toPrimitive->key) {
-                 return AnyValue::make_function([self](const AnyValue &thisVal, const std::vector<AnyValue> &) -> AnyValue
-                                               { 
-                                                   return thisVal;
-                                               },
+            if (key == WellKnownSymbols::toPrimitive->key)
+            {
+                return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue>) -> AnyValue
+                                               { return thisVal; },
                                                "[Symbol.toPrimitive]");
             }
 
@@ -42,7 +39,7 @@ namespace jspp
             if (key == "description")
             {
                 return AnyValue::make_accessor_descriptor(
-                    [self](const AnyValue &thisVal, const std::vector<AnyValue> &) -> AnyValue
+                    [self](const AnyValue &thisVal, std::span<const AnyValue>) -> AnyValue
                     {
                         if (self->description.empty())
                         {

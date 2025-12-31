@@ -89,7 +89,7 @@ namespace jspp
 
         std::string to_std_string() const;
         NextResult next(const T &val = T());
-        std::vector<std::optional<T>> to_vector();
+        std::vector<T> to_vector();
         AnyValue get_property(const std::string &key, const AnyValue &thisVal);
         AnyValue set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal);
     };

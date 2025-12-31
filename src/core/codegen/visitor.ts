@@ -1,6 +1,7 @@
 import ts from "typescript";
 
-import type { DeclaredSymbols, Node } from "../../ast/types";
+import type { DeclaredSymbols } from "../../ast/symbols";
+import type { Node } from "../../ast/types";
 import { CodeGenerator } from "./";
 import { visitClassDeclaration } from "./class-handlers";
 import {

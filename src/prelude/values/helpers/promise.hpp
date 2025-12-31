@@ -24,13 +24,13 @@ namespace jspp {
              auto weak_state = std::weak_ptr<PromiseState>(state);
              
              p->then(
-                 [weak_state](AnyValue v) {
+                 [weak_state](const AnyValue& v) {
                      if (auto s = weak_state.lock()) {
                          JsPromise localP; localP.state = s;
                          localP.resolve(v); 
                      }
                  },
-                 [weak_state](AnyValue r) {
+                 [weak_state](const AnyValue& r) {
                      if (auto s = weak_state.lock()) {
                          JsPromise localP; localP.state = s;
                          localP.reject(r);
@@ -71,7 +71,7 @@ namespace jspp {
         }
     }
 
-    inline void JsPromise::then(std::function<void(AnyValue)> onFulfilled, std::function<void(AnyValue)> onRejected) {
+    inline void JsPromise::then(std::function<void(const AnyValue&)> onFulfilled, std::function<void(const AnyValue&)> onRejected) {
         if (state->status == PromiseStatus::Fulfilled) {
             if (onFulfilled) {
                 AnyValue val = *(state->result);

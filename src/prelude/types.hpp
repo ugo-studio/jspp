@@ -14,6 +14,7 @@
 #include <set>
 #include <cmath>
 #include <optional>
+#include <span>
 
 // JSPP standard library
 namespace jspp

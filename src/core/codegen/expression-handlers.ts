@@ -33,6 +33,7 @@ export function visitObjectPropertyName(
             propName = this.getDerefCode(
                 propName,
                 this.getJsVarName(compExpr as ts.Identifier),
+                context,
                 typeInfo,
             );
         }
@@ -78,6 +79,7 @@ ${this.indent()}  auto ${objVar} = jspp::AnyValue::make_object_with_proto({}, ::
                     value = this.getDerefCode(
                         value,
                         this.getJsVarName(initializer),
+                        context,
                         typeInfo,
                     );
                 }
@@ -100,6 +102,7 @@ ${this.indent()}  auto ${objVar} = jspp::AnyValue::make_object_with_proto({}, ::
                 value = this.getDerefCode(
                     value,
                     this.getJsVarName(prop.name),
+                    context,
                     typeInfo,
                 );
             }
@@ -166,14 +169,18 @@ export function visitArrayLiteralExpression(
                     elemText = this.getDerefCode(
                         elemText,
                         this.getJsVarName(elem),
+                        context,
                         typeInfo,
                     );
                 }
             }
             return elemText;
-        })
-        .join(", ");
-    return `jspp::AnyValue::make_array_with_proto({${elements}}, ::Array.get_own_property("prototype"))`;
+        });
+    const elementsJoined = elements.join(", ");
+    const elementsSpan = elements.length > 0
+        ? `std::span<const jspp::AnyValue>((const jspp::AnyValue[]){${elementsJoined}}, ${elements.length})`
+        : "std::span<const jspp::AnyValue>{}";
+    return `jspp::AnyValue::make_array_with_proto(${elementsSpan}, ::Array.get_own_property("prototype"))`;
 }
 
 export function visitPrefixUnaryExpression(
@@ -194,7 +201,7 @@ export function visitPrefixUnaryExpression(
                 scope,
             )!;
             if (context.derefBeforeAssignment) {
-                target = this.getDerefCode(operand, operand, typeInfo);
+                target = this.getDerefCode(operand, operand, context, typeInfo);
             } else if (typeInfo.needsHeapAllocation) {
                 target = `*${operand}`;
             }
@@ -210,7 +217,7 @@ export function visitPrefixUnaryExpression(
                 scope,
             )!;
             if (context.derefBeforeAssignment) {
-                target = this.getDerefCode(operand, operand, typeInfo);
+                target = this.getDerefCode(operand, operand, context, typeInfo);
             } else if (typeInfo.needsHeapAllocation) {
                 target = `*${operand}`;
             }
@@ -236,7 +243,7 @@ export function visitPostfixUnaryExpression(
             scope,
         )!;
         if (context.derefBeforeAssignment) {
-            target = this.getDerefCode(operand, operand, typeInfo);
+            target = this.getDerefCode(operand, operand, context, typeInfo);
         } else if (typeInfo.needsHeapAllocation) {
             target = `*${operand}`;
         }
@@ -304,6 +311,7 @@ export function visitPropertyAccessExpression(
         finalExpr = this.getDerefCode(
             exprText,
             this.getJsVarName(propAccess.expression),
+            context,
             typeInfo,
         );
     }
@@ -358,6 +366,7 @@ export function visitElementAccessExpression(
         finalExpr = this.getDerefCode(
             exprText,
             this.getJsVarName(elemAccess.expression),
+            context,
             exprTypeInfo,
         );
     }
@@ -386,6 +395,7 @@ export function visitElementAccessExpression(
             argText = this.getDerefCode(
                 argText,
                 this.getJsVarName(elemAccess.argumentExpression),
+                context,
                 argTypeInfo,
             );
         }
@@ -506,6 +516,7 @@ export function visitBinaryExpression(
             rightText = this.getDerefCode(
                 rightText,
                 this.getJsVarName(binExpr.right as ts.Identifier),
+                context,
                 typeInfo,
             );
         }
@@ -518,7 +529,12 @@ export function visitBinaryExpression(
                 scope,
             )!;
             if (context.derefBeforeAssignment) {
-                target = this.getDerefCode(leftText, leftText, typeInfo);
+                target = this.getDerefCode(
+                    leftText,
+                    leftText,
+                    context,
+                    typeInfo,
+                );
             } else if (typeInfo.needsHeapAllocation) {
                 target = `*${leftText}`;
             }
@@ -551,6 +567,7 @@ export function visitBinaryExpression(
                         finalRightText = this.getDerefCode(
                             rightText,
                             this.getJsVarName(binExpr.right as ts.Identifier),
+                            context,
                             rightTypeInfo,
                         );
                     }
@@ -576,6 +593,7 @@ export function visitBinaryExpression(
                         this.getJsVarName(
                             propAccess.expression as ts.Identifier,
                         ),
+                        context,
                         typeInfo,
                     );
                 }
@@ -597,6 +615,7 @@ export function visitBinaryExpression(
                     finalRightText = this.getDerefCode(
                         rightText,
                         this.getJsVarName(binExpr.right as ts.Identifier),
+                        context,
                         rightTypeInfo,
                     );
                 }
@@ -625,6 +644,7 @@ export function visitBinaryExpression(
                         this.getJsVarName(
                             elemAccess.expression as ts.Identifier,
                         ),
+                        context,
                         typeInfo,
                     );
                 }
@@ -649,6 +669,7 @@ export function visitBinaryExpression(
                         this.getJsVarName(
                             elemAccess.argumentExpression as ts.Identifier,
                         ),
+                        context,
                         argTypeInfo,
                     );
                 }
@@ -670,6 +691,7 @@ export function visitBinaryExpression(
                     finalRightText = this.getDerefCode(
                         rightText,
                         this.getJsVarName(binExpr.right as ts.Identifier),
+                        context,
                         rightTypeInfo,
                     );
                 }
@@ -698,7 +720,7 @@ export function visitBinaryExpression(
             rightText = binExpr.right.getText();
         }
         const target = context.derefBeforeAssignment
-            ? this.getDerefCode(leftText, leftText, typeInfo)
+            ? this.getDerefCode(leftText, leftText, context, typeInfo)
             : (typeInfo.needsHeapAllocation ? `*${leftText}` : leftText);
         return `${target} ${op} ${rightText}`;
     }
@@ -724,6 +746,7 @@ export function visitBinaryExpression(
             finalLeft = this.getDerefCode(
                 leftText,
                 this.getJsVarName(binExpr.left as ts.Identifier),
+                context,
                 typeInfo,
             );
         }
@@ -750,6 +773,7 @@ export function visitBinaryExpression(
             finalRight = this.getDerefCode(
                 rightText,
                 this.getJsVarName(binExpr.right as ts.Identifier),
+                context,
                 typeInfo,
             );
         }
@@ -856,10 +880,10 @@ export function visitCallExpression(
         }
         const args = callExpr.arguments.map((arg) => this.visit(arg, context))
             .join(", ");
-        return `(${context.superClassVar}).as_function("super")->call(${this.globalThisVar}, {${args}})`;
+        return `(${context.superClassVar}).as_function("super")->call(${this.globalThisVar}, (const jspp::AnyValue[]){${args}})`;
     }
 
-    const args = callExpr.arguments
+    const argsArray = callExpr.arguments
         .map((arg) => {
             const argText = this.visit(arg, context);
             if (ts.isIdentifier(arg)) {
@@ -879,13 +903,18 @@ export function visitCallExpression(
                     return this.getDerefCode(
                         argText,
                         this.getJsVarName(arg),
+                        context,
                         typeInfo,
                     );
                 }
             }
             return argText;
-        })
-        .join(", ");
+        });
+    const args = argsArray.join(", ");
+    const argsCount = argsArray.length;
+    const argsSpan = argsCount > 0
+        ? `std::span<const jspp::AnyValue>((const jspp::AnyValue[]){${args}}, ${argsCount})`
+        : "std::span<const jspp::AnyValue>{}";
 
     // Handle obj.method() -> pass obj as 'this'
     if (ts.isPropertyAccessExpression(callee)) {
@@ -900,7 +929,7 @@ export function visitCallExpression(
             const propName = propAccess.name.getText();
             return `(${context.superClassVar}).get_own_property("prototype").get_own_property("${propName}").as_function("${
                 this.escapeString(propName)
-            }")->call(${this.globalThisVar}, {${args}})`;
+            }")->call(${this.globalThisVar}, ${argsSpan})`;
         }
 
         const objExpr = propAccess.expression;
@@ -924,20 +953,21 @@ export function visitCallExpression(
                 derefObj = this.getDerefCode(
                     objCode,
                     this.getJsVarName(objExpr),
+                    context,
                     typeInfo,
                 );
             }
         }
 
         if (callExpr.questionDotToken) {
-            return `jspp::Access::optional_call(${derefObj}.get_own_property("${propName}"), ${derefObj}, {${args}}, "${
+            return `jspp::Access::optional_call(${derefObj}.get_own_property("${propName}"), ${derefObj}, ${argsSpan}, "${
                 this.escapeString(propName)
             }")`;
         }
 
         return `([&](){ auto __obj = ${derefObj}; return __obj.get_own_property("${propName}").as_function("${
             this.escapeString(propName)
-        }")->call(__obj, {${args}}); })()`;
+        }")->call(__obj, ${argsSpan}); })()`;
     }
 
     // Handle obj[method]() -> pass obj as 'this'
@@ -962,6 +992,7 @@ export function visitCallExpression(
                 derefObj = this.getDerefCode(
                     objCode,
                     this.getJsVarName(objExpr),
+                    context,
                     typeInfo,
                 );
             }
@@ -999,16 +1030,17 @@ export function visitCallExpression(
                 argText = this.getDerefCode(
                     argText,
                     this.getJsVarName(elemAccess.argumentExpression),
+                    context,
                     argTypeInfo,
                 );
             }
         }
 
         if (callExpr.questionDotToken) {
-            return `jspp::Access::optional_call(${derefObj}.get_own_property(${argText}), ${derefObj}, {${args}})`;
+            return `jspp::Access::optional_call(${derefObj}.get_own_property(${argText}), ${derefObj}, ${argsSpan})`;
         }
 
-        return `([&](){ auto __obj = ${derefObj}; return __obj.get_own_property(${argText}).as_function()->call(__obj, {${args}}); })()`;
+        return `([&](){ auto __obj = ${derefObj}; return __obj.get_own_property(${argText}).as_function()->call(__obj, ${argsSpan}); })()`;
     }
 
     const calleeCode = this.visit(callee, context);
@@ -1032,6 +1064,7 @@ export function visitCallExpression(
             derefCallee = this.getDerefCode(
                 calleeCode,
                 this.getJsVarName(callee),
+                context,
                 typeInfo,
             );
         }
@@ -1055,10 +1088,10 @@ export function visitCallExpression(
         : "";
 
     if (callExpr.questionDotToken) {
-        return `jspp::Access::optional_call(${derefCallee}, jspp::UNDEFINED, {${args}}, ${calleeNamePart})`;
+        return `jspp::Access::optional_call(${derefCallee}, jspp::Constants::UNDEFINED, ${argsSpan}, ${calleeNamePart})`;
     }
 
-    return `${derefCallee}.as_function(${calleeNamePart})->call(jspp::UNDEFINED, {${args}})`;
+    return `${derefCallee}.as_function(${calleeNamePart})->call(jspp::Constants::UNDEFINED, ${argsSpan})`;
 }
 
 export function visitVoidExpression(
@@ -1068,7 +1101,7 @@ export function visitVoidExpression(
 ): string {
     const voidExpr = node as ts.VoidExpression;
     const exprText = this.visit(voidExpr.expression, context);
-    return `(${exprText}, jspp::UNDEFINED)`;
+    return `(${exprText}, jspp::Constants::UNDEFINED)`;
 }
 
 export function visitTemplateExpression(
@@ -1109,6 +1142,7 @@ export function visitTemplateExpression(
                 finalExpr = this.getDerefCode(
                     exprText,
                     this.getJsVarName(expr as ts.Identifier),
+                    context,
                     typeInfo,
                 );
             }
@@ -1156,12 +1190,13 @@ export function visitNewExpression(
             derefExpr = this.getDerefCode(
                 exprText,
                 name,
+                context,
                 typeInfo,
             );
         }
     }
 
-    const args = newExpr.arguments
+    const argsArray = newExpr.arguments
         ? newExpr.arguments
             .map((arg) => {
                 const argText = this.visit(arg, context);
@@ -1185,16 +1220,21 @@ export function visitNewExpression(
                         return this.getDerefCode(
                             argText,
                             this.getJsVarName(arg as ts.Identifier),
+                            context,
                             typeInfo,
                         );
                     }
                 }
                 return argText;
             })
-            .join(", ")
-        : "";
+        : [];
+    const args = argsArray.join(", ");
+    const argsCount = argsArray.length;
+    const argsSpan = argsCount > 0
+        ? `std::span<const jspp::AnyValue>((const jspp::AnyValue[]){${args}}, ${argsCount})`
+        : "std::span<const jspp::AnyValue>{}";
 
-    return `${derefExpr}.construct({${args}}, ${name})`;
+    return `${derefExpr}.construct(${argsSpan}, ${name})`;
 }
 
 export function visitTypeOfExpression(
@@ -1226,6 +1266,7 @@ export function visitTypeOfExpression(
             derefExpr = this.getDerefCode(
                 exprText,
                 this.getJsVarName(typeOfExpr.expression as ts.Identifier),
+                context,
                 typeInfo,
             );
         }
@@ -1262,12 +1303,13 @@ export function visitAwaitExpression(
                 this.getJsVarName(
                     awaitExpr.expression as ts.Identifier,
                 )
-            }), co_await jspp::UNDEFINED)`;
+            }), co_await jspp::Constants::UNDEFINED)`;
         }
         if (typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin) {
             derefExpr = this.getDerefCode(
                 exprText,
                 this.getJsVarName(awaitExpr.expression as ts.Identifier),
+                context,
                 typeInfo,
             );
         }
@@ -1291,5 +1333,5 @@ export function visitDeleteExpression(
         const prop = this.visit(expr.argumentExpression, context);
         return `jspp::Access::delete_property(${obj}, ${prop})`;
     }
-    return "jspp::TRUE"; // delete on non-property is true in JS
+    return "jspp::Constants::TRUE"; // delete on non-property is true in JS
 }

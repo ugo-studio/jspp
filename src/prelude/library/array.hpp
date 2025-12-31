@@ -5,23 +5,23 @@
 #include "utils/operators.hpp"
 #include "utils/access.hpp"
 
-inline auto Array = jspp::AnyValue::make_class([](const jspp::AnyValue &thisVal, const std::vector<jspp::AnyValue> &args) -> jspp::AnyValue
+inline auto Array = jspp::AnyValue::make_class([](const jspp::AnyValue &thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                {
     if (args.size() == 1 && args[0].is_number()) {
         double len = args[0].as_double();
         if (len < 0 || len > 4294967295.0) { // Max uint32
              throw jspp::Exception::make_exception("Invalid array length", "RangeError");
         }
-        auto arr = jspp::AnyValue::make_array({});
+        auto arr = jspp::AnyValue::make_array(std::vector<jspp::AnyValue>());
         arr.as_array()->length = static_cast<uint64_t>(len);
-        arr.as_array()->dense.resize(static_cast<size_t>(len));
+        arr.as_array()->dense.resize(static_cast<size_t>(len), jspp::AnyValue::make_uninitialized());
         return arr;
     }
-    std::vector<std::optional<jspp::AnyValue>> elements;
+    std::vector<jspp::AnyValue> elements;
     for(const auto& arg : args) {
         elements.push_back(arg);
     }
-    return jspp::AnyValue::make_array(elements); }, "Array");
+    return jspp::AnyValue::make_array(std::move(elements)); }, "Array");
 
 struct ArrayInit
 {
@@ -31,32 +31,32 @@ struct ArrayInit
         // Array.get_own_property("prototype").set_prototype(::Object.get_own_property("prototype"));
 
         // Array.isArray(value)
-        Array.define_data_property("isArray", jspp::AnyValue::make_function([](const jspp::AnyValue &, const std::vector<jspp::AnyValue> &args) -> jspp::AnyValue
+        Array.define_data_property("isArray", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                             {
-            if (args.empty()) return jspp::FALSE;
+            if (args.empty()) return jspp::Constants::FALSE;
             return jspp::AnyValue::make_boolean(args[0].is_array()); }, "isArray"));
 
         // Array.of(...elements)
-        Array.define_data_property("of", jspp::AnyValue::make_function([](const jspp::AnyValue &, const std::vector<jspp::AnyValue> &args) -> jspp::AnyValue
+        Array.define_data_property("of", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                        {
-            std::vector<std::optional<jspp::AnyValue>> elements;
+            std::vector<jspp::AnyValue> elements;
             for(const auto& arg : args) {
                 elements.push_back(arg);
             }
-            return jspp::AnyValue::make_array(elements); }, "of"));
+            return jspp::AnyValue::make_array(std::move(elements)); }, "of"));
 
         // Array.from(arrayLike, mapFn?, thisArg?)
-        Array.define_data_property("from", jspp::AnyValue::make_function([](const jspp::AnyValue &, const std::vector<jspp::AnyValue> &args) -> jspp::AnyValue
+        Array.define_data_property("from", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                          {
             if (args.empty() || args[0].is_null() || args[0].is_undefined()) {
                 throw jspp::Exception::make_exception("Array.from requires an array-like object", "TypeError");
             }
 
-            auto items = args[0];
-            auto mapFn = (args.size() > 1 && args[1].is_function()) ? args[1] : jspp::AnyValue::make_undefined();
-            auto thisArg = (args.size() > 2) ? args[2] : jspp::AnyValue::make_undefined();
+            const auto& items = args[0];
+            const auto& mapFn = (args.size() > 1 && args[1].is_function()) ? args[1] : jspp::Constants::UNDEFINED;
+            const auto& thisArg = (args.size() > 2) ? args[2] : jspp::Constants::UNDEFINED;
 
-            std::vector<std::optional<jspp::AnyValue>> result;
+            std::vector<jspp::AnyValue> result;
 
             // Check if iterable
             // Simple check: does it have [Symbol.iterator]?
@@ -67,12 +67,14 @@ struct ArrayInit
                 
                 size_t k = 0;
                 while (true) {
-                    auto nextRes = nextFn->call(iter, {});
+                    auto nextRes = nextFn->call(iter, std::span<const jspp::AnyValue>{});
                     if (jspp::is_truthy(nextRes.get_own_property("done"))) break;
                     
                     auto val = nextRes.get_own_property("value");
                     if (mapFn.is_function()) {
-                        val = mapFn.as_function()->call(thisArg, {val, jspp::AnyValue::make_number(k)});
+                        jspp::AnyValue kVal = jspp::AnyValue::make_number(k);
+                        const jspp::AnyValue mapArgs[] = {val, kVal};
+                        val = mapFn.as_function()->call(thisArg, std::span<const jspp::AnyValue>(mapArgs, 2));
                     }
                     result.push_back(val);
                     k++;
@@ -85,12 +87,14 @@ struct ArrayInit
                 for (size_t k = 0; k < len; ++k) {
                     auto kVal = items.get_property_with_receiver(std::to_string(k), items);
                     if (mapFn.is_function()) {
-                        kVal = mapFn.as_function()->call(thisArg, {kVal, jspp::AnyValue::make_number(k)});
+                        jspp::AnyValue kNum = jspp::AnyValue::make_number(k);
+                        const jspp::AnyValue mapArgs[] = {kVal, kNum};
+                        kVal = mapFn.as_function()->call(thisArg, std::span<const jspp::AnyValue>(mapArgs, 2));
                     }
                     result.push_back(kVal);
                 }
             }
             
-            return jspp::AnyValue::make_array(result); }, "from"));
+            return jspp::AnyValue::make_array(std::move(result)); }, "from"));
     }
-} arrayInit;
+};

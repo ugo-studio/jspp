@@ -17,7 +17,7 @@ namespace jspp
             // --- toString() method ---
             if (key == "toString" || key == WellKnownSymbols::toStringTag->key)
             {
-                return AnyValue::make_function([self](const AnyValue &thisVal, const std::vector<AnyValue> &_) -> AnyValue
+                return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> _) -> AnyValue
                                                { return AnyValue::make_string(self->to_std_string()); },
                                                key);
             }
@@ -25,7 +25,7 @@ namespace jspp
             // --- [Symbol.iterator]() method ---
             if (key == WellKnownSymbols::iterator->key)
             {
-                return AnyValue::make_generator([self](const AnyValue &thisVal, const std::vector<AnyValue> &_) -> AnyValue
+                return AnyValue::make_generator([self](const AnyValue &thisVal, std::span<const AnyValue> _) -> AnyValue
                                                 { return AnyValue::from_iterator(self->get_iterator()); },
                                                 key);
             }
@@ -33,12 +33,12 @@ namespace jspp
             // --- length property ---
             if (key == "length")
             {
-                auto getter = [self](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
+                auto getter = [self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                 {
                     return AnyValue::make_number(self->length);
                 };
 
-                auto setter = [self](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
+                auto setter = [self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                 {
                     if (args.empty())
                     {
@@ -86,7 +86,7 @@ namespace jspp
             // --- push() method ---
             if (key == "push")
             {
-                return AnyValue::make_function([self](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
                                                                                            for (const auto &arg : args)
                                                                                            {
@@ -99,7 +99,7 @@ namespace jspp
             // --- pop() method ---
             if (key == "pop")
             {
-                return AnyValue::make_function([self](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
                                                                                            if (self->length == 0)
                                                                                            {
@@ -124,7 +124,7 @@ namespace jspp
             // --- shift() method ---
             if (key == "shift")
             {
-                return AnyValue::make_function([self](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
                                                                                            if (self->length == 0)
                                                                                            {
@@ -155,7 +155,7 @@ namespace jspp
             // --- unshift() method ---
             if (key == "unshift")
             {
-                return AnyValue::make_function([self](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
                                                                                              size_t args_count = args.size();
                                                                                              if (args_count == 0)
@@ -182,7 +182,7 @@ namespace jspp
             // --- join() method ---
             if (key == "join")
             {
-                return AnyValue::make_function([self](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
                                                                                            std::string sep = ",";
                                                                                            if (!args.empty() && !args[0].is_undefined())
@@ -210,7 +210,7 @@ namespace jspp
             // --- forEach() method ---
             if (key == "forEach")
             {
-                return AnyValue::make_function([self](const AnyValue &thisVal, const std::vector<AnyValue> &args) -> AnyValue
+                return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
                                                                                            if (args.empty() || !args[0].is_function())
                                                                                            {
@@ -222,7 +222,9 @@ namespace jspp
                                                                                                AnyValue val = self->get_property(static_cast<uint32_t>(i));
                                                                                                if (!val.is_undefined())
                                                                                                { // forEach skips empty slots
-                                                                                                   callback->call(thisVal, {val, AnyValue::make_number(i)});
+                                                                                                   AnyValue iVal = AnyValue::make_number(i);
+                                                                                                   const AnyValue cbArgs[] = {val, iVal};
+                                                                                                   callback->call(thisVal, cbArgs);
                                                                                                }
                                                                                            }
                                                                                            return AnyValue::make_undefined(); },

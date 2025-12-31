@@ -2,7 +2,7 @@ import ts from "typescript";
 
 import { BUILTIN_OBJECTS, Scope } from "../../analysis/scope";
 import type { TypeAnalyzer, TypeInfo } from "../../analysis/typeAnalyzer";
-import { type DeclaredSymbols, DeclaredSymbolType } from "../../ast/types";
+import { DeclaredSymbols, DeclaredSymbolType } from "../../ast/symbols";
 import { CodeGenerator } from "./";
 import type { VisitContext } from "./visitor";
 
@@ -105,18 +105,54 @@ export function getDerefCode(
     this: CodeGenerator,
     nodeText: string,
     varName: string,
+    context: VisitContext,
     typeInfo: TypeInfo,
 ): string {
     // Make sure varName is incased in quotes
     if (!varName.startsWith('"')) varName = '"' + varName;
     if (!varName.endsWith('"')) varName = varName + '"';
 
-    if (typeInfo && typeInfo.needsHeapAllocation) {
-        // return `jspp::Access::deref_ptr(${nodeText}, ${varName})`;
-        return `(*${nodeText})`;
+    const symbolName = varName.slice(1).slice(0, -1);
+    const symbol = context.currentScopeSymbols.get(symbolName) ??
+        context.topLevelScopeSymbols.get(symbolName);
+    const checkedIfUninitialized: boolean = symbol?.checkedIfUninitialized ||
+        false;
+
+    console.log(
+        "top: ",
+        context.topLevelScopeSymbols.get(symbolName),
+        "\nlocal: ",
+        context.currentScopeSymbols.get(symbolName),
+        "\n",
+        checkedIfUninitialized,
+        symbolName,
+        "\n",
+        "\n",
+    );
+
+    // Mark the symbol as checked
+    if (context.currentScopeSymbols.has(symbolName)) {
+        context.currentScopeSymbols.update(symbolName, {
+            checkedIfUninitialized: true,
+        });
+    } else if (context.topLevelScopeSymbols.has(symbolName)) {
+        context.topLevelScopeSymbols.update(symbolName, {
+            checkedIfUninitialized: true,
+        });
     }
-    // return `jspp::Access::deref_stack(${nodeText}, ${varName})`;
-    return `(${nodeText})`;
+
+    // Apply deref code
+    if (checkedIfUninitialized) {
+        if (typeInfo && typeInfo.needsHeapAllocation) {
+            return `(*${nodeText})`;
+        }
+        return `(${nodeText})`;
+    } else {
+        if (typeInfo && typeInfo.needsHeapAllocation) {
+            return `jspp::Access::deref_ptr(${nodeText}, ${varName})`;
+        }
+        return `jspp::Access::deref_stack(${nodeText}, ${varName})`;
+    }
 }
 
 export function getReturnCommand(
@@ -150,7 +186,7 @@ export function hoistDeclaration(
                 : DeclaredSymbolType.var));
 
     if (hoistedSymbols.has(name)) {
-        const existingType = hoistedSymbols.get(name);
+        const existingType = hoistedSymbols.get(name)?.type;
         // Don't allow multiple declaration of `letOrConst` or `function` or `class` variables
         if (
             existingType === DeclaredSymbolType.letOrConst ||
@@ -164,7 +200,10 @@ export function hoistDeclaration(
         // `var` variables can be declared multiple times
         return "";
     }
-    hoistedSymbols.set(name, symbolType);
+    hoistedSymbols.set(name, {
+        type: symbolType,
+        checkedIfUninitialized: false,
+    });
 
     const scope = this.getScopeForNode(decl);
     const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
@@ -173,8 +212,8 @@ export function hoistDeclaration(
     )!;
 
     const initializer = isLetOrConst || ts.isClassDeclaration(decl)
-        ? "jspp::AnyValue::make_uninitialized()"
-        : "jspp::UNDEFINED";
+        ? "jspp::Constants::UNINITIALIZED"
+        : "jspp::Constants::UNDEFINED";
 
     if (typeInfo.needsHeapAllocation) {
         return `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;
@@ -207,7 +246,6 @@ export function prepareScopeSymbolsForVisit(
     topLevel: DeclaredSymbols,
     local: DeclaredSymbols,
 ): DeclaredSymbols {
-    const newTopLevel = new Map(topLevel);
-    local.forEach((v, k) => newTopLevel.set(k, v));
-    return newTopLevel;
+    // Join the top and local scopes
+    return new DeclaredSymbols(topLevel, local);
 }

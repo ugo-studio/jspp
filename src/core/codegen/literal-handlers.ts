@@ -8,7 +8,7 @@ export function visitIdentifier(
 ): string {
     if (node.text === "NaN") {
         // return "jspp::AnyValue::make_nan()";
-        return "jspp::NaN";
+        return "jspp::Constants::NaN";
     }
     if (node.text === "undefined") {
         return visitUndefinedKeyword();
@@ -21,8 +21,8 @@ export function visitNumericLiteral(
     this: CodeGenerator,
     node: ts.NumericLiteral,
 ): string {
-    if (node.text === "0") return "jspp::ZERO";
-    if (node.text === "1") return "jspp::ONE";
+    if (node.text === "0") return "jspp::Constants::ZERO";
+    if (node.text === "1") return "jspp::Constants::ONE";
     return `jspp::AnyValue::make_number(${this.escapeString(node.text)})`;
 }
 
@@ -42,22 +42,22 @@ export function visitNoSubstitutionTemplateLiteral(
 
 export function visitTrueKeyword(): string {
     // return "jspp::AnyValue::make_boolean(true)";
-    return "jspp::TRUE";
+    return "jspp::Constants::TRUE";
 }
 
 export function visitFalseKeyword(): string {
     // return "jspp::AnyValue::make_boolean(false)";
-    return "jspp::FALSE";
+    return "jspp::Constants::FALSE";
 }
 
 export function visitUndefinedKeyword(): string {
     // return "jspp::AnyValue::make_undefined()";
-    return "jspp::UNDEFINED";
+    return "jspp::Constants::UNDEFINED";
 }
 
 export function visitNullKeyword(): string {
     // return "jspp::AnyValue::make_null()";
-    return "jspp::Null";
+    return "jspp::Constants::Null";
 }
 
 export function visitThisKeyword(this: CodeGenerator): string {

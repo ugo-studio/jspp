@@ -6,31 +6,33 @@
 #include "any_value.hpp"
 
 // Define Symbol as a function
-inline auto Symbol = jspp::AnyValue::make_function([](const jspp::AnyValue& thisVal, const std::vector<jspp::AnyValue>& args) -> jspp::AnyValue {
+inline auto Symbol = jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+                                                   {
     std::string description = "";
     if (!args.empty() && !args[0].is_undefined()) {
         description = args[0].to_std_string();
     }
-    return jspp::AnyValue::make_symbol(description);
-}, "Symbol", false);
+    return jspp::AnyValue::make_symbol(description); }, "Symbol", false);
 
 // Initialize Symbol properties
-struct SymbolInit {
-    SymbolInit() {
+struct SymbolInit
+{
+    SymbolInit()
+    {
         // Static methods
-        Symbol.define_data_property("for", jspp::AnyValue::make_function([](const jspp::AnyValue&, const std::vector<jspp::AnyValue>& args) -> jspp::AnyValue {
+        Symbol.define_data_property("for", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+                                                                         {
              std::string key = "";
              if (!args.empty()) key = args[0].to_std_string();
-             return jspp::AnyValue::from_symbol(jspp::JsSymbol::for_global(key));
-        }, "for"));
+             return jspp::AnyValue::from_symbol(jspp::JsSymbol::for_global(key)); }, "for"));
 
-        Symbol.define_data_property("keyFor", jspp::AnyValue::make_function([](const jspp::AnyValue&, const std::vector<jspp::AnyValue>& args) -> jspp::AnyValue {
+        Symbol.define_data_property("keyFor", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+                                                                            {
              if (args.empty() || !args[0].is_symbol()) throw jspp::Exception::make_exception("Symbol.keyFor requires a symbol", "TypeError");
              auto sym = args[0].as_symbol();
              auto key = jspp::JsSymbol::key_for(sym);
              if (key.has_value()) return jspp::AnyValue::make_string(key.value());
-             return jspp::AnyValue::make_undefined();
-        }, "keyFor"));
+             return jspp::AnyValue::make_undefined(); }, "keyFor"));
 
         // Well-known symbols
         Symbol.define_data_property("iterator", jspp::AnyValue::from_symbol(jspp::WellKnownSymbols::iterator), false, false, false);
