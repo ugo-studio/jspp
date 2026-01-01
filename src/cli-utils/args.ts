@@ -7,6 +7,7 @@ export interface CliOptions {
     isRelease: boolean;
     keepCpp: boolean;
     outputExePath: string | null;
+    scriptArgs: string[];
 }
 
 export function parseArgs(rawArgs: string[]): CliOptions {
@@ -14,10 +15,16 @@ export function parseArgs(rawArgs: string[]): CliOptions {
     let isRelease = false;
     let keepCpp = false;
     let outputExePath: string | null = null;
+    let scriptArgs: string[] = [];
 
     for (let i = 0; i < rawArgs.length; i++) {
         const arg = rawArgs[i];
         if (!arg) continue;
+
+        if (arg === "--") {
+            scriptArgs = rawArgs.slice(i + 1);
+            break;
+        }
 
         if (arg === "--release") {
             isRelease = true;
@@ -50,7 +57,7 @@ export function parseArgs(rawArgs: string[]): CliOptions {
 
     if (!jsFilePathArg) {
         console.log(
-            `${COLORS.bold}Usage:${COLORS.reset} jspp <path-to-js-file> [--release] [--keep-cpp] [-o <output-path>]`,
+            `${COLORS.bold}Usage:${COLORS.reset} jspp <path-to-js-file> [--release] [--keep-cpp] [-o <output-path>] [-- <args...>]`,
         );
         process.exit(1);
     }
@@ -62,5 +69,6 @@ export function parseArgs(rawArgs: string[]): CliOptions {
         outputExePath: outputExePath
             ? path.resolve(process.cwd(), outputExePath)
             : null,
+        scriptArgs,
     };
 }

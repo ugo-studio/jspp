@@ -48,6 +48,7 @@
 
 // js standard libraries
 #include "library/symbol.hpp"
+#include "library/process.hpp"
 #include "library/function.hpp"
 #include "library/console.hpp"
 #include "library/performance.hpp"

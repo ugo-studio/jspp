@@ -10,7 +10,7 @@ import { Spinner } from "./cli-utils/spinner";
 import { Interpreter } from "./index";
 
 async function main() {
-    const { jsFilePath, isRelease, keepCpp, outputExePath } = parseArgs(
+    const { jsFilePath, isRelease, keepCpp, outputExePath, scriptArgs } = parseArgs(
         process.argv.slice(2),
     );
 
@@ -158,7 +158,7 @@ async function main() {
         // 4. Execution Phase
         console.log(`\n${COLORS.cyan}--- Running Output ---${COLORS.reset}`);
         const run = Bun.spawn({
-            cmd: [exeFilePath],
+            cmd: [exeFilePath, ...scriptArgs],
             stdout: "inherit",
             stderr: "inherit",
         });

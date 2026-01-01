@@ -12,6 +12,7 @@
 
 inline auto global = jspp::AnyValue::make_object({
     {"Symbol", Symbol},
+    {"process", process},
     {"Function", Function},
     {"console", console},
     {"performance", performance},

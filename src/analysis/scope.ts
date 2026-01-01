@@ -17,6 +17,7 @@ export const BUILTIN_OBJECTS = new Set([
     { name: "performance", isConst: false },
     { name: "global", isConst: false },
     { name: "globalThis", isConst: false },
+    { name: "process", isConst: false },
     { name: "Error", isConst: false },
     { name: "Promise", isConst: false },
     { name: "Function", isConst: false },
