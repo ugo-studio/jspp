@@ -489,9 +489,6 @@ export function visitCatchClause(
         code += `${this.indent()}{\n`;
         this.indentationLevel++;
 
-        code +=
-            `${this.indent()}std::cout << "DEBUG: Entered catch block for ${varName}" << std::endl;\n`;
-
         // The JS exception variable is always local to the catch block
         code +=
             `${this.indent()}jspp::AnyValue ${varName} = jspp::Exception::exception_to_any_value(${exceptionName});\n`;

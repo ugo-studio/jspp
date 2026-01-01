@@ -265,6 +265,18 @@ namespace jspp
 
             return v;
         }
+        static AnyValue make_async_generator(const JsFunctionCallable &call, const std::optional<std::string> &name = std::nullopt) noexcept
+        {
+            AnyValue v;
+            // use Constructor C with is_gen = true and is_async_func = true
+            v.storage = std::make_shared<JsFunction>(call, true, true, name);
+
+            auto proto = make_object({});
+            proto.define_data_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
+            v.define_data_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
+
+            return v;
+        }
         static AnyValue make_symbol(const std::string &description = "") noexcept
         {
             AnyValue v;

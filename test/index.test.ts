@@ -10,7 +10,7 @@ import cases from "./expected-results.json";
 // --- Configuration ---
 // Dynamically set concurrency based on the number of logical CPU cores
 // Using Math.max to ensure at least 1 core is used even on small VMs
-const CONCURRENCY = Math.max(1, Math.floor(os.cpus().length / 2));
+const CONCURRENCY = Math.max(1, Math.floor(os.cpus().length / 1.5));
 
 // --- Helper: Strip ANSI Codes ---
 const stripAnsi = (str: string) =>
@@ -31,7 +31,23 @@ beforeAll(() => {
     }
 });
 
-describe("Interpreter tests", () => {
+describe("Interpreter tests", async () => {
+    // let testCode = "";
+
+    // for (const c of cases) {
+    //     const inputFile = path.join(
+    //         process.cwd(),
+    //         "test",
+    //         "cases",
+    //         `${c.name}.js`,
+    //     );
+    //     try {
+    //         testCodes += await fs.readFile(inputFile, "utf-8");
+    //     } catch (e: any) {
+    //         return `throw new Error("Error reading test file: ${e.message}"`;
+    //     }
+    // }
+
     const caseQueue = cases.map((c, i) => ({ c, i }));
     const casePromises: {
         case: typeof cases[number];

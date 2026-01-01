@@ -1084,14 +1084,14 @@ export function visitCallExpression(
 
     // Pass undefined as 'this' for normal function calls
     const calleeNamePart = calleeName && calleeName.length > 0
-        ? `"${calleeName}"`
+        ? `, "${calleeName}"`
         : "";
 
     if (callExpr.questionDotToken) {
-        return `jspp::Access::optional_call(${derefCallee}, jspp::Constants::UNDEFINED, ${argsSpan}, ${calleeNamePart})`;
+        return `jspp::Access::optional_call(${derefCallee}, jspp::Constants::UNDEFINED, ${argsSpan}${calleeNamePart})`;
     }
 
-    return `${derefCallee}.call(jspp::Constants::UNDEFINED, ${argsSpan}, ${calleeNamePart})`;
+    return `${derefCallee}.call(jspp::Constants::UNDEFINED, ${argsSpan}${calleeNamePart})`;
 }
 
 export function visitVoidExpression(
