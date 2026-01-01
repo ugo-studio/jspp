@@ -2,53 +2,70 @@ import fs from "fs/promises";
 import path from "path";
 
 const PRELUDE_DIR = path.resolve(process.cwd(), "src", "prelude");
-const PRECOMPILED_HEADER_DIR = path.resolve(process.cwd(), "prelude-build");
-const PRECOMPILED_HEADER_PATH = path.join(
-    PRECOMPILED_HEADER_DIR,
-    "index.hpp.gch",
-);
+const PRECOMPILED_HEADER_BASE_DIR = path.resolve(process.cwd(), "prelude-build");
+
+const MODES = [
+    {
+        name: "debug",
+        flags: ["-O0", "-Wa,-mbig-obj"],
+    },
+    {
+        name: "release",
+        flags: ["-O3", "-DNDEBUG", "-Wa,-mbig-obj"],
+    },
+];
 
 async function precompileHeaders() {
     try {
-        console.log("Checking for existing precompiled header...");
-        await fs.access(PRECOMPILED_HEADER_PATH);
-        console.log("Precompiled header already exists. Overwriting it.");
-        await fs.unlink(PRECOMPILED_HEADER_PATH);
-    } catch (error) {
-        // Precompiled header doesn't exist, so we'll create it.
-    }
+        await fs.mkdir(PRECOMPILED_HEADER_BASE_DIR, { recursive: true });
 
-    try {
-        console.log("Precompiling prelude headers...");
+        for (const mode of MODES) {
+            const modeDir = path.join(PRECOMPILED_HEADER_BASE_DIR, mode.name);
+            const headerPath = path.join(modeDir, "index.hpp");
+            const gchPath = path.join(modeDir, "index.hpp.gch");
 
-        await fs.mkdir(PRECOMPILED_HEADER_DIR, { recursive: true });
+            console.log(`\n[${mode.name.toUpperCase()}] Setting up...`);
+            await fs.mkdir(modeDir, { recursive: true });
 
-        const compile = Bun.spawnSync({
-            cmd: [
-                "g++",
-                "-x",
-                "c++-header",
-                "-std=c++23",
-                path.join(PRELUDE_DIR, "index.hpp"),
-                "-o",
-                PRECOMPILED_HEADER_PATH,
-                "-I",
-                PRELUDE_DIR,
-                // "-O3",
-                // "-DNDEBUG",
-            ],
-            stdout: "inherit",
-            stderr: "inherit",
-        });
+            // Copy index.hpp
+            await fs.copyFile(path.join(PRELUDE_DIR, "index.hpp"), headerPath);
 
-        if (compile.exitCode !== 0) {
-            console.error("Failed to precompile prelude headers.");
-            process.exit(1);
+            // Remove existing gch if it exists
+            if (
+                await fs.stat(gchPath).then(
+                    () => true,
+                    () => false,
+                )
+            ) {
+                await fs.unlink(gchPath);
+            }
+
+            console.log(`[${mode.name.toUpperCase()}] Compiling header...`);
+            const compile = Bun.spawnSync({
+                cmd: [
+                    "g++",
+                    "-x",
+                    "c++-header",
+                    "-std=c++23",
+                    ...mode.flags,
+                    headerPath,
+                    "-o",
+                    gchPath,
+                    "-I",
+                    PRELUDE_DIR,
+                ],
+                stdout: "inherit",
+                stderr: "inherit",
+            });
+
+            if (compile.exitCode !== 0) {
+                console.error(
+                    `[${mode.name.toUpperCase()}] Failed to precompile headers.`,
+                );
+                process.exit(1);
+            }
+            console.log(`[${mode.name.toUpperCase()}] Success.`);
         }
-
-        console.log(
-            `Successfully precompiled headers to ${PRECOMPILED_HEADER_PATH}`,
-        );
     } catch (error: any) {
         console.error(`Error: ${error.message}`);
         process.exit(1);

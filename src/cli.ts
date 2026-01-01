@@ -5,9 +5,14 @@ import path from "path";
 import { Interpreter } from "./index";
 
 async function main() {
-    const args = process.argv.slice(2);
+    const rawArgs = process.argv.slice(2);
+    
+    // Parse flags
+    const isRelease = rawArgs.includes("--release");
+    const args = rawArgs.filter(arg => arg !== "--release");
+
     if (args.length === 0) {
-        console.log("Usage: jspp <path-to-js-file>");
+        console.log("Usage: jspp <path-to-js-file> [--release]");
         process.exit(1);
     }
 
@@ -16,6 +21,16 @@ async function main() {
     const outputDir = path.dirname(jsFilePath);
     const cppFilePath = path.join(outputDir, `${jsFileName}.cpp`);
     const exeFilePath = path.join(outputDir, `${jsFileName}.exe`);
+
+    // Mode Configuration
+    const mode = isRelease ? "release" : "debug";
+    console.log(`Mode: ${mode.toUpperCase()}`);
+
+    const flags = isRelease 
+        ? ["-O3", "-DNDEBUG", "-Wa,-mbig-obj"]
+        : ["-O0", "-Wa,-mbig-obj"];
+    
+    const pchDir = path.resolve(process.cwd(), "prelude-build", mode);
 
     try {
         const jsCode = await fs.readFile(jsFilePath, "utf-8");
@@ -30,20 +45,16 @@ async function main() {
         console.log(`Compiling ${cppFilePath}...`);
         const compile = Bun.spawnSync({
             cmd: [
-                "ccache",
                 "g++",
-                "-O3",
-                "-flto=auto",
-                "-DNDEBUG",
                 "-std=c++23",
+                ...flags,
                 cppFilePath,
                 "-o",
                 exeFilePath,
                 "-I",
+                pchDir,
+                "-I",
                 preludePath,
-                // // precompiled header
-                // "-include",
-                // path.join(process.cwd(), "prelude-build", "index.hpp"),
             ],
             stdout: "inherit",
             stderr: "inherit",
