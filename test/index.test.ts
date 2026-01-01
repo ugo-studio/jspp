@@ -1,6 +1,6 @@
 import os from "node:os";
 
-import { describe, expect, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
 import fs from "fs/promises";
 import path from "path";
 
@@ -18,6 +18,18 @@ const stripAnsi = (str: string) =>
         /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g,
         "",
     );
+
+beforeAll(() => {
+    console.log("Ensuring precompiled headers are ready...");
+    const precompile = Bun.spawnSync({
+        cmd: ["bun", "run", "scripts/precompile-headers.ts"],
+        stdout: "inherit",
+        stderr: "inherit",
+    });
+    if (precompile.exitCode !== 0) {
+        throw new Error("Failed to precompile headers for tests.");
+    }
+});
 
 describe("Interpreter tests", () => {
     const caseQueue = cases.map((c, i) => ({ c, i }));
@@ -86,12 +98,14 @@ describe("Interpreter tests", () => {
                 const compile = Bun.spawn(
                     [
                         "g++",
-                        "-g",
-                        "-Og",
+                        "-O0",
+                        "-Wa,-mbig-obj",
                         "-std=c++23",
                         outputFile,
                         "-o",
                         exeFile,
+                        "-I",
+                        path.resolve(process.cwd(), "prelude-build", "debug"),
                         "-I",
                         preludePath,
                     ],

@@ -15,14 +15,44 @@ const MODES = [
     },
 ];
 
+async function getLatestMtime(dirPath: string): Promise<number> {
+    let maxMtime = 0;
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+        const fullPath = path.join(dirPath, entry.name);
+        if (entry.isDirectory()) {
+            const nestedMtime = await getLatestMtime(fullPath);
+            if (nestedMtime > maxMtime) maxMtime = nestedMtime;
+        } else {
+            const stats = await fs.stat(fullPath);
+            if (stats.mtimeMs > maxMtime) maxMtime = stats.mtimeMs;
+        }
+    }
+    return maxMtime;
+}
+
 async function precompileHeaders() {
+    const force = process.argv.includes("--force");
     try {
         await fs.mkdir(PRECOMPILED_HEADER_BASE_DIR, { recursive: true });
+        const sourceMtime = await getLatestMtime(PRELUDE_DIR);
 
         for (const mode of MODES) {
             const modeDir = path.join(PRECOMPILED_HEADER_BASE_DIR, mode.name);
             const headerPath = path.join(modeDir, "index.hpp");
             const gchPath = path.join(modeDir, "index.hpp.gch");
+
+            if (!force) {
+                try {
+                    const gchStats = await fs.stat(gchPath);
+                    if (gchStats.mtimeMs >= sourceMtime) {
+                        console.log(`[${mode.name.toUpperCase()}] Headers are up-to-date. Skipping.`);
+                        continue;
+                    }
+                } catch (e) {
+                    // PCH doesn't exist, proceed to compile
+                }
+            }
 
             console.log(`\n[${mode.name.toUpperCase()}] Setting up...`);
             await fs.mkdir(modeDir, { recursive: true });
