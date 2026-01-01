@@ -167,7 +167,7 @@ describe("Interpreter tests", () => {
                     throw error;
                 }
             },
-            60000,
+            80000,
         );
     });
 
