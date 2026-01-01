@@ -2,6 +2,7 @@ import ts from "typescript";
 
 import { DeclaredSymbols } from "../../ast/symbols";
 import { CodeGenerator } from "./";
+import { collectFunctionScopedDeclarations } from "./helpers";
 import type { VisitContext } from "./visitor";
 
 export function generateLambda(
@@ -224,6 +225,12 @@ export function generateLambda(
 
     if (node.body) {
         if (ts.isBlock(node.body)) {
+            // Hoist var declarations in the function body
+            const varDecls = collectFunctionScopedDeclarations(node.body);
+            varDecls.forEach(decl => {
+                preamble += this.hoistDeclaration(decl, visitContext.localScopeSymbols);
+            });
+
             this.indentationLevel++;
             const paramExtraction = paramExtractor(node.parameters);
             this.indentationLevel--;

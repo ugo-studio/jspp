@@ -19,9 +19,9 @@ a ||= 3;
 console.log("a ||= 3:", a);
 let b = null;
 b ??= 4;
-console.log("b ??= 4:", b);
+console.log("b", "??=", "4:", b);
 b ??= 5;
-console.log("b ??= 5:", b);
+console.log("b", "??=", "5:", b);
 
 console.log("--- Optional Chaining ---");
 const obj = {

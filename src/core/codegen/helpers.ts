@@ -250,3 +250,61 @@ export function prepareScopeSymbolsForVisit(
     // Join the top and local scopes
     return new DeclaredSymbols(topLevel, local);
 }
+
+export function collectFunctionScopedDeclarations(node: ts.Node): ts.VariableDeclaration[] {
+    const decls: ts.VariableDeclaration[] = [];
+
+    function visit(n: ts.Node) {
+        if (ts.isVariableStatement(n)) {
+            const isLetOrConst = (n.declarationList.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+            if (!isLetOrConst) {
+                decls.push(...n.declarationList.declarations);
+            }
+        } else if (ts.isForStatement(n)) {
+            if (n.initializer && ts.isVariableDeclarationList(n.initializer)) {
+                const isLetOrConst = (n.initializer.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                if (!isLetOrConst) {
+                    decls.push(...n.initializer.declarations);
+                }
+            }
+        } else if (ts.isForInStatement(n)) {
+            if (ts.isVariableDeclarationList(n.initializer)) {
+                const isLetOrConst = (n.initializer.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                if (!isLetOrConst) {
+                    decls.push(...n.initializer.declarations);
+                }
+            }
+        } else if (ts.isForOfStatement(n)) {
+            if (ts.isVariableDeclarationList(n.initializer)) {
+                const isLetOrConst = (n.initializer.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                if (!isLetOrConst) {
+                    decls.push(...n.initializer.declarations);
+                }
+            }
+        }
+
+        // Stop recursion at function boundaries (but not the root node if it is a function)
+        if (n !== node && (ts.isFunctionDeclaration(n) || ts.isFunctionExpression(n) || ts.isArrowFunction(n) || ts.isMethodDeclaration(n) || ts.isGetAccessor(n) || ts.isSetAccessor(n) || ts.isClassDeclaration(n))) {
+            return;
+        }
+
+        ts.forEachChild(n, visit);
+    }
+
+    ts.forEachChild(node, visit);
+
+    return decls;
+}
+
+export function collectBlockScopedDeclarations(statements: ts.NodeArray<ts.Statement> | ts.Statement[]): ts.VariableDeclaration[] {
+    const decls: ts.VariableDeclaration[] = [];
+    for (const stmt of statements) {
+        if (ts.isVariableStatement(stmt)) {
+            const isLetOrConst = (stmt.declarationList.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+            if (isLetOrConst) {
+                decls.push(...stmt.declarationList.declarations);
+            }
+        }
+    }
+    return decls;
+}

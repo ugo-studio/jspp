@@ -2,6 +2,10 @@ import ts from "typescript";
 
 import { DeclaredSymbols } from "../../ast/symbols";
 import { CodeGenerator } from "./";
+import {
+    collectBlockScopedDeclarations,
+    collectFunctionScopedDeclarations,
+} from "./helpers";
 import type { VisitContext } from "./visitor";
 
 export function visitSourceFile(
@@ -11,14 +15,17 @@ export function visitSourceFile(
 ): string {
     const sourceFile = node as ts.SourceFile;
     let code = "";
-    const varDecls = collectHoistedDeclarations(sourceFile.statements);
+    
+    // 1. Collect all var declarations (recursively) + top-level let/const
+    const varDecls = collectFunctionScopedDeclarations(sourceFile);
+    const topLevelLetConst = collectBlockScopedDeclarations(sourceFile.statements);
 
     const funcDecls = sourceFile.statements.filter(ts.isFunctionDeclaration);
     const classDecls = sourceFile.statements.filter(ts.isClassDeclaration);
 
     const hoistedSymbols = new DeclaredSymbols();
 
-    // 1. Hoist function declarations
+    // Hoist function declarations
     funcDecls.forEach((func) => {
         code += this.hoistDeclaration(func, hoistedSymbols);
     });
@@ -28,12 +35,17 @@ export function visitSourceFile(
         code += this.hoistDeclaration(cls, hoistedSymbols);
     });
 
-    // Hoist variable declarations
+    // Hoist variable declarations (var)
     varDecls.forEach((decl) => {
         code += this.hoistDeclaration(decl, hoistedSymbols);
     });
+    
+    // Hoist top-level let/const
+    topLevelLetConst.forEach((decl) => {
+        code += this.hoistDeclaration(decl, hoistedSymbols);
+    });
 
-    // Compile symbols forother statements (excluding function)
+    // Compile symbols for other statements (excluding function)
     const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
         context.topLevelScopeSymbols,
         context.localScopeSymbols,
@@ -111,7 +123,8 @@ export function visitBlock(
     this.indentationLevel++;
     const block = node as ts.Block;
 
-    const varDecls = collectHoistedDeclarations(block.statements);
+    // Collect ONLY block-scoped declarations (let/const)
+    const blockScopedDecls = collectBlockScopedDeclarations(block.statements);
 
     const funcDecls = block.statements.filter(ts.isFunctionDeclaration);
     const classDecls = block.statements.filter(ts.isClassDeclaration);
@@ -128,12 +141,12 @@ export function visitBlock(
         code += this.hoistDeclaration(cls, hoistedSymbols);
     });
 
-    // Hoist variable declarations
-    varDecls.forEach((decl) => {
+    // Hoist variable declarations (let/const only)
+    blockScopedDecls.forEach((decl) => {
         code += this.hoistDeclaration(decl, hoistedSymbols);
     });
 
-    // Compile symbols forother statements (excluding function)
+    // Compile symbols for other statements (excluding function)
     const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
         context.topLevelScopeSymbols,
         context.localScopeSymbols,
@@ -676,81 +689,4 @@ export function visitReturnStatement(
         return `${this.indent()}${returnCmd} ${finalExpr};\n`;
     }
     return `${this.indent()}${returnCmd} jspp::Constants::UNDEFINED;\n`;
-}
-
-function collectHoistedDeclarations(
-    statements: ts.NodeArray<ts.Statement> | ts.Statement[],
-): ts.VariableDeclaration[] {
-    const decls: ts.VariableDeclaration[] = [];
-    for (const stmt of statements) {
-        if (ts.isVariableStatement(stmt)) {
-            // Collect ALL variable statements (var, let, const)
-            decls.push(...stmt.declarationList.declarations);
-        } else if (ts.isForStatement(stmt)) {
-            // Only collect VAR from loops
-            if (
-                stmt.initializer &&
-                ts.isVariableDeclarationList(stmt.initializer)
-            ) {
-                if (
-                    (stmt.initializer.flags &
-                        (ts.NodeFlags.Let | ts.NodeFlags.Const)) === 0
-                ) {
-                    decls.push(...stmt.initializer.declarations);
-                }
-            }
-        } else if (ts.isForInStatement(stmt)) {
-            if (ts.isVariableDeclarationList(stmt.initializer)) {
-                if (
-                    (stmt.initializer.flags &
-                        (ts.NodeFlags.Let | ts.NodeFlags.Const)) === 0
-                ) {
-                    decls.push(...stmt.initializer.declarations);
-                }
-            }
-        } else if (ts.isForOfStatement(stmt)) {
-            if (ts.isVariableDeclarationList(stmt.initializer)) {
-                if (
-                    (stmt.initializer.flags &
-                        (ts.NodeFlags.Let | ts.NodeFlags.Const)) === 0
-                ) {
-                    decls.push(...stmt.initializer.declarations);
-                }
-            }
-        } else if (ts.isLabeledStatement(stmt)) {
-            const inner = stmt.statement;
-            if (ts.isForStatement(inner)) {
-                if (
-                    inner.initializer &&
-                    ts.isVariableDeclarationList(inner.initializer)
-                ) {
-                    if (
-                        (inner.initializer.flags &
-                            (ts.NodeFlags.Let | ts.NodeFlags.Const)) === 0
-                    ) {
-                        decls.push(...inner.initializer.declarations);
-                    }
-                }
-            } else if (ts.isForInStatement(inner)) {
-                if (ts.isVariableDeclarationList(inner.initializer)) {
-                    if (
-                        (inner.initializer.flags &
-                            (ts.NodeFlags.Let | ts.NodeFlags.Const)) === 0
-                    ) {
-                        decls.push(...inner.initializer.declarations);
-                    }
-                }
-            } else if (ts.isForOfStatement(inner)) {
-                if (ts.isVariableDeclarationList(inner.initializer)) {
-                    if (
-                        (inner.initializer.flags &
-                            (ts.NodeFlags.Let | ts.NodeFlags.Const)) === 0
-                    ) {
-                        decls.push(...inner.initializer.declarations);
-                    }
-                }
-            }
-        }
-    }
-    return decls;
 }

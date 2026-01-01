@@ -64,10 +64,8 @@ export class CodeGenerator {
 
         const declarations = `#include "index.hpp"\n\n`;
 
-        let containerCode = `jspp::AnyValue ${CONTAINER_FUNCTION_NAME}(int argc, char** argv) {\n`;
+        let containerCode = `jspp::AnyValue ${CONTAINER_FUNCTION_NAME}() {\n`;
         this.indentationLevel++;
-        containerCode +=
-            `${this.indent()}jspp::setup_process_argv(argc, argv);\n`;
         containerCode +=
             `${this.indent()}jspp::AnyValue ${this.globalThisVar} = global;\n`;
         containerCode += this.visit(ast, {
@@ -82,10 +80,9 @@ export class CodeGenerator {
         containerCode += "}\n\n";
 
         let mainCode = "int main(int argc, char** argv) {\n";
-        // std::ios::sync_with_stdio(false); // Removed to fix console output buffering
-        // std::cin.tie(nullptr);            // Removed to fix console output buffering
         mainCode += `  try {\n`;
-        mainCode += `    ${CONTAINER_FUNCTION_NAME}(argc, argv);\n`;
+        mainCode += `    jspp::setup_process_argv(argc, argv);\n`;
+        mainCode += `    ${CONTAINER_FUNCTION_NAME}();\n`;
         mainCode += `    jspp::Scheduler::instance().run();\n`;
         mainCode += `  } catch (const std::exception& ex) {\n`;
         mainCode +=

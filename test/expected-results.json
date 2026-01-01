@@ -275,7 +275,7 @@
         "name": "unresolved-property-access",
         "expected": [
             "--- Unresolved Property Access ---",
-            "Caught expected error: ReferenceError: a is not defined"
+            "Caught expected error: ReferenceError: non_existent_var is not defined"
         ]
     },
     {
