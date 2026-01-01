@@ -3,30 +3,31 @@ import fs from "fs/promises";
 import path from "path";
 
 import pkg from "../package.json";
+import { parseArgs } from "./cli-utils/args";
 import { COLORS } from "./cli-utils/colors";
 import { getLatestMtime } from "./cli-utils/file-utils";
 import { Spinner } from "./cli-utils/spinner";
 import { Interpreter } from "./index";
 
 async function main() {
-    const rawArgs = process.argv.slice(2);
+    const { jsFilePath, isRelease, keepCpp, outputExePath } = parseArgs(
+        process.argv.slice(2),
+    );
 
-    // Parse flags
-    const isRelease = rawArgs.includes("--release");
-    const args = rawArgs.filter((arg) => arg !== "--release");
-
-    if (args.length === 0) {
-        console.log(
-            `${COLORS.bold}Usage:${COLORS.reset} jspp <path-to-js-file> [--release]`,
-        );
-        process.exit(1);
-    }
-
-    const jsFilePath = path.resolve(process.cwd(), args[0]!);
     const jsFileName = path.basename(jsFilePath, ".js");
-    const outputDir = path.dirname(jsFilePath);
-    const cppFilePath = path.join(outputDir, `${jsFileName}.cpp`);
-    const exeFilePath = path.join(outputDir, `${jsFileName}.exe`);
+    const sourceDir = path.dirname(jsFilePath);
+
+    // Intermediate C++ file goes alongside the source JS file
+    const cppFilePath = path.join(sourceDir, `${jsFileName}.cpp`);
+
+    // Determine output executable path
+    let exeFilePath: string;
+    if (outputExePath) {
+        exeFilePath = outputExePath;
+    } else {
+        const ext = process.platform === "win32" ? ".exe" : "";
+        exeFilePath = path.join(sourceDir, `${jsFileName}${ext}`);
+    }
 
     // Mode Configuration
     const mode = isRelease ? "release" : "debug";
@@ -58,7 +59,8 @@ async function main() {
         const interpreter = new Interpreter();
         const { cppCode, preludePath } = interpreter.interpret(jsCode);
 
-        await fs.mkdir(outputDir, { recursive: true });
+        // Ensure directory for cpp file exists (should exist as it's source dir, but for safety if we change logic)
+        await fs.mkdir(path.dirname(cppFilePath), { recursive: true });
         await fs.writeFile(cppFilePath, cppCode);
         spinner.succeed(
             `Generated ${COLORS.dim}${
@@ -110,6 +112,9 @@ async function main() {
         spinner.text = `Compiling binary...`;
         spinner.start();
 
+        // Ensure output directory exists
+        await fs.mkdir(path.dirname(exeFilePath), { recursive: true });
+
         const compile = Bun.spawn({
             cmd: [
                 "g++",
@@ -140,6 +145,15 @@ async function main() {
                 path.basename(exeFilePath)
             }${COLORS.reset}`,
         );
+
+        // Clean up C++ file if not requested to keep
+        if (!keepCpp) {
+            try {
+                await fs.unlink(cppFilePath);
+            } catch (e) {
+                // Ignore error if file cannot be deleted
+            }
+        }
 
         // 4. Execution Phase
         console.log(`\n${COLORS.cyan}--- Running Output ---${COLORS.reset}`);
