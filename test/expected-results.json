@@ -659,6 +659,27 @@
                 "delArr[1]: undefined",
                 "delArr.length: 3"
             ]
+        },
+        {
+            "name": "array-methods-full",
+            "expected": [
+                "--- Array Methods Full ---",
+                "at(-1): 5",
+                "findLast > 3: 5",
+                "original: 1,2,3,4,5",
+                "reversed: 5,4,3,2,1",
+                "spliced: 1,99,100,4,5",
+                "flatMapped: 1,2,2,4,3,6,4,8,5,10",
+                "with: 1,2,999,4,5",
+                "reduceRight: 54321",
+                "copyWithin: 4,5,3,4,5",
+                "keys next: 0",
+                "entries next: 0 1",
+                "MyArray species: true",
+                "Array species: true",
+                "Array[Symbol.species]: [class Array]",
+                "fromAsync: 0,1,2"
+            ]
         }
     ]
     

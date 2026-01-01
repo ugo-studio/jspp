@@ -96,5 +96,95 @@ struct ArrayInit
             }
             
             return jspp::AnyValue::make_array(std::move(result)); }, "from"));
+
+        // Array.fromAsync(iterableOrArrayLike, mapFn?, thisArg?)
+        Array.define_data_property("fromAsync", jspp::AnyValue::make_async_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::JsPromise
+                                                                                    {
+            if (args.empty() || args[0].is_null() || args[0].is_undefined()) {
+                throw jspp::Exception::make_exception("Array.fromAsync requires an iterable or array-like object", "TypeError");
+            }
+
+            const auto& items = args[0];
+            const auto& mapFn = (args.size() > 1 && args[1].is_function()) ? args[1] : jspp::Constants::UNDEFINED;
+            const auto& thisArg = (args.size() > 2) ? args[2] : jspp::Constants::UNDEFINED;
+
+            std::vector<jspp::AnyValue> result;
+            
+            bool isAsync = false;
+            jspp::AnyValue iter;
+            jspp::AnyValue nextFn;
+
+            if (items.has_property(jspp::WellKnownSymbols::asyncIterator->key)) {
+                auto method = items.get_property_with_receiver(jspp::WellKnownSymbols::asyncIterator->key, items);
+                if (method.is_function()) {
+                    iter = method.as_function()->call(items, {});
+                    nextFn = iter.get_own_property("next");
+                    isAsync = true;
+                }
+            } 
+            
+            if (!isAsync && items.has_property(jspp::WellKnownSymbols::iterator->key)) {
+                auto method = items.get_property_with_receiver(jspp::WellKnownSymbols::iterator->key, items);
+                if (method.is_function()) {
+                    iter = method.as_function()->call(items, {});
+                    nextFn = iter.get_own_property("next");
+                }
+            }
+
+            if (!iter.is_undefined()) {
+                size_t k = 0;
+                while (true) {
+                    auto nextRes = nextFn.as_function()->call(iter, {});
+                    
+                    if (nextRes.is_promise()) {
+                        nextRes = co_await nextRes;
+                    }
+                    
+                    if (jspp::is_truthy(nextRes.get_own_property("done"))) break;
+                    
+                    auto val = nextRes.get_own_property("value");
+                    
+                    if (mapFn.is_function()) {
+                        jspp::AnyValue kVal = jspp::AnyValue::make_number(k);
+                        const jspp::AnyValue mapArgs[] = {val, kVal};
+                        auto mapRes = mapFn.as_function()->call(thisArg, std::span<const jspp::AnyValue>(mapArgs, 2));
+                        if (mapRes.is_promise()) {
+                            val = co_await mapRes;
+                        } else {
+                            val = mapRes;
+                        }
+                    }
+                    result.push_back(val);
+                    k++;
+                }
+            } else {
+                auto lenVal = items.get_property_with_receiver("length", items);
+                size_t len = static_cast<size_t>(jspp::Operators_Private::ToUint32(lenVal));
+                
+                for (size_t k = 0; k < len; ++k) {
+                    auto kVal = items.get_property_with_receiver(std::to_string(k), items);
+                    if (kVal.is_promise()) {
+                        kVal = co_await kVal;
+                    }
+
+                    if (mapFn.is_function()) {
+                        jspp::AnyValue kNum = jspp::AnyValue::make_number(k);
+                        const jspp::AnyValue mapArgs[] = {kVal, kNum};
+                        auto mapRes = mapFn.as_function()->call(thisArg, std::span<const jspp::AnyValue>(mapArgs, 2));
+                        if (mapRes.is_promise()) {
+                            kVal = co_await mapRes;
+                        } else {
+                            kVal = mapRes;
+                        }
+                    }
+                    result.push_back(kVal);
+                }
+            }
+
+            co_return jspp::AnyValue::make_array(std::move(result)); }, "fromAsync"));
+
+        // Array[Symbol.species]
+        Array.define_getter(jspp::AnyValue::from_symbol(jspp::WellKnownSymbols::species), jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+                                                                           { return thisVal; }, "get [Symbol.species]"));
     }
-};
+} arrayInit;
