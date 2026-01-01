@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include <exception>
 #include "types.hpp"
 
 namespace jspp

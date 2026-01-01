@@ -3,6 +3,7 @@
 #include "types.hpp"
 #include "shape.hpp"
 #include <vector>
+#include <unordered_set>
 
 namespace jspp
 {
@@ -14,6 +15,7 @@ namespace jspp
         std::shared_ptr<Shape> shape;
         std::vector<AnyValue> storage;
         std::shared_ptr<AnyValue> proto;
+        std::unordered_set<std::string> deleted_keys;
 
         JsObject();
         JsObject(std::initializer_list<std::pair<std::string, AnyValue>> p, std::shared_ptr<AnyValue> pr = nullptr);

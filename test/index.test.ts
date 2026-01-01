@@ -85,7 +85,6 @@ describe("Interpreter tests", () => {
 
                 const compile = Bun.spawn(
                     [
-                        "ccache",
                         "g++",
                         "-g",
                         "-Og",

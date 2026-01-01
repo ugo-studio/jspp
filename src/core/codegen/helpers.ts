@@ -177,6 +177,7 @@ export function hoistDeclaration(
     const isLetOrConst =
         (decl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !==
             0;
+    // if (name === "letVal") console.log("hoistDeclaration: letVal isLetOrConst=", isLetOrConst, " flags=", decl.parent.flags);
     const symbolType = isLetOrConst
         ? DeclaredSymbolType.letOrConst
         : (ts.isFunctionDeclaration(decl)

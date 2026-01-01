@@ -7,7 +7,7 @@
 
 namespace jspp
 {
-    std::string AnyValue::to_std_string() const noexcept
+    std::string AnyValue::to_std_string() const
     {
         switch (get_type())
         {

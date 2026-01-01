@@ -111,6 +111,7 @@ const jspp::AnyValue jspp::AnyValue::construct(std::span<const AnyValue> args, c
 {
     if (!is_function() || !as_function()->is_constructor)
     {
+        // std::cerr << "Construct fail: " << name.value_or(to_std_string()) << " is_function=" << is_function() << " is_constructor=" << (is_function() ? as_function()->is_constructor : false) << std::endl;
         throw Exception::make_exception(name.value_or(to_std_string()) + " is not a constructor", "TypeError");
     }
 

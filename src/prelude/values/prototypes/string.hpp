@@ -343,7 +343,7 @@ namespace jspp
                                                {
                     const char* whitespace = " \t\n\r\f\v";
                     std::string result = self->value;
-                    result.erase(0, result.find_last_not_of(whitespace) + 1);
+                    result.erase(result.find_last_not_of(whitespace) + 1);
                     return AnyValue::make_string(result); },
                                                key);
             }

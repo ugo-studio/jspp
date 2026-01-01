@@ -36,11 +36,6 @@ inline auto errorConstructor = [](const jspp::AnyValue &thisVal, std::span<const
         message = args[0].to_std_string();
     }
 
-
-    const jspp::AnyValue errorArgs[] = {jspp::AnyValue::make_string(message)};
-    jspp::AnyValue errorObj = ::Error.construct(std::span<const jspp::AnyValue>(errorArgs, 1), name);
-    target = errorObj;
-
     target.define_data_property("message", jspp::AnyValue::make_string(message), true, false, true);
     target.define_data_property("name", jspp::AnyValue::make_string(name), true, false, true);
     target.define_data_property("stack", jspp::AnyValue::make_string(name + ": " + message + "\n    at <unknown>"), true, false, true);

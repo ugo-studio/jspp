@@ -107,6 +107,8 @@ namespace jspp
                 // Use shape's property_names for stable iteration order
                 for (const auto &key : ptr->shape->property_names)
                 {
+                    if (ptr->deleted_keys.count(key)) continue;
+
                     if (JsSymbol::is_internal_key(key))
                         continue;
 
@@ -270,10 +272,11 @@ namespace jspp
         {
             if (obj.is_object())
             {
-                // Deletion is hard with shapes.
-                // For now, we essentially ignore it or set to undefined (which is wrong but keeps structure)
-                // Real implementation requires transitioning to a dictionary mode or new shape.
-                // TODO: Implement shape-aware deletion
+                auto ptr = obj.as_object();
+                std::string key_str = key.to_std_string();
+                if (ptr->shape->get_offset(key_str).has_value()) {
+                    ptr->deleted_keys.insert(key_str);
+                }
                 return Constants::TRUE;
             }
             if (obj.is_array())
@@ -328,7 +331,7 @@ namespace jspp
             return obj.get_own_property(static_cast<uint32_t>(key));
         }
 
-        inline AnyValue optional_call(const AnyValue &fn, const AnyValue &thisVal, const std::vector<AnyValue> &args, const std::optional<std::string> &name = std::nullopt)
+        inline AnyValue optional_call(const AnyValue &fn, const AnyValue &thisVal, std::span<const AnyValue> args, const std::optional<std::string> &name = std::nullopt)
         {
             if (fn.is_null() || fn.is_undefined())
                 return Constants::UNDEFINED;

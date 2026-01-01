@@ -33,6 +33,8 @@ std::string jspp::JsObject::to_std_string() const
 
 bool jspp::JsObject::has_property(const std::string &key) const
 {
+    if (deleted_keys.count(key)) return false;
+
     if (shape->get_offset(key).has_value())
         return true;
     if (proto && !(*proto).is_null() && !(*proto).is_undefined())
@@ -47,6 +49,8 @@ bool jspp::JsObject::has_property(const std::string &key) const
 
 jspp::AnyValue jspp::JsObject::get_property(const std::string &key, const AnyValue &thisVal)
 {
+    if (deleted_keys.count(key)) return AnyValue::make_undefined();
+
     auto offset = shape->get_offset(key);
     if (!offset.has_value())
     {
@@ -89,6 +93,8 @@ jspp::AnyValue jspp::JsObject::set_property(const std::string &key, const AnyVal
     }
 
     // set own property
+    if (deleted_keys.count(key)) deleted_keys.erase(key);
+
     auto offset = shape->get_offset(key);
     if (offset.has_value())
     {

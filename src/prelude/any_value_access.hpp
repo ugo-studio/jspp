@@ -42,7 +42,7 @@ bool jspp::AnyValue::has_property(const std::string &key) const
         return false;
     }
 }
-jspp::AnyValue jspp::AnyValue::get_own_property(uint32_t idx) const noexcept
+jspp::AnyValue jspp::AnyValue::get_own_property(uint32_t idx) const
 {
     switch (storage.index())
     {
@@ -56,7 +56,7 @@ jspp::AnyValue jspp::AnyValue::get_own_property(uint32_t idx) const noexcept
         return get_own_property(std::to_string(idx));
     }
 }
-jspp::AnyValue jspp::AnyValue::get_own_property(const AnyValue &key) const noexcept
+jspp::AnyValue jspp::AnyValue::get_own_property(const AnyValue &key) const
 {
     if (key.is_number() && is_array())
         return std::get<std::shared_ptr<JsArray>>(storage)->get_property(key.as_double());

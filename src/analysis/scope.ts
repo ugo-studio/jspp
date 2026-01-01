@@ -93,6 +93,7 @@ export class ScopeManager {
 
     // Defines a variable in the current scope.
     define(name: string, type: TypeInfo) {
+        // if (name === "named" || name === "letVal") console.log("Defining", name, "in scope. isBuiltin:", type.isBuiltin, " type:", type.type);
         if (this.reservedKeywords.has(name) && !type.isBuiltin) {
             throw new Error(`SyntaxError: Unexpected reserved word "${name}"`);
         }
@@ -105,7 +106,9 @@ export class ScopeManager {
             throw new Error(`SyntaxError: Unexpected reserved word "${name}"`);
         }
         let scope = this.currentScope;
-        while (scope.parent && scope.ownerFunction === scope.parent.ownerFunction) {
+        while (
+            scope.parent && scope.ownerFunction === scope.parent.ownerFunction
+        ) {
             scope = scope.parent;
         }
         scope.define(name, type);

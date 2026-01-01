@@ -455,8 +455,8 @@ namespace jspp
         // --- PROPERTY ACCESS OPERATORS
         bool has_property(const std::string &key) const;
         AnyValue get_own_property(const std::string &key) const;
-        AnyValue get_own_property(uint32_t idx) const noexcept;
-        AnyValue get_own_property(const AnyValue &key) const noexcept;
+        AnyValue get_own_property(uint32_t idx) const;
+        AnyValue get_own_property(const AnyValue &key) const;
         // for getting values with a specific receiver (used in inheritance chains)
         AnyValue get_property_with_receiver(const std::string &key, const AnyValue &receiver) const;
         // for setting values
@@ -476,7 +476,7 @@ namespace jspp
         // --- HELPERS
         const AnyValue construct(std::span<const AnyValue> args, const std::optional<std::string> &name) const;
         void set_prototype(const AnyValue &proto);
-        std::string to_std_string() const noexcept;
+        std::string to_std_string() const;
     };
 
     // Inline implementation of operator co_await
