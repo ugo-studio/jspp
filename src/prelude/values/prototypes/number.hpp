@@ -18,31 +18,39 @@ namespace jspp
         // Helper for radix conversion
         inline std::string number_to_radix_string(double value, int radix)
         {
-            if (std::isnan(value)) return "NaN";
-            if (!std::isfinite(value)) return value > 0 ? "Infinity" : "-Infinity";
+            if (std::isnan(value))
+                return "NaN";
+            if (!std::isfinite(value))
+                return value > 0 ? "Infinity" : "-Infinity";
 
             // For radix != 10, we only support integer part for now
             // as implementing full float-to-radix is complex.
             long long intPart = static_cast<long long>(value);
-            
-            if (radix == 10) {
+
+            if (radix == 10)
+            {
                 return AnyValue::make_number(value).to_std_string();
             }
 
             bool negative = intPart < 0;
-            if (negative) intPart = -intPart;
-            
+            if (negative)
+                intPart = -intPart;
+
             std::string chars = "0123456789abcdefghijklmnopqrstuvwxyz";
             std::string res = "";
-            
-            if (intPart == 0) res = "0";
-            else {
-                while (intPart > 0) {
+
+            if (intPart == 0)
+                res = "0";
+            else
+            {
+                while (intPart > 0)
+                {
                     res += chars[intPart % radix];
                     intPart /= radix;
                 }
             }
-            if (negative) res += "-";
+            if (negative)
+                res += "-";
             std::reverse(res.begin(), res.end());
             return res;
         }
@@ -52,7 +60,8 @@ namespace jspp
             // --- toExponential(fractionDigits) ---
             if (key == "toExponential")
             {
-                return AnyValue::make_function([self](const AnyValue&, std::span<const AnyValue> args) -> AnyValue {
+                return AnyValue::make_function([self](const AnyValue &, std::span<const AnyValue> args) -> AnyValue
+                                               {
                     int digits = -1;
                     if (!args.empty() && !args[0].is_undefined()) {
                         digits = Operators_Private::ToInt32(args[0]);
@@ -69,14 +78,14 @@ namespace jspp
                     }
                     
                     std::string res = ss.str();
-                    return AnyValue::make_string(res);
-                }, "toExponential");
+                    return AnyValue::make_string(res); }, "toExponential");
             }
 
             // --- toFixed(digits) ---
             if (key == "toFixed")
             {
-                return AnyValue::make_function([self](const AnyValue&, std::span<const AnyValue> args) -> AnyValue {
+                return AnyValue::make_function([self](const AnyValue &, std::span<const AnyValue> args) -> AnyValue
+                                               {
                     int digits = 0;
                     if (!args.empty() && !args[0].is_undefined()) {
                         digits = Operators_Private::ToInt32(args[0]);
@@ -87,16 +96,16 @@ namespace jspp
 
                     std::ostringstream ss;
                     ss << std::fixed << std::setprecision(digits) << self;
-                    return AnyValue::make_string(ss.str());
-                }, "toFixed");
+                    return AnyValue::make_string(ss.str()); }, "toFixed");
             }
 
             // --- toPrecision(precision) ---
             if (key == "toPrecision")
             {
-                return AnyValue::make_function([self](const AnyValue&, std::span<const AnyValue> args) -> AnyValue {
+                return AnyValue::make_function([self](const AnyValue &, std::span<const AnyValue> args) -> AnyValue
+                                               {
                     if (args.empty() || args[0].is_undefined()) {
-                        return AnyValue::make_number(self).get_own_property("toString").as_function()->call(AnyValue::make_number(self), {});
+                        return AnyValue::make_number(self).get_own_property("toString").call(AnyValue::make_number(self), {}, "toString");
                     }
                     int precision = Operators_Private::ToInt32(args[0]);
                     if (precision < 1 || precision > 100) {
@@ -105,14 +114,14 @@ namespace jspp
 
                     std::ostringstream ss;
                     ss << std::setprecision(precision) << self;
-                    return AnyValue::make_string(ss.str());
-                }, "toPrecision");
+                    return AnyValue::make_string(ss.str()); }, "toPrecision");
             }
 
             // --- toString(radix) ---
             if (key == "toString")
             {
-                return AnyValue::make_function([self](const AnyValue&, std::span<const AnyValue> args) -> AnyValue {
+                return AnyValue::make_function([self](const AnyValue &, std::span<const AnyValue> args) -> AnyValue
+                                               {
                     int radix = 10;
                     if (!args.empty() && !args[0].is_undefined()) {
                         radix = Operators_Private::ToInt32(args[0]);
@@ -121,24 +130,21 @@ namespace jspp
                         throw Exception::make_exception("toString() radix argument must be between 2 and 36", "RangeError");
                     }
                     
-                    return AnyValue::make_string(number_to_radix_string(self, radix));
-                }, "toString");
+                    return AnyValue::make_string(number_to_radix_string(self, radix)); }, "toString");
             }
 
             // --- valueOf() ---
             if (key == "valueOf")
             {
-                return AnyValue::make_function([self](const AnyValue&, std::span<const AnyValue>) -> AnyValue {
-                    return AnyValue::make_number(self);
-                }, "valueOf");
+                return AnyValue::make_function([self](const AnyValue &, std::span<const AnyValue>) -> AnyValue
+                                               { return AnyValue::make_number(self); }, "valueOf");
             }
 
             // --- toLocaleString() ---
             if (key == "toLocaleString")
             {
-                return AnyValue::make_function([self](const AnyValue&, std::span<const AnyValue>) -> AnyValue {
-                    return AnyValue::make_string(AnyValue::make_number(self).to_std_string());
-                }, "toLocaleString");
+                return AnyValue::make_function([self](const AnyValue &, std::span<const AnyValue>) -> AnyValue
+                                               { return AnyValue::make_string(AnyValue::make_number(self).to_std_string()); }, "toLocaleString");
             }
 
             return std::nullopt;

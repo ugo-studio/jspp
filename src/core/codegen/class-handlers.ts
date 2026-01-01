@@ -67,7 +67,7 @@ export function visitClassDeclaration(
             constructorLambda =
                 `jspp::AnyValue::make_class([=](const jspp::AnyValue& ${this.globalThisVar}, std::span<const jspp::AnyValue> args) mutable -> jspp::AnyValue {
                  auto __parent = ${parentName};
-                 __parent.as_function("super")->call(${this.globalThisVar}, args);
+                 __parent.call(${this.globalThisVar}, args, "super");
                  return jspp::Constants::UNDEFINED;
              }, "${className}")`;
         } else {

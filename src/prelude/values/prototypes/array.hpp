@@ -431,8 +431,7 @@ namespace jspp
                                                     for (uint64_t i = 0; i < self->length; ++i) {
                                                         co_yield AnyValue::make_number(i);
                                                     }
-                                                    co_return AnyValue::make_undefined();
-                                                },
+                                                    co_return AnyValue::make_undefined(); },
                                                 key);
             }
 
@@ -448,8 +447,7 @@ namespace jspp
                                                         entry.push_back(self->get_property(static_cast<uint32_t>(i)));
                                                         co_yield AnyValue::make_array(std::move(entry));
                                                     }
-                                                    co_return AnyValue::make_undefined();
-                                                },
+                                                    co_return AnyValue::make_undefined(); },
                                                 key);
             }
 
@@ -773,7 +771,7 @@ namespace jspp
                         
                         if (compareFn.is_function()) {
                             const AnyValue cmpArgs[] = {a, b};
-                            double res = Operators_Private::ToNumber(compareFn.as_function()->call(Constants::UNDEFINED, std::span<const AnyValue>(cmpArgs, 2)));
+                            double res = Operators_Private::ToNumber(compareFn.call(Constants::UNDEFINED, std::span<const AnyValue>(cmpArgs, 2)));
                             return res < 0;
                         } else {
                             std::string sA = a.to_std_string();
@@ -998,8 +996,8 @@ namespace jspp
             {
                 return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
-                    auto copy = self->get_property("slice", thisVal).as_function()->call(thisVal, {});
-                    copy.get_own_property("reverse").as_function()->call(copy, {});
+                    auto copy = self->get_property("slice", thisVal).call(thisVal, {});
+                    copy.get_own_property("reverse").call(copy, {});
                     return copy; },
                                                key);
             }
@@ -1009,8 +1007,8 @@ namespace jspp
             {
                 return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
-                    auto copy = self->get_property("slice", thisVal).as_function()->call(thisVal, {});
-                    copy.get_own_property("sort").as_function()->call(copy, args);
+                    auto copy = self->get_property("slice", thisVal).call(thisVal, {});
+                    copy.get_own_property("sort").call(copy, args);
                     return copy; },
                                                key);
             }
@@ -1020,8 +1018,8 @@ namespace jspp
             {
                 return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
-                    auto copy = self->get_property("slice", thisVal).as_function()->call(thisVal, {});
-                    copy.get_own_property("splice").as_function()->call(copy, args);
+                    auto copy = self->get_property("slice", thisVal).call(thisVal, {});
+                    copy.get_own_property("splice").call(copy, args);
                     return copy; },
                                                key);
             }
@@ -1031,7 +1029,7 @@ namespace jspp
             {
                 return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
-                    auto copy = self->get_property("slice", thisVal).as_function()->call(thisVal, {});
+                    auto copy = self->get_property("slice", thisVal).call(thisVal, {});
                     
                     double len = static_cast<double>(self->length);
                     double idx = args.empty() ? 0 : Operators_Private::ToNumber(args[0]);
@@ -1059,7 +1057,7 @@ namespace jspp
                             if (element.has_property("toLocaleString")) {
                                 auto fn = element.get_property_with_receiver("toLocaleString", element);
                                 if (fn.is_function()) {
-                                    result += fn.as_function()->call(element, {}).to_std_string();
+                                    result += fn.call(element, {}).to_std_string();
                                     continue;
                                 }
                             }

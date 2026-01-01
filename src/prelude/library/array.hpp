@@ -63,18 +63,18 @@ struct ArrayInit
             auto iteratorSym = jspp::WellKnownSymbols::iterator;
             if (items.has_property(iteratorSym->key)) {
                 auto iter = jspp::Access::get_object_value_iterator(items, "Array.from source");
-                auto nextFn = iter.get_own_property("next").as_function();
+                auto nextFn = iter.get_own_property("next");
                 
                 size_t k = 0;
                 while (true) {
-                    auto nextRes = nextFn->call(iter, std::span<const jspp::AnyValue>{});
+                    auto nextRes = nextFn.call(iter, std::span<const jspp::AnyValue>{}, "next");
                     if (jspp::is_truthy(nextRes.get_own_property("done"))) break;
                     
                     auto val = nextRes.get_own_property("value");
                     if (mapFn.is_function()) {
                         jspp::AnyValue kVal = jspp::AnyValue::make_number(k);
                         const jspp::AnyValue mapArgs[] = {val, kVal};
-                        val = mapFn.as_function()->call(thisArg, std::span<const jspp::AnyValue>(mapArgs, 2));
+                        val = mapFn.call(thisArg, std::span<const jspp::AnyValue>(mapArgs, 2));
                     }
                     result.push_back(val);
                     k++;
@@ -89,7 +89,7 @@ struct ArrayInit
                     if (mapFn.is_function()) {
                         jspp::AnyValue kNum = jspp::AnyValue::make_number(k);
                         const jspp::AnyValue mapArgs[] = {kVal, kNum};
-                        kVal = mapFn.as_function()->call(thisArg, std::span<const jspp::AnyValue>(mapArgs, 2));
+                        kVal = mapFn.call(thisArg, std::span<const jspp::AnyValue>(mapArgs, 2));
                     }
                     result.push_back(kVal);
                 }
@@ -117,7 +117,7 @@ struct ArrayInit
             if (items.has_property(jspp::WellKnownSymbols::asyncIterator->key)) {
                 auto method = items.get_property_with_receiver(jspp::WellKnownSymbols::asyncIterator->key, items);
                 if (method.is_function()) {
-                    iter = method.as_function()->call(items, {});
+                    iter = method.call(items, {});
                     nextFn = iter.get_own_property("next");
                     isAsync = true;
                 }
@@ -126,7 +126,7 @@ struct ArrayInit
             if (!isAsync && items.has_property(jspp::WellKnownSymbols::iterator->key)) {
                 auto method = items.get_property_with_receiver(jspp::WellKnownSymbols::iterator->key, items);
                 if (method.is_function()) {
-                    iter = method.as_function()->call(items, {});
+                    iter = method.call(items, {});
                     nextFn = iter.get_own_property("next");
                 }
             }
@@ -134,7 +134,7 @@ struct ArrayInit
             if (!iter.is_undefined()) {
                 size_t k = 0;
                 while (true) {
-                    auto nextRes = nextFn.as_function()->call(iter, {});
+                    auto nextRes = nextFn.call(iter, {});
                     
                     if (nextRes.is_promise()) {
                         nextRes = co_await nextRes;
@@ -147,7 +147,7 @@ struct ArrayInit
                     if (mapFn.is_function()) {
                         jspp::AnyValue kVal = jspp::AnyValue::make_number(k);
                         const jspp::AnyValue mapArgs[] = {val, kVal};
-                        auto mapRes = mapFn.as_function()->call(thisArg, std::span<const jspp::AnyValue>(mapArgs, 2));
+                        auto mapRes = mapFn.call(thisArg, std::span<const jspp::AnyValue>(mapArgs, 2));
                         if (mapRes.is_promise()) {
                             val = co_await mapRes;
                         } else {
@@ -170,7 +170,7 @@ struct ArrayInit
                     if (mapFn.is_function()) {
                         jspp::AnyValue kNum = jspp::AnyValue::make_number(k);
                         const jspp::AnyValue mapArgs[] = {kVal, kNum};
-                        auto mapRes = mapFn.as_function()->call(thisArg, std::span<const jspp::AnyValue>(mapArgs, 2));
+                        auto mapRes = mapFn.call(thisArg, std::span<const jspp::AnyValue>(mapArgs, 2));
                         if (mapRes.is_promise()) {
                             kVal = co_await mapRes;
                         } else {
@@ -185,6 +185,6 @@ struct ArrayInit
 
         // Array[Symbol.species]
         Array.define_getter(jspp::AnyValue::from_symbol(jspp::WellKnownSymbols::species), jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
-                                                                           { return thisVal; }, "get [Symbol.species]"));
+                                                                                                                        { return thisVal; }, "get [Symbol.species]"));
     }
 } arrayInit;

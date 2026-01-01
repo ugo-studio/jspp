@@ -4,12 +4,17 @@
 #include "values/promise.hpp"
 #include "any_value.hpp"
 
-namespace jspp {
-    namespace PromisePrototypes {
-        inline std::optional<AnyValue> get(const std::string& key, JsPromise* self) {
-            
-            if (key == "then") {
-                return AnyValue::make_function([self](const AnyValue& thisVal, std::span<const AnyValue> args) -> AnyValue {
+namespace jspp
+{
+    namespace PromisePrototypes
+    {
+        inline std::optional<AnyValue> get(const std::string &key, JsPromise *self)
+        {
+
+            if (key == "then")
+            {
+                return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                                               {
                     AnyValue onFulfilled = (args.size() > 0 && args[0].is_function()) ? args[0] : AnyValue::make_undefined();
                     AnyValue onRejected = (args.size() > 1 && args[1].is_function()) ? args[1] : AnyValue::make_undefined();
                     
@@ -35,7 +40,7 @@ namespace jspp {
                         if (onFulfilled.is_function()) {
                             try {
                                 const AnyValue cbArgs[] = {val};
-                                auto res = onFulfilled.as_function()->call(AnyValue::make_undefined(), cbArgs);
+                                auto res = onFulfilled.call(AnyValue::make_undefined(), cbArgs, "onFulfilled");
                                 if (res.is_promise()) {
                                     // Chaining: newPromise follows res
                                     auto chained = res.as_promise();
@@ -61,7 +66,7 @@ namespace jspp {
                          if (onRejected.is_function()) {
                             try {
                                 const AnyValue cbArgs[] = {reason};
-                                auto res = onRejected.as_function()->call(AnyValue::make_undefined(), cbArgs);
+                                auto res = onRejected.call(AnyValue::make_undefined(), cbArgs,"onRejected");
                                 if (res.is_promise()) {
                                     auto chained = res.as_promise();
                                     chained->then(
@@ -82,21 +87,23 @@ namespace jspp {
                     };
 
                     self->then(resolveHandler, rejectHandler);
-                    return newPromiseVal;
-                }, "then");
+                    return newPromiseVal; }, "then");
             }
 
-            if (key == "catch") {
-                 return AnyValue::make_function([self](const AnyValue& thisVal, std::span<const AnyValue> args) -> AnyValue {
+            if (key == "catch")
+            {
+                return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                                               {
                     // catch(onRejected) is then(undefined, onRejected)
                     AnyValue onRejected = (args.size() > 0 && args[0].is_function()) ? args[0] : AnyValue::make_undefined();
                     const AnyValue thenArgs[] = {AnyValue::make_undefined(), onRejected};
-                    return thisVal.get_own_property("then").as_function()->call(thisVal, thenArgs);
-                 }, "catch");
+                    return thisVal.get_own_property("then").call(thisVal, thenArgs,"then"); }, "catch");
             }
 
-            if (key == "finally") {
-                return AnyValue::make_function([self](const AnyValue& thisVal, std::span<const AnyValue> args) -> AnyValue {
+            if (key == "finally")
+            {
+                return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                                               {
                     AnyValue onFinally = (args.size() > 0 && args[0].is_function()) ? args[0] : AnyValue::make_undefined();
                     
                     // finally(onFinally) returns a promise that passes through value/reason, 
@@ -106,22 +113,21 @@ namespace jspp {
                         AnyValue::make_function([onFinally](const AnyValue&, std::span<const AnyValue> args) -> AnyValue {
                             AnyValue val = args.empty() ? AnyValue::make_undefined() : args[0];
                             if (onFinally.is_function()) {
-                                onFinally.as_function()->call(AnyValue::make_undefined(), {});
+                                onFinally.call(AnyValue::make_undefined(), {}, "onFinally");
                             }
                             return val;
                         }, ""),
                         AnyValue::make_function([onFinally](const AnyValue&, std::span<const AnyValue> args) -> AnyValue {
                             AnyValue reason = args.empty() ? AnyValue::make_undefined() : args[0];
                             if (onFinally.is_function()) {
-                                onFinally.as_function()->call(AnyValue::make_undefined(), {});
+                                onFinally.call(AnyValue::make_undefined(), {}, "onFinally");
                             }
                             throw Exception(reason);
                         }, "")
                     };
-                    return thisVal.get_own_property("then").as_function()->call(thisVal, thenArgs);
-                }, "finally");
+                    return thisVal.get_own_property("then").call(thisVal, thenArgs,"then"); }, "finally");
             }
-            
+
             return std::nullopt;
         }
     }

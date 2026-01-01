@@ -1,6 +1,6 @@
 {
   "name": "@ugo-studio/jspp",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "A modern transpiler that converts JavaScript code into high-performance, standard C++23.",
   "main": "dist/index.js",
   "module": "src/index.ts",

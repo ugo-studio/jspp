@@ -107,7 +107,8 @@ namespace jspp
                 // Use shape's property_names for stable iteration order
                 for (const auto &key : ptr->shape->property_names)
                 {
-                    if (ptr->deleted_keys.count(key)) continue;
+                    if (ptr->deleted_keys.count(key))
+                        continue;
 
                     if (JsSymbol::is_internal_key(key))
                         continue;
@@ -178,7 +179,7 @@ namespace jspp
             auto gen_fn = obj.get_own_property(WellKnownSymbols::iterator->key);
             if (gen_fn.is_function())
             {
-                auto iter = gen_fn.as_function()->call(obj, {});
+                auto iter = gen_fn.call(obj, {}, WellKnownSymbols::iterator->key);
                 if (iter.is_iterator())
                 {
                     return iter;
@@ -274,7 +275,8 @@ namespace jspp
             {
                 auto ptr = obj.as_object();
                 std::string key_str = key.to_std_string();
-                if (ptr->shape->get_offset(key_str).has_value()) {
+                if (ptr->shape->get_offset(key_str).has_value())
+                {
                     ptr->deleted_keys.insert(key_str);
                 }
                 return Constants::TRUE;
@@ -335,7 +337,7 @@ namespace jspp
         {
             if (fn.is_null() || fn.is_undefined())
                 return Constants::UNDEFINED;
-            return fn.as_function(name)->call(thisVal, args);
+            return fn.call(thisVal, args, name);
         }
 
     }

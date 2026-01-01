@@ -26,7 +26,7 @@ inline auto setTimeout = jspp::AnyValue::make_function([](const jspp::AnyValue& 
 
     auto task = [callback, callArgs]() {
          try {
-             callback.as_function()->call(jspp::Constants::UNDEFINED, std::span<const jspp::AnyValue>(callArgs));
+             callback.call(jspp::Constants::UNDEFINED, std::span<const jspp::AnyValue>(callArgs));
          } catch (const jspp::Exception& e) {
              std::cerr << "Uncaught exception in setTimeout: " << e.what() << "\n";
          } catch (const std::exception& e) {
@@ -68,7 +68,7 @@ inline auto setInterval = jspp::AnyValue::make_function([](const jspp::AnyValue&
 
     auto task = [callback, callArgs]() {
          try {
-             callback.as_function()->call(jspp::Constants::UNDEFINED, std::span<const jspp::AnyValue>(callArgs));
+             callback.call(jspp::Constants::UNDEFINED, std::span<const jspp::AnyValue>(callArgs));
          } catch (const jspp::Exception& e) {
              std::cerr << "Uncaught exception in setInterval: " << e.what() << "\n";
          } catch (const std::exception& e) {

@@ -93,4 +93,47 @@ namespace jspp
         }
     }
 
+    // AnyValue::call implementation
+    const AnyValue AnyValue::call(const AnyValue &thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr = std::nullopt) const
+    {
+        if (!is_function())
+        {
+            throw Exception::make_exception(expr.value_or(to_std_string()) + " is not a function", "TypeError");
+        }
+        return as_function()->call(thisVal, args); // Convert to function before calling, to avoid an infinite loop
+    }
+
+    // AnyValue::construct implementation
+    const AnyValue AnyValue::construct(std::span<const AnyValue> args, const std::optional<std::string> &name) const
+    {
+        if (!is_function() || !as_function()->is_constructor)
+        {
+            // std::cerr << "Construct fail: " << name.value_or(to_std_string()) << " is_function=" << is_function() << " is_constructor=" << (is_function() ? as_function()->is_constructor : false) << std::endl;
+            throw Exception::make_exception(name.value_or(to_std_string()) + " is not a constructor", "TypeError");
+        }
+
+        // 1. Get prototype
+        AnyValue proto = get_own_property("prototype");
+        // If prototype is not an object, default to a plain object (which ideally inherits from Object.prototype)
+        // Here we just make a plain object.
+        if (!proto.is_object())
+        {
+            proto = AnyValue::make_object({});
+        }
+
+        // 2. Create instance
+        AnyValue instance = AnyValue::make_object_with_proto({}, proto);
+
+        // 3. Call function
+        // We pass 'instance' as 'this'
+        AnyValue result = call(instance, args);
+
+        // 4. Return result if object, else instance
+        if (result.is_object() || result.is_function() || result.is_array() || result.is_promise())
+        {
+            return result;
+        }
+        return instance;
+    }
+
 }

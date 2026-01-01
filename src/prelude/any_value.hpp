@@ -422,11 +422,9 @@ namespace jspp
         {
             return std::get<std::shared_ptr<JsArray>>(storage).get();
         }
-        JsFunction *as_function(const std::optional<std::string> &expression = std::nullopt) const
+        JsFunction *as_function() const noexcept
         {
-            if (is_function())
-                return std::get<std::shared_ptr<JsFunction>>(storage).get();
-            throw Exception::make_exception(expression.value_or(to_std_string()) + " is not a function", "TypeError");
+            return std::get<std::shared_ptr<JsFunction>>(storage).get();
         }
         JsSymbol *as_symbol() const noexcept
         {
@@ -474,6 +472,7 @@ namespace jspp
         void define_setter(const AnyValue &key, const AnyValue &setter);
 
         // --- HELPERS
+        const AnyValue call(const AnyValue &thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr) const;
         const AnyValue construct(std::span<const AnyValue> args, const std::optional<std::string> &name) const;
         void set_prototype(const AnyValue &proto);
         std::string to_std_string() const;

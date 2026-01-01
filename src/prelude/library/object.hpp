@@ -218,12 +218,12 @@ struct ObjectInit
                     
                     if (getter.is_function()) {
                         getFunc = [getter](const jspp::AnyValue &thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue {
-                            return getter.as_function()->call(thisVal, args);
+                            return getter.call(thisVal, args);
                         };
                     }
                     if (setter.is_function()) {
                         setFunc = [setter](const jspp::AnyValue &thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue {
-                            return setter.as_function()->call(thisVal, args);
+                            return setter.call(thisVal, args);
                         };
                     }
                     

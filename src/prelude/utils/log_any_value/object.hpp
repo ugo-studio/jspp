@@ -43,10 +43,10 @@ namespace jspp
             try
             {
                 const AnyValue args[] = {val};
-                auto is_error = is_truthy(isErrorFn.as_function()->call(isErrorFn, std::span<const AnyValue>(args, 1)));
+                auto is_error = is_truthy(isErrorFn.call(isErrorFn, std::span<const AnyValue>(args, 1)));
                 if (is_error)
                 {
-                    auto result = errorToStringFn.as_function()->call(val, std::span<const AnyValue>{});
+                    auto result = errorToStringFn.call(val, std::span<const AnyValue>{});
                     if (result.is_string())
                     {
                         ss << result.to_std_string();

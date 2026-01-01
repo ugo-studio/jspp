@@ -265,14 +265,14 @@ struct MathInit {
             if (args.empty()) throw Exception::make_exception("Math.sumPrecise requires an iterable", "TypeError");
             
             auto iterObj = jspp::Access::get_object_value_iterator(args[0], "iterable");
-            auto nextFunc = iterObj.get_own_property("next").as_function();
+            auto nextFunc = iterObj.get_own_property("next");
             
             double sum = 0;
             // Kahan summation algorithm for better precision
             double c = 0; 
             
             while (true) {
-                auto nextRes = nextFunc->call(iterObj, std::span<const jspp::AnyValue>{});
+                auto nextRes = nextFunc.call(iterObj, std::span<const jspp::AnyValue>{}, "next");
                 if (is_truthy(nextRes.get_own_property("done"))) break;
                 
                 double val = Operators_Private::ToNumber(nextRes.get_own_property("value"));

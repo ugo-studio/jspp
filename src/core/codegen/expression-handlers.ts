@@ -880,7 +880,7 @@ export function visitCallExpression(
         }
         const args = callExpr.arguments.map((arg) => this.visit(arg, context))
             .join(", ");
-        return `(${context.superClassVar}).as_function("super")->call(${this.globalThisVar}, (const jspp::AnyValue[]){${args}})`;
+        return `(${context.superClassVar}).call(${this.globalThisVar}, (const jspp::AnyValue[]){${args}}, "super")`;
     }
 
     const argsArray = callExpr.arguments
@@ -927,9 +927,9 @@ export function visitCallExpression(
                 );
             }
             const propName = propAccess.name.getText();
-            return `(${context.superClassVar}).get_own_property("prototype").get_own_property("${propName}").as_function("${
+            return `(${context.superClassVar}).get_own_property("prototype").get_own_property("${propName}").call(${this.globalThisVar}, ${argsSpan}, "${
                 this.escapeString(propName)
-            }")->call(${this.globalThisVar}, ${argsSpan})`;
+            }")`;
         }
 
         const objExpr = propAccess.expression;
@@ -965,9 +965,9 @@ export function visitCallExpression(
             }")`;
         }
 
-        return `([&](){ auto __obj = ${derefObj}; return __obj.get_own_property("${propName}").as_function("${
+        return `([&](){ auto __obj = ${derefObj}; return __obj.get_own_property("${propName}").call(__obj, ${argsSpan}, "${
             this.escapeString(propName)
-        }")->call(__obj, ${argsSpan}); })()`;
+        }"); })()`;
     }
 
     // Handle obj[method]() -> pass obj as 'this'
@@ -1040,7 +1040,7 @@ export function visitCallExpression(
             return `jspp::Access::optional_call(${derefObj}.get_own_property(${argText}), ${derefObj}, ${argsSpan})`;
         }
 
-        return `([&](){ auto __obj = ${derefObj}; return __obj.get_own_property(${argText}).as_function()->call(__obj, ${argsSpan}); })()`;
+        return `([&](){ auto __obj = ${derefObj}; return __obj.get_own_property(${argText}).call(__obj, ${argsSpan}); })()`;
     }
 
     const calleeCode = this.visit(callee, context);
@@ -1091,7 +1091,7 @@ export function visitCallExpression(
         return `jspp::Access::optional_call(${derefCallee}, jspp::Constants::UNDEFINED, ${argsSpan}, ${calleeNamePart})`;
     }
 
-    return `${derefCallee}.as_function(${calleeNamePart})->call(jspp::Constants::UNDEFINED, ${argsSpan})`;
+    return `${derefCallee}.call(jspp::Constants::UNDEFINED, ${argsSpan}, ${calleeNamePart})`;
 }
 
 export function visitVoidExpression(

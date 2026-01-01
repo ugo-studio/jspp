@@ -89,7 +89,7 @@ export class CodeGenerator {
         mainCode +=
             "    auto error = std::make_shared<jspp::AnyValue>(jspp::Exception::exception_to_any_value(ex));\n{\n";
         mainCode +=
-            `    ([&](){ auto __obj = console; return __obj.get_own_property("error").as_function("console.error")->call(__obj, std::span<const jspp::AnyValue>((const jspp::AnyValue[]){*error}, 1)); })();\n`;
+            `    ([&](){ auto __obj = console; return __obj.get_own_property("error").call(__obj, std::span<const jspp::AnyValue>((const jspp::AnyValue[]){*error}, 1), "console.error"); })();\n`;
         mainCode += `    return 1;\n}\n`;
         mainCode += `  }\n`;
         mainCode += "  return 0;\n}";

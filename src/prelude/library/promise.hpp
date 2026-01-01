@@ -44,8 +44,7 @@ inline auto Promise = jspp::AnyValue::make_function([](const jspp::AnyValue &thi
                                                             promise.reject(jspp::AnyValue::make_string("Unknown error during Promise execution"));
                                                         }
 
-                                                        return jspp::AnyValue::make_promise(promise);
-                                                    },
+                                                        return jspp::AnyValue::make_promise(promise); },
                                                     "Promise");
 
 struct PromiseInit
