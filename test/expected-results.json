@@ -1,5 +1,20 @@
 [
     {
+        "name": "for-await",
+        "expected": [
+            "--- For Await Of ---",
+            "start loop",
+            "x: 10",
+            "x: 20",
+            "end loop",
+            "start sync iterable loop",
+            "y: 1",
+            "y: 2",
+            "y: 3",
+            "end sync iterable loop"
+        ]
+    },
+    {
         "name": "dynamic",
         "expected": [
             "--- Dynamic ---",

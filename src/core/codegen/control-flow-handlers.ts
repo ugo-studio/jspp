@@ -287,14 +287,26 @@ export function visitForOfStatement(
     const nextFunc = this.generateUniqueName("__next_func", declaredSymbols);
     const nextRes = this.generateUniqueName("__next_res", declaredSymbols);
 
+    const isAwait = forOf.awaitModifier !== undefined;
+
     const varName = this.getJsVarName(forOf.expression as ts.Identifier);
     code += `${this.indent()}auto ${iterableRef} = ${derefIterable};\n`;
-    code +=
-        `${this.indent()}auto ${iterator} = jspp::Access::get_object_value_iterator(${iterableRef}, ${varName});\n`;
+    if (isAwait) {
+        code +=
+            `${this.indent()}auto ${iterator} = jspp::Access::get_async_object_value_iterator(${iterableRef}, ${varName});\n`;
+    } else {
+        code +=
+            `${this.indent()}auto ${iterator} = jspp::Access::get_object_value_iterator(${iterableRef}, ${varName});\n`;
+    }
     code +=
         `${this.indent()}auto ${nextFunc} = ${iterator}.get_own_property("next");\n`;
-    code +=
-        `${this.indent()}auto ${nextRes} = ${nextFunc}.call(${iterator}, {}, "next");\n`;
+    if (isAwait) {
+        code +=
+            `${this.indent()}auto ${nextRes} = co_await ${nextFunc}.call(${iterator}, {}, "next");\n`;
+    } else {
+        code +=
+            `${this.indent()}auto ${nextRes} = ${nextFunc}.call(${iterator}, {}, "next");\n`;
+    }
     code +=
         `${this.indent()}while (!is_truthy(${nextRes}.get_own_property("done"))) {\n`;
     this.indentationLevel++;
@@ -308,8 +320,13 @@ export function visitForOfStatement(
     if (context.currentLabel) {
         code += `${this.indent()}${context.currentLabel}_continue:;\n`;
     }
-    code +=
-        `${this.indent()}${nextRes} = ${nextFunc}.call(${iterator}, {}, "next");\n`;
+    if (isAwait) {
+        code +=
+            `${this.indent()}${nextRes} = co_await ${nextFunc}.call(${iterator}, {}, "next");\n`;
+    } else {
+        code +=
+            `${this.indent()}${nextRes} = ${nextFunc}.call(${iterator}, {}, "next");\n`;
+    }
     this.indentationLevel--;
     code += `${this.indent()}}\n`;
     this.indentationLevel--; // Exit the scope for the for-of loop

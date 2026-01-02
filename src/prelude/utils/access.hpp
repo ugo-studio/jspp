@@ -199,6 +199,27 @@ namespace jspp
             throw jspp::Exception::make_exception(name + " is not iterable", "TypeError");
         }
 
+        inline AnyValue get_async_object_value_iterator(const AnyValue &obj, const std::string &name)
+        {
+            if (obj.is_async_iterator()) return obj;
+
+            // 1. Try Symbol.asyncIterator
+            auto method = obj.get_own_property(WellKnownSymbols::asyncIterator->key);
+            if (method.is_function()) {
+                 auto iter = method.call(obj, {}, WellKnownSymbols::asyncIterator->key);
+                 if (iter.is_object() || iter.is_async_iterator() || iter.is_iterator()) return iter;
+            }
+
+            // 2. Try Symbol.iterator (sync fallback)
+            auto syncMethod = obj.get_own_property(WellKnownSymbols::iterator->key);
+            if (syncMethod.is_function()) {
+                 auto iter = syncMethod.call(obj, {}, WellKnownSymbols::iterator->key);
+                 if (iter.is_object() || iter.is_iterator()) return iter;
+            }
+            
+            throw jspp::Exception::make_exception(name + " is not async iterable", "TypeError");
+        }
+
         inline AnyValue in(const AnyValue &lhs, const AnyValue &rhs)
         {
             if (!rhs.is_object() && !rhs.is_array() && !rhs.is_function() && !rhs.is_promise() && !rhs.is_iterator())

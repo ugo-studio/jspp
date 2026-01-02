@@ -84,15 +84,14 @@ describe("Interpreter tests", async () => {
     const compile = Bun.spawn(
         [
             "g++",
-            "-O3",
-            "-DNDEBUG",
+            "-O0",
             "-Wa,-mbig-obj",
             "-std=c++23",
             outputFile,
             "-o",
             exeFile,
             "-I",
-            path.resolve(process.cwd(), "prelude-build", "release"),
+            path.resolve(process.cwd(), "prelude-build", "debug"),
             "-I",
             preludePath,
         ],
