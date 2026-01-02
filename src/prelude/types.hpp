@@ -33,6 +33,9 @@ namespace jspp
     template <typename T>
     class JsIterator; // can set property
 
+    template <typename T>
+    class JsAsyncIterator; // can set property
+
     // Object property configuration forward declarations
     struct DataDescriptor;
     struct AccessorDescriptor;
@@ -42,6 +45,9 @@ namespace jspp
 
     // Dynamic AnyValue
     class AnyValue;
+
+    // Awaiter for AnyValue
+    struct AnyValueAwaiter;
 
     // Truthiness checker
     const bool is_truthy(const double &val) noexcept;

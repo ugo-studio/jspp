@@ -22,6 +22,8 @@ bool jspp::AnyValue::has_property(const std::string &key) const
         return false;
     case JsType::Iterator:
         return false;
+    case JsType::AsyncIterator:
+        return false;
     case JsType::Symbol:
         return false;
     case JsType::String:
@@ -84,6 +86,8 @@ jspp::AnyValue jspp::AnyValue::get_property_with_receiver(const std::string &key
         return std::get<std::shared_ptr<JsPromise>>(storage)->get_property(key, receiver);
     case JsType::Iterator:
         return std::get<std::shared_ptr<JsIterator<AnyValue>>>(storage)->get_property(key, receiver);
+    case JsType::AsyncIterator:
+        return std::get<std::shared_ptr<JsAsyncIterator<AnyValue>>>(storage)->get_property(key, receiver);
     case JsType::Symbol:
         return std::get<std::shared_ptr<JsSymbol>>(storage)->get_property(key, receiver);
     case JsType::String:

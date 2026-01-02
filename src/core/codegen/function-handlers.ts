@@ -34,9 +34,11 @@ export function generateLambda(
         isInsideGeneratorFunction: isInsideGeneratorFunction,
         isInsideAsyncFunction: isInsideAsyncFunction,
     });
-    const funcReturnType = isInsideGeneratorFunction
-        ? "jspp::JsIterator<jspp::AnyValue>"
-        : (isInsideAsyncFunction ? "jspp::JsPromise" : "jspp::AnyValue");
+    const funcReturnType = (isInsideGeneratorFunction && isInsideAsyncFunction)
+        ? "jspp::JsAsyncIterator<jspp::AnyValue>"
+        : (isInsideGeneratorFunction
+            ? "jspp::JsIterator<jspp::AnyValue>"
+            : (isInsideAsyncFunction ? "jspp::JsPromise" : "jspp::AnyValue"));
 
     const isArrow = ts.isArrowFunction(node);
 
@@ -273,10 +275,17 @@ export function generateLambda(
 
     // Handle generator function
     if (isInsideGeneratorFunction) {
-        signature =
-            "jspp::JsIterator<jspp::AnyValue>(const jspp::AnyValue&, std::span<const jspp::AnyValue>)";
-        callable = `std::function<${signature}>(${lambda})`;
-        method = `jspp::AnyValue::make_generator`;
+        if (isInsideAsyncFunction) {
+            signature =
+                "jspp::JsAsyncIterator<jspp::AnyValue>(const jspp::AnyValue&, std::span<const jspp::AnyValue>)";
+            callable = `std::function<${signature}>(${lambda})`;
+            method = `jspp::AnyValue::make_async_generator`;
+        } else {
+            signature =
+                "jspp::JsIterator<jspp::AnyValue>(const jspp::AnyValue&, std::span<const jspp::AnyValue>)";
+            callable = `std::function<${signature}>(${lambda})`;
+            method = `jspp::AnyValue::make_generator`;
+        }
     } // Handle async function
     else if (isInsideAsyncFunction) {
         signature =

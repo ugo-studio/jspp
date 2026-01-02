@@ -91,6 +91,8 @@ namespace jspp
                 return AnyValue::make_string("object");
             case JsType::Iterator:
                 return AnyValue::make_string("object");
+            case JsType::AsyncIterator:
+                return AnyValue::make_string("object");
             default:
                 return AnyValue::make_string("undefined");
             }
@@ -212,7 +214,7 @@ namespace jspp
             {
                 throw jspp::Exception::make_exception("Right-hand side of 'instanceof' is not callable", "TypeError");
             }
-            if (!lhs.is_object() && !lhs.is_array() && !lhs.is_function() && !lhs.is_promise() && !lhs.is_iterator())
+            if (!lhs.is_object() && !lhs.is_array() && !lhs.is_function() && !lhs.is_promise() && !lhs.is_iterator() && !lhs.is_async_iterator())
             {
                 return Constants::FALSE;
             }
@@ -254,6 +256,11 @@ namespace jspp
                 else if (current.is_promise())
                 {
                     // Promises don't store explicit proto yet in our impl
+                    break;
+                }
+                else if (current.is_async_iterator())
+                {
+                    // AsyncIterators don't store explicit proto yet in our impl
                     break;
                 }
                 else

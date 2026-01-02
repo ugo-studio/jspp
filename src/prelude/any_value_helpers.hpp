@@ -27,6 +27,8 @@ namespace jspp
             return std::get<std::shared_ptr<JsFunction>>(storage)->to_std_string();
         case JsType::Iterator:
             return std::get<std::shared_ptr<JsIterator<AnyValue>>>(storage)->to_std_string();
+        case JsType::AsyncIterator:
+            return std::get<std::shared_ptr<JsAsyncIterator<AnyValue>>>(storage)->to_std_string();
         case JsType::Promise:
             return std::get<std::shared_ptr<JsPromise>>(storage)->to_std_string();
         case JsType::Symbol:

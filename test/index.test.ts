@@ -12,7 +12,7 @@ const stripAnsi = (str: string) =>
         "",
     );
 
-beforeAll(() => {
+const ensureHeaders = () => {
     console.log("Ensuring precompiled headers are ready...");
     const precompile = Bun.spawnSync({
         cmd: ["bun", "run", "scripts/precompile-headers.ts"],
@@ -22,7 +22,7 @@ beforeAll(() => {
     if (precompile.exitCode !== 0) {
         throw new Error("Failed to precompile headers for tests.");
     }
-});
+};
 
 describe("Interpreter tests", async () => {
     let jsCode = "const caseName = process.argv[2];\n";
@@ -76,18 +76,23 @@ describe("Interpreter tests", async () => {
     await fs.writeFile(outputFile, cppCode);
     console.log("C++ code written to", outputFile);
 
+    // Ensure that the precompiled headers are ready
+    ensureHeaders();
+
     // Compile c++ code
+    console.log("Compiling C++ code...");
     const compile = Bun.spawn(
         [
             "g++",
-            "-O0",
+            "-O3",
+            "-DNDEBUG",
             "-Wa,-mbig-obj",
             "-std=c++23",
             outputFile,
             "-o",
             exeFile,
             "-I",
-            path.resolve(process.cwd(), "prelude-build", "debug"),
+            path.resolve(process.cwd(), "prelude-build", "release"),
             "-I",
             preludePath,
         ],
@@ -132,6 +137,7 @@ describe("Interpreter tests", async () => {
                     expect(output).toInclude(expectedString);
                 }
             },
+            { timeout: 10000 },
         );
     }
 

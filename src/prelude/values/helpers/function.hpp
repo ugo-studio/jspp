@@ -32,6 +32,10 @@ namespace jspp
         {
             return AnyValue::make_promise((*func)(thisVal, args));
         }
+        else if (std::function<jspp::JsAsyncIterator<jspp::AnyValue>(const AnyValue &, std::span<const AnyValue>)> *func = std::get_if<3>(&callable))
+        {
+            return AnyValue::from_async_iterator((*func)(thisVal, args));
+        }
         else
         {
             return AnyValue::make_undefined();

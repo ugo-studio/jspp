@@ -50,6 +50,7 @@ namespace jspp
         Promise = 11,
         DataDescriptor = 12,
         AccessorDescriptor = 13,
+        AsyncIterator = 14,
     };
 
     // The variant order MUST match JsType
@@ -67,7 +68,8 @@ namespace jspp
         std::shared_ptr<JsSymbol>,
         std::shared_ptr<JsPromise>,
         std::shared_ptr<DataDescriptor>,
-        std::shared_ptr<AccessorDescriptor>>;
+        std::shared_ptr<AccessorDescriptor>,
+        std::shared_ptr<JsAsyncIterator<AnyValue>>>;
 
     class AnyValue
     {
@@ -329,6 +331,12 @@ namespace jspp
             v.storage = std::shared_ptr<JsIterator<AnyValue>>(iterator, [](JsIterator<AnyValue> *) {});
             return v;
         }
+        static AnyValue from_async_iterator(JsAsyncIterator<AnyValue> &&iterator) noexcept
+        {
+            AnyValue v;
+            v.storage = std::make_shared<JsAsyncIterator<AnyValue>>(std::move(iterator));
+            return v;
+        }
 
         // PROPERTY RESOLUTION HELPERS ---------------------------------------
         static AnyValue resolve_property_for_read(const AnyValue &val, const AnyValue &thisVal, const std::string &propName) noexcept
@@ -411,6 +419,7 @@ namespace jspp
         bool is_uninitialized() const noexcept { return storage.index() == 2; }
         bool is_data_descriptor() const noexcept { return storage.index() == 12; }
         bool is_accessor_descriptor() const noexcept { return storage.index() == 13; }
+        bool is_async_iterator() const noexcept { return storage.index() == 14; }
         bool is_generator() const noexcept { return is_function() && as_function()->is_generator; }
 
         // --- TYPE CASTERS
@@ -450,6 +459,10 @@ namespace jspp
         {
             return std::get<std::shared_ptr<JsIterator<AnyValue>>>(storage);
         }
+        std::shared_ptr<JsAsyncIterator<AnyValue>> as_async_iterator() const
+        {
+            return std::get<std::shared_ptr<JsAsyncIterator<AnyValue>>>(storage);
+        }
         DataDescriptor *as_data_descriptor() const noexcept
         {
             return std::get<std::shared_ptr<DataDescriptor>>(storage).get();
@@ -488,6 +501,14 @@ namespace jspp
         const AnyValue construct(std::span<const AnyValue> args, const std::optional<std::string> &name) const;
         void set_prototype(const AnyValue &proto);
         std::string to_std_string() const;
+    };
+
+    // Awaiter for AnyValue
+    struct AnyValueAwaiter {
+        AnyValue value; // Held by value
+        bool await_ready();
+        void await_suspend(std::coroutine_handle<> h);
+        AnyValue await_resume();
     };
 
     // Inline implementation of operator co_await

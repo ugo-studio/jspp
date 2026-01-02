@@ -11,6 +11,7 @@
 #include "values/array.hpp"
 #include "values/function.hpp"
 #include "values/iterator.hpp"
+#include "values/async_iterator.hpp"
 #include "values/promise.hpp"
 #include "values/string.hpp"
 
@@ -28,6 +29,7 @@
 #include "values/prototypes/array.hpp"
 #include "values/prototypes/function.hpp"
 #include "values/prototypes/iterator.hpp"
+#include "values/prototypes/async_iterator.hpp"
 #include "values/prototypes/promise.hpp"
 #include "values/prototypes/string.hpp"
 #include "values/prototypes/number.hpp"
@@ -37,6 +39,7 @@
 #include "values/helpers/array.hpp"
 #include "values/helpers/function.hpp"
 #include "values/helpers/iterator.hpp"
+#include "values/helpers/async_iterator.hpp"
 #include "values/helpers/promise.hpp"
 #include "values/helpers/string.hpp"
 

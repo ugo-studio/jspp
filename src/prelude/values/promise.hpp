@@ -62,12 +62,4 @@ namespace jspp
         // await_transform for AnyValue
         auto await_transform(const AnyValue& value);
     };
-    
-    // Awaiter for AnyValue
-    struct AnyValueAwaiter {
-        const AnyValue& value; // Reference to the value being awaited
-        bool await_ready();
-        void await_suspend(std::coroutine_handle<> h);
-        AnyValue await_resume();
-    };
 }

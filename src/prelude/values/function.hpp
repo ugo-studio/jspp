@@ -11,7 +11,8 @@ namespace jspp
 
   using JsFunctionCallable = std::variant<std::function<AnyValue(const AnyValue &, std::span<const AnyValue>)>,                               // 0: Normal
                                           std::function<jspp::JsIterator<jspp::AnyValue>(const AnyValue &, std::span<const AnyValue>)>, // 1: Generator
-                                          std::function<jspp::JsPromise(const AnyValue &, std::span<const AnyValue>)>>;                 // 2: Async
+                                          std::function<jspp::JsPromise(const AnyValue &, std::span<const AnyValue>)>,                 // 2: Async
+                                          std::function<jspp::JsAsyncIterator<jspp::AnyValue>(const AnyValue &, std::span<const AnyValue>)>>; // 3: Async Generator
 
   struct JsFunction
   {
