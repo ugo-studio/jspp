@@ -15,6 +15,14 @@
         ]
     },
     {
+        "name": "top-level-await",
+        "expected": [
+            "start",
+            "resolved",
+            "end"
+        ]
+    },
+    {
         "name": "dynamic",
         "expected": [
             "--- Dynamic ---",

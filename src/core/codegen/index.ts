@@ -1,4 +1,4 @@
-import { TypeAnalyzer } from "../../analysis/typeAnalyzer";
+import type { TypeAnalyzer } from "../../analysis/typeAnalyzer";
 import { DeclaredSymbols } from "../../ast/symbols";
 import type { Node } from "../../ast/types";
 import { generateLambda } from "./function-handlers";
@@ -64,7 +64,7 @@ export class CodeGenerator {
 
         const declarations = `#include "index.hpp"\n\n`;
 
-        let containerCode = `jspp::AnyValue ${CONTAINER_FUNCTION_NAME}() {\n`;
+        let containerCode = `jspp::JsPromise ${CONTAINER_FUNCTION_NAME}() {\n`;
         this.indentationLevel++;
         containerCode +=
             `${this.indent()}jspp::AnyValue ${this.globalThisVar} = global;\n`;
@@ -72,17 +72,25 @@ export class CodeGenerator {
             isMainContext: true,
             isInsideFunction: true,
             isFunctionBody: true,
+            isInsideAsyncFunction: true,
             topLevelScopeSymbols: new DeclaredSymbols(),
             localScopeSymbols: new DeclaredSymbols(),
         });
         this.indentationLevel--;
-        containerCode += "  return jspp::Constants::UNDEFINED;\n";
+        containerCode += "  co_return jspp::Constants::UNDEFINED;\n";
         containerCode += "}\n\n";
 
         let mainCode = "int main(int argc, char** argv) {\n";
         mainCode += `  try {\n`;
         mainCode += `    jspp::setup_process_argv(argc, argv);\n`;
-        mainCode += `    ${CONTAINER_FUNCTION_NAME}();\n`;
+        mainCode += `    auto p = ${CONTAINER_FUNCTION_NAME}();\n`;
+        mainCode += `    p.then(nullptr, [](const jspp::AnyValue& err) {\n`;
+        mainCode +=
+            `        auto error = std::make_shared<jspp::AnyValue>(err);\n`;
+        mainCode +=
+            `        ([&](){ auto __obj = console; return __obj.get_own_property("error").call(__obj, std::span<const jspp::AnyValue>((const jspp::AnyValue[]){*error}, 1), "console.error"); })();\n`;
+        mainCode += `        std::exit(1);\n`;
+        mainCode += `    });\n`;
         mainCode += `    jspp::Scheduler::instance().run();\n`;
         mainCode += `  } catch (const std::exception& ex) {\n`;
         mainCode +=
