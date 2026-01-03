@@ -209,7 +209,24 @@ auto jspp::JsAsyncIterator<T>::promise_type::await_transform(AnyValue value)
         {
             if (!base_awaiter.value.is_promise())
             {
-                h.resume();
+                jspp::Scheduler::instance().enqueue([h]() mutable
+                                              {
+                    auto &pr = h.promise();
+                    pr.is_awaiting = false;
+                    pr.is_running = true;
+                    h.resume();
+                    pr.is_running = false;
+
+                    if (!h.done() && !pr.is_awaiting && !pr.pending_calls.empty())
+                    {
+                        while (!h.done() && !pr.is_awaiting && !pr.pending_calls.empty())
+                        {
+                            pr.is_running = true;
+                            pr.current_input = pr.pending_calls.front().second;
+                            h.resume();
+                            pr.is_running = false;
+                        }
+                    } });
                 return;
             }
             auto p = base_awaiter.value.as_promise();

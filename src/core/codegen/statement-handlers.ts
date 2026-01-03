@@ -803,19 +803,39 @@ export function visitYieldExpression(
 
             const varName = this.getJsVarName(expr as ts.Identifier);
             code += `${this.indent()}auto ${iterableRef} = ${exprText};\n`;
-            code +=
-                `${this.indent()}auto ${iterator} = jspp::Access::get_object_value_iterator(${iterableRef}, ${varName});\n`;
+            if (context.isInsideAsyncFunction) {
+                code +=
+                    `${this.indent()}auto ${iterator} = jspp::Access::get_async_object_value_iterator(${iterableRef}, ${varName});\n`;
+            } else {
+                code +=
+                    `${this.indent()}auto ${iterator} = jspp::Access::get_object_value_iterator(${iterableRef}, ${varName});\n`;
+            }
             code +=
                 `${this.indent()}auto ${nextFunc} = ${iterator}.get_own_property("next");\n`;
-            code +=
-                `${this.indent()}auto ${nextRes} = ${nextFunc}.call(${iterator}, {}, "next");\n`;
+            if (context.isInsideAsyncFunction) {
+                code +=
+                    `${this.indent()}auto ${nextRes} = co_await ${nextFunc}.call(${iterator}, {}, "next");\n`;
+            } else {
+                code +=
+                    `${this.indent()}auto ${nextRes} = ${nextFunc}.call(${iterator}, {}, "next");\n`;
+            }
             code +=
                 `${this.indent()}while (!is_truthy(${nextRes}.get_own_property("done"))) {\n`;
             this.indentationLevel++;
-            code +=
-                `${this.indent()}co_yield ${nextRes}.get_own_property("value");\n`;
-            code +=
-                `${this.indent()}${nextRes} = ${nextFunc}.call(${iterator}, {}, "next");\n`;
+            if (context.isInsideAsyncFunction) {
+                code +=
+                    `${this.indent()}co_yield co_await ${nextRes}.get_own_property("value");\n`;
+            } else {
+                code +=
+                    `${this.indent()}co_yield ${nextRes}.get_own_property("value");\n`;
+            }
+            if (context.isInsideAsyncFunction) {
+                code +=
+                    `${this.indent()}${nextRes} = co_await ${nextFunc}.call(${iterator}, {}, "next");\n`;
+            } else {
+                code +=
+                    `${this.indent()}${nextRes} = ${nextFunc}.call(${iterator}, {}, "next");\n`;
+            }
 
             this.indentationLevel--;
             code += `${this.indent()}}\n`;
@@ -823,10 +843,12 @@ export function visitYieldExpression(
             return code;
         }
 
-        return `${this.indent()}co_yield ${exprText}`;
+        const awaitPart = context.isInsideAsyncFunction ? "co_await " : "";
+        return `${this.indent()}co_yield ${awaitPart}${exprText}`;
     }
 
-    return `${this.indent()}co_yield jspp::Constants::UNDEFINED`;
+    const awaitPart = context.isInsideAsyncFunction ? "co_await " : "";
+    return `${this.indent()}co_yield ${awaitPart}jspp::Constants::UNDEFINED`;
 }
 
 export function visitReturnStatement(

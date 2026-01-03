@@ -155,14 +155,13 @@ namespace jspp {
     // --- AnyValueAwaiter ---
 
     inline bool AnyValueAwaiter::await_ready() {
-        if (!value.is_promise()) return true; // Non-promise values are ready immediately (for now)
-        // Always suspend for promises to ensure microtask interleaving, even if already resolved.
+        // Always suspend to ensure microtask interleaving, even if already resolved or not a promise.
         return false;
     }
 
     inline void AnyValueAwaiter::await_suspend(std::coroutine_handle<> h) {
         if (!value.is_promise()) {
-            h.resume();
+            jspp::Scheduler::instance().enqueue([h]() mutable { h.resume(); });
             return;
         }
         auto p = value.as_promise();
