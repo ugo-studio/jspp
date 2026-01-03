@@ -17,8 +17,8 @@ namespace jspp
         uint64_t length = 0;
 
         JsArray() : proto(nullptr) {}
-        explicit JsArray(const std::vector<AnyValue> &items) : dense(items), proto(nullptr), length(items.size()) {}
-        explicit JsArray(std::vector<AnyValue> &&items) : dense(std::move(items)), proto(nullptr), length(dense.size()) {}
+        explicit JsArray(const std::vector<AnyValue> &items);
+        explicit JsArray(std::vector<AnyValue> &&items);
 
         std::string to_std_string() const;
         JsIterator<AnyValue> get_iterator();

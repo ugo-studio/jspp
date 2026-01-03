@@ -1,6 +1,6 @@
 # JSPP (JavaScript++)
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/ugo-studio/jspp)
+[![CI](https://github.com/ugo-studio/jspp/actions/workflows/ci.yml/badge.svg)](https://github.com/ugo-studio/jspp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **JSPP is a modern, experimental transpiler that converts JavaScript code into high-performance, standard C++23.**
@@ -33,23 +33,9 @@ JSPP reserves certain keywords to avoid conflicts with the generated C++ code an
 
 - `std`: Reserved to prevent conflicts with the C++ standard library namespace.
 - `jspp`: Reserved for internal use by the JSPP transpiler.
-- `co_yield`: Reserved to prevent conflicts with the c++ generator functions.
-- `co_return`: Reserved to prevent conflicts with the c++ generator functions.
+- `co_yield`,`co_return`,`co_await`: Reserved to prevent conflicts with the c++ couroutine keywords.
 
 Using these keywords as variable names will result in a `SyntaxError`.
-
-## How It Works
-
-The transpilation process is a classic three-stage pipeline:
-
-1.  **Parsing:** The incoming JavaScript code is parsed into an Abstract Syntax Tree (AST) using the powerful TypeScript compiler API. This gives us a structured, traversable representation of the code.
-
-2.  **Analysis:** The `TypeAnalyzer` traverses the AST. While it doesn't perform traditional static type checking, it plays a crucial role in understanding the code's structure. It identifies scopes (global, function, block) and detects when variables are "captured" by closures.
-
-3.  **Code Generation:** The `CodeGenerator` performs a final traversal of the AST. It translates each node into its C++ equivalent.
-    - All variables are declared as `std::shared_ptr<AnyValue>` (where `AnyValue` uses a [Tagged Union](https://en.wikipedia.org/wiki/Tagged_union) method for managing dynamic types like JavaScript). This approach elegantly mimics JavaScript's dynamic types and reference-based memory model.
-    - Closures are implemented as C++ lambdas that capture `shared_ptr`s by value, ensuring variable lifetimes are correctly extended beyond their original scope.
-    - The entire script is wrapped into a single `main` function, with hoisting logic carefully replicated to ensure correct execution order.
 
 ## Installation
 

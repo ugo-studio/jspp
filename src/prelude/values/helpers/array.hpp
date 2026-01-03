@@ -6,6 +6,9 @@
 #include "any_value.hpp"
 #include "values/prototypes/array.hpp"
 
+jspp::JsArray::JsArray(const std::vector<jspp::AnyValue> &items) : dense(items), proto(nullptr), length(items.size()) {}
+jspp::JsArray::JsArray(std::vector<jspp::AnyValue> &&items) : dense(std::move(items)), proto(nullptr), length(dense.size()) {}
+
 std::string jspp::JsArray::to_std_string() const
 {
     if (length == 0)
