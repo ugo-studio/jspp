@@ -42,8 +42,12 @@ async function main() {
     );
 
     const flags = isRelease
-        ? ["-O3", "-DNDEBUG", "-Wa,-mbig-obj"]
-        : ["-O0", "-Wa,-mbig-obj"];
+        ? ["-O3", "-DNDEBUG"]
+        : ["-O0"];
+
+    if (process.platform === "win32") {
+        flags.push("-Wa,-mbig-obj");
+    }
 
     const pchDir = path.resolve(process.cwd(), "prelude-build", mode);
 

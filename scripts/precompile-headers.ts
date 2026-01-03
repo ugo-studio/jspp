@@ -7,13 +7,18 @@ const PRECOMPILED_HEADER_BASE_DIR = path.resolve(process.cwd(), "prelude-build")
 const MODES = [
     {
         name: "debug",
-        flags: ["-O0", "-Wa,-mbig-obj"],
+        flags: ["-O0"],
     },
     {
         name: "release",
-        flags: ["-O3", "-DNDEBUG", "-Wa,-mbig-obj"],
+        flags: ["-O3", "-DNDEBUG"],
     },
 ];
+
+if (process.platform === "win32") {
+    MODES[0].flags.push("-Wa,-mbig-obj");
+    MODES[1].flags.push("-Wa,-mbig-obj");
+}
 
 async function getLatestMtime(dirPath: string): Promise<number> {
     let maxMtime = 0;
