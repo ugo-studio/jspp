@@ -160,4 +160,31 @@ namespace jspp
     {
         return get_own_property(key).call((*this), args, key);
     }
+    AnyValue AnyValue::call_own_property(uint32_t idx, std::span<const AnyValue> args) const
+    {
+        switch (storage.index())
+        {
+        case 7: // Array
+            return std::get<std::shared_ptr<JsArray>>(storage)->get_property(idx).call((*this), args, "[" + std::to_string(idx) + "]");
+        case 5: // String
+            return std::get<std::shared_ptr<JsString>>(storage)->get_property(idx).call((*this), args, "[" + std::to_string(idx) + "]");
+        case 4: // Number
+            return call_own_property(std::to_string(idx), args);
+        default:
+            return call_own_property(std::to_string(idx), args);
+        }
+    }
+    AnyValue AnyValue::call_own_property(const AnyValue &key, std::span<const AnyValue> args) const
+    {
+        if (key.is_number() && is_array())
+            return std::get<std::shared_ptr<JsArray>>(storage)->get_property(key.as_double()).call((*this), args, "[" + key.to_std_string() + "]");
+        if (key.is_number() && is_string())
+            return std::get<std::shared_ptr<JsString>>(storage)->get_property(key.as_double()).call((*this), args, "[" + key.to_std_string() + "]");
+
+        // If the key is a Symbol, use its internal key string
+        if (key.is_symbol())
+            return call_own_property(key.as_symbol()->key, args);
+
+        return call_own_property(key.to_std_string(), args);
+    }
 }
