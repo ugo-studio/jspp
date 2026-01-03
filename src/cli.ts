@@ -10,9 +10,10 @@ import { Spinner } from "./cli-utils/spinner";
 import { Interpreter } from "./index";
 
 async function main() {
-    const { jsFilePath, isRelease, keepCpp, outputExePath, scriptArgs } = parseArgs(
-        process.argv.slice(2),
-    );
+    const { jsFilePath, isRelease, keepCpp, outputExePath, scriptArgs } =
+        parseArgs(
+            process.argv.slice(2),
+        );
 
     const jsFileName = path.basename(jsFilePath, ".js");
     const sourceDir = path.dirname(jsFilePath);
@@ -62,11 +63,7 @@ async function main() {
         // Ensure directory for cpp file exists (should exist as it's source dir, but for safety if we change logic)
         await fs.mkdir(path.dirname(cppFilePath), { recursive: true });
         await fs.writeFile(cppFilePath, cppCode);
-        spinner.succeed(
-            `Generated ${COLORS.dim}${
-                path.basename(cppFilePath)
-            }${COLORS.reset}`,
-        );
+        spinner.succeed(`Generated cpp`);
 
         // 2. Precompiled Header Check
         spinner.text = "Checking precompiled headers...";
@@ -105,7 +102,7 @@ async function main() {
             }
             spinner.succeed("Precompiled headers updated");
         } else {
-            spinner.succeed("Precompiled headers up-to-date");
+            spinner.succeed("Precompiled headers");
         }
 
         // 3. Compilation Phase

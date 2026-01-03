@@ -968,9 +968,7 @@ export function visitCallExpression(
             }")`;
         }
 
-        return `([&](){ auto __obj = ${derefObj}; return __obj.get_own_property("${propName}").call(__obj, ${argsSpan}, "${
-            this.escapeString(propName)
-        }"); })()`;
+        return `${derefObj}.call_own_property("${propName}", ${argsSpan})`;
     }
 
     // Handle obj[method]() -> pass obj as 'this'
@@ -1043,7 +1041,7 @@ export function visitCallExpression(
             return `jspp::Access::optional_call(${derefObj}.get_own_property(${argText}), ${derefObj}, ${argsSpan})`;
         }
 
-        return `([&](){ auto __obj = ${derefObj}; return __obj.get_own_property(${argText}).call(__obj, ${argsSpan}); })()`;
+        return `${derefObj}.call_own_property(${argText}, ${argsSpan})`;
     }
 
     const calleeCode = this.visit(callee, context);

@@ -21,7 +21,7 @@ import {
 } from "./helpers";
 import { visit } from "./visitor";
 
-const CONTAINER_FUNCTION_NAME = "__container__";
+const MODULE_NAME = "__main_function__";
 
 export class CodeGenerator {
     public indentationLevel: number = 0;
@@ -64,7 +64,7 @@ export class CodeGenerator {
 
         const declarations = `#include "index.hpp"\n\n`;
 
-        let containerCode = `jspp::JsPromise ${CONTAINER_FUNCTION_NAME}() {\n`;
+        let containerCode = `jspp::JsPromise ${MODULE_NAME}() {\n`;
         this.indentationLevel++;
         containerCode +=
             `${this.indent()}jspp::AnyValue ${this.globalThisVar} = global;\n`;
@@ -83,12 +83,12 @@ export class CodeGenerator {
         let mainCode = "int main(int argc, char** argv) {\n";
         mainCode += `  try {\n`;
         mainCode += `    jspp::setup_process_argv(argc, argv);\n`;
-        mainCode += `    auto p = ${CONTAINER_FUNCTION_NAME}();\n`;
+        mainCode += `    auto p = ${MODULE_NAME}();\n`;
         mainCode += `    p.then(nullptr, [](const jspp::AnyValue& err) {\n`;
         mainCode +=
             `        auto error = std::make_shared<jspp::AnyValue>(err);\n`;
         mainCode +=
-            `        ([&](){ auto __obj = console; return __obj.get_own_property("error").call(__obj, std::span<const jspp::AnyValue>((const jspp::AnyValue[]){*error}, 1), "console.error"); })();\n`;
+            `        console.call_own_property("error", std::span<const jspp::AnyValue>((const jspp::AnyValue[]){*error}, 1));\n`;
         mainCode += `        std::exit(1);\n`;
         mainCode += `    });\n`;
         mainCode += `    jspp::Scheduler::instance().run();\n`;
@@ -96,7 +96,7 @@ export class CodeGenerator {
         mainCode +=
             "    auto error = std::make_shared<jspp::AnyValue>(jspp::Exception::exception_to_any_value(ex));\n    {\n";
         mainCode +=
-            `      ([&](){ auto __obj = console; return __obj.get_own_property("error").call(__obj, std::span<const jspp::AnyValue>((const jspp::AnyValue[]){*error}, 1), "console.error"); })();\n`;
+            `      console.call_own_property("error", std::span<const jspp::AnyValue>((const jspp::AnyValue[]){*error}, 1));\n`;
         mainCode += `      return 1;\n    }\n`;
         mainCode += `  }\n`;
         mainCode += "  return 0;\n}";

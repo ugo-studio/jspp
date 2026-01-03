@@ -486,6 +486,8 @@ namespace jspp
         AnyValue set_own_property(const std::string &key, const AnyValue &value) const;
         AnyValue set_own_property(uint32_t idx, const AnyValue &value) const;
         AnyValue set_own_property(const AnyValue &key, const AnyValue &value) const;
+        // for calling the gotten the property
+        AnyValue call_own_property(const std::string &key, std::span<const AnyValue> args) const;
 
         // --- DEFINERS (Object.defineProperty semantics)
         void define_data_property(const std::string &key, const AnyValue &value);
@@ -504,7 +506,8 @@ namespace jspp
     };
 
     // Awaiter for AnyValue
-    struct AnyValueAwaiter {
+    struct AnyValueAwaiter
+    {
         AnyValue value; // Held by value
         bool await_ready();
         void await_suspend(std::coroutine_handle<> h);
