@@ -503,7 +503,7 @@ export function visitTryStatement(
             code += `${this.indent()}}\n`;
             return code;
         }
-    } else {
+    } else if (!tryStmt.finallyBlock) {
         const exceptionName = this.generateUniqueExceptionName(
             tryStmt.catchClause?.variableDeclaration?.name.getText(),
             context.topLevelScopeSymbols,
@@ -598,10 +598,6 @@ export function visitTryStatement(
             declaredSymbols.add(s)
         );
 
-        const finallyLambdaName = this.generateUniqueName(
-            "__finally_",
-            declaredSymbols,
-        );
         const resultVarName = this.generateUniqueName(
             "__try_result_",
             declaredSymbols,
@@ -610,23 +606,22 @@ export function visitTryStatement(
             "__try_has_returned_",
             declaredSymbols,
         );
+        const catchAllExPtrName = this.generateUniqueName(
+            "__catch_all_exptr",
+            declaredSymbols,
+        );
 
         let code = `${this.indent()}{\n`;
         this.indentationLevel++;
 
         code += `${this.indent()}jspp::AnyValue ${resultVarName};\n`;
+        code +=
+            `${this.indent()}std::exception_ptr ${catchAllExPtrName} = nullptr;\n`;
         code += `${this.indent()}bool ${hasReturnedFlagName} = false;\n`;
 
         const returnType = "jspp::AnyValue";
         const returnCmd = "return";
         const callPrefix = "";
-
-        const finallyBlockCode = this.visit(tryStmt.finallyBlock, {
-            ...context,
-            isFunctionBody: true,
-        });
-        code +=
-            `${this.indent()}auto ${finallyLambdaName} = [=]() -> ${returnType} ${finallyBlockCode.trim()};\n`;
 
         code += `${this.indent()}try {\n`;
         this.indentationLevel++;
@@ -674,32 +669,20 @@ export function visitTryStatement(
         code += `${this.indent()}})();\n`;
 
         this.indentationLevel--;
-        code += `${this.indent()}} catch (...) {\n`;
-        this.indentationLevel++;
-        // In the catch-all that rethrows, we MUST run finally.
-        // But we still can't co_await here if it's native catch.
-        if (context.isInsideAsyncFunction) {
-            // For now, sync call if async finally isn't strictly required here.
-            // This is a limitation of native C++ exception mapping.
-            code += `${this.indent()}${finallyLambdaName}();\n`;
-        } else {
-            code += `${this.indent()}${finallyLambdaName}();\n`;
-        }
-        code += `${this.indent()}throw;\n`;
-        this.indentationLevel--;
-        code += `${this.indent()}}\n`;
+        code +=
+            `${this.indent()}} catch (...) { ${catchAllExPtrName} = std::current_exception(); }\n`;
 
-        if (context.isInsideAsyncFunction) {
-            code += `${this.indent()}co_await ${finallyLambdaName}();\n`;
-        } else {
-            code += `${this.indent()}${finallyLambdaName}();\n`;
-        }
+        code += `${this.indent()}// finally block\n`;
+        code += this.visit(tryStmt.finallyBlock, {
+            ...context,
+            isFunctionBody: false,
+        });
 
-        code += `${this.indent()}if (${hasReturnedFlagName}) {\n`;
-        this.indentationLevel++;
-        code += `${this.indent()}${returnCmd} ${resultVarName};\n`;
-        this.indentationLevel--;
-        code += `${this.indent()}}\n`;
+        code += `${this.indent()}// re-throw or return\n`;
+        code +=
+            `${this.indent()}if (${catchAllExPtrName}) { std::rethrow_exception(${catchAllExPtrName}); }\n`;
+        code +=
+            `${this.indent()}if (${hasReturnedFlagName}) { ${returnCmd} ${resultVarName}; }\n`;
 
         this.indentationLevel--;
         code += `${this.indent()}}\n`;
