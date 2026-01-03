@@ -81,20 +81,25 @@ describe("Interpreter tests", async () => {
 
     // Compile c++ code
     console.log("Compiling C++ code...");
+    const compileCmd = [
+        "g++",
+        "-O0",
+        "-std=c++23",
+        outputFile,
+        "-o",
+        exeFile,
+        "-I",
+        path.resolve(process.cwd(), "prelude-build", "debug"),
+        "-I",
+        preludePath,
+    ];
+
+    if (process.platform === "win32") {
+        compileCmd.splice(2, 0, "-Wa,-mbig-obj");
+    }
+
     const compile = Bun.spawn(
-        [
-            "g++",
-            "-O0",
-            "-Wa,-mbig-obj",
-            "-std=c++23",
-            outputFile,
-            "-o",
-            exeFile,
-            "-I",
-            path.resolve(process.cwd(), "prelude-build", "debug"),
-            "-I",
-            preludePath,
-        ],
+        compileCmd,
         {
             stdout: "pipe",
             stderr: "pipe",
