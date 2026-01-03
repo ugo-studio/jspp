@@ -92,6 +92,10 @@ namespace jspp {
         }
     }
 
+    inline auto JsPromise::operator co_await() const {
+        return AnyValueAwaiter{AnyValue::make_promise(*this)};
+    }
+
     inline std::string JsPromise::to_std_string() const {
         return "[object Promise]";
     }
@@ -142,6 +146,10 @@ namespace jspp {
     
     inline auto JsPromisePromiseType::await_transform(const AnyValue& value) {
          return AnyValueAwaiter{value};
+    }
+
+    inline auto JsPromisePromiseType::await_transform(const JsPromise& value) {
+         return AnyValueAwaiter{AnyValue::make_promise(value)};
     }
 
     // --- AnyValueAwaiter ---

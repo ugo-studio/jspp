@@ -20,15 +20,15 @@ inline auto Promise = jspp::AnyValue::make_function([](const jspp::AnyValue &thi
                                                         auto resolveFn = jspp::AnyValue::make_function([state](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                                                        {
         jspp::JsPromise p; p.state = state;
-        p.resolve(args.empty() ? jspp::AnyValue::make_undefined() : args[0]);
-        return jspp::AnyValue::make_undefined(); }, "resolve");
+        p.resolve(args.empty() ? jspp::Constants::UNDEFINED : args[0]);
+        return jspp::Constants::UNDEFINED; }, "resolve");
 
                                                         // reject function
                                                         auto rejectFn = jspp::AnyValue::make_function([state](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                                                       {
         jspp::JsPromise p; p.state = state;
-        p.reject(args.empty() ? jspp::AnyValue::make_undefined() : args[0]);
-        return jspp::AnyValue::make_undefined(); }, "reject");
+        p.reject(args.empty() ? jspp::Constants::UNDEFINED : args[0]);
+        return jspp::Constants::UNDEFINED; }, "reject");
 
                                                         try
                                                         {
@@ -55,27 +55,19 @@ struct PromiseInit
         Promise.define_data_property("resolve", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                               {
             jspp::JsPromise p;
-            p.resolve(args.empty() ? jspp::AnyValue::make_undefined() : args[0]);
+            p.resolve(args.empty() ? jspp::Constants::UNDEFINED : args[0]);
             return jspp::AnyValue::make_promise(p); }, "resolve"));
 
         // Promise.reject(reason)
         Promise.define_data_property("reject", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                              {
             jspp::JsPromise p;
-            p.reject(args.empty() ? jspp::AnyValue::make_undefined() : args[0]);
+            p.reject(args.empty() ? jspp::Constants::UNDEFINED : args[0]);
             return jspp::AnyValue::make_promise(p); }, "reject"));
 
         // Promise.all(iterable)
         Promise.define_data_property("all", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                           {
-             // Basic implementation for arrays
-             if (args.empty() || !args[0].is_array()) {
-                  // If not array, reject? Or treat as non-iterable?
-                  // Should throw TypeError if not iterable. For now assume array.
-                  // If empty array, return resolved empty array.
-                  // TODO: Strict iterable check
-             }
-             
              // Handle non-array iterable or empty args
              if (args.empty() || !args[0].is_array()) {
                  jspp::JsPromise p; p.reject(jspp::AnyValue::make_string("Promise.all argument must be an array"));

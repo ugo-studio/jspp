@@ -46,6 +46,8 @@ namespace jspp
         std::string to_std_string() const;
         AnyValue get_property(const std::string& key, const AnyValue& thisVal);
         AnyValue set_property(const std::string& key, const AnyValue& value, const AnyValue& thisVal);
+
+        auto operator co_await() const;
     };
 
     struct JsPromisePromiseType {
@@ -61,5 +63,7 @@ namespace jspp
         
         // await_transform for AnyValue
         auto await_transform(const AnyValue& value);
+        // await_transform for JsPromise
+        auto await_transform(const JsPromise& value);
     };
 }

@@ -67,6 +67,8 @@ export function generateLambda(
         topLevelScopeSymbols,
         localScopeSymbols: new DeclaredSymbols(),
         superClassVar: context.superClassVar,
+        isInsideGeneratorFunction: isInsideGeneratorFunction,
+        isInsideAsyncFunction: isInsideAsyncFunction,
     };
 
     // Name of 'this' and 'args' to be used in the body. 
