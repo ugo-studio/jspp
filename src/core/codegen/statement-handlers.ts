@@ -502,84 +502,84 @@ export function visitTryStatement(
             this.indentationLevel--;
             code += `${this.indent()}}\n`;
             return code;
-        }
-    } else if (!tryStmt.finallyBlock) {
-        const exceptionName = this.generateUniqueExceptionName(
-            tryStmt.catchClause?.variableDeclaration?.name.getText(),
-            context.topLevelScopeSymbols,
-            context.localScopeSymbols,
-        );
-        const newContext = {
-            ...context,
-            isFunctionBody: false,
-            exceptionName,
-        };
-        const exPtr = this.generateUniqueName("__ex_ptr");
-
-        let code = `${this.indent()}{\n`;
-        this.indentationLevel++;
-        code += `${this.indent()}std::exception_ptr ${exPtr} = nullptr;\n`;
-        code += `${this.indent()}try {\n`;
-        this.indentationLevel++;
-        code += this.visit(tryStmt.tryBlock, newContext);
-        this.indentationLevel--;
-        code +=
-            `${this.indent()}} catch (...) { ${exPtr} = std::current_exception(); }\n`;
-
-        if (tryStmt.catchClause) {
-            const caughtValVar = this.generateUniqueName("__caught_val");
-            const caughtFlagVar = this.generateUniqueName("__caught_flag");
-
-            code +=
-                `${this.indent()}jspp::AnyValue ${caughtValVar} = jspp::Constants::UNDEFINED;\n`;
-            code += `${this.indent()}bool ${caughtFlagVar} = false;\n`;
-
-            code += `${this.indent()}if (${exPtr}) {\n`;
-            this.indentationLevel++;
-            code +=
-                `${this.indent()}try { std::rethrow_exception(${exPtr}); } catch (const std::exception& ${exceptionName}) {\n`;
-            this.indentationLevel++;
-            code +=
-                `${this.indent()}${caughtValVar} = jspp::Exception::exception_to_any_value(${exceptionName});\n`;
-            code += `${this.indent()}${caughtFlagVar} = true;\n`;
-            this.indentationLevel--;
-            code += `${this.indent()}} catch (...) {\n`;
-            this.indentationLevel++;
-            code +=
-                `${this.indent()}${caughtValVar} = jspp::AnyValue::make_string("Unknown native exception");\n`;
-            code += `${this.indent()}${caughtFlagVar} = true;\n`;
-            this.indentationLevel--;
-            code += `${this.indent()}}\n`;
-            this.indentationLevel--;
-            code += `${this.indent()}}\n`;
-
-            code += `${this.indent()}if (${caughtFlagVar}) {\n`;
-            this.indentationLevel++;
-
-            code += `${this.indent()}{\n`; // Block scope
-            this.indentationLevel++;
-
-            if (tryStmt.catchClause.variableDeclaration) {
-                const varName = tryStmt.catchClause.variableDeclaration.name
-                    .getText();
-                code +=
-                    `${this.indent()}jspp::AnyValue ${varName} = ${caughtValVar};\n`;
-            }
-
-            code += this.visit(tryStmt.catchClause.block, newContext);
-
-            this.indentationLevel--;
-            code += `${this.indent()}}\n`;
-
-            this.indentationLevel--;
-            code += `${this.indent()}}\n`;
         } else {
+            const exceptionName = this.generateUniqueExceptionName(
+                tryStmt.catchClause?.variableDeclaration?.name.getText(),
+                context.topLevelScopeSymbols,
+                context.localScopeSymbols,
+            );
+            const newContext = {
+                ...context,
+                isFunctionBody: false,
+                exceptionName,
+            };
+            const exPtr = this.generateUniqueName("__ex_ptr");
+
+            let code = `${this.indent()}{\n`;
+            this.indentationLevel++;
+            code += `${this.indent()}std::exception_ptr ${exPtr} = nullptr;\n`;
+            code += `${this.indent()}try {\n`;
+            this.indentationLevel++;
+            code += this.visit(tryStmt.tryBlock, newContext);
+            this.indentationLevel--;
             code +=
-                `${this.indent()}if (${exPtr}) { std::rethrow_exception(${exPtr}); }\n`;
+                `${this.indent()}} catch (...) { ${exPtr} = std::current_exception(); }\n`;
+
+            if (tryStmt.catchClause) {
+                const caughtValVar = this.generateUniqueName("__caught_val");
+                const caughtFlagVar = this.generateUniqueName("__caught_flag");
+
+                code +=
+                    `${this.indent()}jspp::AnyValue ${caughtValVar} = jspp::Constants::UNDEFINED;\n`;
+                code += `${this.indent()}bool ${caughtFlagVar} = false;\n`;
+
+                code += `${this.indent()}if (${exPtr}) {\n`;
+                this.indentationLevel++;
+                code +=
+                    `${this.indent()}try { std::rethrow_exception(${exPtr}); } catch (const std::exception& ${exceptionName}) {\n`;
+                this.indentationLevel++;
+                code +=
+                    `${this.indent()}${caughtValVar} = jspp::Exception::exception_to_any_value(${exceptionName});\n`;
+                code += `${this.indent()}${caughtFlagVar} = true;\n`;
+                this.indentationLevel--;
+                code += `${this.indent()}} catch (...) {\n`;
+                this.indentationLevel++;
+                code +=
+                    `${this.indent()}${caughtValVar} = jspp::AnyValue::make_string("Unknown native exception");\n`;
+                code += `${this.indent()}${caughtFlagVar} = true;\n`;
+                this.indentationLevel--;
+                code += `${this.indent()}}\n`;
+                this.indentationLevel--;
+                code += `${this.indent()}}\n`;
+
+                code += `${this.indent()}if (${caughtFlagVar}) {\n`;
+                this.indentationLevel++;
+
+                code += `${this.indent()}{\n`; // Block scope
+                this.indentationLevel++;
+
+                if (tryStmt.catchClause.variableDeclaration) {
+                    const varName = tryStmt.catchClause.variableDeclaration.name
+                        .getText();
+                    code +=
+                        `${this.indent()}jspp::AnyValue ${varName} = ${caughtValVar};\n`;
+                }
+
+                code += this.visit(tryStmt.catchClause.block, newContext);
+
+                this.indentationLevel--;
+                code += `${this.indent()}}\n`;
+
+                this.indentationLevel--;
+                code += `${this.indent()}}\n`;
+            } else {
+                code +=
+                    `${this.indent()}if (${exPtr}) { std::rethrow_exception(${exPtr}); }\n`;
+            }
+            this.indentationLevel--;
+            code += `${this.indent()}}\n`;
+            return code;
         }
-        this.indentationLevel--;
-        code += `${this.indent()}}\n`;
-        return code;
     }
 
     if (tryStmt.finallyBlock) {
