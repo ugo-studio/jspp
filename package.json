@@ -13,6 +13,7 @@
     "src/prelude"
   ],
   "scripts": {
+    "postinstall": "bun run scripts/setup-compiler.ts",
     "dev": "bun run src/cli.ts",
     "typecheck": "tsc --noEmit",
     "precompile": "bun run scripts/precompile-headers.ts",
