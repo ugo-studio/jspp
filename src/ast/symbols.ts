@@ -39,4 +39,8 @@ export class DeclaredSymbols {
             return this.symbols.set(name, newValue);
         }
     }
+
+    toSet() {
+        return new Set(this.symbols.keys());
+    }
 }

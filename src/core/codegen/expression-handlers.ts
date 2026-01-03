@@ -56,13 +56,7 @@ export function visitObjectLiteralExpression(
         this.getDeclaredSymbols(node),
     );
 
-    const returnType = context.isInsideAsyncFunction
-        ? "jspp::JsPromise"
-        : "jspp::AnyValue";
-    const returnCmd = this.getReturnCommand(context);
-    const callPrefix = context.isInsideAsyncFunction ? "co_await " : "";
-
-    let code = `(${callPrefix}[&]() -> ${returnType} {\n`;
+    let code = `([&]() {\n`;
     code +=
         `${this.indent()}  auto ${objVar} = jspp::AnyValue::make_object_with_proto({}, ::Object.get_own_property("prototype"));\n`;
 
@@ -153,7 +147,9 @@ export function visitObjectLiteralExpression(
     }
 
     this.indentationLevel--;
-    code += `${this.indent()}  ${returnCmd} ${objVar};\n${this.indent()}} )() ))`;
+    // code +=
+    //     `${this.indent()}  ${returnCmd} ${objVar};\n${this.indent()}} )() ))`;
+    code += `${this.indent()}  return ${objVar};\n${this.indent()}})()`;
 
     return code;
 }
@@ -966,21 +962,15 @@ export function visitCallExpression(
             }
         }
 
-        const returnType = context.isInsideAsyncFunction
-            ? "jspp::JsPromise"
-            : "jspp::AnyValue";
-        const returnCmd = context.isInsideAsyncFunction ? "co_return" : "return";
-        const callPrefix = context.isInsideAsyncFunction ? "co_await " : "";
-
         if (callExpr.questionDotToken) {
             return `jspp::Access::optional_call(${derefObj}.get_own_property("${propName}"), ${derefObj}, ${argsSpan}, "${
                 this.escapeString(propName)
             }")`;
         }
 
-        return `(${callPrefix}( (${returnType})([&]() -> ${returnType} { auto __obj = ${derefObj}; ${returnCmd} __obj.get_own_property("${propName}").call(__obj, ${argsSpan}, "${
+        return `([&](){ auto __obj = ${derefObj}; return __obj.get_own_property("${propName}").call(__obj, ${argsSpan}, "${
             this.escapeString(propName)
-        }"); })() ))`;
+        }"); })()`;
     }
 
     // Handle obj[method]() -> pass obj as 'this'
@@ -1049,17 +1039,11 @@ export function visitCallExpression(
             }
         }
 
-        const returnType = context.isInsideAsyncFunction
-            ? "jspp::JsPromise"
-            : "jspp::AnyValue";
-        const returnCmd = context.isInsideAsyncFunction ? "co_return" : "return";
-        const callPrefix = context.isInsideAsyncFunction ? "co_await " : "";
-
         if (callExpr.questionDotToken) {
             return `jspp::Access::optional_call(${derefObj}.get_own_property(${argText}), ${derefObj}, ${argsSpan})`;
         }
 
-        return `(${callPrefix}( (${returnType})([&]() -> ${returnType} { auto __obj = ${derefObj}; ${returnCmd} __obj.get_own_property(${argText}).call(__obj, ${argsSpan}); })() ))`;
+        return `([&](){ auto __obj = ${derefObj}; return __obj.get_own_property(${argText}).call(__obj, ${argsSpan}); })()`;
     }
 
     const calleeCode = this.visit(callee, context);

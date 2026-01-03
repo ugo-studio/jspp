@@ -71,7 +71,7 @@ export function generateLambda(
         isInsideAsyncFunction: isInsideAsyncFunction,
     };
 
-    // Name of 'this' and 'args' to be used in the body. 
+    // Name of 'this' and 'args' to be used in the body.
     // If generator/async, we use the copied versions.
     let bodyThisVar = this.globalThisVar;
     let bodyArgsVar = argsName;
@@ -79,45 +79,53 @@ export function generateLambda(
     // Preamble to copy arguments for coroutines
     let preamble = "";
     if (isInsideGeneratorFunction || isInsideAsyncFunction) {
-        const thisCopy = this.generateUniqueName("__this_copy", declaredSymbols);
-        const argsCopy = this.generateUniqueName("__args_copy", declaredSymbols);
-        
+        const thisCopy = this.generateUniqueName(
+            "__this_copy",
+            declaredSymbols,
+        );
+        const argsCopy = this.generateUniqueName(
+            "__args_copy",
+            declaredSymbols,
+        );
+
         if (!isArrow) {
-            preamble += `${this.indent()}jspp::AnyValue ${thisCopy} = ${this.globalThisVar};\n`;
+            preamble +=
+                `${this.indent()}jspp::AnyValue ${thisCopy} = ${this.globalThisVar};\n`;
             bodyThisVar = thisCopy;
         }
-        preamble += `${this.indent()}std::vector<jspp::AnyValue> ${argsCopy}(${argsName}.begin(), ${argsName}.end());\n`;
+        preamble +=
+            `${this.indent()}std::vector<jspp::AnyValue> ${argsCopy}(${argsName}.begin(), ${argsName}.end());\n`;
         bodyArgsVar = argsCopy;
-        
-        // Update visitContext to use the new 'this' variable if needed? 
-        // CodeGenerator.globalThisVar is a member of the class, so we can't easily change it for the recursive visit 
+
+        // Update visitContext to use the new 'this' variable if needed?
+        // CodeGenerator.globalThisVar is a member of the class, so we can't easily change it for the recursive visit
         // without changing the class state or passing it down.
-        // BUT: visitThisKeyword uses `this.globalThisVar`. 
+        // BUT: visitThisKeyword uses `this.globalThisVar`.
         // We need to temporarily swap `this.globalThisVar` or handle it.
         // Actually, `this.globalThisVar` is set once in `generate`.
         // Wait, `visitThisKeyword` uses `this.globalThisVar`.
         // If we change the variable name for 'this', we must ensure `visitThisKeyword` generates the correct name.
         // `generateLambda` does NOT create a new CodeGenerator instance, so `this.globalThisVar` is the global one.
-        // 
+        //
         // We need to support shadowing `globalThisVar` for the duration of the visit.
-        // The current `CodeGenerator` doesn't seem to support changing `globalThisVar` recursively easily 
+        // The current `CodeGenerator` doesn't seem to support changing `globalThisVar` recursively easily
         // because it's a property of the class, not `VisitContext`.
-        // 
+        //
         // However, `visitFunctionDeclaration` etc don't update `globalThisVar`.
         // `visitThisKeyword` just returns `this.globalThisVar`.
-        // 
+        //
         // If we are inside a function, `this` should refer to the function's `this`.
         // `this.globalThisVar` is generated in `generate()`: `__this_val__...`.
         // And `generateLambda` uses `this.globalThisVar` as the parameter name.
-        // 
+        //
         // So, if we copy it to `__this_copy`, `visitThisKeyword` will still print `__this_val__...`.
         // This is BAD for generators because `__this_val__...` is a reference that dies.
-        // 
+        //
         // FIX: We must reuse the SAME name for the local copy, and shadow the parameter.
         // But we can't declare a variable with the same name as the parameter in the same scope.
-        // 
+        //
         // We can rename the PARAMETER to something else, and declare the local variable with `this.globalThisVar`.
-        // 
+        //
     }
 
     // Adjust parameter names for generator/async to allow shadowing/copying
@@ -126,28 +134,37 @@ export function generateLambda(
 
     if (isInsideGeneratorFunction || isInsideAsyncFunction) {
         if (!isArrow) {
-            finalThisParamName = this.generateUniqueName("__this_ref", declaredSymbols);
+            finalThisParamName = this.generateUniqueName(
+                "__this_ref",
+                declaredSymbols,
+            );
         }
-        finalArgsParamName = this.generateUniqueName("__args_ref", declaredSymbols);
+        finalArgsParamName = this.generateUniqueName(
+            "__args_ref",
+            declaredSymbols,
+        );
     }
 
     const thisArgParamFinal = isArrow
-        ? "const jspp::AnyValue&" 
+        ? "const jspp::AnyValue&"
         : `${paramThisType} ${finalThisParamName}`;
-    
+
     // Re-construct lambda header with potentially new param names
-    lambda = `${capture}(${thisArgParamFinal}, ${paramArgsType} ${finalArgsParamName}) mutable -> ${funcReturnType} `;
+    lambda =
+        `${capture}(${thisArgParamFinal}, ${paramArgsType} ${finalArgsParamName}) mutable -> ${funcReturnType} `;
 
     // Regenerate preamble
     preamble = "";
     if (isInsideGeneratorFunction || isInsideAsyncFunction) {
         if (!isArrow) {
-            preamble += `${this.indent()}jspp::AnyValue ${this.globalThisVar} = ${finalThisParamName};\n`;
+            preamble +=
+                `${this.indent()}jspp::AnyValue ${this.globalThisVar} = ${finalThisParamName};\n`;
         }
-        preamble += `${this.indent()}std::vector<jspp::AnyValue> ${argsName}(${finalArgsParamName}.begin(), ${finalArgsParamName}.end());\n`;
+        preamble +=
+            `${this.indent()}std::vector<jspp::AnyValue> ${argsName}(${finalArgsParamName}.begin(), ${finalArgsParamName}.end());\n`;
     }
 
-    // Now 'argsName' refers to the vector (if copied) or the span (if not). 
+    // Now 'argsName' refers to the vector (if copied) or the span (if not).
     // And 'this.globalThisVar' refers to the copy (if copied) or the param (if not).
     // So subsequent code using `argsName` and `visit` (using `globalThisVar`) works correctly.
 
@@ -231,8 +248,11 @@ export function generateLambda(
         if (ts.isBlock(node.body)) {
             // Hoist var declarations in the function body
             const varDecls = collectFunctionScopedDeclarations(node.body);
-            varDecls.forEach(decl => {
-                preamble += this.hoistDeclaration(decl, visitContext.localScopeSymbols);
+            varDecls.forEach((decl) => {
+                preamble += this.hoistDeclaration(
+                    decl,
+                    visitContext.localScopeSymbols,
+                );
             });
 
             this.indentationLevel++;
@@ -248,7 +268,8 @@ export function generateLambda(
                 isInsideAsyncFunction: isInsideAsyncFunction,
             });
             // The block visitor already adds braces, so we need to inject the preamble and param extraction.
-            lambda += "{\n" + preamble + paramExtraction + blockContent.substring(2);
+            lambda += "{\n" + preamble + paramExtraction +
+                blockContent.trimStart().substring(2);
         } else {
             lambda += "{\n";
             this.indentationLevel++;

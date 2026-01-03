@@ -46,26 +46,25 @@ export function generateUniqueName(
     prefix: string,
     ...namesToAvoid: (Set<string> | DeclaredSymbols)[]
 ): string {
-    let name = `${prefix}${this.exceptionCounter}`;
+    let name = `${prefix}${this.uniqueNameCounter}`;
     while (namesToAvoid.some((names) => names.has(name))) {
-        this.exceptionCounter++;
-        name = `${prefix}${this.exceptionCounter}`;
+        this.uniqueNameCounter++;
+        name = `${prefix}${this.uniqueNameCounter}`;
     }
-    this.exceptionCounter++;
+    this.uniqueNameCounter++;
     return name;
 }
 
 export function generateUniqueExceptionName(
     this: CodeGenerator,
-    nameToAvoid?: string,
+    exceptionNameToAvoid: string | undefined,
+    ...otherNamesToAvoid: (Set<string> | DeclaredSymbols)[]
 ): string {
-    let exceptionName = `__caught_exception_${this.exceptionCounter}`;
-    while (exceptionName === nameToAvoid) {
-        this.exceptionCounter++;
-        exceptionName = `__caught_exception_${this.exceptionCounter}`;
+    let prefix = `__caught_exception_`;
+    if (exceptionNameToAvoid) {
+        prefix += exceptionNameToAvoid;
     }
-    this.exceptionCounter++;
-    return exceptionName;
+    return this.generateUniqueName(prefix, ...otherNamesToAvoid);
 }
 
 export function getScopeForNode(this: CodeGenerator, node: ts.Node): Scope {
@@ -251,32 +250,38 @@ export function prepareScopeSymbolsForVisit(
     return new DeclaredSymbols(topLevel, local);
 }
 
-export function collectFunctionScopedDeclarations(node: ts.Node): ts.VariableDeclaration[] {
+export function collectFunctionScopedDeclarations(
+    node: ts.Node,
+): ts.VariableDeclaration[] {
     const decls: ts.VariableDeclaration[] = [];
 
     function visit(n: ts.Node) {
         if (ts.isVariableStatement(n)) {
-            const isLetOrConst = (n.declarationList.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+            const isLetOrConst = (n.declarationList.flags &
+                (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
             if (!isLetOrConst) {
                 decls.push(...n.declarationList.declarations);
             }
         } else if (ts.isForStatement(n)) {
             if (n.initializer && ts.isVariableDeclarationList(n.initializer)) {
-                const isLetOrConst = (n.initializer.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                const isLetOrConst = (n.initializer.flags &
+                    (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
                 if (!isLetOrConst) {
                     decls.push(...n.initializer.declarations);
                 }
             }
         } else if (ts.isForInStatement(n)) {
             if (ts.isVariableDeclarationList(n.initializer)) {
-                const isLetOrConst = (n.initializer.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                const isLetOrConst = (n.initializer.flags &
+                    (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
                 if (!isLetOrConst) {
                     decls.push(...n.initializer.declarations);
                 }
             }
         } else if (ts.isForOfStatement(n)) {
             if (ts.isVariableDeclarationList(n.initializer)) {
-                const isLetOrConst = (n.initializer.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                const isLetOrConst = (n.initializer.flags &
+                    (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
                 if (!isLetOrConst) {
                     decls.push(...n.initializer.declarations);
                 }
@@ -284,7 +289,13 @@ export function collectFunctionScopedDeclarations(node: ts.Node): ts.VariableDec
         }
 
         // Stop recursion at function boundaries (but not the root node if it is a function)
-        if (n !== node && (ts.isFunctionDeclaration(n) || ts.isFunctionExpression(n) || ts.isArrowFunction(n) || ts.isMethodDeclaration(n) || ts.isGetAccessor(n) || ts.isSetAccessor(n) || ts.isClassDeclaration(n))) {
+        if (
+            n !== node &&
+            (ts.isFunctionDeclaration(n) || ts.isFunctionExpression(n) ||
+                ts.isArrowFunction(n) || ts.isMethodDeclaration(n) ||
+                ts.isGetAccessor(n) || ts.isSetAccessor(n) ||
+                ts.isClassDeclaration(n))
+        ) {
             return;
         }
 
@@ -296,11 +307,14 @@ export function collectFunctionScopedDeclarations(node: ts.Node): ts.VariableDec
     return decls;
 }
 
-export function collectBlockScopedDeclarations(statements: ts.NodeArray<ts.Statement> | ts.Statement[]): ts.VariableDeclaration[] {
+export function collectBlockScopedDeclarations(
+    statements: ts.NodeArray<ts.Statement> | ts.Statement[],
+): ts.VariableDeclaration[] {
     const decls: ts.VariableDeclaration[] = [];
     for (const stmt of statements) {
         if (ts.isVariableStatement(stmt)) {
-            const isLetOrConst = (stmt.declarationList.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+            const isLetOrConst = (stmt.declarationList.flags &
+                (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
             if (isLetOrConst) {
                 decls.push(...stmt.declarationList.declarations);
             }

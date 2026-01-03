@@ -27,7 +27,7 @@ export class CodeGenerator {
     public indentationLevel: number = 0;
     public typeAnalyzer!: TypeAnalyzer;
     public globalThisVar!: string;
-    public exceptionCounter = 0;
+    public uniqueNameCounter = 0;
 
     // visitor
     public visit = visit;
@@ -94,10 +94,10 @@ export class CodeGenerator {
         mainCode += `    jspp::Scheduler::instance().run();\n`;
         mainCode += `  } catch (const std::exception& ex) {\n`;
         mainCode +=
-            "    auto error = std::make_shared<jspp::AnyValue>(jspp::Exception::exception_to_any_value(ex));\n{\n";
+            "    auto error = std::make_shared<jspp::AnyValue>(jspp::Exception::exception_to_any_value(ex));\n    {\n";
         mainCode +=
-            `    ([&](){ auto __obj = console; return __obj.get_own_property("error").call(__obj, std::span<const jspp::AnyValue>((const jspp::AnyValue[]){*error}, 1), "console.error"); })();\n`;
-        mainCode += `    return 1;\n}\n`;
+            `      ([&](){ auto __obj = console; return __obj.get_own_property("error").call(__obj, std::span<const jspp::AnyValue>((const jspp::AnyValue[]){*error}, 1), "console.error"); })();\n`;
+        mainCode += `      return 1;\n    }\n`;
         mainCode += `  }\n`;
         mainCode += "  return 0;\n}";
 

@@ -88,10 +88,13 @@ export function visitForStatement(
         ...context,
         currentLabel: undefined,
         isFunctionBody: false,
-    });
+    }).trim();
 
     if (ts.isBlock(node.statement)) {
-        let blockContent = statementCode.substring(1, statementCode.length - 2); // remove curly braces
+        let blockContent = statementCode.substring(
+            1,
+            statementCode.length - 2,
+        ); // remove curly braces
         if (context.currentLabel) {
             blockContent +=
                 `${this.indent()}${context.currentLabel}_continue:;\n`;
@@ -365,10 +368,13 @@ export function visitWhileStatement(
         ...context,
         currentLabel: undefined,
         isFunctionBody: false,
-    });
+    }).trim();
 
     if (ts.isBlock(node.statement)) {
-        let blockContent = statementCode.substring(1, statementCode.length - 2); // remove curly braces
+        let blockContent = statementCode.substring(
+            1,
+            statementCode.length - 2,
+        ); // remove curly braces
         if (context.currentLabel) {
             blockContent +=
                 `${this.indent()}${context.currentLabel}_continue:;\n`;
@@ -415,10 +421,13 @@ export function visitDoStatement(
         ...context,
         currentLabel: undefined,
         isFunctionBody: false,
-    });
+    }).trim();
 
     if (ts.isBlock(node.statement)) {
-        let blockContent = statementCode.substring(1, statementCode.length - 2); // remove curly braces
+        let blockContent = statementCode.substring(
+            1,
+            statementCode.length - 2,
+        ); // remove curly braces
         if (context.currentLabel) {
             blockContent +=
                 `${this.indent()}${context.currentLabel}_continue:;\n`;
