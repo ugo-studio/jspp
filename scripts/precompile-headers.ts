@@ -1,3 +1,4 @@
+import { spawnSync } from "child_process";
 import fs from "fs/promises";
 import path from "path";
 
@@ -76,9 +77,9 @@ async function precompileHeaders() {
             }
 
             console.log(`[${mode.name.toUpperCase()}] Compiling header...`);
-            const compile = Bun.spawnSync({
-                cmd: [
-                    "g++",
+            const compile = spawnSync(
+                "g++",
+                [
                     "-x",
                     "c++-header",
                     "-std=c++23",
@@ -89,11 +90,12 @@ async function precompileHeaders() {
                     "-I",
                     PRELUDE_DIR,
                 ],
-                stdout: "inherit",
-                stderr: "inherit",
-            });
+                {
+                    stdio: "inherit",
+                }
+            );
 
-            if (compile.exitCode !== 0) {
+            if (compile.status !== 0) {
                 console.error(
                     `[${mode.name.toUpperCase()}] Failed to precompile headers.`,
                 );

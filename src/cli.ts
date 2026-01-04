@@ -91,17 +91,25 @@ async function main() {
                 "Rebuilding precompiled headers (this may take a while)...",
             );
             // Use spawn (async) instead of spawnSync to keep spinner alive
-            const rebuild = Bun.spawn({
-                cmd: ["bun", "run", "scripts/precompile-headers.ts"],
-                stdout: "pipe", // pipe to hide output unless error, or handle differently
-                stderr: "pipe",
+            const rebuild = spawn("bun", [
+                "run",
+                "scripts/precompile-headers.ts",
+            ], {
                 cwd: pkgDir,
+                stdio: ["ignore", "pipe", "pipe"],
             });
 
-            const exitCode = await rebuild.exited;
+            const stderrChunks: Buffer[] = [];
+            if (rebuild.stderr) {
+                rebuild.stderr.on("data", (chunk) => stderrChunks.push(chunk));
+            }
+
+            const exitCode = await new Promise<number>((resolve) => {
+                rebuild.on("close", (code) => resolve(code ?? 1));
+            });
 
             if (exitCode !== 0) {
-                const stderr = await new Response(rebuild.stderr).text();
+                const stderr = Buffer.concat(stderrChunks).toString();
                 spinner.fail("Failed to rebuild precompiled headers");
                 console.error(stderr);
                 process.exit(1);
@@ -118,9 +126,9 @@ async function main() {
         // Ensure output directory exists
         await fs.mkdir(path.dirname(exeFilePath), { recursive: true });
 
-        const compile = Bun.spawn({
-            cmd: [
-                "g++",
+        const compile = spawn(
+            "g++",
+            [
                 "-std=c++23",
                 ...flags,
                 cppFilePath,
@@ -131,14 +139,25 @@ async function main() {
                 "-I",
                 preludePath,
             ],
-            stdout: "pipe",
-            stderr: "pipe",
+            {
+                stdio: ["ignore", "pipe", "pipe"],
+            },
+        );
+
+        const compileStderrChunks: Buffer[] = [];
+        if (compile.stderr) {
+            compile.stderr.on(
+                "data",
+                (chunk) => compileStderrChunks.push(chunk),
+            );
+        }
+
+        const compileExitCode = await new Promise<number>((resolve) => {
+            compile.on("close", (code) => resolve(code ?? 1));
         });
 
-        const compileExitCode = await compile.exited;
-
         if (compileExitCode !== 0) {
-            const stderr = await new Response(compile.stderr).text();
+            const stderr = Buffer.concat(compileStderrChunks).toString();
             spinner.fail(`Compilation failed`);
             console.error(stderr);
             process.exit(1);
@@ -160,13 +179,13 @@ async function main() {
 
         // 4. Execution Phase
         console.log(`\n${COLORS.cyan}--- Running Output ---${COLORS.reset}`);
-        const run = Bun.spawn({
-            cmd: [exeFilePath, ...scriptArgs],
-            stdout: "inherit",
-            stderr: "inherit",
+        const run = spawn(exeFilePath, scriptArgs, {
+            stdio: "inherit",
         });
 
-        const runExitCode = await run.exited;
+        const runExitCode = await new Promise<number>((resolve) => {
+            run.on("close", (code) => resolve(code ?? 1));
+        });
         console.log(`${COLORS.cyan}----------------------${COLORS.reset}\n`);
 
         if (runExitCode !== 0) {

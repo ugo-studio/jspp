@@ -1,3 +1,4 @@
+import { spawn, spawnSync } from "child_process";
 import { describe, expect, test } from "bun:test";
 import fs from "fs/promises";
 import path from "path";
@@ -16,13 +17,11 @@ const stripAnsi = (str: string) =>
 
 const ensureHeaders = () => {
     console.log("Ensuring precompiled headers are ready...");
-    const precompile = Bun.spawnSync({
-        cmd: ["bun", "run", "scripts/precompile-headers.ts"],
-        stdout: "inherit",
-        stderr: "inherit",
+    const precompile = spawnSync("bun", ["run", "scripts/precompile-headers.ts"], {
         cwd: pkgDir,
+        stdio: "inherit",
     });
-    if (precompile.exitCode !== 0) {
+    if (precompile.status !== 0) {
         throw new Error("Failed to precompile headers for tests.");
     }
 };
@@ -85,7 +84,6 @@ describe("Interpreter tests", async () => {
     // Compile c++ code
     console.log("Compiling C++ code...");
     const compileCmd = [
-        "g++",
         "-O0",
         "-std=c++23",
         outputFile,
@@ -98,22 +96,30 @@ describe("Interpreter tests", async () => {
     ];
 
     if (process.platform === "win32") {
-        compileCmd.splice(2, 0, "-Wa,-mbig-obj");
+        compileCmd.splice(1, 0, "-Wa,-mbig-obj");
     }
 
-    const compile = Bun.spawn(
+    const compile = spawn(
+        "g++",
         compileCmd,
         {
-            stdout: "pipe",
-            stderr: "pipe",
             cwd: pkgDir,
+            stdio: ["ignore", "pipe", "pipe"],
         },
     );
 
-    const compileExitCode = await compile.exited;
+    const compileStdoutChunks: Buffer[] = [];
+    const compileStderrChunks: Buffer[] = [];
+    if (compile.stdout) compile.stdout.on("data", c => compileStdoutChunks.push(c));
+    if (compile.stderr) compile.stderr.on("data", c => compileStderrChunks.push(c));
+
+    const compileExitCode = await new Promise<number>((resolve) => {
+        compile.on("close", (code) => resolve(code ?? 1));
+    });
+
     if (compileExitCode !== 0) {
-        const stderr = await new Response(compile.stderr).text();
-        const stdout = await new Response(compile.stdout).text();
+        const stderr = Buffer.concat(compileStderrChunks).toString();
+        const stdout = Buffer.concat(compileStdoutChunks).toString();
         throw new Error(
             `C++ compilation failed for testsuite: ${stderr}\nSTDOUT: ${stdout}`,
         );
@@ -127,16 +133,22 @@ describe("Interpreter tests", async () => {
         test(
             `should correctly interpret and run ${caseName}.js`,
             async () => {
-                const run = Bun.spawn([exeFile, caseName], {
-                    stdout: "pipe",
-                    stderr: "pipe",
+                const run = spawn(exeFile, [caseName], {
                     cwd: pkgDir,
+                    stdio: ["ignore", "pipe", "pipe"],
                 });
 
-                await run.exited;
+                const runStdoutChunks: Buffer[] = [];
+                const runStderrChunks: Buffer[] = [];
+                if (run.stdout) run.stdout.on("data", c => runStdoutChunks.push(c));
+                if (run.stderr) run.stderr.on("data", c => runStderrChunks.push(c));
 
-                const stdoutText = await new Response(run.stdout).text();
-                const stderrText = await new Response(run.stderr).text();
+                await new Promise<number>((resolve) => {
+                    run.on("close", (code) => resolve(code ?? 1));
+                });
+
+                const stdoutText = Buffer.concat(runStdoutChunks).toString();
+                const stderrText = Buffer.concat(runStderrChunks).toString();
 
                 const stdout = stdoutText.trim().replace(/\r\n/g, "\n");
                 const stderr = stderrText.trim().replace(/\r\n/g, "\n");
