@@ -37,7 +37,7 @@ inline auto Promise = jspp::AnyValue::make_function([](const jspp::AnyValue &thi
                                                         }
                                                         catch (const jspp::Exception &e)
                                                         {
-                                                            promise.reject(*e.data);
+                                                            promise.reject(e.data);
                                                         }
                                                         catch (...)
                                                         {

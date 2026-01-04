@@ -42,7 +42,7 @@ namespace jspp
                 {
                     if (args.empty())
                     {
-                        return AnyValue::make_undefined();
+                        return Constants::UNDEFINED;
                     }
 
                     const auto &new_len_val = args[0];
@@ -103,7 +103,7 @@ namespace jspp
                                                {
                                                                                            if (self->length == 0)
                                                                                            {
-                                                                                               return AnyValue::make_undefined();
+                                                                                               return Constants::UNDEFINED;
                                                                                            }
                                                                                            uint64_t last_idx = self->length - 1;
                                                                                            AnyValue last_val = self->get_property(static_cast<uint32_t>(last_idx));
@@ -128,7 +128,7 @@ namespace jspp
                                                {
                                                                                            if (self->length == 0)
                                                                                            {
-                                                                                               return AnyValue::make_undefined();
+                                                                                               return Constants::UNDEFINED;
                                                                                            }
                                                                                            AnyValue first_val = self->get_property(0u);
 
@@ -227,7 +227,7 @@ namespace jspp
                                                                                                    callback->call(thisVal, cbArgs);
                                                                                                }
                                                                                            }
-                                                                                           return AnyValue::make_undefined(); },
+                                                                                           return Constants::UNDEFINED; },
                                                key);
             }
 
@@ -241,7 +241,7 @@ namespace jspp
                     double k;
                     if (relativeIndex >= 0) k = relativeIndex;
                     else k = len + relativeIndex;
-                    if (k < 0 || k >= len) return AnyValue::make_undefined();
+                    if (k < 0 || k >= len) return Constants::UNDEFINED;
                     return self->get_property(static_cast<uint32_t>(k)); },
                                                key);
             }
@@ -251,9 +251,9 @@ namespace jspp
             {
                 return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
-                    AnyValue searchElement = args.empty() ? AnyValue::make_undefined() : args[0];
+                    AnyValue searchElement = args.empty() ? Constants::UNDEFINED : args[0];
                     double len = static_cast<double>(self->length);
-                    if (len == 0) return AnyValue::make_boolean(false);
+                    if (len == 0) return Constants::FALSE;
                     double n = (args.size() > 1) ? Operators_Private::ToNumber(args[1]) : 0;
                     double k;
                     if (n >= 0) k = n;
@@ -264,10 +264,10 @@ namespace jspp
                     {
                         AnyValue element = self->get_property(static_cast<uint32_t>(i));
                         // SameValueZero algorithm (includes handles NaN)
-                        if (element.is_number() && searchElement.is_number() && std::isnan(element.as_double()) && std::isnan(searchElement.as_double())) return AnyValue::make_boolean(true);
-                        if (is_strictly_equal_to_primitive(element, searchElement)) return AnyValue::make_boolean(true);
+                        if (element.is_number() && searchElement.is_number() && std::isnan(element.as_double()) && std::isnan(searchElement.as_double())) return Constants::TRUE;
+                        if (is_strictly_equal_to_primitive(element, searchElement)) return Constants::TRUE;
                     }
-                    return AnyValue::make_boolean(false); },
+                    return Constants::FALSE; },
                                                key);
             }
 
@@ -276,7 +276,7 @@ namespace jspp
             {
                 return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
-                    AnyValue searchElement = args.empty() ? AnyValue::make_undefined() : args[0];
+                    AnyValue searchElement = args.empty() ? Constants::UNDEFINED : args[0];
                     double len = static_cast<double>(self->length);
                     if (len == 0) return AnyValue::make_number(-1);
                     double n = (args.size() > 1) ? Operators_Private::ToNumber(args[1]) : 0;
@@ -301,7 +301,7 @@ namespace jspp
             {
                 return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
-                    AnyValue searchElement = args.empty() ? AnyValue::make_undefined() : args[0];
+                    AnyValue searchElement = args.empty() ? Constants::UNDEFINED : args[0];
                     double len = static_cast<double>(self->length);
                     if (len == 0) return AnyValue::make_number(-1);
                     double n = (args.size() > 1) ? Operators_Private::ToNumber(args[1]) : len - 1;
@@ -341,7 +341,7 @@ namespace jspp
                             return element;
                         }
                     }
-                    return AnyValue::make_undefined(); },
+                    return Constants::UNDEFINED; },
                                                key);
             }
 
@@ -387,7 +387,7 @@ namespace jspp
                             return element;
                         }
                     }
-                    return AnyValue::make_undefined(); },
+                    return Constants::UNDEFINED; },
                                                key);
             }
 
@@ -431,7 +431,7 @@ namespace jspp
                                                     for (uint64_t i = 0; i < self->length; ++i) {
                                                         co_yield AnyValue::make_number(i);
                                                     }
-                                                    co_return AnyValue::make_undefined(); },
+                                                    co_return Constants::UNDEFINED; },
                                                 key);
             }
 
@@ -447,7 +447,7 @@ namespace jspp
                                                         entry.push_back(self->get_property(static_cast<uint32_t>(i)));
                                                         co_yield AnyValue::make_array(std::move(entry));
                                                     }
-                                                    co_return AnyValue::make_undefined(); },
+                                                    co_return Constants::UNDEFINED; },
                                                 key);
             }
 
@@ -517,11 +517,11 @@ namespace jspp
                             AnyValue kVal = AnyValue::make_number(i);
                             const AnyValue cbArgs[] = {val, kVal, thisVal};
                             if (!is_truthy(callback->call(thisArg, std::span<const AnyValue>(cbArgs, 3)))) {
-                                return AnyValue::make_boolean(false);
+                                return Constants::FALSE;
                             }
                         }
                     }
-                    return AnyValue::make_boolean(true); },
+                    return Constants::TRUE; },
                                                key);
             }
 
@@ -540,11 +540,11 @@ namespace jspp
                             AnyValue kVal = AnyValue::make_number(i);
                             const AnyValue cbArgs[] = {val, kVal, thisVal};
                             if (is_truthy(callback->call(thisArg, std::span<const AnyValue>(cbArgs, 3)))) {
-                                return AnyValue::make_boolean(true);
+                                return Constants::TRUE;
                             }
                         }
                     }
-                    return AnyValue::make_boolean(false); },
+                    return Constants::FALSE; },
                                                key);
             }
 
@@ -698,7 +698,7 @@ namespace jspp
             {
                 return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
-                    AnyValue value = args.empty() ? AnyValue::make_undefined() : args[0];
+                    AnyValue value = args.empty() ? Constants::UNDEFINED : args[0];
                     double len = static_cast<double>(self->length);
                     double start = (args.size() > 1) ? Operators_Private::ToNumber(args[1]) : 0;
                     double end = (args.size() > 2 && !args[2].is_undefined()) ? Operators_Private::ToNumber(args[2]) : len;
@@ -755,7 +755,7 @@ namespace jspp
             {
                 return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
-                    AnyValue compareFn = args.empty() ? AnyValue::make_undefined() : args[0];
+                    AnyValue compareFn = args.empty() ? Constants::UNDEFINED : args[0];
                     
                     std::vector<AnyValue> items;
                     for (uint64_t i = 0; i < self->length; ++i) {

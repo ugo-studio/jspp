@@ -46,7 +46,7 @@ inline auto clearTimeout = jspp::AnyValue::make_function([](const jspp::AnyValue
         size_t id = static_cast<size_t>(args[0].as_double());
         jspp::Scheduler::instance().clear_timer(id);
     }
-    return jspp::AnyValue::make_undefined();
+    return jspp::Constants::UNDEFINED;
 }, "clearTimeout");
 
 // setInterval(callback, delay, ...args)
@@ -88,5 +88,5 @@ inline auto clearInterval = jspp::AnyValue::make_function([](const jspp::AnyValu
         size_t id = static_cast<size_t>(args[0].as_double());
         jspp::Scheduler::instance().clear_timer(id);
     }
-    return jspp::AnyValue::make_undefined();
+    return jspp::Constants::UNDEFINED;
 }, "clearInterval");

@@ -19,6 +19,48 @@
 // JSPP standard library
 namespace jspp
 {
+    enum class JsType : uint8_t
+    {
+        Undefined = 0,
+        Null = 1,
+        Uninitialized = 2,
+        Boolean = 3,
+        Number = 4,
+        String = 5,
+        Object = 6,
+        Array = 7,
+        Function = 8,
+        Iterator = 9,
+        Symbol = 10,
+        Promise = 11,
+        DataDescriptor = 12,
+        AccessorDescriptor = 13,
+        AsyncIterator = 14,
+    };
+
+    struct HeapObject {
+        mutable uint32_t ref_count = 0;
+        
+        HeapObject() noexcept : ref_count(0) {}
+        
+        // Disable copying/assignment of ref_count
+        HeapObject(const HeapObject&) noexcept : ref_count(0) {}
+        HeapObject& operator=(const HeapObject&) noexcept { return *this; }
+        
+        virtual ~HeapObject() = default;
+        virtual JsType get_heap_type() const = 0;
+        
+        void ref() const {
+            ++ref_count;
+        }
+        
+        void deref() const {
+            if (--ref_count == 0) {
+                delete this;
+            }
+        }
+    };
+
     // Js value forward declarations
     struct JsUndefined;     // cannot set property
     struct JsNull;          // cannot set property
@@ -45,6 +87,12 @@ namespace jspp
 
     // Dynamic AnyValue
     class AnyValue;
+
+    using JsFunctionCallable = std::variant<
+        std::function<AnyValue(const AnyValue &, std::span<const AnyValue>)>,
+        std::function<JsIterator<AnyValue>(const AnyValue &, std::span<const AnyValue>)>,
+        std::function<JsPromise(const AnyValue &, std::span<const AnyValue>)>,
+        std::function<JsAsyncIterator<AnyValue>(const AnyValue &, std::span<const AnyValue>)>>;
 
     // Awaiter for AnyValue
     struct AnyValueAwaiter;

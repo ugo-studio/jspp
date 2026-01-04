@@ -14,7 +14,7 @@ inline auto Array = jspp::AnyValue::make_class([](const jspp::AnyValue &thisVal,
         }
         auto arr = jspp::AnyValue::make_array(std::vector<jspp::AnyValue>());
         arr.as_array()->length = static_cast<uint64_t>(len);
-        arr.as_array()->dense.resize(static_cast<size_t>(len), jspp::AnyValue::make_uninitialized());
+        arr.as_array()->dense.resize(static_cast<size_t>(len), jspp::Constants::UNINITIALIZED);
         return arr;
     }
     std::vector<jspp::AnyValue> elements;
@@ -27,9 +27,6 @@ struct ArrayInit
 {
     ArrayInit()
     {
-        // Set Array.prototype.proto to Object.prototype
-        // Array.get_own_property("prototype").set_prototype(::Object.get_own_property("prototype"));
-
         // Array.isArray(value)
         Array.define_data_property("isArray", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                             {
@@ -58,8 +55,6 @@ struct ArrayInit
 
             std::vector<jspp::AnyValue> result;
 
-            // Check if iterable
-            // Simple check: does it have [Symbol.iterator]?
             auto iteratorSym = jspp::WellKnownSymbols::iterator;
             if (items.has_property(iteratorSym->key)) {
                 auto iter = jspp::Access::get_object_value_iterator(items, "Array.from source");
@@ -111,8 +106,8 @@ struct ArrayInit
             std::vector<jspp::AnyValue> result;
             
             bool isAsync = false;
-            jspp::AnyValue iter;
-            jspp::AnyValue nextFn;
+            jspp::AnyValue iter = jspp::Constants::UNDEFINED;
+            jspp::AnyValue nextFn = jspp::Constants::UNDEFINED;
 
             if (items.has_property(jspp::WellKnownSymbols::asyncIterator->key)) {
                 auto method = items.get_property_with_receiver(jspp::WellKnownSymbols::asyncIterator->key, items);

@@ -10,16 +10,18 @@ namespace jspp
     // Forward declaration of AnyValue
     class AnyValue;
 
-    struct JsObject
+    struct JsObject : HeapObject
     {
         std::shared_ptr<Shape> shape;
         std::vector<AnyValue> storage;
-        std::shared_ptr<AnyValue> proto;
+        AnyValue proto;
         std::unordered_set<std::string> deleted_keys;
 
         JsObject();
-        JsObject(std::initializer_list<std::pair<std::string, AnyValue>> p, std::shared_ptr<AnyValue> pr = nullptr);
-        JsObject(const std::map<std::string, AnyValue> &p, std::shared_ptr<AnyValue> pr = nullptr);
+        JsObject(std::initializer_list<std::pair<std::string, AnyValue>> p, AnyValue pr);
+        JsObject(const std::map<std::string, AnyValue> &p, AnyValue pr);
+
+        JsType get_heap_type() const override { return JsType::Object; }
 
         std::string to_std_string() const;
         bool has_property(const std::string &key) const;

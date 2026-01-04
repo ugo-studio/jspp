@@ -78,7 +78,7 @@ namespace jspp
                 auto desc = val.as_data_descriptor();
                 if (desc->enumerable)
                 {
-                    return to_log_string((*desc->value), visited, depth);
+                    return to_log_string(desc->value, visited, depth);
                 }
                 else
                 {

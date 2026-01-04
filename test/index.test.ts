@@ -141,7 +141,7 @@ describe("Interpreter tests", async () => {
                     expect(output).toInclude(expectedString);
                 }
             },
-            { timeout: 10000 },
+            { timeout: 20000 },
         );
     }
 

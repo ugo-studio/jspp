@@ -6,10 +6,14 @@
 
 const char *jspp::Exception::what() const noexcept
 {
-    return data->to_std_string().c_str();
+    // Note: this returns a pointer to a temporary string if we are not careful.
+    // In a real implementation, we might need to store the message string in the Exception object.
+    static thread_local std::string last_msg;
+    last_msg = data.to_std_string();
+    return last_msg.c_str();
 }
 
-jspp::Exception jspp::Exception::make_exception(const std::string &message, const std::string &name = "Error")
+jspp::Exception jspp::Exception::make_exception(const std::string &message, const std::string &name)
 {
     // Use the global Error object to construct the exception
     std::vector<AnyValue> args = {AnyValue::make_string(message)};
@@ -22,7 +26,7 @@ jspp::AnyValue jspp::Exception::exception_to_any_value(const std::exception &ex)
 {
     if (const jspp::Exception *err = dynamic_cast<const jspp::Exception *>(&ex))
     {
-        return (*err->data);
+        return err->data;
     }
     else
     {

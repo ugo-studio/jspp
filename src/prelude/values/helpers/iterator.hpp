@@ -3,6 +3,7 @@
 #include "types.hpp"
 #include "values/iterator.hpp"
 #include "any_value.hpp"
+#include "values/prototypes/iterator.hpp"
 
 template <typename T>
 std::string jspp::JsIterator<T>::to_std_string() const
@@ -11,7 +12,7 @@ std::string jspp::JsIterator<T>::to_std_string() const
 }
 
 template <typename T>
-jspp::JsIterator<T>::NextResult jspp::JsIterator<T>::next(const T &val)
+typename jspp::JsIterator<T>::NextResult jspp::JsIterator<T>::next(const T &val)
 {
     // If the generator is already finished or invalid, return {undefined, true}
     if (!handle || handle.done())
@@ -40,12 +41,12 @@ std::vector<T> jspp::JsIterator<T>::to_vector()
     std::vector<T> result;
     while (true)
     {
-        auto next = this->next();
-        if (next.done)
+        auto next_res = this->next();
+        if (next_res.done)
         {
             break;
         }
-        result.push_back(next.value.value_or(AnyValue::make_undefined()));
+        result.push_back(next_res.value.value_or(Constants::UNDEFINED));
     }
     return result;
 }
@@ -66,10 +67,10 @@ jspp::AnyValue jspp::JsIterator<T>::get_property(const std::string &key, const A
             }
         }
         // prototype not found
-        return jspp::AnyValue::make_undefined();
+        return Constants::UNDEFINED;
     }
 
-    return jspp::AnyValue::resolve_property_for_read(it->second, thisVal, key);
+    return AnyValue::resolve_property_for_read(it->second, thisVal, key);
 }
 
 template <typename T>

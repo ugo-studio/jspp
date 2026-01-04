@@ -11,7 +11,7 @@ namespace jspp
     {
         if (is_object())
         {
-            auto obj = std::get<std::shared_ptr<JsObject>>(storage);
+            auto obj = as_object();
             auto offset = obj->shape->get_offset(key);
             if (offset.has_value())
             {
@@ -25,7 +25,7 @@ namespace jspp
         }
         else if (is_function())
         {
-            std::get<std::shared_ptr<JsFunction>>(storage)->props[key] = value;
+            as_function()->props[key] = value;
         }
     }
 
@@ -46,7 +46,7 @@ namespace jspp
     {
         if (is_object())
         {
-            auto obj = std::get<std::shared_ptr<JsObject>>(storage);
+            auto obj = as_object();
             auto offset = obj->shape->get_offset(key);
 
             if (offset.has_value())
@@ -81,7 +81,7 @@ namespace jspp
         }
         else if (is_function())
         {
-            auto &props = std::get<std::shared_ptr<JsFunction>>(storage)->props;
+            auto &props = as_function()->props;
             auto it = props.find(key);
             if (it != props.end() && it->second.is_accessor_descriptor())
             {
@@ -114,7 +114,7 @@ namespace jspp
     {
         if (is_object())
         {
-            auto obj = std::get<std::shared_ptr<JsObject>>(storage);
+            auto obj = as_object();
             auto offset = obj->shape->get_offset(key);
 
             if (offset.has_value())
@@ -126,7 +126,7 @@ namespace jspp
                     desc->set = [setter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                     {
                         if (args.empty())
-                            return AnyValue::make_undefined();
+                            return Constants::UNDEFINED;
                         return setter.call(thisVal, args);
                     };
                 }
@@ -135,7 +135,7 @@ namespace jspp
                     auto setFunc = [setter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                     {
                         if (args.empty())
-                            return AnyValue::make_undefined();
+                            return Constants::UNDEFINED;
                         return setter.call(thisVal, args);
                     };
                     obj->storage[offset.value()] = AnyValue::make_accessor_descriptor(std::nullopt, setFunc, true, true);
@@ -146,7 +146,7 @@ namespace jspp
                 auto setFunc = [setter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                 {
                     if (args.empty())
-                        return AnyValue::make_undefined();
+                        return Constants::UNDEFINED;
                     return setter.call(thisVal, args);
                 };
                 obj->shape = obj->shape->transition(key);
@@ -155,7 +155,7 @@ namespace jspp
         }
         else if (is_function())
         {
-            auto &props = std::get<std::shared_ptr<JsFunction>>(storage)->props;
+            auto &props = as_function()->props;
             auto it = props.find(key);
             if (it != props.end() && it->second.is_accessor_descriptor())
             {
@@ -163,7 +163,7 @@ namespace jspp
                 desc->set = [setter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                 {
                     if (args.empty())
-                        return AnyValue::make_undefined();
+                        return Constants::UNDEFINED;
                     return setter.call(thisVal, args);
                 };
             }
@@ -172,7 +172,7 @@ namespace jspp
                 auto setFunc = [setter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                 {
                     if (args.empty())
-                        return AnyValue::make_undefined();
+                        return Constants::UNDEFINED;
                     return setter.call(thisVal, args);
                 };
                 props[key] = AnyValue::make_accessor_descriptor(std::nullopt, setFunc, true, true);

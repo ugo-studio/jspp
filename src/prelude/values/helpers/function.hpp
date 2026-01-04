@@ -10,7 +10,7 @@
 
 namespace jspp
 {
-    std::string JsFunction::to_std_string() const
+    inline std::string JsFunction::to_std_string() const
     {
         std::string type_part = this->is_async ? "async function" : this->is_generator ? "function*"
                                                                                        : "function";
@@ -18,7 +18,7 @@ namespace jspp
         return type_part + " " + name_part + "() { [native code] }";
     }
 
-    AnyValue JsFunction::call(const AnyValue &thisVal, std::span<const AnyValue> args)
+    inline AnyValue JsFunction::call(const AnyValue &thisVal, std::span<const AnyValue> args)
     {
         if (std::function<AnyValue(const AnyValue &, std::span<const AnyValue>)> *func = std::get_if<0>(&callable))
         {
@@ -38,17 +38,17 @@ namespace jspp
         }
         else
         {
-            return AnyValue::make_undefined();
+            return Constants::UNDEFINED;
         }
     }
 
-    bool JsFunction::has_property(const std::string &key) const
+    inline bool JsFunction::has_property(const std::string &key) const
     {
         if (props.find(key) != props.end())
             return true;
-        if (proto && !(*proto).is_null() && !(*proto).is_undefined())
+        if (!proto.is_null() && !proto.is_undefined())
         {
-            if ((*proto).has_property(key))
+            if (proto.has_property(key))
                 return true;
         }
         if (FunctionPrototypes::get(key, const_cast<JsFunction *>(this)).has_value())
@@ -56,35 +56,31 @@ namespace jspp
         return false;
     }
 
-    AnyValue JsFunction::get_property(const std::string &key, const AnyValue &thisVal)
+    inline AnyValue JsFunction::get_property(const std::string &key, const AnyValue &thisVal)
     {
         auto it = props.find(key);
         if (it == props.end())
         {
-            // check explicit proto chain (e.g. for classes extending other classes)
-            if (proto && !(*proto).is_null() && !(*proto).is_undefined())
+            if (!proto.is_null() && !proto.is_undefined())
             {
-                if ((*proto).has_property(key))
+                if (proto.has_property(key))
                 {
-                    return (*proto).get_property_with_receiver(key, thisVal);
+                    return proto.get_property_with_receiver(key, thisVal);
                 }
             }
 
-            // check prototype (implicit Function.prototype)
             auto proto_it = FunctionPrototypes::get(key, this);
             if (proto_it.has_value())
             {
                 return AnyValue::resolve_property_for_read(proto_it.value(), thisVal, key);
             }
-            // not found
-            return AnyValue::make_undefined();
+            return Constants::UNDEFINED;
         }
         return AnyValue::resolve_property_for_read(it->second, thisVal, key);
     }
 
-    AnyValue JsFunction::set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal)
+    inline AnyValue JsFunction::set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal)
     {
-        // set prototype property if accessor descriptor
         auto proto_it = FunctionPrototypes::get(key, this);
         if (proto_it.has_value())
         {
@@ -99,7 +95,6 @@ namespace jspp
             }
         }
 
-        // set own property
         auto it = props.find(key);
         if (it != props.end())
         {

@@ -13,7 +13,7 @@ namespace jspp
     class AnyValue;
 
     template <typename T>
-    class JsIterator
+    class JsIterator : public HeapObject
     {
     public:
         struct NextResult
@@ -21,6 +21,9 @@ namespace jspp
             std::optional<T> value;
             bool done;
         };
+
+        JsType get_heap_type() const override { return JsType::Iterator; }
+
         struct promise_type
         {
             std::optional<T> current_value;

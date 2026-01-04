@@ -27,7 +27,7 @@ jspp::AnyValue jspp::JsAsyncIterator<T>::get_property(const std::string &key, co
                 return AnyValue::resolve_property_for_read(proto_it.value(), thisVal, key);
             }
         }
-        return AnyValue::make_undefined();
+        return Constants::UNDEFINED;
     }
     return AnyValue::resolve_property_for_read(it->second, thisVal, key);
 }
@@ -95,6 +95,9 @@ void jspp::JsAsyncIterator<T>::resume_next()
 template <typename T>
 jspp::JsPromise jspp::JsAsyncIterator<T>::next(const T &val)
 {
+    // JsPromise is now a HeapObject.
+    // We should return it by value (which AnyValue will then wrap).
+    // Wait, coroutines return JsPromise by value.
     JsPromise p;
     if (handle)
     {
@@ -125,7 +128,7 @@ auto jspp::JsAsyncIterator<T>::promise_type::yield_value(From &&from)
     {
         auto call = pending_calls.front();
         pending_calls.pop();
-        AnyValue result = AnyValue::make_object({{"value", std::forward<From>(from)}, {"done", AnyValue::make_boolean(false)}});
+        AnyValue result = AnyValue::make_object({{"value", std::forward<From>(from)}, {"done", Constants::FALSE}});
         call.first.resolve(result);
     }
 
@@ -183,7 +186,7 @@ void jspp::JsAsyncIterator<T>::promise_type::unhandled_exception()
     }
     catch (const Exception &e)
     {
-        fail_all(*e.data);
+        fail_all(e.data);
     }
     catch (const std::exception &e)
     {
@@ -239,14 +242,8 @@ auto jspp::JsAsyncIterator<T>::promise_type::await_transform(AnyValue value)
                     h.resume();
                     pr.is_running = false;
 
-                    // After resume, if we suspended at a yield and have more calls, loop.
                     if (!h.done() && !pr.is_awaiting && !pr.pending_calls.empty())
                     {
-                        // We need to call resume_next, but we don't have the iterator.
-                        // Actually, the loop in resume_next handles this.
-                        // But wait, who calls resume_next?
-                        // If we are here, we are in a microtask.
-                        // Let's just manually continue if needed.
                         while (!h.done() && !pr.is_awaiting && !pr.pending_calls.empty())
                         {
                             pr.is_running = true;
@@ -263,7 +260,6 @@ auto jspp::JsAsyncIterator<T>::promise_type::await_transform(AnyValue value)
                     pr.is_running = true;
                     h.resume();
                     pr.is_running = false;
-                    // Errors handled via await_resume/exception throw
                 });
         }
         AnyValue await_resume()

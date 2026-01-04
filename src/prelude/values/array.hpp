@@ -8,17 +8,19 @@ namespace jspp
     // Forward declaration of AnyValue
     class AnyValue;
 
-    struct JsArray
+    struct JsArray : HeapObject
     {
         std::vector<AnyValue> dense;                     // dense storage for small/contiguous indices
         std::unordered_map<uint32_t, AnyValue> sparse;   // sparse indices (very large indices)
         std::unordered_map<std::string, AnyValue> props; // non-index string properties
-        std::shared_ptr<AnyValue> proto;
+        AnyValue proto;
         uint64_t length = 0;
 
-        JsArray() : proto(nullptr) {}
+        JsArray(); 
         explicit JsArray(const std::vector<AnyValue> &items);
         explicit JsArray(std::vector<AnyValue> &&items);
+
+        JsType get_heap_type() const override { return JsType::Array; }
 
         std::string to_std_string() const;
         JsIterator<AnyValue> get_iterator();

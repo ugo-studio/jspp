@@ -111,7 +111,7 @@ struct MathInit {
 
         // Math.clz32(x)
         Math.define_data_property("clz32", AnyValue::make_function([](const AnyValue&, std::span<const AnyValue> args) -> AnyValue {
-            uint32_t val = Operators_Private::ToInt32(args.empty() ? AnyValue::make_undefined() : args[0]);
+            uint32_t val = Operators_Private::ToInt32(args.empty() ? Constants::UNDEFINED : args[0]);
             if (val == 0) return AnyValue::make_number(32);
             return AnyValue::make_number(std::countl_zero(val));
         }, "clz32"));
@@ -173,8 +173,8 @@ struct MathInit {
 
         // Math.imul(x, y)
         Math.define_data_property("imul", AnyValue::make_function([](const AnyValue&, std::span<const AnyValue> args) -> AnyValue {
-            int32_t a = Operators_Private::ToInt32(args.empty() ? AnyValue::make_undefined() : args[0]);
-            int32_t b = Operators_Private::ToInt32(args.size() < 2 ? AnyValue::make_undefined() : args[1]);
+            int32_t a = Operators_Private::ToInt32(args.empty() ? Constants::UNDEFINED : args[0]);
+            int32_t b = Operators_Private::ToInt32(args.size() < 2 ? Constants::UNDEFINED : args[1]);
             return AnyValue::make_number(a * b);
         }, "imul"));
 

@@ -15,7 +15,7 @@ namespace jspp
         // Helper function to check for TDZ and deref heap-allocated variables
         inline const AnyValue &deref_ptr(const std::shared_ptr<AnyValue> &var, const std::string &name)
         {
-            if ((*var).is_uninitialized()) [[unlikely]]
+            if (var->is_uninitialized()) [[unlikely]]
             {
                 Exception::throw_uninitialized_reference(name);
             }
@@ -23,23 +23,7 @@ namespace jspp
         }
         inline AnyValue &deref_ptr(std::shared_ptr<AnyValue> &var, const std::string &name)
         {
-            if ((*var).is_uninitialized()) [[unlikely]]
-            {
-                Exception::throw_uninitialized_reference(name);
-            }
-            return *var;
-        }
-        inline const AnyValue &deref_ptr(const std::unique_ptr<AnyValue> &var, const std::string &name)
-        {
-            if ((*var).is_uninitialized()) [[unlikely]]
-            {
-                Exception::throw_uninitialized_reference(name);
-            }
-            return *var;
-        }
-        inline AnyValue &deref_ptr(std::unique_ptr<AnyValue> &var, const std::string &name)
-        {
-            if ((*var).is_uninitialized()) [[unlikely]]
+            if (var->is_uninitialized()) [[unlikely]]
             {
                 Exception::throw_uninitialized_reference(name);
             }
@@ -64,7 +48,7 @@ namespace jspp
             return var;
         }
 
-        inline const AnyValue type_of(const std::optional<AnyValue> &val = std::nullopt)
+        inline AnyValue type_of(const std::optional<AnyValue> &val = std::nullopt)
         {
             if (!val.has_value())
                 return AnyValue::make_string("undefined");
@@ -106,7 +90,6 @@ namespace jspp
             if (obj.is_object())
             {
                 auto ptr = obj.as_object();
-                // Use shape's property_names for stable iteration order
                 for (const auto &key : ptr->shape->property_names)
                 {
                     if (ptr->deleted_keys.count(key))
@@ -155,7 +138,7 @@ namespace jspp
             if (obj.is_array())
             {
                 auto len = obj.as_array()->length;
-                for (auto i = 0; i < len; ++i)
+                for (uint64_t i = 0; i < len; ++i)
                 {
                     keys.push_back(std::to_string(i));
                 }
@@ -163,7 +146,7 @@ namespace jspp
             if (obj.is_string())
             {
                 auto len = obj.as_string()->value.length();
-                for (auto i = 0; i < len; ++i)
+                for (size_t i = 0; i < len; ++i)
                 {
                     keys.push_back(std::to_string(i));
                 }
@@ -205,7 +188,6 @@ namespace jspp
             if (obj.is_async_iterator())
                 return obj;
 
-            // 1. Try Symbol.asyncIterator
             auto method = obj.get_own_property(WellKnownSymbols::asyncIterator->key);
             if (method.is_function())
             {
@@ -214,7 +196,6 @@ namespace jspp
                     return iter;
             }
 
-            // 2. Try Symbol.iterator (sync fallback)
             auto syncMethod = obj.get_own_property(WellKnownSymbols::iterator->key);
             if (syncMethod.is_function())
             {
@@ -250,7 +231,7 @@ namespace jspp
             {
                 throw jspp::Exception::make_exception("Function has non-object prototype in instanceof check", "TypeError");
             }
-            // Walk prototype chain of lhs
+            
             AnyValue current = lhs;
 
             while (true)
@@ -258,42 +239,21 @@ namespace jspp
                 AnyValue proto;
                 if (current.is_object())
                 {
-                    auto p = current.as_object()->proto;
-                    if (p)
-                        proto = *p;
-                    else
-                        break;
+                    proto = current.as_object()->proto;
                 }
                 else if (current.is_array())
                 {
-                    auto p = current.as_array()->proto;
-                    if (p)
-                        proto = *p;
-                    else
-                        break;
+                    proto = current.as_array()->proto;
                 }
                 else if (current.is_function())
                 {
-                    auto p = current.as_function()->proto;
-                    if (p)
-                        proto = *p;
-                    else
-                        break;
-                }
-                else if (current.is_promise())
-                {
-                    // Promises don't store explicit proto yet in our impl
-                    break;
-                }
-                else if (current.is_async_iterator())
-                {
-                    // AsyncIterators don't store explicit proto yet in our impl
-                    break;
+                    proto = current.as_function()->proto;
                 }
                 else
                 {
                     break;
                 }
+                
                 if (proto.is_null() || proto.is_undefined())
                     break;
                 if (is_strictly_equal_to_primitive(proto, targetProto))

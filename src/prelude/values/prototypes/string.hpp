@@ -40,7 +40,7 @@ namespace jspp
                 return AnyValue::make_accessor_descriptor([self](const AnyValue &thisVal, std::span<const AnyValue>) -> AnyValue
                                                           { return AnyValue::make_number(self->value.length()); },
                                                           [self](const AnyValue &thisVal, std::span<const AnyValue>) -> AnyValue
-                                                          { return AnyValue::make_undefined(); },
+                                                          { return Constants::UNDEFINED; },
                                                           false,
                                                           false);
             }
@@ -78,12 +78,12 @@ namespace jspp
             {
                 return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
-                    if(args.empty()) return AnyValue::make_boolean(false);
+                    if(args.empty()) return Constants::FALSE;
                     std::string search = args[0].to_std_string();
                     size_t end_pos = (args.size() > 1 && !args[1].is_undefined()) ? static_cast<size_t>(Operators_Private::ToNumber(args[1])) : self->value.length();
                     
                     if (end_pos > self->value.length()) end_pos = self->value.length();
-                    if (search.length() > end_pos) return AnyValue::make_boolean(false);
+                    if (search.length() > end_pos) return Constants::FALSE;
 
                     return AnyValue::make_boolean(self->value.substr(end_pos - search.length(), search.length()) == search); },
                                                key);
@@ -94,7 +94,7 @@ namespace jspp
             {
                 return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
-                    if(args.empty()) return AnyValue::make_boolean(false);
+                    if(args.empty()) return Constants::FALSE;
                     std::string search = args[0].to_std_string();
                     size_t pos = (args.size() > 1) ? static_cast<size_t>(Operators_Private::ToNumber(args[1])) : 0;
                     
@@ -269,7 +269,7 @@ namespace jspp
             {
                 return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
-                    if(args.empty()) return AnyValue::make_boolean(false);
+                    if(args.empty()) return Constants::FALSE;
                     std::string search = args[0].to_std_string();
                     size_t pos = (args.size() > 1) ? static_cast<size_t>(Operators_Private::ToNumber(args[1])) : 0;
                     if (pos > self->value.length()) pos = self->value.length();

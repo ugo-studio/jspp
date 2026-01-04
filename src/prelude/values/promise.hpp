@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.hpp"
+#include "any_value.hpp"
 #include <vector>
 #include <functional>
 #include <memory>
@@ -19,7 +20,7 @@ namespace jspp
     struct PromiseState
     {
         PromiseStatus status = PromiseStatus::Pending;
-        std::shared_ptr<AnyValue> result; // Value if fulfilled, reason if rejected
+        AnyValue result; // Value if fulfilled, reason if rejected
         std::vector<std::function<void(const AnyValue&)>> onFulfilled;
         std::vector<std::function<void(const AnyValue&)>> onRejected;
         
@@ -28,7 +29,7 @@ namespace jspp
 
     struct JsPromisePromiseType; // Forward declaration
 
-    struct JsPromise
+    struct JsPromise : HeapObject
     {
         using promise_type = JsPromisePromiseType;
 
@@ -36,6 +37,8 @@ namespace jspp
         std::unordered_map<std::string, AnyValue> props;
 
         JsPromise();
+
+        JsType get_heap_type() const override { return JsType::Promise; }
 
         // --- Promise Logic ---
         void resolve(const AnyValue& value);

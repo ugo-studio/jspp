@@ -43,7 +43,7 @@ namespace jspp
                     {
                         if (self->description.empty())
                         {
-                            return AnyValue::make_undefined();
+                            return Constants::UNDEFINED;
                         }
                         return AnyValue::make_string(self->description);
                     },

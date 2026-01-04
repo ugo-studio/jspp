@@ -18,7 +18,7 @@ inline auto errorConstructor = [](const jspp::AnyValue &thisVal, std::span<const
     if (target.is_object())
     {
         auto obj = target.as_object();
-        if (obj->proto && is_strictly_equal_to_primitive((*obj->proto), proto))
+        if (!obj->proto.is_null() && !obj->proto.is_undefined() && is_strictly_equal_to_primitive(obj->proto, proto))
         {
             is_construct_call = true;
         }
@@ -55,10 +55,10 @@ inline auto errorConstructor = [](const jspp::AnyValue &thisVal, std::span<const
 // Static Error.isError(val) implementation
 inline auto isErrorFn = jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                       {
-    if (args.empty()) return jspp::AnyValue::make_boolean(false);
+    if (args.empty()) return jspp::Constants::FALSE;
     
     jspp::AnyValue val = args[0];
-    if (!val.is_object()) return jspp::AnyValue::make_boolean(false);
+    if (!val.is_object()) return jspp::Constants::FALSE;
     
     // Check if it inherits from Error.prototype
     // This is essentially 'instanceof Error'
@@ -67,14 +67,14 @@ inline auto isErrorFn = jspp::AnyValue::make_function([](const jspp::AnyValue &t
     // Walk prototype chain
     if (val.is_object()) {
         auto current = val.as_object()->proto;
-        while (current && !(*current).is_null()) {
-             if (is_strictly_equal_to_primitive((*current),proto)) return jspp::AnyValue::make_boolean(true);
-             if ((*current).is_object()) current = (*current).as_object()->proto;
+        while (!current.is_null()) {
+             if (is_strictly_equal_to_primitive(current, proto)) return jspp::Constants::TRUE;
+             if (current.is_object()) current = current.as_object()->proto;
              else break;
         }
     }
     
-    return jspp::AnyValue::make_boolean(false); }, "isError");
+    return jspp::Constants::FALSE; }, "isError");
 
 // toString method for Error.prototype
 inline auto errorToStringFn = jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue

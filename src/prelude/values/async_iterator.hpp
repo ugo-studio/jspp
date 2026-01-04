@@ -16,9 +16,11 @@ namespace jspp
     class AnyValue;
 
     template <typename T>
-    class JsAsyncIterator
+    class JsAsyncIterator : public HeapObject
     {
     public:
+        JsType get_heap_type() const override { return JsType::AsyncIterator; }
+
         struct promise_type
         {
             std::queue<std::pair<JsPromise, T>> pending_calls;

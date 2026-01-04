@@ -74,9 +74,6 @@ struct ObjectInit
             auto target = args[0];
             if (target.is_null() || target.is_undefined()) throw jspp::Exception::make_exception("Cannot convert undefined or null to object", "TypeError");
 
-            // In JS, Object.assign modifies target in place if it's an object. 
-            // If it's a primitive, it wraps it (but our primitives are tricky, let's assume objects for now).
-            
             for (size_t i = 1; i < args.size(); ++i) {
                 auto source = args[i];
                 if (source.is_null() || source.is_undefined()) continue;
@@ -92,15 +89,14 @@ struct ObjectInit
         // Object.is(value1, value2)
         Object.define_data_property("is", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                         {
-            jspp::AnyValue v1 = args.size() > 0 ? args[0] : jspp::AnyValue::make_undefined();
-            jspp::AnyValue v2 = args.size() > 1 ? args[1] : jspp::AnyValue::make_undefined();
+            jspp::AnyValue v1 = args.size() > 0 ? args[0] : jspp::Constants::UNDEFINED;
+            jspp::AnyValue v2 = args.size() > 1 ? args[1] : jspp::Constants::UNDEFINED;
             
             if (v1.is_number() && v2.is_number()) {
                 double d1 = v1.as_double();
                 double d2 = v2.as_double();
                 if (std::isnan(d1) && std::isnan(d2)) return jspp::Constants::TRUE;
                 if (d1 == 0 && d2 == 0) {
-                    // check signs
                     return jspp::AnyValue::make_boolean(std::signbit(d1) == std::signbit(d2));
                 }
                 return jspp::AnyValue::make_boolean(d1 == d2);
@@ -113,25 +109,18 @@ struct ObjectInit
                                                                                     {
              if (args.empty()) throw jspp::Exception::make_exception("Object.getPrototypeOf called on non-object", "TypeError");
              auto obj = args[0];
-             // In ES6+, primitives are coerced to objects.
-             // We'll focus on Objects/Arrays/Functions for now.
              
              if (obj.is_object()) {
-                 auto p = obj.as_object()->proto;
-                 return p ? *p : jspp::AnyValue::make_null();
+                 return obj.as_object()->proto;
              }
              if (obj.is_array()) {
-                 auto p = obj.as_array()->proto;
-                 return p ? *p : jspp::AnyValue::make_null();
+                 return obj.as_array()->proto;
              }
              if (obj.is_function()) {
-                 auto p = obj.as_function()->proto;
-                 return p ? *p : jspp::AnyValue::make_null();
+                 return obj.as_function()->proto;
              }
              
-             // For primitives, they use their prototype from the global constructors usually
-             // e.g. Number.prototype. For now return null or implement if needed.
-             return jspp::AnyValue::make_null(); }, "getPrototypeOf"));
+             return jspp::Constants::Null; }, "getPrototypeOf"));
 
         // Object.setPrototypeOf(obj, proto)
         Object.define_data_property("setPrototypeOf", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
@@ -145,11 +134,11 @@ struct ObjectInit
              }
              
              if (obj.is_object()) {
-                 obj.as_object()->proto = std::make_shared<jspp::AnyValue>(proto);
+                 obj.as_object()->proto = proto;
              } else if (obj.is_array()) {
-                 obj.as_array()->proto = std::make_shared<jspp::AnyValue>(proto);
+                 obj.as_array()->proto = proto;
              } else if (obj.is_function()) {
-                 obj.as_function()->proto = std::make_shared<jspp::AnyValue>(proto);
+                 obj.as_function()->proto = proto;
              }
              
              return obj; }, "setPrototypeOf"));
@@ -202,8 +191,8 @@ struct ObjectInit
                  auto value = descObj.get_own_property("value");
                  obj.define_data_property(prop, value, writable, enumerable, configurable);
              } else {
-                 jspp::AnyValue getter = jspp::AnyValue::make_undefined();
-                 jspp::AnyValue setter = jspp::AnyValue::make_undefined();
+                 jspp::AnyValue getter = jspp::Constants::UNDEFINED;
+                 jspp::AnyValue setter = jspp::Constants::UNDEFINED;
                  
                  if (hasGet) getter = descObj.get_own_property("get");
                  if (hasSet) setter = descObj.get_own_property("set");
@@ -236,7 +225,6 @@ struct ObjectInit
                         o_ptr->storage.push_back(desc);
                     }
                  }
-                 // TODO: Handle Array/Function/others
              }
              
              return obj; }, "defineProperty"));

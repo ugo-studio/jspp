@@ -6,10 +6,11 @@
 #include "any_value.hpp"
 #include "values/prototypes/array.hpp"
 
-jspp::JsArray::JsArray(const std::vector<jspp::AnyValue> &items) : dense(items), proto(nullptr), length(items.size()) {}
-jspp::JsArray::JsArray(std::vector<jspp::AnyValue> &&items) : dense(std::move(items)), proto(nullptr), length(dense.size()) {}
+inline jspp::JsArray::JsArray() : proto(Constants::Null), length(0) {}
+inline jspp::JsArray::JsArray(const std::vector<jspp::AnyValue> &items) : dense(items), proto(Constants::Null), length(items.size()) {}
+inline jspp::JsArray::JsArray(std::vector<jspp::AnyValue> &&items) : dense(std::move(items)), proto(Constants::Null), length(dense.size()) {}
 
-std::string jspp::JsArray::to_std_string() const
+inline std::string jspp::JsArray::to_std_string() const
 {
     if (length == 0)
     {
@@ -19,26 +20,25 @@ std::string jspp::JsArray::to_std_string() const
     std::string result = "";
     for (uint64_t i = 0; i < length; ++i)
     {
-        const AnyValue *itemPtr = nullptr;
+        AnyValue itemVal = Constants::UNINITIALIZED;
         if (i < dense.size())
         {
-            itemPtr = &dense[i];
+            itemVal = dense[i];
         }
         else
         {
             auto it = sparse.find(static_cast<uint32_t>(i));
             if (it != sparse.end())
             {
-                itemPtr = &it->second;
+                itemVal = it->second;
             }
         }
 
-        if (itemPtr && !itemPtr->is_uninitialized())
+        if (!itemVal.is_uninitialized())
         {
-            const auto &item = *itemPtr;
-            if (!item.is_undefined() && !item.is_null())
+            if (!itemVal.is_undefined() && !itemVal.is_null())
             {
-                result += item.to_std_string();
+                result += itemVal.to_std_string();
             }
         }
 
@@ -50,7 +50,7 @@ std::string jspp::JsArray::to_std_string() const
     return result;
 }
 
-jspp::JsIterator<jspp::AnyValue> jspp::JsArray::get_iterator()
+inline jspp::JsIterator<jspp::AnyValue> jspp::JsArray::get_iterator()
 {
     for (uint64_t idx = 0; idx < length; ++idx)
     {
@@ -60,7 +60,7 @@ jspp::JsIterator<jspp::AnyValue> jspp::JsArray::get_iterator()
     co_return AnyValue::make_undefined();
 }
 
-bool jspp::JsArray::has_property(const std::string &key) const
+inline bool jspp::JsArray::has_property(const std::string &key) const
 {
     if (key == "length")
         return true;
@@ -75,9 +75,9 @@ bool jspp::JsArray::has_property(const std::string &key) const
     if (props.find(key) != props.end())
         return true;
 
-    if (proto && !(*proto).is_null() && !(*proto).is_undefined())
+    if (!proto.is_null() && !proto.is_undefined())
     {
-        if ((*proto).has_property(key))
+        if (proto.has_property(key))
             return true;
     }
 
@@ -86,10 +86,10 @@ bool jspp::JsArray::has_property(const std::string &key) const
     return false;
 }
 
-jspp::AnyValue jspp::JsArray::get_property(const std::string &key, const AnyValue &thisVal)
+inline jspp::AnyValue jspp::JsArray::get_property(const std::string &key, const AnyValue &thisVal)
 {
     if (
-        !key.empty() && std::isdigit(static_cast<unsigned char>(key[0])) // Quick check: if the first character is not a digit, it can't be a standard index.
+        !key.empty() && std::isdigit(static_cast<unsigned char>(key[0])) 
         && is_array_index(key))
     {
         uint32_t idx = static_cast<uint32_t>(std::stoull(key));
@@ -100,7 +100,6 @@ jspp::AnyValue jspp::JsArray::get_property(const std::string &key, const AnyValu
         auto it = props.find(key);
         if (it == props.end())
         {
-            // check special own properties (length)
             if (key == "length")
             {
                 auto proto_it = ArrayPrototypes::get(key, this);
@@ -110,48 +109,45 @@ jspp::AnyValue jspp::JsArray::get_property(const std::string &key, const AnyValu
                 }
             }
 
-            // check explicit proto chain
-            if (proto && !(*proto).is_null() && !(*proto).is_undefined())
+            if (!proto.is_null() && !proto.is_undefined())
             {
-                if ((*proto).has_property(key))
+                if (proto.has_property(key))
                 {
-                    return (*proto).get_property_with_receiver(key, thisVal);
+                    return proto.get_property_with_receiver(key, thisVal);
                 }
             }
 
-            // check prototype (implicit Array.prototype)
             auto proto_it = ArrayPrototypes::get(key, this);
             if (proto_it.has_value())
             {
                 return AnyValue::resolve_property_for_read(proto_it.value(), thisVal, key);
             }
-            // not found
-            return AnyValue::make_undefined();
+            return Constants::UNDEFINED;
         }
         return AnyValue::resolve_property_for_read(it->second, thisVal, key);
     }
 }
 
-jspp::AnyValue jspp::JsArray::get_property(uint32_t idx)
+inline jspp::AnyValue jspp::JsArray::get_property(uint32_t idx)
 {
     if (idx < dense.size())
     {
         const auto &val = dense[idx];
-        return val.is_uninitialized() ? AnyValue::make_undefined() : val;
+        return val.is_uninitialized() ? Constants::UNDEFINED : val;
     }
     const auto &it = sparse.find(idx);
     if (it != sparse.end())
     {
         const auto &val = it->second;
-        return val.is_uninitialized() ? AnyValue::make_undefined() : val;
+        return val.is_uninitialized() ? Constants::UNDEFINED : val;
     }
-    return AnyValue::make_undefined();
+    return Constants::UNDEFINED;
 }
 
-jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal)
+inline jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal)
 {
     if (
-        !key.empty() && std::isdigit(static_cast<unsigned char>(key[0])) // Quick check: if the first character is not a digit, it can't be a standard index.
+        !key.empty() && std::isdigit(static_cast<unsigned char>(key[0])) 
         && is_array_index(key))
     {
         uint32_t idx = static_cast<uint32_t>(std::stoull(key));
@@ -159,14 +155,8 @@ jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const AnyValu
     }
     else
     {
-        // set prototype property if accessor descriptor
         auto proto_val_opt = ArrayPrototypes::get(key, this);
-        if (!proto_val_opt.has_value() && proto && !(*proto).is_null() && !(*proto).is_undefined())
-        {
-            // This is a bit simplified, ideally we should call get_property on proto to check descriptors
-            // For now, let's assume if it's not in ArrayPrototypes, it might be in the explicit proto chain
-        }
-
+        
         if (proto_val_opt.has_value())
         {
             auto proto_value = proto_val_opt.value();
@@ -180,7 +170,6 @@ jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const AnyValu
             }
         }
 
-        // set own property
         auto it = props.find(key);
         if (it != props.end())
         {
@@ -194,7 +183,7 @@ jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const AnyValu
     }
 }
 
-jspp::AnyValue jspp::JsArray::set_property(uint32_t idx, const AnyValue &value)
+inline jspp::AnyValue jspp::JsArray::set_property(uint32_t idx, const AnyValue &value)
 {
     uint64_t newLen = static_cast<uint64_t>(idx) + 1;
     if (newLen > length)
@@ -208,7 +197,7 @@ jspp::AnyValue jspp::JsArray::set_property(uint32_t idx, const AnyValue &value)
     }
     else if (idx <= dense.size() + DENSE_GROW_THRESHOLD)
     {
-        dense.resize(idx + 1, AnyValue::make_uninitialized());
+        dense.resize(idx + 1, Constants::UNINITIALIZED);
         dense[idx] = value;
         return value;
     }

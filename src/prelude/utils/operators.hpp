@@ -30,15 +30,14 @@ namespace jspp
             case JsType::String:
             {
                 const std::string &s = val.as_string()->value;
-                // JS considers empty or whitespace-only strings as 0.
-                if (s.empty() || std::all_of(s.begin(), s.end(), isspace))
+                if (s.empty() || std::all_of(s.begin(), s.end(), [](unsigned char c)
+                                             { return std::isspace(c); }))
                     return 0.0;
                 try
                 {
                     size_t pos;
                     double num = std::stod(s, &pos);
-                    // Ensure the entire string was parsed, allowing for trailing whitespace.
-                    while (pos < s.length() && std::isspace(s[pos]))
+                    while (pos < s.length() && std::isspace(static_cast<unsigned char>(s[pos])))
                         pos++;
                     if (pos != s.length())
                         return std::numeric_limits<double>::quiet_NaN();
@@ -50,8 +49,6 @@ namespace jspp
                 }
             }
             default:
-                // In a full engine, objects would be converted via valueOf/toString.
-                // Here we simplify and return NaN.
                 return std::numeric_limits<double>::quiet_NaN();
             }
         }
@@ -84,15 +81,15 @@ namespace jspp
     }
 
     // --- TRUTHY CHECKER ---
-    const bool is_truthy(const double &val) noexcept
+    inline const bool is_truthy(const double &val) noexcept
     {
         return val != 0.0 && !std::isnan(val);
     }
-    const bool is_truthy(const std::string &val) noexcept
+    inline const bool is_truthy(const std::string &val) noexcept
     {
         return !val.empty();
     }
-    const bool is_truthy(const AnyValue &val) noexcept
+    inline const bool is_truthy(const AnyValue &val) noexcept
     {
         switch (val.get_type())
         {
@@ -118,7 +115,9 @@ namespace jspp
     // Operator === (returns primitive boolean)
     inline const bool is_strictly_equal_to_primitive(const AnyValue &lhs, const double &rhs) noexcept
     {
-        return is_strictly_equal_to_primitive(rhs, lhs);
+        if (lhs.is_number())
+            return lhs.as_double() == rhs;
+        return false;
     }
     inline const bool is_strictly_equal_to_primitive(const double &lhs, const AnyValue &rhs) noexcept
     {
@@ -151,6 +150,8 @@ namespace jspp
             return lhs.as_function() == rhs.as_function();
         case JsType::Iterator:
             return lhs.as_iterator() == rhs.as_iterator();
+        case JsType::AsyncIterator:
+            return lhs.as_async_iterator() == rhs.as_async_iterator();
         case JsType::Promise:
             return lhs.as_promise() == rhs.as_promise();
         case JsType::Symbol:
@@ -167,49 +168,11 @@ namespace jspp
     // Operator == (returns primitive boolean)
     inline const bool is_equal_to_primitive(const AnyValue &lhs, const double &rhs) noexcept
     {
-        return is_equal_to_primitive(rhs, lhs);
+        return is_equal_to_primitive(lhs, AnyValue::make_number(rhs));
     }
     inline const bool is_equal_to_primitive(const double &lhs, const AnyValue &rhs) noexcept
     {
-        JsType rhs_type = rhs.get_type();
-        if (rhs_type == JsType::Number)
-        {
-            return lhs == rhs.as_double();
-        }
-        if (rhs_type == JsType::String)
-        {
-            double num_rhs;
-            try
-            {
-                const std::string &s = rhs.as_string()->value;
-                // JS considers empty string or whitespace-only string to be 0
-                if (s.empty() || std::all_of(s.begin(), s.end(), [](unsigned char c)
-                                             { return std::isspace(c); }))
-                {
-                    num_rhs = 0.0;
-                }
-                else
-                {
-                    size_t pos;
-                    num_rhs = std::stod(s, &pos);
-                    // Check if the entire string was consumed, allowing for trailing whitespace
-                    while (pos < s.length() && std::isspace(static_cast<unsigned char>(s[pos])))
-                    {
-                        pos++;
-                    }
-                    if (pos != s.length())
-                    {
-                        num_rhs = std::numeric_limits<double>::quiet_NaN();
-                    }
-                }
-            }
-            catch (...)
-            {
-                num_rhs = std::numeric_limits<double>::quiet_NaN();
-            }
-            return lhs == num_rhs;
-        }
-        return is_equal_to_primitive(rhs, AnyValue::make_number(lhs));
+        return is_equal_to_primitive(AnyValue::make_number(lhs), rhs);
     }
     inline const bool is_equal_to_primitive(const double &lhs, const double &rhs) noexcept
     {
@@ -219,58 +182,44 @@ namespace jspp
     {
         JsType lhs_type = lhs.get_type();
         JsType rhs_type = rhs.get_type();
-        // Implements JavaScript's Abstract Equality Comparison Algorithm (==)
-        // Step 1: If types are the same, use strict equality (===)
         if (lhs_type == rhs_type)
         {
             return is_strictly_equal_to_primitive(lhs, rhs);
         }
-        // Steps 2 & 3: null == undefined
         if ((lhs_type == JsType::Null && rhs_type == JsType::Undefined) || (lhs_type == JsType::Undefined && rhs_type == JsType::Null))
         {
             return true;
         }
-        // Step 4 & 5: number == string
         if (lhs_type == JsType::Number && rhs_type == JsType::String)
         {
-            return is_equal_to_primitive(lhs.as_double(), rhs);
+            return lhs.as_double() == Operators_Private::ToNumber(rhs);
         }
         if (lhs_type == JsType::String && rhs_type == JsType::Number)
         {
-            // Delegate to the other operand to avoid code duplication
-            return is_equal_to_primitive(rhs.as_double(), lhs);
+            return Operators_Private::ToNumber(lhs) == rhs.as_double();
         }
-        // Step 6 & 7: boolean == any
         if (lhs_type == JsType::Boolean)
         {
-            // Convert boolean to number and re-compare
             return is_equal_to_primitive(lhs.as_boolean() ? 1.0 : 0.0, rhs);
         }
         if (rhs_type == JsType::Boolean)
         {
-            // Convert boolean to number and re-compare
             return is_equal_to_primitive(lhs, AnyValue::make_number(rhs.as_boolean() ? 1.0 : 0.0));
         }
-        // Step 8 & 9: object == (string or number or symbol)
-        // Simplified: Objects convert to primitives.
         if ((lhs_type == JsType::Object || lhs_type == JsType::Array || lhs_type == JsType::Function || lhs_type == JsType::Promise || lhs_type == JsType::Iterator) &&
             (rhs_type == JsType::String || rhs_type == JsType::Number || rhs_type == JsType::Symbol))
         {
-            // Convert object to primitive (string) and re-compare.
-            // This is a simplification of JS's ToPrimitive.
             return is_equal_to_primitive(AnyValue::make_string(lhs.to_std_string()), rhs);
         }
         if ((rhs_type == JsType::Object || rhs_type == JsType::Array || rhs_type == JsType::Function || rhs_type == JsType::Promise || rhs_type == JsType::Iterator) &&
             (lhs_type == JsType::String || lhs_type == JsType::Number || lhs_type == JsType::Symbol))
         {
-            return is_equal_to_primitive(rhs, lhs);
+            return is_equal_to_primitive(lhs, AnyValue::make_string(rhs.to_std_string()));
         }
-        // Step 10: Datacriptor or accessor descriptor
         if (lhs_type == JsType::DataDescriptor || lhs_type == JsType::AccessorDescriptor)
         {
             return is_strictly_equal_to_primitive(lhs, rhs);
         }
-        // Step 11: All other cases (e.g., object == null) are false.
         return false;
     }
 
@@ -351,13 +300,10 @@ namespace jspp
     // Operator +
     inline AnyValue operator+(const AnyValue &lhs, const AnyValue &rhs)
     {
-        // Check for number optimization
         if (lhs.is_number() && rhs.is_number())
             return AnyValue::make_number(lhs.as_double() + rhs.as_double());
-        // String concatenation priority
         if (lhs.is_string() || rhs.is_string())
             return AnyValue::make_string(lhs.to_std_string() + rhs.to_std_string());
-        // Fallback
         return AnyValue::make_number(Operators_Private::ToNumber(lhs) + Operators_Private::ToNumber(rhs));
     }
     inline AnyValue operator+(const AnyValue &lhs, const double &rhs)
@@ -505,7 +451,6 @@ namespace jspp
         if (lhs.is_number() && rhs.is_number())
             return AnyValue::make_boolean(lhs.as_double() < rhs.as_double());
 
-        // String comparison support
         if (lhs.is_string() && rhs.is_string())
             return AnyValue::make_boolean(lhs.as_string()->value < rhs.as_string()->value);
 
@@ -513,7 +458,7 @@ namespace jspp
         double r = Operators_Private::ToNumber(rhs);
 
         if (std::isnan(l) || std::isnan(r))
-            return AnyValue::make_boolean(false);
+            return Constants::FALSE;
 
         return AnyValue::make_boolean(l < r);
     }
@@ -524,7 +469,7 @@ namespace jspp
 
         double l = Operators_Private::ToNumber(lhs);
         if (std::isnan(l) || std::isnan(rhs))
-            return AnyValue::make_boolean(false);
+            return Constants::FALSE;
 
         return AnyValue::make_boolean(l < rhs);
     }
@@ -535,17 +480,15 @@ namespace jspp
 
         double r = Operators_Private::ToNumber(rhs);
         if (std::isnan(lhs) || std::isnan(r))
-            return AnyValue::make_boolean(false);
+            return Constants::FALSE;
 
         return AnyValue::make_boolean(lhs < r);
     }
 
-    // Greater than > (Derived from <)
     inline AnyValue operator>(const AnyValue &lhs, const AnyValue &rhs) { return rhs < lhs; }
     inline AnyValue operator>(const AnyValue &lhs, const double &rhs) { return operator<(rhs, lhs); }
     inline AnyValue operator>(const double &lhs, const AnyValue &rhs) { return operator<(rhs, lhs); }
 
-    // Less than or equal <= (Derived from >)
     inline AnyValue operator<=(const AnyValue &lhs, const AnyValue &rhs)
     {
         AnyValue result = rhs < lhs;
@@ -553,18 +496,15 @@ namespace jspp
     }
     inline AnyValue operator<=(const AnyValue &lhs, const double &rhs)
     {
-        // a <= b is equivalent to !(b < a) -> !(rhs < lhs)
         AnyValue result = operator<(rhs, lhs);
         return AnyValue::make_boolean(!result.as_boolean());
     }
     inline AnyValue operator<=(const double &lhs, const AnyValue &rhs)
     {
-        // a <= b is equivalent to !(b < a) -> !(rhs < lhs)
         AnyValue result = operator<(rhs, lhs);
         return AnyValue::make_boolean(!result.as_boolean());
     }
 
-    // Greater than or equal >= (Derived from <)
     inline AnyValue operator>=(const AnyValue &lhs, const AnyValue &rhs)
     {
         AnyValue result = lhs < rhs;
@@ -588,7 +528,6 @@ namespace jspp
     }
     inline AnyValue operator==(const AnyValue &lhs, const double &rhs)
     {
-        // Optimization: check if lhs is number first
         if (lhs.is_number())
             return AnyValue::make_boolean(lhs.as_double() == rhs);
         return AnyValue::make_boolean(is_equal_to_primitive(lhs, AnyValue::make_number(rhs)));
@@ -600,7 +539,6 @@ namespace jspp
         return AnyValue::make_boolean(is_equal_to_primitive(rhs, AnyValue::make_number(lhs)));
     }
 
-    // Inequality !=
     inline AnyValue operator!=(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_boolean(!is_equal_to_primitive(lhs, rhs)); }
     inline AnyValue operator!=(const AnyValue &lhs, const double &rhs) { return AnyValue::make_boolean(!operator==(lhs, rhs).as_boolean()); }
     inline AnyValue operator!=(const double &lhs, const AnyValue &rhs) { return AnyValue::make_boolean(!operator==(lhs, rhs).as_boolean()); }

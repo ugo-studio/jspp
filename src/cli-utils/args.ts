@@ -1,5 +1,6 @@
 import path from "path";
 
+import pkg from "../../package.json";
 import { COLORS } from "./colors";
 
 export interface CliOptions {
@@ -56,6 +57,9 @@ export function parseArgs(rawArgs: string[]): CliOptions {
     }
 
     if (!jsFilePathArg) {
+        console.log(
+            `${COLORS.bold}JSPP Compiler${COLORS.reset} ${COLORS.dim}v${pkg.version}${COLORS.reset}`,
+        );
         console.log(
             `${COLORS.bold}Usage:${COLORS.reset} jspp <path-to-js-file> [--release] [--keep-cpp] [-o <output-path>] [-- <args...>]`,
         );

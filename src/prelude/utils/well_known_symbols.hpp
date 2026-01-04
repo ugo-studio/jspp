@@ -1,25 +1,24 @@
 #pragma once
 
 #include "values/symbol.hpp"
-#include <memory>
 
 namespace jspp
 {
     namespace WellKnownSymbols
     {
         // We use a specific prefix "@@" for well-known symbols to distinguish them from user symbols
-        inline std::shared_ptr<JsSymbol> iterator = std::make_shared<JsSymbol>("Symbol.iterator", "@@iterator");
-        inline std::shared_ptr<JsSymbol> asyncIterator = std::make_shared<JsSymbol>("Symbol.asyncIterator", "@@asyncIterator");
-        inline std::shared_ptr<JsSymbol> hasInstance = std::make_shared<JsSymbol>("Symbol.hasInstance", "@@hasInstance");
-        inline std::shared_ptr<JsSymbol> isConcatSpreadable = std::make_shared<JsSymbol>("Symbol.isConcatSpreadable", "@@isConcatSpreadable");
-        inline std::shared_ptr<JsSymbol> match = std::make_shared<JsSymbol>("Symbol.match", "@@match");
-        inline std::shared_ptr<JsSymbol> matchAll = std::make_shared<JsSymbol>("Symbol.matchAll", "@@matchAll");
-        inline std::shared_ptr<JsSymbol> replace = std::make_shared<JsSymbol>("Symbol.replace", "@@replace");
-        inline std::shared_ptr<JsSymbol> search = std::make_shared<JsSymbol>("Symbol.search", "@@search");
-        inline std::shared_ptr<JsSymbol> species = std::make_shared<JsSymbol>("Symbol.species", "@@species");
-        inline std::shared_ptr<JsSymbol> split = std::make_shared<JsSymbol>("Symbol.split", "@@split");
-        inline std::shared_ptr<JsSymbol> toPrimitive = std::make_shared<JsSymbol>("Symbol.toPrimitive", "@@toPrimitive");
-        inline std::shared_ptr<JsSymbol> toStringTag = std::make_shared<JsSymbol>("Symbol.toStringTag", "@@toStringTag");
-        inline std::shared_ptr<JsSymbol> unscopables = std::make_shared<JsSymbol>("Symbol.unscopables", "@@unscopables");
+        inline JsSymbol* iterator = new JsSymbol("Symbol.iterator", "@@iterator");
+        inline JsSymbol* asyncIterator = new JsSymbol("Symbol.asyncIterator", "@@asyncIterator");
+        inline JsSymbol* hasInstance = new JsSymbol("Symbol.hasInstance", "@@hasInstance");
+        inline JsSymbol* isConcatSpreadable = new JsSymbol("Symbol.isConcatSpreadable", "@@isConcatSpreadable");
+        inline JsSymbol* match = new JsSymbol("Symbol.match", "@@match");
+        inline JsSymbol* matchAll = new JsSymbol("Symbol.matchAll", "@@matchAll");
+        inline JsSymbol* replace = new JsSymbol("Symbol.replace", "@@replace");
+        inline JsSymbol* search = new JsSymbol("Symbol.search", "@@search");
+        inline JsSymbol* species = new JsSymbol("Symbol.species", "@@species");
+        inline JsSymbol* split = new JsSymbol("Symbol.split", "@@split");
+        inline JsSymbol* toPrimitive = new JsSymbol("Symbol.toPrimitive", "@@toPrimitive");
+        inline JsSymbol* toStringTag = new JsSymbol("Symbol.toStringTag", "@@toStringTag");
+        inline JsSymbol* unscopables = new JsSymbol("Symbol.unscopables", "@@unscopables");
     }
 }

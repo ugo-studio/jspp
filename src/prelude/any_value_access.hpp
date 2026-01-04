@@ -5,22 +5,21 @@
 
 namespace jspp
 {
-    AnyValue AnyValue::get_own_property(const std::string &key) const
+    inline AnyValue AnyValue::get_own_property(const std::string &key) const
     {
         return get_property_with_receiver(key, *this);
     }
-    bool AnyValue::has_property(const std::string &key) const
+    inline bool AnyValue::has_property(const std::string &key) const
     {
         switch (get_type())
         {
         case JsType::Object:
-            return std::get<std::shared_ptr<JsObject>>(storage)->has_property(key);
+            return as_object()->has_property(key);
         case JsType::Array:
-            return std::get<std::shared_ptr<JsArray>>(storage)->has_property(key);
+            return as_array()->has_property(key);
         case JsType::Function:
-            return std::get<std::shared_ptr<JsFunction>>(storage)->has_property(key);
+            return as_function()->has_property(key);
         case JsType::Promise:
-            // Promises don't have their own props usually, but could.
             return false;
         case JsType::Iterator:
             return false;
@@ -34,7 +33,7 @@ namespace jspp
             if (JsArray::is_array_index(key))
             {
                 uint32_t idx = static_cast<uint32_t>(std::stoull(key));
-                return idx < std::get<std::shared_ptr<JsString>>(storage)->value.length();
+                return idx < as_string()->value.length();
             }
             return false;
         case JsType::Number:
@@ -46,62 +45,53 @@ namespace jspp
             return false;
         }
     }
-    AnyValue AnyValue::get_own_property(uint32_t idx) const
+    inline AnyValue AnyValue::get_own_property(uint32_t idx) const
     {
-        switch (storage.index())
-        {
-        case 7: // Array
-            return std::get<std::shared_ptr<JsArray>>(storage)->get_property(idx);
-        case 5: // String
-            return std::get<std::shared_ptr<JsString>>(storage)->get_property(idx);
-        case 4: // Number
-            return get_own_property(std::to_string(idx));
-        default:
-            return get_own_property(std::to_string(idx));
-        }
+        if (is_array()) return as_array()->get_property(idx);
+        if (is_string()) return as_string()->get_property(idx);
+        return get_own_property(std::to_string(idx));
     }
-    AnyValue AnyValue::get_own_property(const AnyValue &key) const
+    inline AnyValue AnyValue::get_own_property(const AnyValue &key) const
     {
         if (key.is_number() && is_array())
-            return std::get<std::shared_ptr<JsArray>>(storage)->get_property(key.as_double());
+            return as_array()->get_property(key.as_double());
         if (key.is_number() && is_string())
-            return std::get<std::shared_ptr<JsString>>(storage)->get_property(key.as_double());
+            return as_string()->get_property(key.as_double());
 
-        // If the key is a Symbol, use its internal key string
         if (key.is_symbol())
             return get_own_property(key.as_symbol()->key);
 
         return get_own_property(key.to_std_string());
     }
 
-    AnyValue AnyValue::get_property_with_receiver(const std::string &key, const AnyValue &receiver) const
+    inline AnyValue AnyValue::get_property_with_receiver(const std::string &key, const AnyValue &receiver) const
     {
         switch (get_type())
         {
         case JsType::Object:
-            return std::get<std::shared_ptr<JsObject>>(storage)->get_property(key, receiver);
+            return as_object()->get_property(key, receiver);
         case JsType::Array:
-            return std::get<std::shared_ptr<JsArray>>(storage)->get_property(key, receiver);
+            return as_array()->get_property(key, receiver);
         case JsType::Function:
-            return std::get<std::shared_ptr<JsFunction>>(storage)->get_property(key, receiver);
+            return as_function()->get_property(key, receiver);
         case JsType::Promise:
-            return std::get<std::shared_ptr<JsPromise>>(storage)->get_property(key, receiver);
+            return as_promise()->get_property(key, receiver);
         case JsType::Iterator:
-            return std::get<std::shared_ptr<JsIterator<AnyValue>>>(storage)->get_property(key, receiver);
+            return static_cast<JsIterator<AnyValue>*>(get_ptr())->get_property(key, receiver);
         case JsType::AsyncIterator:
-            return std::get<std::shared_ptr<JsAsyncIterator<AnyValue>>>(storage)->get_property(key, receiver);
+            return static_cast<JsAsyncIterator<AnyValue>*>(get_ptr())->get_property(key, receiver);
         case JsType::Symbol:
-            return std::get<std::shared_ptr<JsSymbol>>(storage)->get_property(key, receiver);
+            return as_symbol()->get_property(key, receiver);
         case JsType::String:
-            return std::get<std::shared_ptr<JsString>>(storage)->get_property(key, receiver);
+            return as_string()->get_property(key, receiver);
         case JsType::Number:
         {
-            auto proto_it = NumberPrototypes::get(key, std::get<double>(storage));
+            auto proto_it = NumberPrototypes::get(key, as_double());
             if (proto_it.has_value())
             {
                 return AnyValue::resolve_property_for_read(proto_it.value(), receiver, key);
             }
-            return AnyValue::make_undefined();
+            return Constants::UNDEFINED;
         }
         case JsType::Undefined:
             throw Exception::make_exception("Cannot read properties of undefined (reading '" + key + "')", "TypeError");
@@ -110,22 +100,22 @@ namespace jspp
         case JsType::Uninitialized:
             Exception::throw_uninitialized_reference("#<Object>");
         default:
-            return AnyValue::make_undefined();
+            return Constants::UNDEFINED;
         }
     }
 
-    AnyValue AnyValue::set_own_property(const std::string &key, const AnyValue &value) const
+    inline AnyValue AnyValue::set_own_property(const std::string &key, const AnyValue &value) const
     {
         switch (get_type())
         {
         case JsType::Object:
-            return std::get<std::shared_ptr<JsObject>>(storage)->set_property(key, value, *this);
+            return as_object()->set_property(key, value, *this);
         case JsType::Array:
-            return std::get<std::shared_ptr<JsArray>>(storage)->set_property(key, value, *this);
+            return as_array()->set_property(key, value, *this);
         case JsType::Function:
-            return std::get<std::shared_ptr<JsFunction>>(storage)->set_property(key, value, *this);
+            return as_function()->set_property(key, value, *this);
         case JsType::Promise:
-            return std::get<std::shared_ptr<JsPromise>>(storage)->set_property(key, value, *this);
+            return as_promise()->set_property(key, value, *this);
         case JsType::Undefined:
             throw Exception::make_exception("Cannot set properties of undefined (setting '" + key + "')", "TypeError");
         case JsType::Null:
@@ -134,54 +124,44 @@ namespace jspp
             return value;
         }
     }
-    AnyValue AnyValue::set_own_property(uint32_t idx, const AnyValue &value) const
+    inline AnyValue AnyValue::set_own_property(uint32_t idx, const AnyValue &value) const
     {
         if (is_array())
         {
-            return std::get<std::shared_ptr<JsArray>>(storage)->set_property(idx, value);
+            return as_array()->set_property(idx, value);
         }
         return set_own_property(std::to_string(idx), value);
     }
-    AnyValue AnyValue::set_own_property(const AnyValue &key, const AnyValue &value) const
+    inline AnyValue AnyValue::set_own_property(const AnyValue &key, const AnyValue &value) const
     {
         if (key.is_number() && is_array())
         {
-            return std::get<std::shared_ptr<JsArray>>(storage)->set_property(key.as_double(), value);
+            return as_array()->set_property(key.as_double(), value);
         }
 
-        // If the key is a Symbol, use its internal key string
         if (key.is_symbol())
             return set_own_property(key.as_symbol()->key, value);
 
         return set_own_property(key.to_std_string(), value);
     }
 
-    AnyValue AnyValue::call_own_property(const std::string &key, std::span<const AnyValue> args) const
+    inline AnyValue AnyValue::call_own_property(const std::string &key, std::span<const AnyValue> args) const
     {
         return get_own_property(key).call((*this), args, key);
     }
-    AnyValue AnyValue::call_own_property(uint32_t idx, std::span<const AnyValue> args) const
+    inline AnyValue AnyValue::call_own_property(uint32_t idx, std::span<const AnyValue> args) const
     {
-        switch (storage.index())
-        {
-        case 7: // Array
-            return std::get<std::shared_ptr<JsArray>>(storage)->get_property(idx).call((*this), args, "[" + std::to_string(idx) + "]");
-        case 5: // String
-            return std::get<std::shared_ptr<JsString>>(storage)->get_property(idx).call((*this), args, "[" + std::to_string(idx) + "]");
-        case 4: // Number
-            return call_own_property(std::to_string(idx), args);
-        default:
-            return call_own_property(std::to_string(idx), args);
-        }
+        if (is_array()) return as_array()->get_property(idx).call((*this), args, "[" + std::to_string(idx) + "]");
+        if (is_string()) return as_string()->get_property(idx).call((*this), args, "[" + std::to_string(idx) + "]");
+        return call_own_property(std::to_string(idx), args);
     }
-    AnyValue AnyValue::call_own_property(const AnyValue &key, std::span<const AnyValue> args) const
+    inline AnyValue AnyValue::call_own_property(const AnyValue &key, std::span<const AnyValue> args) const
     {
         if (key.is_number() && is_array())
-            return std::get<std::shared_ptr<JsArray>>(storage)->get_property(key.as_double()).call((*this), args, "[" + key.to_std_string() + "]");
+            return as_array()->get_property(key.as_double()).call((*this), args, "[" + key.to_std_string() + "]");
         if (key.is_number() && is_string())
-            return std::get<std::shared_ptr<JsString>>(storage)->get_property(key.as_double()).call((*this), args, "[" + key.to_std_string() + "]");
+            return as_string()->get_property(key.as_double()).call((*this), args, "[" + key.to_std_string() + "]");
 
-        // If the key is a Symbol, use its internal key string
         if (key.is_symbol())
             return call_own_property(key.as_symbol()->key, args);
 

@@ -5,9 +5,9 @@
 #include "any_value.hpp"
 
 namespace jspp {
-    JsObject::JsObject() : shape(Shape::empty_shape()), proto(nullptr) {}
+    inline JsObject::JsObject() : shape(Shape::empty_shape()), proto(Constants::Null) {}
 
-    JsObject::JsObject(std::initializer_list<std::pair<std::string, AnyValue>> p, std::shared_ptr<AnyValue> pr) : proto(pr) {
+    inline JsObject::JsObject(std::initializer_list<std::pair<std::string, AnyValue>> p, AnyValue pr) : proto(pr) {
         shape = Shape::empty_shape();
         storage.reserve(p.size());
         for (const auto& pair : p) {
@@ -16,7 +16,7 @@ namespace jspp {
         }
     }
 
-    JsObject::JsObject(const std::map<std::string, AnyValue> &p, std::shared_ptr<AnyValue> pr) : proto(pr) {
+    inline JsObject::JsObject(const std::map<std::string, AnyValue> &p, AnyValue pr) : proto(pr) {
         shape = Shape::empty_shape();
         storage.reserve(p.size());
         for (const auto& pair : p) {
@@ -26,20 +26,20 @@ namespace jspp {
     }
 }
 
-std::string jspp::JsObject::to_std_string() const
+inline std::string jspp::JsObject::to_std_string() const
 {
     return "[Object Object]";
 }
 
-bool jspp::JsObject::has_property(const std::string &key) const
+inline bool jspp::JsObject::has_property(const std::string &key) const
 {
     if (deleted_keys.count(key)) return false;
 
     if (shape->get_offset(key).has_value())
         return true;
-    if (proto && !(*proto).is_null() && !(*proto).is_undefined())
+    if (!proto.is_null() && !proto.is_undefined())
     {
-        if ((*proto).has_property(key))
+        if (proto.has_property(key))
             return true;
     }
     if (ObjectPrototypes::get(key, const_cast<JsObject *>(this)).has_value())
@@ -47,37 +47,33 @@ bool jspp::JsObject::has_property(const std::string &key) const
     return false;
 }
 
-jspp::AnyValue jspp::JsObject::get_property(const std::string &key, const AnyValue &thisVal)
+inline jspp::AnyValue jspp::JsObject::get_property(const std::string &key, const AnyValue &thisVal)
 {
-    if (deleted_keys.count(key)) return AnyValue::make_undefined();
+    if (deleted_keys.count(key)) return Constants::UNDEFINED;
 
     auto offset = shape->get_offset(key);
     if (!offset.has_value())
     {
-        // check prototype chain
-        if (proto && !(*proto).is_null() && !(*proto).is_undefined())
+        if (!proto.is_null() && !proto.is_undefined())
         {
-            if ((*proto).has_property(key))
+            if (proto.has_property(key))
             {
-                return (*proto).get_property_with_receiver(key, thisVal);
+                return proto.get_property_with_receiver(key, thisVal);
             }
         }
 
-        // check built-in prototype methods (Object.prototype)
         auto proto_it = ObjectPrototypes::get(key, this);
         if (proto_it.has_value())
         {
             return AnyValue::resolve_property_for_read(proto_it.value(), thisVal, key);
         }
-        // not found
-        return AnyValue::make_undefined();
+        return Constants::UNDEFINED;
     }
     return AnyValue::resolve_property_for_read(storage[offset.value()], thisVal, key);
 }
 
-jspp::AnyValue jspp::JsObject::set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal)
+inline jspp::AnyValue jspp::JsObject::set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal)
 {
-    // set prototype property if accessor descriptor
     auto proto_it = ObjectPrototypes::get(key, this);
     if (proto_it.has_value())
     {
@@ -92,7 +88,6 @@ jspp::AnyValue jspp::JsObject::set_property(const std::string &key, const AnyVal
         }
     }
 
-    // set own property
     if (deleted_keys.count(key)) deleted_keys.erase(key);
 
     auto offset = shape->get_offset(key);

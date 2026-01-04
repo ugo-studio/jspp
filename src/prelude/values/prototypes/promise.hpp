@@ -15,23 +15,32 @@ namespace jspp
             {
                 return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
-                    AnyValue onFulfilled = (args.size() > 0 && args[0].is_function()) ? args[0] : AnyValue::make_undefined();
-                    AnyValue onRejected = (args.size() > 1 && args[1].is_function()) ? args[1] : AnyValue::make_undefined();
+                    AnyValue onFulfilled = (args.size() > 0 && args[0].is_function()) ? args[0] : Constants::UNDEFINED;
+                    AnyValue onRejected = (args.size() > 1 && args[1].is_function()) ? args[1] : Constants::UNDEFINED;
                     
                     // "then" returns a new Promise
                     JsPromise newPromise; 
                     AnyValue newPromiseVal = AnyValue::make_promise(newPromise);
                     
-                    // Capture shared pointer to the new promise's state to keep it alive and modify it
                     auto newPromiseState = newPromise.state; 
-                    // Helper wrapper to interact with state
                     auto resolveNew = [newPromiseState](const AnyValue& v) {
-                        JsPromise p; p.state = newPromiseState;
-                        p.resolve(v);
+                        // Manual state resolution to avoid HeapObject management issues here
+                        if (newPromiseState->status != PromiseStatus::Pending) return;
+                        newPromiseState->status = PromiseStatus::Fulfilled;
+                        newPromiseState->result = v;
+                        auto callbacks = newPromiseState->onFulfilled;
+                        newPromiseState->onFulfilled.clear();
+                        newPromiseState->onRejected.clear();
+                        for (auto& cb : callbacks) jspp::Scheduler::instance().enqueue([cb, v]() { cb(v); });
                     };
                     auto rejectNew = [newPromiseState](const AnyValue& r) {
-                        JsPromise p; p.state = newPromiseState;
-                        p.reject(r);
+                        if (newPromiseState->status != PromiseStatus::Pending) return;
+                        newPromiseState->status = PromiseStatus::Rejected;
+                        newPromiseState->result = r;
+                        auto callbacks = newPromiseState->onRejected;
+                        newPromiseState->onFulfilled.clear();
+                        newPromiseState->onRejected.clear();
+                        for (auto& cb : callbacks) jspp::Scheduler::instance().enqueue([cb, r]() { cb(r); });
                     };
 
 
@@ -40,9 +49,8 @@ namespace jspp
                         if (onFulfilled.is_function()) {
                             try {
                                 const AnyValue cbArgs[] = {val};
-                                auto res = onFulfilled.call(AnyValue::make_undefined(), cbArgs, "onFulfilled");
+                                auto res = onFulfilled.call(Constants::UNDEFINED, cbArgs, "onFulfilled");
                                 if (res.is_promise()) {
-                                    // Chaining: newPromise follows res
                                     auto chained = res.as_promise();
                                     chained->then(
                                         [resolveNew](const AnyValue& v) { resolveNew(v); },
@@ -52,12 +60,12 @@ namespace jspp
                                     resolveNew(res);
                                 }
                             } catch (const Exception& e) {
-                                rejectNew(*e.data);
+                                rejectNew(e.data);
                             } catch (...) {
                                 rejectNew(AnyValue::make_string("Unknown error"));
                             }
                         } else {
-                            resolveNew(val); // Fallthrough
+                            resolveNew(val);
                         }
                     };
 
@@ -66,7 +74,7 @@ namespace jspp
                          if (onRejected.is_function()) {
                             try {
                                 const AnyValue cbArgs[] = {reason};
-                                auto res = onRejected.call(AnyValue::make_undefined(), cbArgs,"onRejected");
+                                auto res = onRejected.call(Constants::UNDEFINED, cbArgs,"onRejected");
                                 if (res.is_promise()) {
                                     auto chained = res.as_promise();
                                     chained->then(
@@ -74,15 +82,15 @@ namespace jspp
                                         [rejectNew](const AnyValue& e) { rejectNew(e); }
                                     );
                                 } else {
-                                    resolveNew(res); // Recovered
+                                    resolveNew(res);
                                 }
                             } catch (const Exception& e) {
-                                rejectNew(*e.data);
+                                rejectNew(e.data);
                             } catch (...) {
                                 rejectNew(AnyValue::make_string("Unknown error"));
                             }
                         } else {
-                            rejectNew(reason); // Fallthrough
+                            rejectNew(reason);
                         }
                     };
 
@@ -94,9 +102,8 @@ namespace jspp
             {
                 return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
-                    // catch(onRejected) is then(undefined, onRejected)
-                    AnyValue onRejected = (args.size() > 0 && args[0].is_function()) ? args[0] : AnyValue::make_undefined();
-                    const AnyValue thenArgs[] = {AnyValue::make_undefined(), onRejected};
+                    AnyValue onRejected = (args.size() > 0 && args[0].is_function()) ? args[0] : Constants::UNDEFINED;
+                    const AnyValue thenArgs[] = {Constants::UNDEFINED, onRejected};
                     return thisVal.get_own_property("then").call(thisVal, thenArgs,"then"); }, "catch");
             }
 
@@ -104,23 +111,20 @@ namespace jspp
             {
                 return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                {
-                    AnyValue onFinally = (args.size() > 0 && args[0].is_function()) ? args[0] : AnyValue::make_undefined();
-                    
-                    // finally(onFinally) returns a promise that passes through value/reason, 
-                    // but executes onFinally first.
+                    AnyValue onFinally = (args.size() > 0 && args[0].is_function()) ? args[0] : Constants::UNDEFINED;
                     
                     const AnyValue thenArgs[] = {
                         AnyValue::make_function([onFinally](const AnyValue&, std::span<const AnyValue> args) -> AnyValue {
-                            AnyValue val = args.empty() ? AnyValue::make_undefined() : args[0];
+                            AnyValue val = args.empty() ? Constants::UNDEFINED : args[0];
                             if (onFinally.is_function()) {
-                                onFinally.call(AnyValue::make_undefined(), {}, "onFinally");
+                                onFinally.call(Constants::UNDEFINED, {}, "onFinally");
                             }
                             return val;
                         }, ""),
                         AnyValue::make_function([onFinally](const AnyValue&, std::span<const AnyValue> args) -> AnyValue {
-                            AnyValue reason = args.empty() ? AnyValue::make_undefined() : args[0];
+                            AnyValue reason = args.empty() ? Constants::UNDEFINED : args[0];
                             if (onFinally.is_function()) {
-                                onFinally.call(AnyValue::make_undefined(), {}, "onFinally");
+                                onFinally.call(Constants::UNDEFINED, {}, "onFinally");
                             }
                             throw Exception(reason);
                         }, "")

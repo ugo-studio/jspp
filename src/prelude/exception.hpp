@@ -1,23 +1,19 @@
-
 #pragma once
 
 #include <exception>
 #include "types.hpp"
+#include "any_value.hpp"
 
 namespace jspp
 {
-    class AnyValue;
-
     struct Exception : std::exception
     {
-        std::shared_ptr<AnyValue> data;
+        AnyValue data;
 
-        explicit Exception(std::shared_ptr<AnyValue> d)
-            : data(std::move(d)) {}
         explicit Exception(const AnyValue &value)
-            : data(std::make_shared<AnyValue>(value)) {}
+            : data(value) {}
         explicit Exception(AnyValue &&value)
-            : data(std::make_shared<AnyValue>(std::move(value))) {}
+            : data(std::move(value)) {}
 
         const char *what() const noexcept override;
         static Exception make_exception(const std::string &message, const std::string &name);

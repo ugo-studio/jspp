@@ -1,7 +1,6 @@
 #pragma once
 
 #include "types.hpp"
-#include <variant>
 #include <optional>
 
 namespace jspp
@@ -9,17 +8,12 @@ namespace jspp
   // Forward declaration of AnyValue
   class AnyValue;
 
-  using JsFunctionCallable = std::variant<std::function<AnyValue(const AnyValue &, std::span<const AnyValue>)>,                               // 0: Normal
-                                          std::function<jspp::JsIterator<jspp::AnyValue>(const AnyValue &, std::span<const AnyValue>)>, // 1: Generator
-                                          std::function<jspp::JsPromise(const AnyValue &, std::span<const AnyValue>)>,                 // 2: Async
-                                          std::function<jspp::JsAsyncIterator<jspp::AnyValue>(const AnyValue &, std::span<const AnyValue>)>>; // 3: Async Generator
-
-  struct JsFunction
+  struct JsFunction : HeapObject
   {
     JsFunctionCallable callable;
     std::optional<std::string> name;
     std::unordered_map<std::string, AnyValue> props;
-    std::shared_ptr<AnyValue> proto = nullptr;
+    AnyValue proto;
     bool is_generator;
     bool is_async;
     bool is_class;
@@ -75,6 +69,8 @@ namespace jspp
           is_constructor(is_ctor && !is_gen && !is_async_func)
     {
     }
+
+    JsType get_heap_type() const override { return JsType::Function; }
 
     std::string to_std_string() const;
     AnyValue call(const AnyValue &thisVal, std::span<const AnyValue> args);

@@ -15,11 +15,11 @@ namespace jspp
             if (fn->is_class)
             {
                 std::string extends_part = "";
-                if (fn->proto && !fn->proto->is_uninitialized() && !fn->proto->is_undefined() && !fn->proto->is_null())
+                if (!fn->proto.is_uninitialized() && !fn->proto.is_undefined() && !fn->proto.is_null())
                 {
-                    if (fn->proto->is_function())
+                    if (fn->proto.is_function())
                     {
-                        auto parent = fn->proto->as_function();
+                        auto parent = fn->proto.as_function();
                         std::string name = parent->name.value_or("");
                         if (!name.empty())
                         {

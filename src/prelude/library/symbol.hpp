@@ -32,7 +32,7 @@ struct SymbolInit
              auto sym = args[0].as_symbol();
              auto key = jspp::JsSymbol::key_for(sym);
              if (key.has_value()) return jspp::AnyValue::make_string(key.value());
-             return jspp::AnyValue::make_undefined(); }, "keyFor"));
+             return jspp::Constants::UNDEFINED; }, "keyFor"));
 
         // Well-known symbols
         Symbol.define_data_property("iterator", jspp::AnyValue::from_symbol(jspp::WellKnownSymbols::iterator), false, false, false);
