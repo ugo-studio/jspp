@@ -51,8 +51,8 @@ To contribute to JSPP or run its test suite, follow these steps:
 
 ### Prerequisites
 
-- **Bun:** This project uses Bun for package management and script execution.
-  - [Install Bun](https://bun.sh/docs/installation)
+- **Node.js:** This project uses Node.js for package management and script execution.
+  - [Install Node.js](https://nodejs.org/)
 - **C++ Compiler:** A compiler with support for C++23 is required. This project is tested with `g++`.
   - `g++` (MinGW on Windows, or available via build-essentials on Linux)
 
@@ -64,7 +64,7 @@ To contribute to JSPP or run its test suite, follow these steps:
     ```
 2.  Install dependencies:
     ```sh
-    bun install
+    npm install
     ```
 
 ## Usage
@@ -88,7 +88,7 @@ The transpiled C++ file and executable will be generated in the same directory a
 You can also run the test suite, which will transpile all the JavaScript test cases in `test/cases/`, build the resulting C++ files, and run them.
 
 ```sh
-bun run test
+npm test
 ```
 
 ## Roadmap
