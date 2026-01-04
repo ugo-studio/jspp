@@ -1,9 +1,9 @@
 import ts from "typescript";
 
-import { DeclaredSymbols } from "../../ast/symbols";
-import { CodeGenerator } from "./";
-import { collectFunctionScopedDeclarations } from "./helpers";
-import type { VisitContext } from "./visitor";
+import { DeclaredSymbols } from "../../ast/symbols.js";
+import { collectFunctionScopedDeclarations } from "./helpers.js";
+import { CodeGenerator } from "./index.js";
+import type { VisitContext } from "./visitor.js";
 
 export function generateLambda(
     this: CodeGenerator,

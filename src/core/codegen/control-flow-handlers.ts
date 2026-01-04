@@ -1,8 +1,8 @@
 import ts from "typescript";
 
-import { DeclaredSymbols, DeclaredSymbolType } from "../../ast/symbols";
-import { CodeGenerator } from "./";
-import type { VisitContext } from "./visitor";
+import { DeclaredSymbols, DeclaredSymbolType } from "../../ast/symbols.js";
+import { CodeGenerator } from "./index.js";
+import type { VisitContext } from "./visitor.js";
 
 export function visitForStatement(
     this: CodeGenerator,

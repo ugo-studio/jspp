@@ -1,9 +1,8 @@
 import ts from "typescript";
 
-import type { DeclaredSymbols } from "../../ast/symbols";
-import type { Node } from "../../ast/types";
-import { CodeGenerator } from "./";
-import { visitClassDeclaration } from "./class-handlers";
+import type { DeclaredSymbols } from "../../ast/symbols.js";
+import type { Node } from "../../ast/types.js";
+import { visitClassDeclaration } from "./class-handlers.js";
 import {
   visitCaseClause,
   visitDefaultClause,
@@ -13,11 +12,11 @@ import {
   visitForStatement,
   visitSwitchStatement,
   visitWhileStatement,
-} from "./control-flow-handlers";
+} from "./control-flow-handlers.js";
 import {
   visitVariableDeclaration,
   visitVariableDeclarationList,
-} from "./declaration-handlers";
+} from "./declaration-handlers.js";
 import {
   visitArrayLiteralExpression,
   visitAwaitExpression,
@@ -35,12 +34,13 @@ import {
   visitTemplateExpression,
   visitTypeOfExpression,
   visitVoidExpression,
-} from "./expression-handlers";
+} from "./expression-handlers.js";
 import {
   visitArrowFunction,
   visitFunctionDeclaration,
   visitFunctionExpression,
-} from "./function-handlers";
+} from "./function-handlers.js";
+import { CodeGenerator } from "./index.js";
 import {
   visitFalseKeyword,
   visitIdentifier,
@@ -51,7 +51,7 @@ import {
   visitThisKeyword,
   visitTrueKeyword,
   visitUndefinedKeyword,
-} from "./literal-handlers";
+} from "./literal-handlers.js";
 import {
   visitBlock,
   visitBreakStatement,
@@ -66,7 +66,7 @@ import {
   visitTryStatement,
   visitVariableStatement,
   visitYieldExpression,
-} from "./statement-handlers";
+} from "./statement-handlers.js";
 
 export interface VisitContext {
     isMainContext: boolean;

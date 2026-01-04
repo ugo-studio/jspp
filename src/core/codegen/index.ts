@@ -1,7 +1,7 @@
-import type { TypeAnalyzer } from "../../analysis/typeAnalyzer";
-import { DeclaredSymbols } from "../../ast/symbols";
-import type { Node } from "../../ast/types";
-import { generateLambda } from "./function-handlers";
+import type { TypeAnalyzer } from "../../analysis/typeAnalyzer.js";
+import { DeclaredSymbols } from "../../ast/symbols.js";
+import type { Node } from "../../ast/types.js";
+import { generateLambda } from "./function-handlers.js";
 import {
   escapeString,
   generateUniqueExceptionName,
@@ -18,8 +18,8 @@ import {
   isGeneratorFunction,
   markSymbolAsChecked,
   prepareScopeSymbolsForVisit,
-} from "./helpers";
-import { visit } from "./visitor";
+} from "./helpers.js";
+import { visit } from "./visitor.js";
 
 const MODULE_NAME = "__main_function__";
 

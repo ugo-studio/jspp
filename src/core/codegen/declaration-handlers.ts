@@ -1,7 +1,7 @@
 import ts from "typescript";
 
-import { CodeGenerator } from "./";
-import type { VisitContext } from "./visitor";
+import { CodeGenerator } from "./index.js";
+import type { VisitContext } from "./visitor.js";
 
 export function visitVariableDeclarationList(
     this: CodeGenerator,

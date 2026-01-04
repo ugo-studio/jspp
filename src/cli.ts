@@ -3,14 +3,14 @@ import { spawn } from "child_process";
 import fs from "fs/promises";
 import path from "path";
 
-import pkg from "../package.json";
-import { parseArgs } from "./cli-utils/args";
-import { COLORS } from "./cli-utils/colors";
-import { getLatestMtime } from "./cli-utils/file-utils";
-import { Spinner } from "./cli-utils/spinner";
-import { Interpreter } from "./index";
+import pkg from "../package.json" with { type: "json" };
+import { parseArgs } from "./cli-utils/args.js";
+import { COLORS } from "./cli-utils/colors.js";
+import { getLatestMtime } from "./cli-utils/file-utils.js";
+import { Spinner } from "./cli-utils/spinner.js";
+import { Interpreter } from "./index.js";
 
-const pkgDir = path.dirname(__dirname);
+const pkgDir = path.dirname(import.meta.dirname);
 
 async function main() {
     const { jsFilePath, isRelease, keepCpp, outputExePath, scriptArgs } =

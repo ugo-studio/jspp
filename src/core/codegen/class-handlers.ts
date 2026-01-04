@@ -1,8 +1,8 @@
 import ts from "typescript";
 
-import { CodeGenerator } from "./";
-import { visitObjectPropertyName } from "./expression-handlers";
-import type { VisitContext } from "./visitor";
+import { visitObjectPropertyName } from "./expression-handlers.js";
+import { CodeGenerator } from "./index.js";
+import type { VisitContext } from "./visitor.js";
 
 export function visitClassDeclaration(
     this: CodeGenerator,

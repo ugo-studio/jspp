@@ -1,6 +1,6 @@
 import * as ts from "typescript";
 
-import type { Node, Visitor } from "../ast/types";
+import type { Node, Visitor } from "../ast/types.js";
 
 export class Traverser {
     public traverse(node: Node, visitor: Visitor) {

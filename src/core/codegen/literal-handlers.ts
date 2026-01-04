@@ -1,6 +1,6 @@
 import ts from "typescript";
 
-import { CodeGenerator } from "./";
+import { CodeGenerator } from "./index.js";
 
 export function visitIdentifier(
     this: CodeGenerator,

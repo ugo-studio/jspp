@@ -1,6 +1,6 @@
 import * as ts from "typescript";
 
-import type { TypeInfo } from "./typeAnalyzer";
+import type { TypeInfo } from "./typeAnalyzer.js";
 
 export const RESERVED_KEYWORDS = new Set([
     "jspp",

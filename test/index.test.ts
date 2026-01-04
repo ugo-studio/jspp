@@ -1,12 +1,12 @@
-import { spawn, spawnSync } from "child_process";
 import { describe, expect, test } from "bun:test";
+import { spawn, spawnSync } from "child_process";
 import fs from "fs/promises";
 import path from "path";
 
 import { Interpreter } from "../src";
 import cases from "./expected-results.json";
 
-const pkgDir = path.dirname(__dirname);
+const pkgDir = path.dirname(import.meta.dirname);
 
 // --- Helper: Strip ANSI Codes ---
 const stripAnsi = (str: string) =>
@@ -17,7 +17,10 @@ const stripAnsi = (str: string) =>
 
 const ensureHeaders = () => {
     console.log("Ensuring precompiled headers are ready...");
-    const precompile = spawnSync("bun", ["run", "scripts/precompile-headers.ts"], {
+    const precompile = spawnSync("bun", [
+        "run",
+        "scripts/precompile-headers.ts",
+    ], {
         cwd: pkgDir,
         stdio: "inherit",
     });
@@ -110,8 +113,12 @@ describe("Interpreter tests", async () => {
 
     const compileStdoutChunks: Buffer[] = [];
     const compileStderrChunks: Buffer[] = [];
-    if (compile.stdout) compile.stdout.on("data", c => compileStdoutChunks.push(c));
-    if (compile.stderr) compile.stderr.on("data", c => compileStderrChunks.push(c));
+    if (compile.stdout) {
+        compile.stdout.on("data", (c) => compileStdoutChunks.push(c));
+    }
+    if (compile.stderr) {
+        compile.stderr.on("data", (c) => compileStderrChunks.push(c));
+    }
 
     const compileExitCode = await new Promise<number>((resolve) => {
         compile.on("close", (code) => resolve(code ?? 1));
@@ -140,8 +147,12 @@ describe("Interpreter tests", async () => {
 
                 const runStdoutChunks: Buffer[] = [];
                 const runStderrChunks: Buffer[] = [];
-                if (run.stdout) run.stdout.on("data", c => runStdoutChunks.push(c));
-                if (run.stderr) run.stderr.on("data", c => runStderrChunks.push(c));
+                if (run.stdout) {
+                    run.stdout.on("data", (c) => runStdoutChunks.push(c));
+                }
+                if (run.stderr) {
+                    run.stderr.on("data", (c) => runStderrChunks.push(c));
+                }
 
                 await new Promise<number>((resolve) => {
                     run.on("close", (code) => resolve(code ?? 1));

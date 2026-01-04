@@ -1,12 +1,12 @@
 import ts from "typescript";
 
-import { DeclaredSymbols } from "../../ast/symbols";
-import { CodeGenerator } from "./";
+import { DeclaredSymbols } from "../../ast/symbols.js";
 import {
   collectBlockScopedDeclarations,
   collectFunctionScopedDeclarations,
-} from "./helpers";
-import type { VisitContext } from "./visitor";
+} from "./helpers.js";
+import { CodeGenerator } from "./index.js";
+import type { VisitContext } from "./visitor.js";
 
 export function visitSourceFile(
     this: CodeGenerator,

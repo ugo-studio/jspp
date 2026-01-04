@@ -52,7 +52,7 @@ To contribute to JSPP or run its test suite, follow these steps:
 ### Prerequisites
 
 - **Node.js:** This project uses Node.js for package management and script execution.
-  - [Install Node.js](https://nodejs.org/)
+  - [Install Node.js >= v20.0.0](https://nodejs.org/)
 - **C++ Compiler:** A compiler with support for C++23 is required. This project is tested with `g++`.
   - `g++` (MinGW on Windows, or available via build-essentials on Linux)
 

@@ -1,10 +1,10 @@
 import ts from "typescript";
 
-import { BUILTIN_OBJECTS, Scope } from "../../analysis/scope";
-import type { TypeAnalyzer, TypeInfo } from "../../analysis/typeAnalyzer";
-import { DeclaredSymbols, DeclaredSymbolType } from "../../ast/symbols";
-import { CodeGenerator } from "./";
-import type { VisitContext } from "./visitor";
+import { BUILTIN_OBJECTS, Scope } from "../../analysis/scope.js";
+import type { TypeAnalyzer, TypeInfo } from "../../analysis/typeAnalyzer.js";
+import { DeclaredSymbols, DeclaredSymbolType } from "../../ast/symbols.js";
+import { CodeGenerator } from "./index.js";
+import type { VisitContext } from "./visitor.js";
 
 export function isBuiltinObject(
     this: CodeGenerator | TypeAnalyzer,

@@ -1,8 +1,8 @@
 import path from "path";
 
-import { TypeAnalyzer } from "./analysis/typeAnalyzer";
-import { CodeGenerator } from "./core/codegen";
-import { Parser } from "./core/parser";
+import { TypeAnalyzer } from "./analysis/typeAnalyzer.js";
+import { CodeGenerator } from "./core/codegen/index.js";
+import { Parser } from "./core/parser.js";
 
 export class Interpreter {
     private parser = new Parser();
@@ -16,7 +16,7 @@ export class Interpreter {
         this.analyzer.analyze(ast);
         const cppCode = this.generator.generate(ast, this.analyzer);
         const preludePath = path.resolve(
-            __dirname,
+            import.meta.dirname,
             "..",
             "src",
             "prelude",
