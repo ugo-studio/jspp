@@ -66,7 +66,7 @@ async function main() {
 
         // Ensure directory for cpp file exists (should exist as it's source dir, but for safety if we change logic)
         await fs.mkdir(path.dirname(cppFilePath), { recursive: true });
-        await fs.writeFile(cppFilePath, cppCode);
+        // await fs.writeFile(cppFilePath, cppCode);
         spinner.succeed(`Generated cpp`);
 
         // 2. Precompiled Header Check

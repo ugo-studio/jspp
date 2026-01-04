@@ -104,7 +104,7 @@ This phase focuses on building a solid foundation that correctly models JavaScri
 - [x] Dynamic Variables & Primitives (`let`, `const`, `var`, `undefined`, `null`, `string`, `number`, `boolean`, etc.)
 - [x] Function Declarations & Arrow Functions
 - [x] Correct Hoisting for Variables and Functions
-- [x] Closures & Lexical Scoping (via `std::shared_ptr` capture)
+- [x] Closures & Lexical Scoping
 - [x] `if-elseif-else` conditions
 - [x] Basic `console` API
 
