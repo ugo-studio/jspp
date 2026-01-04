@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { spawn } from "child_process";
 import fs from "fs/promises";
 import path from "path";
 
@@ -8,6 +9,8 @@ import { COLORS } from "./cli-utils/colors";
 import { getLatestMtime } from "./cli-utils/file-utils";
 import { Spinner } from "./cli-utils/spinner";
 import { Interpreter } from "./index";
+
+const pkgDir = path.dirname(__dirname);
 
 async function main() {
     const { jsFilePath, isRelease, keepCpp, outputExePath, scriptArgs } =
@@ -41,15 +44,13 @@ async function main() {
         }${mode.toUpperCase()}${COLORS.reset}\n`,
     );
 
-    const flags = isRelease
-        ? ["-O3", "-DNDEBUG"]
-        : ["-O0"];
+    const flags = isRelease ? ["-O3", "-DNDEBUG"] : ["-O0"];
 
     if (process.platform === "win32") {
         flags.push("-Wa,-mbig-obj");
     }
 
-    const pchDir = path.resolve(process.cwd(), "prelude-build", mode);
+    const pchDir = path.resolve(pkgDir, "prelude-build", mode);
 
     const spinner = new Spinner("Initializing...");
 
@@ -66,7 +67,7 @@ async function main() {
 
         // Ensure directory for cpp file exists (should exist as it's source dir, but for safety if we change logic)
         await fs.mkdir(path.dirname(cppFilePath), { recursive: true });
-        // await fs.writeFile(cppFilePath, cppCode);
+        await fs.writeFile(cppFilePath, cppCode);
         spinner.succeed(`Generated cpp`);
 
         // 2. Precompiled Header Check
@@ -94,6 +95,7 @@ async function main() {
                 cmd: ["bun", "run", "scripts/precompile-headers.ts"],
                 stdout: "pipe", // pipe to hide output unless error, or handle differently
                 stderr: "pipe",
+                cwd: pkgDir,
             });
 
             const exitCode = await rebuild.exited;

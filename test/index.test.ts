@@ -1,9 +1,11 @@
-import { beforeAll, describe, expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import fs from "fs/promises";
 import path from "path";
 
 import { Interpreter } from "../src";
 import cases from "./expected-results.json";
+
+const pkgDir = path.dirname(__dirname);
 
 // --- Helper: Strip ANSI Codes ---
 const stripAnsi = (str: string) =>
@@ -18,6 +20,7 @@ const ensureHeaders = () => {
         cmd: ["bun", "run", "scripts/precompile-headers.ts"],
         stdout: "inherit",
         stderr: "inherit",
+        cwd: pkgDir,
     });
     if (precompile.exitCode !== 0) {
         throw new Error("Failed to precompile headers for tests.");
@@ -31,7 +34,7 @@ describe("Interpreter tests", async () => {
     for (const caseItem of cases) {
         const caseName = caseItem.name;
         const inputFile = path.join(
-            process.cwd(),
+            pkgDir,
             "test",
             "cases",
             `${caseName}.js`,
@@ -54,13 +57,13 @@ describe("Interpreter tests", async () => {
 
     // Prepare output file paths
     const outputFile = path.join(
-        process.cwd(),
+        pkgDir,
         "test",
         "output",
         `out.cpp`,
     );
     const exeFile = path.join(
-        process.cwd(),
+        pkgDir,
         "test",
         "output",
         `out.exe`,
@@ -89,7 +92,7 @@ describe("Interpreter tests", async () => {
         "-o",
         exeFile,
         "-I",
-        path.resolve(process.cwd(), "prelude-build", "debug"),
+        path.resolve(pkgDir, "prelude-build", "debug"),
         "-I",
         preludePath,
     ];
@@ -103,6 +106,7 @@ describe("Interpreter tests", async () => {
         {
             stdout: "pipe",
             stderr: "pipe",
+            cwd: pkgDir,
         },
     );
 
@@ -126,6 +130,7 @@ describe("Interpreter tests", async () => {
                 const run = Bun.spawn([exeFile, caseName], {
                     stdout: "pipe",
                     stderr: "pipe",
+                    cwd: pkgDir,
                 });
 
                 await run.exited;
@@ -147,7 +152,7 @@ describe("Interpreter tests", async () => {
 
     test("should throw an error for reserved-keyword.js", async () => {
         const inputFile = path.join(
-            process.cwd(),
+            pkgDir,
             "test",
             "cases",
             "reserved-keyword.js",

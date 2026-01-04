@@ -7,13 +7,8 @@
 #include "values/shape.hpp"
 #include "values/symbol.hpp"
 #include "values/non_values.hpp"
-// #include "any_value.hpp"
-// #include "values/object.hpp"
-// #include "values/array.hpp"
-// #include "values/function.hpp"
 #include "values/iterator.hpp"
 #include "values/async_iterator.hpp"
-// #include "values/promise.hpp"
 #include "values/string.hpp"
 
 #include "any_value.hpp"
