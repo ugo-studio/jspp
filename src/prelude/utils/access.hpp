@@ -231,7 +231,7 @@ namespace jspp
             {
                 throw jspp::Exception::make_exception("Function has non-object prototype in instanceof check", "TypeError");
             }
-            
+
             AnyValue current = lhs;
 
             while (true)
@@ -253,7 +253,7 @@ namespace jspp
                 {
                     break;
                 }
-                
+
                 if (proto.is_null() || proto.is_undefined())
                     break;
                 if (is_strictly_equal_to_primitive(proto, targetProto))

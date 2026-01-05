@@ -27,7 +27,14 @@ namespace jspp
             if (val.is_symbol())
                 return Color::BLUE + val.to_std_string() + Color::RESET;
             if (val.is_accessor_descriptor())
+            {
+                auto desc = val.as_accessor_descriptor();
+                if (desc->get.has_value() && !desc->set.has_value())
+                    return Color::BLUE + std::string("[Getter]") + Color::RESET;
+                if (!desc->get.has_value() && desc->set.has_value())
+                    return Color::BLUE + std::string("[Setter]") + Color::RESET;
                 return Color::BLUE + std::string("[Getter/Setter]") + Color::RESET;
+            }
 
             if (val.is_string())
             {

@@ -203,8 +203,16 @@ export function hoistDeclaration(
         }
         // `var` variables can be declared multiple times
         return "";
+    } else {
+        // Add the symbol to the hoisted symbols
+        const selfName = declType === DeclarationType.function
+            ? this.generateUniqueName(
+                `__${name}_self_`,
+                hoistedSymbols,
+            )
+            : undefined;
+        hoistedSymbols.add(name, { type: declType, func: { selfName } });
     }
-    hoistedSymbols.add(name, { type: declType });
 
     const scope = this.getScopeForNode(decl);
     const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(

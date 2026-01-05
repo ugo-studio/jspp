@@ -65,19 +65,44 @@ export function visitSourceFile(
 
     funcDecls.forEach((stmt) => {
         const funcName = stmt.name?.getText();
-        if (funcName) {
-            this.markSymbolAsInitialized(
-                funcName,
-                contextForFunctions.topLevelScopeSymbols,
-                contextForFunctions.localScopeSymbols,
+        if (!funcName) return;
+        const symbol = hoistedSymbols.get(funcName);
+        if (!symbol) return;
+
+        this.markSymbolAsInitialized(
+            funcName,
+            contextForFunctions.topLevelScopeSymbols,
+            contextForFunctions.localScopeSymbols,
+        );
+        this.markSymbolAsInitialized(
+            funcName,
+            topLevelScopeSymbols,
+            localScopeSymbols,
+        );
+
+        const selfName = symbol.func?.selfName;
+        if (selfName) {
+            const lambda = this.generateLambda(
+                stmt,
+                contextForFunctions,
+                {
+                    isAssignment: true,
+                    generateOnlyLambda: true,
+                    selfName,
+                },
             );
-            this.markSymbolAsInitialized(
-                funcName,
-                topLevelScopeSymbols,
-                localScopeSymbols,
+            code += `${this.indent()}auto ${selfName} = ${lambda};\n`;
+            const fullExpression = this.generateFullLambdaExpression(
+                stmt,
+                contextForFunctions,
+                selfName,
+                { isAssignment: true, noTypeSignature: true },
             );
+            code += `${this.indent()}*${funcName} = ${fullExpression};\n`;
+        } else {
             const lambda = this.generateLambda(stmt, contextForFunctions, {
                 isAssignment: true,
+                selfName,
             });
             code += `${this.indent()}*${funcName} = ${lambda};\n`;
         }
@@ -166,19 +191,44 @@ export function visitBlock(
 
     funcDecls.forEach((stmt) => {
         const funcName = stmt.name?.getText();
-        if (funcName) {
-            this.markSymbolAsInitialized(
-                funcName,
-                contextForFunctions.topLevelScopeSymbols,
-                contextForFunctions.localScopeSymbols,
+        if (!funcName) return;
+        const symbol = hoistedSymbols.get(funcName);
+        if (!symbol) return;
+
+        this.markSymbolAsInitialized(
+            funcName,
+            contextForFunctions.topLevelScopeSymbols,
+            contextForFunctions.localScopeSymbols,
+        );
+        this.markSymbolAsInitialized(
+            funcName,
+            topLevelScopeSymbols,
+            localScopeSymbols,
+        );
+
+        const selfName = symbol.func?.selfName;
+        if (selfName) {
+            const lambda = this.generateLambda(
+                stmt,
+                contextForFunctions,
+                {
+                    isAssignment: true,
+                    generateOnlyLambda: true,
+                    selfName,
+                },
             );
-            this.markSymbolAsInitialized(
-                funcName,
-                topLevelScopeSymbols,
-                localScopeSymbols,
+            code += `${this.indent()}auto ${selfName} = ${lambda};\n`;
+            const fullExpression = this.generateFullLambdaExpression(
+                stmt,
+                contextForFunctions,
+                selfName,
+                { isAssignment: true, noTypeSignature: true },
             );
+            code += `${this.indent()}*${funcName} = ${fullExpression};\n`;
+        } else {
             const lambda = this.generateLambda(stmt, contextForFunctions, {
                 isAssignment: true,
+                selfName,
             });
             code += `${this.indent()}*${funcName} = ${lambda};\n`;
         }

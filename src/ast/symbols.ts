@@ -11,6 +11,7 @@ export class DeclaredSymbol {
     checked: {
         initialized: boolean;
     };
+    func?: { selfName?: string };
 
     constructor(type: DeclarationType) {
         this.type = type;
@@ -51,11 +52,16 @@ export class DeclaredSymbols {
     add(name: string, value: {
         type: DeclaredSymbol["type"];
         checked?: Partial<DeclaredSymbol["checked"]>;
+        func?: Partial<DeclaredSymbol["func"]>;
     }) {
         const symbol = new DeclaredSymbol(value.type);
         symbol.checked = {
             ...symbol.checked,
             ...value.checked,
+        };
+        symbol.func = {
+            ...symbol.func,
+            ...value.func,
         };
         return this.symbols.set(name, symbol);
     }
@@ -66,6 +72,7 @@ export class DeclaredSymbols {
             {
                 type: DeclaredSymbol["type"];
                 checked: Partial<DeclaredSymbol["checked"]>;
+                func: Partial<DeclaredSymbol["func"]>;
             }
         >,
     ) {
@@ -75,6 +82,10 @@ export class DeclaredSymbols {
             symbol.checked = {
                 ...symbol.checked,
                 ...update.checked,
+            };
+            symbol.func = {
+                ...symbol.func,
+                ...update.func,
             };
             return this.symbols.set(name, symbol);
         }

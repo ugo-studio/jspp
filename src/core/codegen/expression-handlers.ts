@@ -1062,6 +1062,12 @@ export function visitCallExpression(
         if (typeInfo?.isBuiltin) {
             derefCallee = calleeCode;
         } else if (typeInfo) {
+            const name = callee.getText();
+            const symbol = context.localScopeSymbols.get(name) ??
+                context.topLevelScopeSymbols.get(name);
+            if (symbol && symbol.func?.selfName) { // Optimization: Direct lambda call
+                return `${symbol.func?.selfName}(jspp::Constants::UNDEFINED, ${argsSpan})`;
+            }
             derefCallee = this.getDerefCode(
                 calleeCode,
                 this.getJsVarName(callee),

@@ -20,13 +20,21 @@ export function generateLambda(
         isAssignment?: boolean;
         capture?: string;
         isClass?: boolean;
+        selfName?: string;
+        generateOnlyLambda?: boolean;
     },
 ): string {
     const isAssignment = options?.isAssignment || false;
     const capture = options?.capture || "[=]";
+    const selfName = options?.selfName;
 
     const declaredSymbols = this.getDeclaredSymbols(node);
-    const argsName = this.generateUniqueName("__args_", declaredSymbols);
+    const argsName = this.generateUniqueName(
+        "__args_",
+        declaredSymbols,
+        context.topLevelScopeSymbols,
+        context.localScopeSymbols,
+    );
 
     const isInsideGeneratorFunction = this.isGeneratorFunction(node);
     const isInsideAsyncFunction = this.isAsyncFunction(node);
@@ -47,12 +55,15 @@ export function generateLambda(
     const paramThisType = "const jspp::AnyValue&";
     const paramArgsType = "std::span<const jspp::AnyValue>";
 
+    const selfParamPart = selfName ? `this auto&& ${selfName}, ` : "";
+    const mutablePart = selfName ? "" : "mutable ";
+
     const thisArgParam = isArrow
         ? "const jspp::AnyValue&" // Arrow functions use captured 'this' or are never generators in this parser context
         : `${paramThisType} ${this.globalThisVar}`;
 
     let lambda =
-        `${capture}(${thisArgParam}, ${paramArgsType} ${argsName}) mutable -> ${funcReturnType} `;
+        `${capture}(${selfParamPart}${thisArgParam}, ${paramArgsType} ${argsName}) ${mutablePart}-> ${funcReturnType} `;
 
     const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
         context.topLevelScopeSymbols,
@@ -71,11 +82,6 @@ export function generateLambda(
         isInsideAsyncFunction: isInsideAsyncFunction,
     };
 
-    // Name of 'this' and 'args' to be used in the body.
-    // If generator/async, we use the copied versions.
-    let bodyThisVar = this.globalThisVar;
-    let bodyArgsVar = argsName;
-
     // Preamble to copy arguments for coroutines
     let preamble = "";
     if (isInsideGeneratorFunction || isInsideAsyncFunction) {
@@ -91,41 +97,9 @@ export function generateLambda(
         if (!isArrow) {
             preamble +=
                 `${this.indent()}jspp::AnyValue ${thisCopy} = ${this.globalThisVar};\n`;
-            bodyThisVar = thisCopy;
         }
         preamble +=
             `${this.indent()}std::vector<jspp::AnyValue> ${argsCopy}(${argsName}.begin(), ${argsName}.end());\n`;
-        bodyArgsVar = argsCopy;
-
-        // Update visitContext to use the new 'this' variable if needed?
-        // CodeGenerator.globalThisVar is a member of the class, so we can't easily change it for the recursive visit
-        // without changing the class state or passing it down.
-        // BUT: visitThisKeyword uses `this.globalThisVar`.
-        // We need to temporarily swap `this.globalThisVar` or handle it.
-        // Actually, `this.globalThisVar` is set once in `generate`.
-        // Wait, `visitThisKeyword` uses `this.globalThisVar`.
-        // If we change the variable name for 'this', we must ensure `visitThisKeyword` generates the correct name.
-        // `generateLambda` does NOT create a new CodeGenerator instance, so `this.globalThisVar` is the global one.
-        //
-        // We need to support shadowing `globalThisVar` for the duration of the visit.
-        // The current `CodeGenerator` doesn't seem to support changing `globalThisVar` recursively easily
-        // because it's a property of the class, not `VisitContext`.
-        //
-        // However, `visitFunctionDeclaration` etc don't update `globalThisVar`.
-        // `visitThisKeyword` just returns `this.globalThisVar`.
-        //
-        // If we are inside a function, `this` should refer to the function's `this`.
-        // `this.globalThisVar` is generated in `generate()`: `__this_val__...`.
-        // And `generateLambda` uses `this.globalThisVar` as the parameter name.
-        //
-        // So, if we copy it to `__this_copy`, `visitThisKeyword` will still print `__this_val__...`.
-        // This is BAD for generators because `__this_val__...` is a reference that dies.
-        //
-        // FIX: We must reuse the SAME name for the local copy, and shadow the parameter.
-        // But we can't declare a variable with the same name as the parameter in the same scope.
-        //
-        // We can rename the PARAMETER to something else, and declare the local variable with `this.globalThisVar`.
-        //
     }
 
     // Adjust parameter names for generator/async to allow shadowing/copying
@@ -151,7 +125,7 @@ export function generateLambda(
 
     // Re-construct lambda header with potentially new param names
     lambda =
-        `${capture}(${thisArgParamFinal}, ${paramArgsType} ${finalArgsParamName}) mutable -> ${funcReturnType} `;
+        `${capture}(${selfParamPart}${thisArgParamFinal}, ${paramArgsType} ${finalArgsParamName}) ${mutablePart}-> ${funcReturnType} `;
 
     // Regenerate preamble
     preamble = "";
@@ -292,34 +266,74 @@ export function generateLambda(
         lambda += `{ ${preamble} ${returnCmd} jspp::Constants::UNDEFINED; }\n`;
     }
 
-    let signature = "";
-    let callable = "";
+    // Return only lambda if required
+    if (options?.generateOnlyLambda) {
+        return lambda;
+    }
+
+    return this.generateFullLambdaExpression(node, context, lambda, options);
+}
+
+export function generateFullLambdaExpression(
+    this: CodeGenerator,
+    node:
+        | ts.ArrowFunction
+        | ts.FunctionDeclaration
+        | ts.FunctionExpression
+        | ts.ConstructorDeclaration
+        | ts.MethodDeclaration
+        | ts.GetAccessorDeclaration
+        | ts.SetAccessorDeclaration,
+    context: VisitContext,
+    lambda: string,
+    options?: {
+        isAssignment?: boolean;
+        isClass?: boolean;
+        noTypeSignature?: boolean;
+    },
+) {
+    const isAssignment = options?.isAssignment || false;
+    const noTypeSignature = options?.noTypeSignature || false;
+
+    const isInsideGeneratorFunction = this.isGeneratorFunction(node);
+    const isInsideAsyncFunction = this.isAsyncFunction(node);
+    const isArrow = ts.isArrowFunction(node);
+
+    let callable = lambda;
     let method = "";
 
     // Handle generator function
     if (isInsideGeneratorFunction) {
         if (isInsideAsyncFunction) {
-            signature =
-                "jspp::JsAsyncIterator<jspp::AnyValue>(const jspp::AnyValue&, std::span<const jspp::AnyValue>)";
-            callable = `std::function<${signature}>(${lambda})`;
+            if (!noTypeSignature) {
+                const signature =
+                    "jspp::JsAsyncIterator<jspp::AnyValue>(const jspp::AnyValue&, std::span<const jspp::AnyValue>)";
+                callable = `std::function<${signature}>(${lambda})`;
+            }
             method = `jspp::AnyValue::make_async_generator`;
         } else {
-            signature =
-                "jspp::JsIterator<jspp::AnyValue>(const jspp::AnyValue&, std::span<const jspp::AnyValue>)";
-            callable = `std::function<${signature}>(${lambda})`;
+            if (!noTypeSignature) {
+                const signature =
+                    "jspp::JsIterator<jspp::AnyValue>(const jspp::AnyValue&, std::span<const jspp::AnyValue>)";
+                callable = `std::function<${signature}>(${lambda})`;
+            }
             method = `jspp::AnyValue::make_generator`;
         }
     } // Handle async function
     else if (isInsideAsyncFunction) {
-        signature =
-            "jspp::JsPromise(const jspp::AnyValue&, std::span<const jspp::AnyValue>)";
-        callable = `std::function<${signature}>(${lambda})`;
+        if (!noTypeSignature) {
+            const signature =
+                "jspp::JsPromise(const jspp::AnyValue&, std::span<const jspp::AnyValue>)";
+            callable = `std::function<${signature}>(${lambda})`;
+        }
         method = `jspp::AnyValue::make_async_function`;
     } // Handle normal function
     else {
-        signature =
-            `jspp::AnyValue(const jspp::AnyValue&, std::span<const jspp::AnyValue>)`;
-        callable = `std::function<${signature}>(${lambda})`;
+        if (!noTypeSignature) {
+            const signature =
+                `jspp::AnyValue(const jspp::AnyValue&, std::span<const jspp::AnyValue>)`;
+            callable = `std::function<${signature}>(${lambda})`;
+        }
         if (options?.isClass) {
             method = `jspp::AnyValue::make_class`;
         } else {

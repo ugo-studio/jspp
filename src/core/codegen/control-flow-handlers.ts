@@ -317,7 +317,7 @@ export function visitForOfStatement(
             `${this.indent()}auto ${nextRes} = ${nextFunc}.call(${iterator}, {}, "next");\n`;
     }
     code +=
-        `${this.indent()}while (!is_truthy(${nextRes}.get_own_property("done"))) {\n`;
+        `${this.indent()}while (!jspp::is_truthy(${nextRes}.get_own_property("done"))) {\n`;
     this.indentationLevel++;
     code +=
         `${this.indent()}${assignmentTarget} = ${nextRes}.get_own_property("value");\n`;
