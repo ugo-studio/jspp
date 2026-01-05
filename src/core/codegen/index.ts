@@ -77,7 +77,7 @@ export class CodeGenerator {
             isInsideFunction: true,
             isFunctionBody: true,
             isInsideAsyncFunction: true,
-            topLevelScopeSymbols: new DeclaredSymbols(),
+            globalScopeSymbols: new DeclaredSymbols(),
             localScopeSymbols: new DeclaredSymbols(),
         });
         this.indentationLevel--;

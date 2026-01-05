@@ -23,8 +23,8 @@ export function visitForStatement(
     let initializerCode = "";
     let conditionContext: VisitContext = {
         ...context,
-        topLevelScopeSymbols: this.prepareScopeSymbolsForVisit(
-            context.topLevelScopeSymbols,
+        globalScopeSymbols: this.prepareScopeSymbolsForVisit(
+            context.globalScopeSymbols,
             context.localScopeSymbols,
         ),
     };
@@ -522,8 +522,8 @@ export function visitSwitchStatement(
     }
 
     // Prepare scope symbols for the switch block
-    const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
-        context.topLevelScopeSymbols,
+    const globalScopeSymbols = this.prepareScopeSymbolsForVisit(
+        context.globalScopeSymbols,
         context.localScopeSymbols,
     );
 
@@ -556,7 +556,7 @@ export function visitSwitchStatement(
                     if (funcName) {
                         const contextForFunction = {
                             ...context,
-                            topLevelScopeSymbols,
+                            globalScopeSymbols,
                             localScopeSymbols: hoistedSymbols,
                         };
                         const lambda = this.generateLambda(
@@ -571,7 +571,7 @@ export function visitSwitchStatement(
                         ...context,
                         switchBreakLabel,
                         currentLabel: undefined, // Clear currentLabel for nested visits
-                        topLevelScopeSymbols,
+                        globalScopeSymbols,
                         localScopeSymbols: hoistedSymbols,
                         derefBeforeAssignment: true,
                         isAssignmentOnly: ts.isVariableStatement(stmt),
@@ -596,7 +596,7 @@ export function visitSwitchStatement(
                     ...context,
                     switchBreakLabel,
                     currentLabel: undefined, // Clear currentLabel for nested visits
-                    topLevelScopeSymbols,
+                    globalScopeSymbols,
                     localScopeSymbols: hoistedSymbols,
                     derefBeforeAssignment: true,
                     isAssignmentOnly: ts.isVariableStatement(stmt),

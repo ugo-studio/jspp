@@ -114,14 +114,14 @@ export function getDerefCode(
 
     const symbolName = varName.slice(1).slice(0, -1);
     const symbol = context.localScopeSymbols.get(symbolName) ??
-        context.topLevelScopeSymbols.get(symbolName);
+        context.globalScopeSymbols.get(symbolName);
     const isInitialized: boolean = symbol?.checked.initialized ||
         false;
 
     // Mark the symbol as checked
     this.markSymbolAsInitialized(
         symbolName,
-        context.topLevelScopeSymbols,
+        context.globalScopeSymbols,
         context.localScopeSymbols,
     );
 

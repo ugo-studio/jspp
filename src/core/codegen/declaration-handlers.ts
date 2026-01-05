@@ -30,16 +30,21 @@ export function visitVariableDeclaration(
     // Mark the symbol as checked
     this.markSymbolAsInitialized(
         name,
-        context.topLevelScopeSymbols,
+        context.globalScopeSymbols,
         context.localScopeSymbols,
     );
 
     let initializer = "";
+    let isArrowFunction = false;
+
     if (varDecl.initializer) {
         const initExpr = varDecl.initializer;
+
+        isArrowFunction = ts.isArrowFunction(initExpr);
+        
         const initContext: VisitContext = {
             ...context,
-            lambdaName: ts.isArrowFunction(initExpr) ? name : undefined, // Pass the variable name for arrow functions
+            lambdaName: isArrowFunction ? name : undefined, // Pass the variable name for arrow functions
         };
         let initText = ts.isNumericLiteral(initExpr)
             ? initExpr.getText()

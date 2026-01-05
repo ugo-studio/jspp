@@ -48,8 +48,8 @@ export function visitSourceFile(
     });
 
     // Compile symbols for other statements (excluding function)
-    const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
-        context.topLevelScopeSymbols,
+    const globalScopeSymbols = this.prepareScopeSymbolsForVisit(
+        context.globalScopeSymbols,
         context.localScopeSymbols,
     );
     const localScopeSymbols = new DeclaredSymbols(hoistedSymbols); // hoistedSymbols becomes new local
@@ -72,12 +72,12 @@ export function visitSourceFile(
         // Mark before further visits
         this.markSymbolAsInitialized(
             funcName,
-            contextForFunctions.topLevelScopeSymbols,
+            contextForFunctions.globalScopeSymbols,
             contextForFunctions.localScopeSymbols,
         );
         this.markSymbolAsInitialized(
             funcName,
-            topLevelScopeSymbols,
+            globalScopeSymbols,
             localScopeSymbols,
         );
 
@@ -120,7 +120,7 @@ export function visitSourceFile(
                 0;
             const contextForVisit = {
                 ...context,
-                topLevelScopeSymbols,
+                globalScopeSymbols,
                 localScopeSymbols,
                 isAssignmentOnly: !isLetOrConst,
             };
@@ -135,7 +135,7 @@ export function visitSourceFile(
             code += this.visit(stmt, {
                 ...context,
                 isFunctionBody: false,
-                topLevelScopeSymbols,
+                globalScopeSymbols,
                 localScopeSymbols,
             });
         }
@@ -176,8 +176,8 @@ export function visitBlock(
     });
 
     // Compile symbols for other statements (excluding function)
-    const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
-        context.topLevelScopeSymbols,
+    const globalScopeSymbols = this.prepareScopeSymbolsForVisit(
+        context.globalScopeSymbols,
         context.localScopeSymbols,
     );
     const localScopeSymbols = new DeclaredSymbols(hoistedSymbols); // hoistedSymbols becomes new local
@@ -200,12 +200,12 @@ export function visitBlock(
         // Mark before further visits
         this.markSymbolAsInitialized(
             funcName,
-            contextForFunctions.topLevelScopeSymbols,
+            contextForFunctions.globalScopeSymbols,
             contextForFunctions.localScopeSymbols,
         );
         this.markSymbolAsInitialized(
             funcName,
-            topLevelScopeSymbols,
+            globalScopeSymbols,
             localScopeSymbols,
         );
 
@@ -248,7 +248,7 @@ export function visitBlock(
                 0;
             const contextForVisit = {
                 ...context,
-                topLevelScopeSymbols,
+                globalScopeSymbols,
                 localScopeSymbols,
                 isAssignmentOnly: !isLetOrConst,
             };
@@ -263,7 +263,7 @@ export function visitBlock(
             code += this.visit(stmt, {
                 ...context,
                 isFunctionBody: false,
-                topLevelScopeSymbols,
+                globalScopeSymbols,
                 localScopeSymbols,
             });
         }
@@ -411,7 +411,7 @@ export function visitTryStatement(
     if (context.isInsideAsyncFunction) {
         if (tryStmt.finallyBlock) {
             const declaredSymbols = new Set<string>(
-                context.topLevelScopeSymbols.names,
+                context.globalScopeSymbols.names,
             );
             this.getDeclaredSymbols(tryStmt.tryBlock).forEach((s) =>
                 declaredSymbols.add(s)
@@ -559,7 +559,7 @@ export function visitTryStatement(
         } else {
             const exceptionName = this.generateUniqueExceptionName(
                 tryStmt.catchClause?.variableDeclaration?.name.getText(),
-                context.topLevelScopeSymbols,
+                context.globalScopeSymbols,
                 context.localScopeSymbols,
             );
             const newContext = {
@@ -638,7 +638,7 @@ export function visitTryStatement(
 
     if (tryStmt.finallyBlock) {
         const declaredSymbols = new Set<string>(
-            context.topLevelScopeSymbols.names,
+            context.globalScopeSymbols.names,
         );
         this.getDeclaredSymbols(tryStmt.tryBlock).forEach((s) =>
             declaredSymbols.add(s)
@@ -700,7 +700,7 @@ export function visitTryStatement(
         if (tryStmt.catchClause) {
             const exceptionName = this.generateUniqueExceptionName(
                 tryStmt.catchClause.variableDeclaration?.name.getText(),
-                context.topLevelScopeSymbols,
+                context.globalScopeSymbols,
                 context.localScopeSymbols,
             );
             const catchContext = { ...innerContext, exceptionName };
@@ -744,7 +744,7 @@ export function visitTryStatement(
     } else {
         const exceptionName = this.generateUniqueExceptionName(
             tryStmt.catchClause?.variableDeclaration?.name.getText(),
-            context.topLevelScopeSymbols,
+            context.globalScopeSymbols,
             context.localScopeSymbols,
         );
         const newContext = {
@@ -838,7 +838,7 @@ export function visitYieldExpression(
             this.indentationLevel++;
 
             const declaredSymbols = this.getDeclaredSymbols(expr);
-            context.topLevelScopeSymbols.names.forEach((s) =>
+            context.globalScopeSymbols.names.forEach((s) =>
                 declaredSymbols.add(s)
             );
             const iterableRef = this.generateUniqueName(

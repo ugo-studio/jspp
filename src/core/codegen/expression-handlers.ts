@@ -725,6 +725,22 @@ export function visitBinaryExpression(
         const target = context.derefBeforeAssignment
             ? this.getDerefCode(leftText, leftText, context, typeInfo)
             : (typeInfo.needsHeapAllocation ? `*${leftText}` : leftText);
+
+        // // Update scope symbols on variable re-assignment
+        // if (ts.isIdentifier(binExpr.left)) {
+        //     if (!ts.isFunctionDeclaration(binExpr.right)) {
+        //         if (context.localScopeSymbols.has(binExpr.left.text)) {
+        //             context.localScopeSymbols.update(binExpr.left.text, {
+        //                 func: undefined,
+        //             });
+        //         } else if (context.globalScopeSymbols.has(binExpr.left.text)) {
+        //             context.globalScopeSymbols.update(binExpr.left.text, {
+        //                 func: undefined,
+        //             });
+        //         }
+        //     }
+        // }
+
         return `${target} ${op} ${rightText}`;
     }
 
@@ -1064,7 +1080,7 @@ export function visitCallExpression(
         } else if (typeInfo) {
             const name = callee.getText();
             const symbol = context.localScopeSymbols.get(name) ??
-                context.topLevelScopeSymbols.get(name);
+                context.globalScopeSymbols.get(name);
             // Optimization: Direct lambda call
             if (symbol && symbol.func?.nativeName) {
                 const callExpr =

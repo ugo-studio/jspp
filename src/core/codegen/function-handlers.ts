@@ -31,7 +31,7 @@ export function generateLambda(
     const argsName = this.generateUniqueName(
         "__args_",
         declaredSymbols,
-        context.topLevelScopeSymbols,
+        context.globalScopeSymbols,
         context.localScopeSymbols,
     );
 
@@ -64,8 +64,8 @@ export function generateLambda(
     let lambda =
         `${capture}(${selfParamPart}${thisArgParam}, ${paramArgsType} ${argsName}) ${mutablePart}-> ${funcReturnType} `;
 
-    const topLevelScopeSymbols = this.prepareScopeSymbolsForVisit(
-        context.topLevelScopeSymbols,
+    const globalScopeSymbols = this.prepareScopeSymbolsForVisit(
+        context.globalScopeSymbols,
         context.localScopeSymbols,
     );
 
@@ -74,7 +74,7 @@ export function generateLambda(
         isInsideFunction: true,
         isFunctionBody: false,
         lambdaName: undefined,
-        topLevelScopeSymbols,
+        globalScopeSymbols,
         localScopeSymbols: new DeclaredSymbols(),
         superClassVar: context.superClassVar,
         isInsideGeneratorFunction: isInsideGeneratorFunction,
