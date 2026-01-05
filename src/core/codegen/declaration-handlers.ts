@@ -34,21 +34,14 @@ export function visitVariableDeclaration(
         context.localScopeSymbols,
     );
 
+    let nativeLambdaCode = "";
     let initializer = "";
-    let isArrowFunction = false;
 
     if (varDecl.initializer) {
         const initExpr = varDecl.initializer;
-
-        isArrowFunction = ts.isArrowFunction(initExpr);
-        
-        const initContext: VisitContext = {
-            ...context,
-            lambdaName: isArrowFunction ? name : undefined, // Pass the variable name for arrow functions
-        };
         let initText = ts.isNumericLiteral(initExpr)
             ? initExpr.getText()
-            : this.visit(initExpr, initContext);
+            : this.visit(initExpr, context);
         if (ts.isIdentifier(initExpr)) {
             const initScope = this.getScopeForNode(initExpr);
             const initTypeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
@@ -64,10 +57,44 @@ export function visitVariableDeclaration(
                 initText = this.getDerefCode(
                     initText,
                     varName,
-                    initContext,
+                    context,
                     initTypeInfo,
                 );
             }
+        } else if (ts.isArrowFunction(initExpr)) {
+            const initContext: VisitContext = {
+                ...context,
+                lambdaName: name, // Use the variable name as function name
+            };
+
+            // Generate and update self name
+            const nativeName = this.generateUniqueName(
+                `__${name}_native_`,
+                context.localScopeSymbols,
+                context.globalScopeSymbols,
+            );
+            context.localScopeSymbols.update(name, { func: { nativeName } });
+
+            // Generate lambda
+            const lambda = this.generateLambda(
+                initExpr,
+                initContext,
+                {
+                    isAssignment: true,
+                    generateOnlyLambda: true,
+                    nativeName,
+                },
+            );
+            nativeLambdaCode =
+                `auto ${nativeName} = ${lambda};\n${this.indent()}`;
+
+            // Generate AnyValue wrapper
+            initText = this.generateFullLambdaExpression(
+                initExpr,
+                initContext,
+                nativeName,
+                { isAssignment: true, noTypeSignature: true },
+            );
         }
         initializer = " = " + initText;
     }
@@ -84,15 +111,15 @@ export function visitVariableDeclaration(
     if (isLetOrConst) {
         // If there's no initializer, it should be assigned undefined.
         if (!initializer) {
-            return `${assignmentTarget} = jspp::Constants::UNDEFINED`;
+            return `${nativeLambdaCode}${assignmentTarget} = jspp::Constants::UNDEFINED`;
         }
-        return `${assignmentTarget}${initializer}`;
+        return `${nativeLambdaCode}${assignmentTarget}${initializer}`;
     }
 
     // For 'var', it's a bit more complex.
     if (context.isAssignmentOnly) {
         if (!initializer) return "";
-        return `${assignmentTarget}${initializer}`;
+        return `${nativeLambdaCode}${assignmentTarget}${initializer}`;
     } else {
         // This case should not be hit with the new hoisting logic,
         // but is kept for safety.

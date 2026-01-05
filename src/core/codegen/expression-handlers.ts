@@ -726,20 +726,20 @@ export function visitBinaryExpression(
             ? this.getDerefCode(leftText, leftText, context, typeInfo)
             : (typeInfo.needsHeapAllocation ? `*${leftText}` : leftText);
 
-        // // Update scope symbols on variable re-assignment
-        // if (ts.isIdentifier(binExpr.left)) {
-        //     if (!ts.isFunctionDeclaration(binExpr.right)) {
-        //         if (context.localScopeSymbols.has(binExpr.left.text)) {
-        //             context.localScopeSymbols.update(binExpr.left.text, {
-        //                 func: undefined,
-        //             });
-        //         } else if (context.globalScopeSymbols.has(binExpr.left.text)) {
-        //             context.globalScopeSymbols.update(binExpr.left.text, {
-        //                 func: undefined,
-        //             });
-        //         }
-        //     }
-        // }
+        // Update scope symbols on variable re-assignment
+        if (ts.isIdentifier(binExpr.left)) {
+            if (!ts.isFunctionDeclaration(binExpr.right)) {
+                if (context.localScopeSymbols.has(binExpr.left.text)) {
+                    context.localScopeSymbols.update(binExpr.left.text, {
+                        func: null,
+                    });
+                } else if (context.globalScopeSymbols.has(binExpr.left.text)) {
+                    context.globalScopeSymbols.update(binExpr.left.text, {
+                        func: null,
+                    });
+                }
+            }
+        }
 
         return `${target} ${op} ${rightText}`;
     }
