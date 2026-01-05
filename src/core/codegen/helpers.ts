@@ -93,7 +93,8 @@ export function escapeString(this: CodeGenerator, str: string): string {
         .replace(/"/g, '\\"')
         .replace(/\n/g, "\\n")
         .replace(/\r/g, "\\r")
-        .replace(/\t/g, "\\t");
+        .replace(/\t/g, "\\t")
+        .replace(/\?/g, "\\?");
 }
 
 export function getJsVarName(this: CodeGenerator, node: ts.Identifier): string {
@@ -205,13 +206,16 @@ export function hoistDeclaration(
         return "";
     } else {
         // Add the symbol to the hoisted symbols
-        const selfName = declType === DeclarationType.function
-            ? this.generateUniqueName(
-                `__${name}_self_`,
-                hoistedSymbols,
-            )
-            : undefined;
-        hoistedSymbols.add(name, { type: declType, func: { selfName } });
+        if (declType === DeclarationType.function) {
+            const isAsync = this.isAsyncFunction(decl);
+            const isGenerator = this.isGeneratorFunction(decl);
+            hoistedSymbols.add(name, {
+                type: declType,
+                func: { isAsync, isGenerator },
+            });
+        } else {
+            hoistedSymbols.add(name, { type: declType });
+        }
     }
 
     const scope = this.getScopeForNode(decl);

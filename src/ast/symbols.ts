@@ -11,7 +11,7 @@ export class DeclaredSymbol {
     checked: {
         initialized: boolean;
     };
-    func?: { selfName?: string };
+    func?: { nativeName?: string; isAsync?: boolean; isGenerator?: boolean };
 
     constructor(type: DeclarationType) {
         this.type = type;

@@ -1065,9 +1065,21 @@ export function visitCallExpression(
             const name = callee.getText();
             const symbol = context.localScopeSymbols.get(name) ??
                 context.topLevelScopeSymbols.get(name);
-            if (symbol && symbol.func?.selfName) { // Optimization: Direct lambda call
-                return `${symbol.func?.selfName}(jspp::Constants::UNDEFINED, ${argsSpan})`;
+            // Optimization: Direct lambda call
+            if (symbol && symbol.func?.nativeName) {
+                const callExpr =
+                    `${symbol.func.nativeName}(jspp::Constants::UNDEFINED, ${argsSpan})`;
+
+                if (symbol.func.isGenerator) {
+                    if (symbol.func.isAsync) {
+                        return `jspp::AnyValue::from_async_iterator(${callExpr})`;
+                    }
+                    return `jspp::AnyValue::from_iterator(${callExpr})`;
+                }
+                return callExpr;
             }
+
+            // AnyValue function call
             derefCallee = this.getDerefCode(
                 calleeCode,
                 this.getJsVarName(callee),

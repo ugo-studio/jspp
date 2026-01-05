@@ -20,13 +20,12 @@ export function generateLambda(
         isAssignment?: boolean;
         capture?: string;
         isClass?: boolean;
-        selfName?: string;
+        nativeName?: string;
         generateOnlyLambda?: boolean;
     },
 ): string {
-    const isAssignment = options?.isAssignment || false;
     const capture = options?.capture || "[=]";
-    const selfName = options?.selfName;
+    const nativeName = options?.nativeName;
 
     const declaredSymbols = this.getDeclaredSymbols(node);
     const argsName = this.generateUniqueName(
@@ -55,8 +54,8 @@ export function generateLambda(
     const paramThisType = "const jspp::AnyValue&";
     const paramArgsType = "std::span<const jspp::AnyValue>";
 
-    const selfParamPart = selfName ? `this auto&& ${selfName}, ` : "";
-    const mutablePart = selfName ? "" : "mutable ";
+    const selfParamPart = nativeName ? `this auto&& ${nativeName}, ` : "";
+    const mutablePart = nativeName ? "" : "mutable ";
 
     const thisArgParam = isArrow
         ? "const jspp::AnyValue&" // Arrow functions use captured 'this' or are never generators in this parser context
@@ -268,7 +267,7 @@ export function generateLambda(
 
     // Return only lambda if required
     if (options?.generateOnlyLambda) {
-        return lambda;
+        return lambda.trimEnd();
     }
 
     return this.generateFullLambdaExpression(node, context, lambda, options);

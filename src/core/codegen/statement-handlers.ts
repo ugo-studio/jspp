@@ -69,6 +69,7 @@ export function visitSourceFile(
         const symbol = hoistedSymbols.get(funcName);
         if (!symbol) return;
 
+        // Mark before further visits
         this.markSymbolAsInitialized(
             funcName,
             contextForFunctions.topLevelScopeSymbols,
@@ -80,32 +81,33 @@ export function visitSourceFile(
             localScopeSymbols,
         );
 
-        const selfName = symbol.func?.selfName;
-        if (selfName) {
-            const lambda = this.generateLambda(
-                stmt,
-                contextForFunctions,
-                {
-                    isAssignment: true,
-                    generateOnlyLambda: true,
-                    selfName,
-                },
-            );
-            code += `${this.indent()}auto ${selfName} = ${lambda};\n`;
-            const fullExpression = this.generateFullLambdaExpression(
-                stmt,
-                contextForFunctions,
-                selfName,
-                { isAssignment: true, noTypeSignature: true },
-            );
-            code += `${this.indent()}*${funcName} = ${fullExpression};\n`;
-        } else {
-            const lambda = this.generateLambda(stmt, contextForFunctions, {
+        // Generate and update self name
+        const nativeName = this.generateUniqueName(
+            `__${funcName}_native_`,
+            hoistedSymbols,
+        );
+        hoistedSymbols.update(funcName, { func: { nativeName } });
+
+        // Generate lambda
+        const lambda = this.generateLambda(
+            stmt,
+            contextForFunctions,
+            {
                 isAssignment: true,
-                selfName,
-            });
-            code += `${this.indent()}*${funcName} = ${lambda};\n`;
-        }
+                generateOnlyLambda: true,
+                nativeName,
+            },
+        );
+        code += `${this.indent()}auto ${nativeName} = ${lambda};\n`;
+
+        // Generate AnyValue wrapper
+        const fullExpression = this.generateFullLambdaExpression(
+            stmt,
+            contextForFunctions,
+            nativeName,
+            { isAssignment: true, noTypeSignature: true },
+        );
+        code += `${this.indent()}*${funcName} = ${fullExpression};\n`;
     });
 
     // 3. Process other statements
@@ -195,6 +197,7 @@ export function visitBlock(
         const symbol = hoistedSymbols.get(funcName);
         if (!symbol) return;
 
+        // Mark before further visits
         this.markSymbolAsInitialized(
             funcName,
             contextForFunctions.topLevelScopeSymbols,
@@ -206,32 +209,33 @@ export function visitBlock(
             localScopeSymbols,
         );
 
-        const selfName = symbol.func?.selfName;
-        if (selfName) {
-            const lambda = this.generateLambda(
-                stmt,
-                contextForFunctions,
-                {
-                    isAssignment: true,
-                    generateOnlyLambda: true,
-                    selfName,
-                },
-            );
-            code += `${this.indent()}auto ${selfName} = ${lambda};\n`;
-            const fullExpression = this.generateFullLambdaExpression(
-                stmt,
-                contextForFunctions,
-                selfName,
-                { isAssignment: true, noTypeSignature: true },
-            );
-            code += `${this.indent()}*${funcName} = ${fullExpression};\n`;
-        } else {
-            const lambda = this.generateLambda(stmt, contextForFunctions, {
+        // Generate and update self name
+        const nativeName = this.generateUniqueName(
+            `__${funcName}_native_`,
+            hoistedSymbols,
+        );
+        hoistedSymbols.update(funcName, { func: { nativeName } });
+
+        // Generate lambda
+        const lambda = this.generateLambda(
+            stmt,
+            contextForFunctions,
+            {
                 isAssignment: true,
-                selfName,
-            });
-            code += `${this.indent()}*${funcName} = ${lambda};\n`;
-        }
+                generateOnlyLambda: true,
+                nativeName,
+            },
+        );
+        code += `${this.indent()}auto ${nativeName} = ${lambda};\n`;
+
+        // Generate AnyValue wrapper
+        const fullExpression = this.generateFullLambdaExpression(
+            stmt,
+            contextForFunctions,
+            nativeName,
+            { isAssignment: true, noTypeSignature: true },
+        );
+        code += `${this.indent()}*${funcName} = ${fullExpression};\n`;
     });
 
     // 3. Process other statements
