@@ -21,12 +21,17 @@ export function visitForStatement(
 
     // Handle initializer
     let initializerCode = "";
-    let conditionContext: VisitContext = {
+    const conditionContext: VisitContext = {
         ...context,
         globalScopeSymbols: this.prepareScopeSymbolsForVisit(
             context.globalScopeSymbols,
             context.localScopeSymbols,
         ),
+    };
+    const statementContext: VisitContext = {
+        ...context,
+        currentLabel: undefined,
+        isFunctionBody: false,
     };
     if (forStmt.initializer) {
         if (ts.isVariableDeclarationList(forStmt.initializer)) {
@@ -57,6 +62,10 @@ export function visitForStatement(
                         ? DeclarationType.let
                         : DeclarationType.const;
                     conditionContext.localScopeSymbols.add(name, {
+                        type: declType,
+                        checked: { initialized: true },
+                    });
+                    statementContext.localScopeSymbols.add(name, {
                         type: declType,
                         checked: { initialized: true },
                     });
@@ -92,11 +101,8 @@ export function visitForStatement(
     }
     code += ") ";
 
-    const statementCode = this.visit(forStmt.statement, {
-        ...context,
-        currentLabel: undefined,
-        isFunctionBody: false,
-    }).trim();
+    const statementCode = this.visit(forStmt.statement, statementContext)
+        .trim();
 
     if (ts.isBlock(node.statement)) {
         let blockContent = statementCode.substring(
