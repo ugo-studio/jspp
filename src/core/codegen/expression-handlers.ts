@@ -880,7 +880,7 @@ export function visitConditionalExpression(
         ...context,
         isFunctionBody: false,
     });
-    return `is_truthy(${condition}) ? ${whenTrueStmt} : ${whenFalseStmt}`;
+    return `jspp::is_truthy(${condition}) ? ${whenTrueStmt} : ${whenFalseStmt}`;
 }
 
 export function visitCallExpression(

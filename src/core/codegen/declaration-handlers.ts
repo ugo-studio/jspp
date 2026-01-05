@@ -36,6 +36,7 @@ export function visitVariableDeclaration(
 
     let nativeLambdaCode = "";
     let initializer = "";
+    let shouldSkipDeref = false;
 
     if (varDecl.initializer) {
         const initExpr = varDecl.initializer;
@@ -49,10 +50,20 @@ export function visitVariableDeclaration(
                 initScope,
             )!;
             const varName = this.getJsVarName(initExpr);
+
+            // Check if both target and initializer are heap allocated
+            if (
+                typeInfo.needsHeapAllocation &&
+                initTypeInfo?.needsHeapAllocation
+            ) {
+                shouldSkipDeref = true;
+            }
+
             if (
                 initTypeInfo &&
                 !initTypeInfo.isParameter &&
-                !initTypeInfo.isBuiltin
+                !initTypeInfo.isBuiltin &&
+                !shouldSkipDeref
             ) {
                 initText = this.getDerefCode(
                     initText,
@@ -106,7 +117,9 @@ export function visitVariableDeclaration(
 
     const assignmentTarget = shouldDeref
         ? this.getDerefCode(name, name, context, typeInfo)
-        : (typeInfo.needsHeapAllocation ? `*${name}` : name);
+        : (typeInfo.needsHeapAllocation && !shouldSkipDeref
+            ? `*${name}`
+            : name);
 
     if (isLetOrConst) {
         // If there's no initializer, it should be assigned undefined.

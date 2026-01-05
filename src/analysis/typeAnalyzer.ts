@@ -474,9 +474,8 @@ export class TypeAnalyzer {
                 enter: (node) => {
                     if (ts.isVariableDeclaration(node)) {
                         const name = node.name.getText();
-                        const isBlockScoped =
-                            (node.parent.flags &
-                                (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                        const isBlockScoped = (node.parent.flags &
+                            (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
                         const isConst =
                             (node.parent.flags & ts.NodeFlags.Const) !== 0;
 
@@ -493,6 +492,12 @@ export class TypeAnalyzer {
                             ) {
                                 type = "function";
                                 needsHeap = true;
+                            } else if (ts.isIdentifier(node.initializer)) {
+                                const typeInfo = this.scopeManager.lookup(
+                                    node.initializer.text,
+                                );
+                                needsHeap = typeInfo?.needsHeapAllocation ??
+                                    false;
                             }
                         }
 

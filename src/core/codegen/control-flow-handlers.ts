@@ -82,7 +82,9 @@ export function visitForStatement(
 
     code += `${this.indent()}for (${initializerCode}; `;
     if (forStmt.condition) {
-        code += `is_truthy(${this.visit(forStmt.condition, conditionContext)})`;
+        code += `jspp::is_truthy(${
+            this.visit(forStmt.condition, conditionContext)
+        })`;
     }
     code += "; ";
     if (forStmt.incrementor) {
@@ -360,7 +362,7 @@ export function visitWhileStatement(
     const conditionText = condition.kind === ts.SyntaxKind.TrueKeyword ||
             condition.kind === ts.SyntaxKind.FalseKeyword
         ? condition.getText()
-        : `is_truthy(${this.visit(condition, context)})`;
+        : `jspp::is_truthy(${this.visit(condition, context)})`;
 
     let code = "";
     if (context.currentLabel) {
@@ -413,7 +415,7 @@ export function visitDoStatement(
     context: VisitContext,
 ): string {
     const condition = node.expression;
-    const conditionText = `is_truthy(${this.visit(condition, context)})`;
+    const conditionText = `jspp::is_truthy(${this.visit(condition, context)})`;
 
     let code = "";
     if (context.currentLabel) {
