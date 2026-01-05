@@ -1,6 +1,6 @@
 import ts from "typescript";
 
-import { DeclaredSymbols, DeclaredSymbolType } from "../../ast/symbols.js";
+import { DeclarationType, DeclaredSymbols } from "../../ast/symbols.js";
 import { CodeGenerator } from "./index.js";
 import type { VisitContext } from "./visitor.js";
 
@@ -50,9 +50,15 @@ export function visitForStatement(
                         )!;
 
                     conditionContext.localScopeSymbols = new DeclaredSymbols();
-                    conditionContext.localScopeSymbols.set(name, {
-                        type: DeclaredSymbolType.letOrConst,
-                        checkedIfUninitialized: true,
+
+                    const declType = (varDeclList.flags &
+                            (ts.NodeFlags.Let)) !==
+                            0
+                        ? DeclarationType.let
+                        : DeclarationType.const;
+                    conditionContext.localScopeSymbols.add(name, {
+                        type: declType,
+                        checked: { initialized: true },
                     });
 
                     if (typeInfo.needsHeapAllocation) {

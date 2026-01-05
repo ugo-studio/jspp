@@ -66,12 +66,12 @@ export function visitSourceFile(
     funcDecls.forEach((stmt) => {
         const funcName = stmt.name?.getText();
         if (funcName) {
-            this.markSymbolAsChecked(
+            this.markSymbolAsInitialized(
                 funcName,
                 contextForFunctions.topLevelScopeSymbols,
                 contextForFunctions.localScopeSymbols,
             );
-            this.markSymbolAsChecked(
+            this.markSymbolAsInitialized(
                 funcName,
                 topLevelScopeSymbols,
                 localScopeSymbols,
@@ -167,12 +167,12 @@ export function visitBlock(
     funcDecls.forEach((stmt) => {
         const funcName = stmt.name?.getText();
         if (funcName) {
-            this.markSymbolAsChecked(
+            this.markSymbolAsInitialized(
                 funcName,
                 contextForFunctions.topLevelScopeSymbols,
                 contextForFunctions.localScopeSymbols,
             );
-            this.markSymbolAsChecked(
+            this.markSymbolAsInitialized(
                 funcName,
                 topLevelScopeSymbols,
                 localScopeSymbols,
@@ -357,7 +357,7 @@ export function visitTryStatement(
     if (context.isInsideAsyncFunction) {
         if (tryStmt.finallyBlock) {
             const declaredSymbols = new Set<string>(
-                context.topLevelScopeSymbols.toSet(),
+                context.topLevelScopeSymbols.names,
             );
             this.getDeclaredSymbols(tryStmt.tryBlock).forEach((s) =>
                 declaredSymbols.add(s)
@@ -584,7 +584,7 @@ export function visitTryStatement(
 
     if (tryStmt.finallyBlock) {
         const declaredSymbols = new Set<string>(
-            context.topLevelScopeSymbols.toSet(),
+            context.topLevelScopeSymbols.names,
         );
         this.getDeclaredSymbols(tryStmt.tryBlock).forEach((s) =>
             declaredSymbols.add(s)
@@ -784,7 +784,7 @@ export function visitYieldExpression(
             this.indentationLevel++;
 
             const declaredSymbols = this.getDeclaredSymbols(expr);
-            context.topLevelScopeSymbols.toSet().forEach((s) =>
+            context.topLevelScopeSymbols.names.forEach((s) =>
                 declaredSymbols.add(s)
             );
             const iterableRef = this.generateUniqueName(

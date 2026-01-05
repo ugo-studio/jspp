@@ -1,13 +1,29 @@
-export enum DeclaredSymbolType {
-    letOrConst = "letOrConst",
-    function = "function",
+export enum DeclarationType {
     var = "var",
+    let = "let",
+    const = "const",
+    function = "function",
+    class = "class",
 }
 
-export type DeclaredSymbol = {
-    type: DeclaredSymbolType;
-    checkedIfUninitialized: boolean;
-};
+export class DeclaredSymbol {
+    type: DeclarationType;
+    checked: {
+        initialized: boolean;
+    };
+
+    constructor(type: DeclarationType) {
+        this.type = type;
+        this.checked = {
+            initialized: false,
+        };
+    }
+
+    get isMutable() {
+        return this.type === DeclarationType.let ||
+            this.type === DeclarationType.var;
+    }
+}
 
 export class DeclaredSymbols {
     private symbols: Map<
@@ -20,6 +36,10 @@ export class DeclaredSymbols {
         m.forEach((ds) => ds.symbols.forEach((v, k) => this.symbols.set(k, v)));
     }
 
+    get names() {
+        return new Set(this.symbols.keys());
+    }
+
     has(name: string) {
         return this.symbols.has(name);
     }
@@ -28,19 +48,35 @@ export class DeclaredSymbols {
         return this.symbols.get(name);
     }
 
-    set(name: string, value: DeclaredSymbol) {
-        return this.symbols.set(name, value);
+    add(name: string, value: {
+        type: DeclaredSymbol["type"];
+        checked?: Partial<DeclaredSymbol["checked"]>;
+    }) {
+        const symbol = new DeclaredSymbol(value.type);
+        symbol.checked = {
+            ...symbol.checked,
+            ...value.checked,
+        };
+        return this.symbols.set(name, symbol);
     }
 
-    update(name: string, update: Partial<DeclaredSymbol>) {
-        const oldValue = this.get(name);
-        if (oldValue) {
-            const newValue = { ...oldValue, ...update };
-            return this.symbols.set(name, newValue);
+    update(
+        name: string,
+        update: Partial<
+            {
+                type: DeclaredSymbol["type"];
+                checked: Partial<DeclaredSymbol["checked"]>;
+            }
+        >,
+    ) {
+        const symbol = this.get(name);
+        if (symbol) {
+            symbol.type = update.type ?? symbol.type;
+            symbol.checked = {
+                ...symbol.checked,
+                ...update.checked,
+            };
+            return this.symbols.set(name, symbol);
         }
-    }
-
-    toSet() {
-        return new Set(this.symbols.keys());
     }
 }

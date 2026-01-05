@@ -2,7 +2,7 @@ import ts from "typescript";
 
 import { BUILTIN_OBJECTS, Scope } from "../../analysis/scope.js";
 import type { TypeAnalyzer, TypeInfo } from "../../analysis/typeAnalyzer.js";
-import { DeclaredSymbols, DeclaredSymbolType } from "../../ast/symbols.js";
+import { DeclarationType, DeclaredSymbols } from "../../ast/symbols.js";
 import { CodeGenerator } from "./index.js";
 import type { VisitContext } from "./visitor.js";
 
@@ -114,18 +114,18 @@ export function getDerefCode(
     const symbolName = varName.slice(1).slice(0, -1);
     const symbol = context.localScopeSymbols.get(symbolName) ??
         context.topLevelScopeSymbols.get(symbolName);
-    const checkedIfUninitialized: boolean = symbol?.checkedIfUninitialized ||
+    const isInitialized: boolean = symbol?.checked.initialized ||
         false;
 
     // Mark the symbol as checked
-    this.markSymbolAsChecked(
+    this.markSymbolAsInitialized(
         symbolName,
         context.topLevelScopeSymbols,
         context.localScopeSymbols,
     );
 
     // Apply deref code
-    if (checkedIfUninitialized) {
+    if (isInitialized) {
         if (typeInfo && typeInfo.needsHeapAllocation) {
             return `(*${nodeText})`;
         }
@@ -138,18 +138,18 @@ export function getDerefCode(
     }
 }
 
-export function markSymbolAsChecked(
+export function markSymbolAsInitialized(
     name: string,
     topLevel: DeclaredSymbols,
     local: DeclaredSymbols,
 ) {
     if (topLevel.has(name)) {
         topLevel.update(name, {
-            checkedIfUninitialized: true,
+            checked: { initialized: true },
         });
     } else if (local.has(name)) {
         local.update(name, {
-            checkedIfUninitialized: true,
+            checked: { initialized: true },
         });
     }
 }
@@ -173,37 +173,38 @@ export function hoistDeclaration(
         return `/* Unknown declaration name: ${ts.SyntaxKind[decl.kind]} */`;
     }
 
-    const isLetOrConst =
-        (decl.parent.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const)) !==
-            0;
-    // if (name === "letVal") console.log("hoistDeclaration: letVal isLetOrConst=", isLetOrConst, " flags=", decl.parent.flags);
-    const symbolType = isLetOrConst
-        ? DeclaredSymbolType.letOrConst
-        : (ts.isFunctionDeclaration(decl)
-            ? DeclaredSymbolType.function
-            : (ts.isClassDeclaration(decl)
-                ? DeclaredSymbolType.letOrConst
-                : DeclaredSymbolType.var));
+    const isLet = (decl.parent.flags & (ts.NodeFlags.Let)) !== 0;
+    const isConst = (decl.parent.flags & (ts.NodeFlags.Const)) !== 0;
+    const declType = isLet
+        ? DeclarationType.let
+        : isConst
+        ? DeclarationType.const
+        : ts.isFunctionDeclaration(decl)
+        ? DeclarationType.function
+        : ts.isClassDeclaration(decl)
+        ? DeclarationType.class
+        : DeclarationType.var;
 
     if (hoistedSymbols.has(name)) {
-        const existingType = hoistedSymbols.get(name)?.type;
-        // Don't allow multiple declaration of `letOrConst` or `function` or `class` variables
+        const existingSymbol = hoistedSymbols.get(name);
+        // Don't allow multiple declaration of `let`,`const`,`function` or `class` variables
         if (
-            existingType === DeclaredSymbolType.letOrConst ||
-            existingType === DeclaredSymbolType.function ||
-            existingType !== symbolType
+            existingSymbol?.type === DeclarationType.let ||
+            existingSymbol?.type === DeclarationType.const ||
+            existingSymbol?.type === DeclarationType.function ||
+            existingSymbol?.type === DeclarationType.class ||
+            existingSymbol?.type !== declType
         ) {
             throw new SyntaxError(
-                `Identifier '${name}' has already been declared`,
+                `Identifier '${name}' has already been declared.\n\n${
+                    " ".repeat(6) + decl.getText()
+                }\n`,
             );
         }
         // `var` variables can be declared multiple times
         return "";
     }
-    hoistedSymbols.set(name, {
-        type: symbolType,
-        checkedIfUninitialized: false,
-    });
+    hoistedSymbols.add(name, { type: declType });
 
     const scope = this.getScopeForNode(decl);
     const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
@@ -211,7 +212,7 @@ export function hoistDeclaration(
         scope,
     )!;
 
-    const initializer = isLetOrConst || ts.isClassDeclaration(decl)
+    const initializer = isLet || isConst || ts.isClassDeclaration(decl)
         ? "jspp::Constants::UNINITIALIZED"
         : "jspp::Constants::UNDEFINED";
 

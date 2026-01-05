@@ -16,7 +16,7 @@ import {
   isAsyncFunction,
   isBuiltinObject,
   isGeneratorFunction,
-  markSymbolAsChecked,
+  markSymbolAsInitialized,
   prepareScopeSymbolsForVisit,
 } from "./helpers.js";
 import { visit } from "./visitor.js";
@@ -47,7 +47,7 @@ export class CodeGenerator {
     public isGeneratorFunction = isGeneratorFunction;
     public isAsyncFunction = isAsyncFunction;
     public prepareScopeSymbolsForVisit = prepareScopeSymbolsForVisit;
-    public markSymbolAsChecked = markSymbolAsChecked;
+    public markSymbolAsInitialized = markSymbolAsInitialized;
 
     // function handlers
     public generateLambda = generateLambda;

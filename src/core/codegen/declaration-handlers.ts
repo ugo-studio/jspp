@@ -28,7 +28,7 @@ export function visitVariableDeclaration(
     )!;
 
     // Mark the symbol as checked
-    this.markSymbolAsChecked(
+    this.markSymbolAsInitialized(
         name,
         context.topLevelScopeSymbols,
         context.localScopeSymbols,
