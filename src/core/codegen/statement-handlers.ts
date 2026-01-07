@@ -387,6 +387,16 @@ export function visitIfStatement(
                 isFunctionBody: false,
             });
     }
+    if (ts.isBinaryExpression(ifStmt.expression)) {
+        const binExpr = ifStmt.expression as ts.BinaryExpression;
+        const op = binExpr.operatorToken.getText();
+        const isBoolean = op === "==" || op === "!=" || op === "===" ||
+            op === "!==" || op === "<" || op === ">" || op === "<=" ||
+            op === ">=" || op === "instanceof" || op === "in";
+        if (isBoolean) {
+            return `${this.indent()}if ((${condition}).as_boolean()) ${thenStmt}${elseStmt}`;
+        }
+    }
     return `${this.indent()}if (jspp::is_truthy(${condition})) ${thenStmt}${elseStmt}`;
 }
 

@@ -93,16 +93,14 @@ namespace jspp
     {
         switch (val.get_type())
         {
-        case JsType::Boolean:
-            return val.as_boolean();
         case JsType::Number:
             return is_truthy(val.as_double());
         case JsType::String:
-            return !val.as_string()->value.empty();
-        case JsType::Undefined:
-            return false;
+            return is_truthy(val.as_string()->value);
+        case JsType::Boolean:
+            return val.as_boolean();
         case JsType::Null:
-            return false;
+        case JsType::Undefined:
         case JsType::Uninitialized:
             return false;
         default:
