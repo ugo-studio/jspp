@@ -69,6 +69,7 @@ import {
 } from "./statement-handlers.js";
 
 export interface VisitContext {
+    currentScopeNode: ts.Node;
     isMainContext: boolean;
     isInsideFunction: boolean;
     isFunctionBody: boolean;

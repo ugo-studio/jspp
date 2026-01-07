@@ -168,6 +168,7 @@ export function hoistDeclaration(
     this: CodeGenerator,
     decl: ts.VariableDeclaration | ts.FunctionDeclaration | ts.ClassDeclaration,
     hoistedSymbols: DeclaredSymbols,
+    scopeNode: ts.Node,
 ) {
     const name = decl.name?.getText();
     if (!name) {
@@ -213,6 +214,14 @@ export function hoistDeclaration(
                 type: declType,
                 func: { isAsync, isGenerator },
             });
+            // Don't hoist functions not used as a variable
+            // they will be called with their native lambdas
+            if (
+                !this.isFunctionUsedAsValue(name, scopeNode) &&
+                !this.isFunctionUsedBeforeDeclaration(name, scopeNode)
+            ) {
+                return "";
+            }
         } else {
             hoistedSymbols.add(name, { type: declType });
         }
@@ -334,4 +343,141 @@ export function collectBlockScopedDeclarations(
         }
     }
     return decls;
+}
+
+export function isFunctionUsedAsValue(
+    funcName: string,
+    root: ts.Node,
+): boolean {
+    let isUsed = false;
+    function visitIsused(node: ts.Node) {
+        if (isUsed) return;
+
+        if (ts.isIdentifier(node) && node.text === funcName) {
+            const parent = node.parent;
+
+            // Ignore declarations where the identifier is the name being declared
+            if (
+                (ts.isFunctionDeclaration(parent) ||
+                    ts.isVariableDeclaration(parent) ||
+                    ts.isClassDeclaration(parent) ||
+                    ts.isMethodDeclaration(parent) ||
+                    ts.isParameter(parent) ||
+                    ts.isImportSpecifier(parent)) &&
+                parent.name === node
+            ) {
+                // Declaration (or shadowing), do nothing
+            } // Ignore property names (e.g. obj.funcName)
+            else if (
+                (ts.isPropertyAccessExpression(parent) &&
+                    parent.name === node) ||
+                (ts.isPropertyAssignment(parent) && parent.name === node)
+            ) {
+                // Property name, do nothing
+            } // Ignore direct calls (e.g. funcName())
+            else if (
+                ts.isCallExpression(parent) && parent.expression === node
+            ) {
+                // Call, do nothing
+            } else {
+                // Used as a value
+                isUsed = true;
+            }
+        }
+
+        if (!isUsed) {
+            ts.forEachChild(node, visitIsused);
+        }
+    }
+    visitIsused(root);
+    return isUsed;
+}
+
+export function isFunctionUsedBeforeDeclaration(
+    funcName: string,
+    root: ts.Node,
+): boolean {
+    let declPos = -1;
+    let foundDecl = false;
+
+    // Helper to find the function declaration position
+    function findDecl(node: ts.Node) {
+        if (foundDecl) return;
+        if (ts.isFunctionDeclaration(node) && node.name?.text === funcName) {
+            declPos = node.getStart();
+            foundDecl = true;
+        } else {
+            ts.forEachChild(node, findDecl);
+        }
+    }
+    findDecl(root);
+
+    // If not declared in this scope (or at least not found), assume it's not a local forward-ref issue
+    if (!foundDecl) return false;
+
+    let isUsedBefore = false;
+
+    function visit(node: ts.Node) {
+        if (isUsedBefore) return;
+
+        if (ts.isIdentifier(node) && node.text === funcName) {
+            const parent = node.parent;
+
+            // Ignore declarations where the identifier is the name being declared
+            if (
+                (ts.isFunctionDeclaration(parent) ||
+                    ts.isVariableDeclaration(parent) ||
+                    ts.isClassDeclaration(parent) ||
+                    ts.isMethodDeclaration(parent) ||
+                    ts.isParameter(parent) ||
+                    ts.isImportSpecifier(parent)) &&
+                parent.name === node
+            ) {
+                // Declaration (or shadowing), do nothing
+            } // Ignore property names (e.g. obj.funcName)
+            else if (
+                (ts.isPropertyAccessExpression(parent) &&
+                    parent.name === node) ||
+                (ts.isPropertyAssignment(parent) && parent.name === node)
+            ) {
+                // Property name, do nothing
+            } else {
+                // It is a usage (call or value usage)
+                const usagePos = node.getStart();
+
+                // Check 1: Lexically before
+                if (usagePos < declPos) {
+                    isUsedBefore = true;
+                    return;
+                }
+
+                // Check 2: Inside a function declared before
+                let current = parent;
+                while (current && current !== root) {
+                    if (
+                        ts.isFunctionDeclaration(current) ||
+                        ts.isMethodDeclaration(current) ||
+                        ts.isArrowFunction(current) ||
+                        ts.isFunctionExpression(current) ||
+                        ts.isGetAccessor(current) ||
+                        ts.isSetAccessor(current) ||
+                        ts.isConstructorDeclaration(current)
+                    ) {
+                        if (current.getStart() < declPos) {
+                            isUsedBefore = true;
+                            return;
+                        }
+                        // Once we hit a function boundary, we stop bubbling up for this usage.
+                        break;
+                    }
+                    current = current.parent;
+                }
+            }
+        }
+
+        ts.forEachChild(node, visit);
+    }
+
+    visit(root);
+    return isUsedBefore;
 }

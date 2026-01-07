@@ -517,12 +517,14 @@ export function visitSwitchStatement(
                         code += this.hoistDeclaration(
                             decl,
                             hoistedSymbols,
+                            switchStmt,
                         );
                     }
                 } else if (ts.isFunctionDeclaration(stmt)) {
                     code += this.hoistDeclaration(
                         stmt,
                         hoistedSymbols,
+                        switchStmt,
                     );
                 }
             }

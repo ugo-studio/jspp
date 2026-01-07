@@ -18,6 +18,8 @@ import {
   indent,
   isAsyncFunction,
   isBuiltinObject,
+  isFunctionUsedAsValue,
+  isFunctionUsedBeforeDeclaration,
   isGeneratorFunction,
   markSymbolAsInitialized,
   prepareScopeSymbolsForVisit,
@@ -51,6 +53,8 @@ export class CodeGenerator {
     public isAsyncFunction = isAsyncFunction;
     public prepareScopeSymbolsForVisit = prepareScopeSymbolsForVisit;
     public markSymbolAsInitialized = markSymbolAsInitialized;
+    public isFunctionUsedAsValue = isFunctionUsedAsValue;
+    public isFunctionUsedBeforeDeclaration = isFunctionUsedBeforeDeclaration;
 
     // function handlers
     public generateLambda = generateLambda;
@@ -73,6 +77,7 @@ export class CodeGenerator {
         containerCode +=
             `${this.indent()}jspp::AnyValue ${this.globalThisVar} = global;\n`;
         containerCode += this.visit(ast, {
+            currentScopeNode: ast,
             isMainContext: true,
             isInsideFunction: true,
             isFunctionBody: true,

@@ -70,6 +70,7 @@ export function generateLambda(
     );
 
     const visitContext: VisitContext = {
+        currentScopeNode: context.currentScopeNode,
         isMainContext: false,
         isInsideFunction: true,
         isFunctionBody: false,
@@ -225,6 +226,7 @@ export function generateLambda(
                 preamble += this.hoistDeclaration(
                     decl,
                     visitContext.localScopeSymbols,
+                    node.body as ts.Node,
                 );
             });
 

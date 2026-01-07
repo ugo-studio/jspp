@@ -29,22 +29,22 @@ export function visitSourceFile(
 
     // Hoist function declarations
     funcDecls.forEach((func) => {
-        code += this.hoistDeclaration(func, hoistedSymbols);
+        code += this.hoistDeclaration(func, hoistedSymbols, node);
     });
 
     // Hoist class declarations
     classDecls.forEach((cls) => {
-        code += this.hoistDeclaration(cls, hoistedSymbols);
+        code += this.hoistDeclaration(cls, hoistedSymbols, node);
     });
 
     // Hoist variable declarations (var)
     varDecls.forEach((decl) => {
-        code += this.hoistDeclaration(decl, hoistedSymbols);
+        code += this.hoistDeclaration(decl, hoistedSymbols, node);
     });
 
     // Hoist top-level let/const
     topLevelLetConst.forEach((decl) => {
-        code += this.hoistDeclaration(decl, hoistedSymbols);
+        code += this.hoistDeclaration(decl, hoistedSymbols, node);
     });
 
     // Compile symbols for other statements (excluding function)
@@ -101,13 +101,18 @@ export function visitSourceFile(
         code += `${this.indent()}auto ${nativeName} = ${lambda};\n`;
 
         // Generate AnyValue wrapper
-        const fullExpression = this.generateFullLambdaExpression(
-            stmt,
-            contextForFunctions,
-            nativeName,
-            { isAssignment: true, noTypeSignature: true },
-        );
-        code += `${this.indent()}*${funcName} = ${fullExpression};\n`;
+        if (
+            this.isFunctionUsedAsValue(funcName, node) ||
+            this.isFunctionUsedBeforeDeclaration(funcName, node)
+        ) {
+            const fullExpression = this.generateFullLambdaExpression(
+                stmt,
+                contextForFunctions,
+                nativeName,
+                { isAssignment: true, noTypeSignature: true },
+            );
+            code += `${this.indent()}*${funcName} = ${fullExpression};\n`;
+        }
     });
 
     // 3. Process other statements
@@ -148,6 +153,8 @@ export function visitBlock(
     node: ts.Block,
     context: VisitContext,
 ): string {
+    context.currentScopeNode = node; // Update scope node
+
     let code = `${this.indent()}{\n`;
     this.indentationLevel++;
     const block = node as ts.Block;
@@ -162,17 +169,17 @@ export function visitBlock(
 
     // 1. Hoist all function declarations
     funcDecls.forEach((func) => {
-        code += this.hoistDeclaration(func, hoistedSymbols);
+        code += this.hoistDeclaration(func, hoistedSymbols, node);
     });
 
     // Hoist class declarations
     classDecls.forEach((cls) => {
-        code += this.hoistDeclaration(cls, hoistedSymbols);
+        code += this.hoistDeclaration(cls, hoistedSymbols, node);
     });
 
     // Hoist variable declarations (let/const only)
     blockScopedDecls.forEach((decl) => {
-        code += this.hoistDeclaration(decl, hoistedSymbols);
+        code += this.hoistDeclaration(decl, hoistedSymbols, node);
     });
 
     // Compile symbols for other statements (excluding function)
@@ -229,13 +236,18 @@ export function visitBlock(
         code += `${this.indent()}auto ${nativeName} = ${lambda};\n`;
 
         // Generate AnyValue wrapper
-        const fullExpression = this.generateFullLambdaExpression(
-            stmt,
-            contextForFunctions,
-            nativeName,
-            { isAssignment: true, noTypeSignature: true },
-        );
-        code += `${this.indent()}*${funcName} = ${fullExpression};\n`;
+        if (
+            this.isFunctionUsedAsValue(funcName, node) ||
+            this.isFunctionUsedBeforeDeclaration(funcName, node)
+        ) {
+            const fullExpression = this.generateFullLambdaExpression(
+                stmt,
+                contextForFunctions,
+                nativeName,
+                { isAssignment: true, noTypeSignature: true },
+            );
+            code += `${this.indent()}*${funcName} = ${fullExpression};\n`;
+        }
     });
 
     // 3. Process other statements
