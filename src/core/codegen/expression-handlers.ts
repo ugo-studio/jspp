@@ -56,6 +56,18 @@ export function visitObjectLiteralExpression(
         this.getDeclaredSymbols(node),
     );
 
+    if (
+        !obj.properties.some((prop) =>
+            ts.isPropertyAssignment(prop) ||
+            ts.isShorthandPropertyAssignment(prop) ||
+            ts.isMethodDeclaration(prop) || ts.isGetAccessor(prop) ||
+            ts.isSetAccessor(prop)
+        )
+    ) {
+        // Empty object
+        return `jspp::AnyValue::make_object_with_proto({}, ::Object.get_own_property("prototype"))`;
+    }
+
     let code = `([&]() {\n`;
     code +=
         `${this.indent()}  auto ${objVar} = jspp::AnyValue::make_object_with_proto({}, ::Object.get_own_property("prototype"));\n`;
@@ -147,8 +159,6 @@ export function visitObjectLiteralExpression(
     }
 
     this.indentationLevel--;
-    // code +=
-    //     `${this.indent()}  ${returnCmd} ${objVar};\n${this.indent()}} )() ))`;
     code += `${this.indent()}  return ${objVar};\n${this.indent()}})()`;
 
     return code;

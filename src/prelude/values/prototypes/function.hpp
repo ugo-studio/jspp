@@ -20,6 +20,24 @@ namespace jspp
                                                key);
             }
 
+            // --- call() method ---
+            if (key == "call")
+            {
+                return AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                {
+                    AnyValue thisArg = Constants::UNDEFINED;
+                    std::span<const AnyValue> fnArgs;
+
+                    if (!args.empty())
+                    {
+                        thisArg = args[0];
+                        fnArgs = args.subspan(1);
+                    }
+
+                    return thisVal.call(thisArg, fnArgs);
+                }, key);
+            }
+
             return std::nullopt;
         }
     }
