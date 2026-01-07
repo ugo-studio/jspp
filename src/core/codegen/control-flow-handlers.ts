@@ -476,6 +476,8 @@ export function visitSwitchStatement(
     context: VisitContext,
 ): string {
     const switchStmt = node as ts.SwitchStatement;
+    context.currentScopeNode = node; // Update scope node
+
     let code = "";
 
     const declaredSymbols = this.getDeclaredSymbols(switchStmt.caseBlock);
@@ -506,36 +508,111 @@ export function visitSwitchStatement(
         `${this.indent()}const jspp::AnyValue ${switchValueVar} = ${expressionCode};\n`;
     code += `${this.indent()}bool ${fallthroughVar} = false;\n`;
 
-    // Hoist variable declarations
-    const hoistedSymbols = new DeclaredSymbols();
+    // Collect declarations from all clauses
+    const funcDecls: ts.FunctionDeclaration[] = [];
+    const classDecls: ts.ClassDeclaration[] = [];
+    const blockScopedDecls: ts.VariableDeclaration[] = [];
+
     for (const clause of switchStmt.caseBlock.clauses) {
-        if (ts.isCaseClause(clause) || ts.isDefaultClause(clause)) {
-            for (const stmt of clause.statements) {
-                if (ts.isVariableStatement(stmt)) {
-                    const varDecls = stmt.declarationList.declarations;
-                    for (const decl of varDecls) {
-                        code += this.hoistDeclaration(
-                            decl,
-                            hoistedSymbols,
-                            switchStmt,
-                        );
-                    }
-                } else if (ts.isFunctionDeclaration(stmt)) {
-                    code += this.hoistDeclaration(
-                        stmt,
-                        hoistedSymbols,
-                        switchStmt,
-                    );
+        for (const stmt of clause.statements) {
+            if (ts.isFunctionDeclaration(stmt)) {
+                funcDecls.push(stmt);
+            } else if (ts.isClassDeclaration(stmt)) {
+                classDecls.push(stmt);
+            } else if (ts.isVariableStatement(stmt)) {
+                const isLetOrConst = (stmt.declarationList.flags &
+                    (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
+                if (isLetOrConst) {
+                    blockScopedDecls.push(...stmt.declarationList.declarations);
                 }
             }
         }
     }
 
-    // Prepare scope symbols for the switch block
+    const hoistedSymbols = new DeclaredSymbols();
+
+    // 1. Hoist function declarations
+    funcDecls.forEach((func) => {
+        code += this.hoistDeclaration(func, hoistedSymbols, node);
+    });
+
+    // 2. Hoist class declarations
+    classDecls.forEach((cls) => {
+        code += this.hoistDeclaration(cls, hoistedSymbols, node);
+    });
+
+    // 3. Hoist variable declarations (let/const only)
+    blockScopedDecls.forEach((decl) => {
+        code += this.hoistDeclaration(decl, hoistedSymbols, node);
+    });
+
+    // Compile symbols for other statements
     const globalScopeSymbols = this.prepareScopeSymbolsForVisit(
         context.globalScopeSymbols,
         context.localScopeSymbols,
     );
+    const localScopeSymbols = new DeclaredSymbols(hoistedSymbols);
+
+    // 4. Assign hoisted functions (Optimization)
+    const contextForFunctions = {
+        ...context,
+        localScopeSymbols: new DeclaredSymbols(
+            context.localScopeSymbols,
+            hoistedSymbols,
+        ),
+    };
+
+    funcDecls.forEach((stmt) => {
+        const funcName = stmt.name?.getText();
+        if (!funcName) return;
+        const symbol = hoistedSymbols.get(funcName);
+        if (!symbol) return;
+
+        // Mark initialized
+        this.markSymbolAsInitialized(
+            funcName,
+            contextForFunctions.globalScopeSymbols,
+            contextForFunctions.localScopeSymbols,
+        );
+        this.markSymbolAsInitialized(
+            funcName,
+            globalScopeSymbols,
+            localScopeSymbols,
+        );
+
+        // Generate native name
+        const nativeName = this.generateUniqueName(
+            `__${funcName}_native_`,
+            hoistedSymbols,
+        );
+        hoistedSymbols.update(funcName, { func: { nativeName } });
+
+        // Generate lambda
+        const lambda = this.generateLambda(
+            stmt,
+            contextForFunctions,
+            {
+                isAssignment: true,
+                generateOnlyLambda: true,
+                nativeName,
+            },
+        );
+        code += `${this.indent()}auto ${nativeName} = ${lambda};\n`;
+
+        // Generate AnyValue wrapper
+        if (
+            this.isFunctionUsedAsValue(funcName, node) ||
+            this.isFunctionUsedBeforeDeclaration(funcName, node)
+        ) {
+            const fullExpression = this.generateFullLambdaExpression(
+                stmt,
+                contextForFunctions,
+                nativeName,
+                { isAssignment: true, noTypeSignature: true },
+            );
+            code += `${this.indent()}*${funcName} = ${fullExpression};\n`;
+        }
+    });
 
     let firstIf = true;
 
@@ -562,19 +639,25 @@ export function visitSwitchStatement(
             code += `${this.indent()}${fallthroughVar} = true;\n`;
             for (const stmt of clause.statements) {
                 if (ts.isFunctionDeclaration(stmt)) {
-                    const funcName = stmt.name?.getText();
-                    if (funcName) {
-                        const contextForFunction = {
-                            ...context,
-                            globalScopeSymbols,
-                            localScopeSymbols: hoistedSymbols,
-                        };
-                        const lambda = this.generateLambda(
-                            stmt,
-                            contextForFunction,
-                            { isAssignment: true },
-                        );
-                        code += `${this.indent()}*${funcName} = ${lambda};\n`;
+                    // Already handled
+                } else if (ts.isVariableStatement(stmt)) {
+                    const isLetOrConst = (stmt.declarationList.flags &
+                        (ts.NodeFlags.Let | ts.NodeFlags.Const)) !==
+                        0;
+                    const contextForVisit = {
+                        ...context,
+                        switchBreakLabel,
+                        currentLabel: undefined,
+                        globalScopeSymbols,
+                        localScopeSymbols,
+                        isAssignmentOnly: !isLetOrConst,
+                    };
+                    const assignments = this.visit(
+                        stmt.declarationList,
+                        contextForVisit,
+                    );
+                    if (assignments) {
+                        code += `${this.indent()}${assignments};\n`;
                     }
                 } else {
                     code += this.visit(stmt, {
@@ -582,9 +665,7 @@ export function visitSwitchStatement(
                         switchBreakLabel,
                         currentLabel: undefined, // Clear currentLabel for nested visits
                         globalScopeSymbols,
-                        localScopeSymbols: hoistedSymbols,
-                        derefBeforeAssignment: true,
-                        isAssignmentOnly: ts.isVariableStatement(stmt),
+                        localScopeSymbols,
                     });
                 }
             }
@@ -602,15 +683,36 @@ export function visitSwitchStatement(
             }
             this.indentationLevel++;
             for (const stmt of clause.statements) {
-                code += this.visit(stmt, {
-                    ...context,
-                    switchBreakLabel,
-                    currentLabel: undefined, // Clear currentLabel for nested visits
-                    globalScopeSymbols,
-                    localScopeSymbols: hoistedSymbols,
-                    derefBeforeAssignment: true,
-                    isAssignmentOnly: ts.isVariableStatement(stmt),
-                });
+                if (ts.isFunctionDeclaration(stmt)) {
+                    // Already handled
+                } else if (ts.isVariableStatement(stmt)) {
+                    const isLetOrConst = (stmt.declarationList.flags &
+                        (ts.NodeFlags.Let | ts.NodeFlags.Const)) !==
+                        0;
+                    const contextForVisit = {
+                        ...context,
+                        switchBreakLabel,
+                        currentLabel: undefined,
+                        globalScopeSymbols,
+                        localScopeSymbols,
+                        isAssignmentOnly: !isLetOrConst,
+                    };
+                    const assignments = this.visit(
+                        stmt.declarationList,
+                        contextForVisit,
+                    );
+                    if (assignments) {
+                        code += `${this.indent()}${assignments};\n`;
+                    }
+                } else {
+                    code += this.visit(stmt, {
+                        ...context,
+                        switchBreakLabel,
+                        currentLabel: undefined, // Clear currentLabel for nested visits
+                        globalScopeSymbols,
+                        localScopeSymbols,
+                    });
+                }
             }
             this.indentationLevel--;
             code += `${this.indent()}}\n`;
