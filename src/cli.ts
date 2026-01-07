@@ -63,7 +63,10 @@ async function main() {
 
         spinner.update("Transpiling to C++...");
         const interpreter = new Interpreter();
-        const { cppCode, preludePath } = interpreter.interpret(jsCode);
+        const { cppCode, preludePath } = interpreter.interpret(
+            jsCode,
+            jsFilePath,
+        );
 
         // Ensure directory for cpp file exists (should exist as it's source dir, but for safety if we change logic)
         await fs.mkdir(path.dirname(cppFilePath), { recursive: true });

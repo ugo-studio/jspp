@@ -269,6 +269,23 @@ export class TypeAnalyzer {
                             node,
                             this.scopeManager.currentScope,
                         );
+                        // Catch invalid parameters
+                        node.parameters.forEach((p) => {
+                            if (p.getText() == "this") {
+                                const sourceFile = node.getSourceFile();
+                                const { line, character } = sourceFile
+                                    .getLineAndCharacterOfPosition(
+                                        p.getStart(),
+                                    );
+                                throw new SyntaxError(
+                                    `Cannot use 'this' as a parameter name.\n\n${
+                                        " ".repeat(6)
+                                    }at ${sourceFile.fileName}:${line + 1}:${
+                                        character + 1
+                                    }\n`,
+                                );
+                            }
+                        });
                         // Define parameters in the new scope
                         node.parameters.forEach((p) =>
                             this.scopeManager.define(p.name.getText(), {
@@ -314,6 +331,24 @@ export class TypeAnalyzer {
                             );
                         }
 
+                        // Catch invalid parameters
+                        node.parameters.forEach((p) => {
+                            if (p.getText() == "this") {
+                                const sourceFile = node.getSourceFile();
+                                const { line, character } = sourceFile
+                                    .getLineAndCharacterOfPosition(
+                                        p.getStart(),
+                                    );
+                                throw new SyntaxError(
+                                    `Cannot use 'this' as a parameter name.\n\n${
+                                        " ".repeat(6)
+                                    }at ${sourceFile.fileName}:${line + 1}:${
+                                        character + 1
+                                    }\n`,
+                                );
+                            }
+                        });
+
                         // Define parameters in the new scope
                         node.parameters.forEach((p) =>
                             this.scopeManager.define(p.name.getText(), {
@@ -349,6 +384,24 @@ export class TypeAnalyzer {
                             this.scopeManager.define(funcName, funcType);
                             this.functionTypeInfo.set(node, funcType);
                         }
+
+                        // Catch invalid parameters
+                        node.parameters.forEach((p) => {
+                            if (p.getText() == "this") {
+                                const sourceFile = node.getSourceFile();
+                                const { line, character } = sourceFile
+                                    .getLineAndCharacterOfPosition(
+                                        p.getStart(),
+                                    );
+                                throw new SyntaxError(
+                                    `Cannot use 'this' as a parameter name.\n\n${
+                                        " ".repeat(6)
+                                    }at ${sourceFile.fileName}:${line + 1}:${
+                                        character + 1
+                                    }\n`,
+                                );
+                            }
+                        });
 
                         this.scopeManager.enterScope(node);
                         this.nodeToScope.set(

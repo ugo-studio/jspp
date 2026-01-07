@@ -601,7 +601,7 @@ export function visitSwitchStatement(
 
         // Generate AnyValue wrapper
         if (
-            this.isFunctionUsedAsValue(funcName, node) ||
+            this.isFunctionUsedAsValue(stmt, node) ||
             this.isFunctionUsedBeforeDeclaration(funcName, node)
         ) {
             const fullExpression = this.generateFullLambdaExpression(

@@ -217,7 +217,10 @@ export function hoistDeclaration(
             // Don't hoist functions not used as a variable
             // they will be called with their native lambdas
             if (
-                !this.isFunctionUsedAsValue(name, scopeNode) &&
+                !this.isFunctionUsedAsValue(
+                    decl as ts.FunctionDeclaration,
+                    scopeNode,
+                ) &&
                 !this.isFunctionUsedBeforeDeclaration(name, scopeNode)
             ) {
                 return "";
@@ -346,54 +349,70 @@ export function collectBlockScopedDeclarations(
 }
 
 export function isFunctionUsedAsValue(
-    funcName: string,
+    this: CodeGenerator,
+    decl: ts.FunctionDeclaration | ts.ClassDeclaration,
     root: ts.Node,
 ): boolean {
+    const funcName = decl.name?.getText();
+    if (!funcName) return false;
+
     let isUsed = false;
-    function visitIsused(node: ts.Node) {
+
+    const visitor = (node: ts.Node) => {
         if (isUsed) return;
 
         if (ts.isIdentifier(node) && node.text === funcName) {
-            const parent = node.parent;
+            const scope = this.getScopeForNode(node);
+            const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                node.text,
+                scope,
+            );
 
-            // Ignore declarations where the identifier is the name being declared
-            if (
-                (ts.isFunctionDeclaration(parent) ||
-                    ts.isVariableDeclaration(parent) ||
-                    ts.isClassDeclaration(parent) ||
-                    ts.isMethodDeclaration(parent) ||
-                    ts.isParameter(parent) ||
-                    ts.isImportSpecifier(parent)) &&
-                parent.name === node
-            ) {
-                // Declaration (or shadowing), do nothing
-            } // Ignore property names (e.g. obj.funcName)
-            else if (
-                (ts.isPropertyAccessExpression(parent) &&
-                    parent.name === node) ||
-                (ts.isPropertyAssignment(parent) && parent.name === node)
-            ) {
-                // Property name, do nothing
-            } // Ignore direct calls (e.g. funcName())
-            else if (
-                ts.isCallExpression(parent) && parent.expression === node
-            ) {
-                // Call, do nothing
-            } else {
-                // Used as a value
-                isUsed = true;
+            if (typeInfo?.declaration === decl) {
+                const parent = node.parent;
+
+                // Ignore declarations where the identifier is the name being declared
+                if (
+                    (ts.isFunctionDeclaration(parent) ||
+                        ts.isVariableDeclaration(parent) ||
+                        ts.isClassDeclaration(parent) ||
+                        ts.isMethodDeclaration(parent) ||
+                        ts.isParameter(parent) ||
+                        ts.isImportSpecifier(parent)) &&
+                    parent.name === node
+                ) {
+                    // Declaration, do nothing
+                } // Ignore property names (e.g. obj.funcName)
+                else if (
+                    (ts.isPropertyAccessExpression(parent) &&
+                        parent.name === node) ||
+                    (ts.isPropertyAssignment(parent) && parent.name === node)
+                ) {
+                    // Property name, do nothing
+                } // Ignore direct calls (e.g. funcName())
+                else if (
+                    ts.isCallExpression(parent) && parent.expression === node
+                ) {
+                    // Call, do nothing
+                } else {
+                    // Used as a value
+                    isUsed = true;
+                }
             }
         }
 
         if (!isUsed) {
-            ts.forEachChild(node, visitIsused);
+            ts.forEachChild(node, visitor);
         }
-    }
-    visitIsused(root);
+    };
+
+    ts.forEachChild(root, visitor);
+
     return isUsed;
 }
 
 export function isFunctionUsedBeforeDeclaration(
+    this: CodeGenerator,
     funcName: string,
     root: ts.Node,
 ): boolean {

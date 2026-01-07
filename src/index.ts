@@ -11,8 +11,9 @@ export class Interpreter {
 
     public interpret(
         jsCode: string,
+        fileName?: string,
     ): { cppCode: string; preludePath: string } {
-        const ast = this.parser.parse(jsCode);
+        const ast = this.parser.parse(jsCode, fileName);
         this.analyzer.analyze(ast);
         const cppCode = this.generator.generate(ast, this.analyzer);
         const preludePath = path.resolve(
