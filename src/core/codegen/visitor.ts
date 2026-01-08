@@ -88,6 +88,7 @@ export interface VisitContext {
     derefBeforeAssignment?: boolean;
     superClassVar?: string;
     lambdaName?: string;
+    supportedNativeLiterals?: ("boolean" | "number")[];
 }
 
 export function visit(

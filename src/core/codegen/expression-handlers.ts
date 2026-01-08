@@ -1,5 +1,6 @@
 import ts from "typescript";
 
+import { constants } from "../constants.js";
 import { CodeGenerator } from "./index.js";
 import type { VisitContext } from "./visitor.js";
 
@@ -428,7 +429,11 @@ export function visitBinaryExpression(
 ): string {
     const binExpr = node as ts.BinaryExpression;
     const opToken = binExpr.operatorToken;
-    let op = opToken.getText();
+    const op = opToken.getText();
+    const visitContext: VisitContext = {
+        ...context,
+        supportedNativeLiterals: undefined,
+    };
 
     const assignmentOperators = [
         ts.SyntaxKind.PlusEqualsToken,
@@ -447,14 +452,13 @@ export function visitBinaryExpression(
         ts.SyntaxKind.BarBarEqualsToken,
         ts.SyntaxKind.QuestionQuestionEqualsToken,
     ];
-
     if (assignmentOperators.includes(opToken.kind)) {
         if (
             opToken.kind ===
                 ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken
         ) {
-            const leftText = this.visit(binExpr.left, context);
-            const rightText = this.visit(binExpr.right, context);
+            const leftText = this.visit(binExpr.left, visitContext);
+            const rightText = this.visit(binExpr.right, visitContext);
             let target = leftText;
             if (ts.isIdentifier(binExpr.left)) {
                 const scope = this.getScopeForNode(binExpr.left);
@@ -469,8 +473,8 @@ export function visitBinaryExpression(
             }
         }
         if (opToken.kind === ts.SyntaxKind.AsteriskAsteriskEqualsToken) {
-            const leftText = this.visit(binExpr.left, context);
-            const rightText = this.visit(binExpr.right, context);
+            const leftText = this.visit(binExpr.left, visitContext);
+            const rightText = this.visit(binExpr.right, visitContext);
             let target = leftText;
             if (ts.isIdentifier(binExpr.left)) {
                 const scope = this.getScopeForNode(binExpr.left);
@@ -490,8 +494,8 @@ export function visitBinaryExpression(
             opToken.kind === ts.SyntaxKind.BarBarEqualsToken ||
             opToken.kind === ts.SyntaxKind.QuestionQuestionEqualsToken
         ) {
-            const leftText = this.visit(binExpr.left, context);
-            const rightText = this.visit(binExpr.right, context);
+            const leftText = this.visit(binExpr.left, visitContext);
+            const rightText = this.visit(binExpr.right, visitContext);
             let target = leftText;
             if (ts.isIdentifier(binExpr.left)) {
                 const scope = this.getScopeForNode(binExpr.left);
@@ -515,10 +519,10 @@ export function visitBinaryExpression(
             }
         }
 
-        const leftText = this.visit(binExpr.left, context);
+        const leftText = this.visit(binExpr.left, visitContext);
         let rightText = ts.isNumericLiteral(binExpr.right)
             ? binExpr.right.getText()
-            : this.visit(binExpr.right, context);
+            : this.visit(binExpr.right, visitContext);
 
         if (ts.isIdentifier(binExpr.right)) {
             const scope = this.getScopeForNode(binExpr.right);
@@ -529,7 +533,7 @@ export function visitBinaryExpression(
             rightText = this.getDerefCode(
                 rightText,
                 this.getJsVarName(binExpr.right as ts.Identifier),
-                context,
+                visitContext,
                 typeInfo,
             );
         }
@@ -545,7 +549,7 @@ export function visitBinaryExpression(
                 target = this.getDerefCode(
                     leftText,
                     leftText,
-                    context,
+                    visitContext,
                     typeInfo,
                 );
             } else if (typeInfo.needsHeapAllocation) {
@@ -555,8 +559,9 @@ export function visitBinaryExpression(
         return `${target} ${op} ${rightText}`;
     }
 
+    // Assignment expression `a = 1`
     if (opToken.kind === ts.SyntaxKind.EqualsToken) {
-        let rightText = this.visit(binExpr.right, context);
+        let rightText = this.visit(binExpr.right, visitContext);
 
         if (ts.isPropertyAccessExpression(binExpr.left)) {
             const propAccess = binExpr.left;
@@ -580,7 +585,7 @@ export function visitBinaryExpression(
                         finalRightText = this.getDerefCode(
                             rightText,
                             this.getJsVarName(binExpr.right as ts.Identifier),
-                            context,
+                            visitContext,
                             rightTypeInfo,
                         );
                     }
@@ -589,7 +594,7 @@ export function visitBinaryExpression(
                 return `(${this.globalThisVar}).set_own_property("${propName}", ${finalRightText})`;
             }
 
-            const objExprText = this.visit(propAccess.expression, context);
+            const objExprText = this.visit(propAccess.expression, visitContext);
             const propName = propAccess.name.getText();
 
             let finalObjExpr = objExprText;
@@ -637,11 +642,11 @@ export function visitBinaryExpression(
             return `${finalObjExpr}.set_own_property("${propName}", ${finalRightText})`;
         } else if (ts.isElementAccessExpression(binExpr.left)) {
             const elemAccess = binExpr.left;
-            const objExprText = this.visit(elemAccess.expression, context);
+            const objExprText = this.visit(elemAccess.expression, visitContext);
             let argText = visitObjectPropertyName.call(
                 this,
                 elemAccess.argumentExpression as ts.PropertyName,
-                { ...context, isBracketNotationPropertyAccess: true },
+                { ...visitContext, isBracketNotationPropertyAccess: true },
             );
 
             let finalObjExpr = objExprText;
@@ -657,7 +662,7 @@ export function visitBinaryExpression(
                         this.getJsVarName(
                             elemAccess.expression as ts.Identifier,
                         ),
-                        context,
+                        visitContext,
                         typeInfo,
                     );
                 }
@@ -682,7 +687,7 @@ export function visitBinaryExpression(
                         this.getJsVarName(
                             elemAccess.argumentExpression as ts.Identifier,
                         ),
-                        context,
+                        visitContext,
                         argTypeInfo,
                     );
                 }
@@ -704,7 +709,7 @@ export function visitBinaryExpression(
                     finalRightText = this.getDerefCode(
                         rightText,
                         this.getJsVarName(binExpr.right as ts.Identifier),
-                        context,
+                        visitContext,
                         rightTypeInfo,
                     );
                 }
@@ -713,7 +718,7 @@ export function visitBinaryExpression(
             return `${finalObjExpr}.set_own_property(${argText}, ${finalRightText})`;
         }
 
-        const leftText = this.visit(binExpr.left, context);
+        const leftText = this.visit(binExpr.left, visitContext);
         const scope = this.getScopeForNode(binExpr.left);
         const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
             (binExpr.left as ts.Identifier).text,
@@ -733,7 +738,7 @@ export function visitBinaryExpression(
             rightText = binExpr.right.getText();
         }
         const target = context.derefBeforeAssignment
-            ? this.getDerefCode(leftText, leftText, context, typeInfo)
+            ? this.getDerefCode(leftText, leftText, visitContext, typeInfo)
             : (typeInfo.needsHeapAllocation ? `*${leftText}` : leftText);
 
         // Update scope symbols on variable re-assignment
@@ -754,9 +759,10 @@ export function visitBinaryExpression(
         return `${target} ${op} ${rightText}`;
     }
 
-    const leftText = this.visit(binExpr.left, context);
-    const rightText = this.visit(binExpr.right, context);
+    const leftText = this.visit(binExpr.left, visitContext);
+    const rightText = this.visit(binExpr.right, visitContext);
 
+    // Generate lhs and rhs code
     let finalLeft = leftText;
     if (ts.isIdentifier(binExpr.left)) {
         const scope = this.getScopeForNode(binExpr.left);
@@ -775,12 +781,11 @@ export function visitBinaryExpression(
             finalLeft = this.getDerefCode(
                 leftText,
                 this.getJsVarName(binExpr.left as ts.Identifier),
-                context,
+                visitContext,
                 typeInfo,
             );
         }
     }
-
     let finalRight = rightText;
     if (ts.isIdentifier(binExpr.right)) {
         const scope = this.getScopeForNode(binExpr.right);
@@ -802,7 +807,7 @@ export function visitBinaryExpression(
             finalRight = this.getDerefCode(
                 rightText,
                 this.getJsVarName(binExpr.right as ts.Identifier),
-                context,
+                visitContext,
                 typeInfo,
             );
         }
@@ -824,38 +829,58 @@ export function visitBinaryExpression(
         return `jspp::nullish_coalesce(${finalLeft}, ${finalRight})`;
     }
 
-    // Optimizations to prevent calling make_number multiple times
-    if (ts.isNumericLiteral(binExpr.left)) {
-        finalLeft = binExpr.left.getText();
-    }
-    if (ts.isNumericLiteral(binExpr.right)) {
-        finalRight = binExpr.right.getText();
+    const isLiteral = (n: ts.Node) => ts.isNumericLiteral(n);
+    const supportsNativeBoolean =
+        context.supportedNativeLiterals?.includes("boolean") || false;
+
+    // Native values for lhs and rhs
+    const literalLeft = isLiteral(binExpr.left)
+        ? binExpr.left.getText()
+        : finalLeft;
+    const literalRight = isLiteral(binExpr.right)
+        ? binExpr.right.getText()
+        : finalRight;
+
+    // Operations that returns boolean should return the native boolean if supported
+    if (
+        constants.booleanOperators.includes(opToken.kind) &&
+        supportsNativeBoolean
+    ) {
+        if (opToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken) {
+            return `jspp::is_strictly_equal_to_primitive(${literalLeft}, ${literalRight})`;
+        }
+        if (opToken.kind === ts.SyntaxKind.EqualsEqualsToken) {
+            return `jspp::is_equal_to_primitive(${literalLeft}, ${literalRight})`;
+        }
+        if (opToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken) {
+            return `!jspp::is_strictly_equal_to_primitive(${literalLeft}, ${literalRight})`;
+        }
+        if (opToken.kind === ts.SyntaxKind.ExclamationEqualsToken) {
+            return `!jspp::is_equal_to_primitive(${literalLeft}, ${literalRight})`;
+        }
+        if (isLiteral(binExpr.left) && isLiteral(binExpr.right)) {
+            return `(${literalLeft} ${op} ${literalRight})`;
+        } else return `(${literalLeft} ${op} ${literalRight}).as_boolean()`;
     }
 
+    // Return boxed value
     if (opToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken) {
-        return `jspp::is_strictly_equal_to(${finalLeft}, ${finalRight})`;
+        return `jspp::is_strictly_equal_to(${literalLeft}, ${literalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.EqualsEqualsToken) {
-        return `jspp::is_equal_to(${finalLeft}, ${finalRight})`;
+        return `jspp::is_equal_to(${literalLeft}, ${literalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken) {
-        return `jspp::not_strictly_equal_to(${finalLeft}, ${finalRight})`;
+        return `jspp::not_strictly_equal_to(${literalLeft}, ${literalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.ExclamationEqualsToken) {
-        return `jspp::not_equal_to(${finalLeft}, ${finalRight})`;
+        return `jspp::not_equal_to(${literalLeft}, ${literalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.AsteriskAsteriskToken) {
-        return `jspp::pow(${finalLeft}, ${finalRight})`;
+        return `jspp::pow(${literalLeft}, ${literalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken) {
-        return `jspp::unsigned_right_shift(${finalLeft}, ${finalRight})`;
-    }
-
-    // Optimizations to prevent calling make_number multiple times
-    if (
-        ts.isNumericLiteral(binExpr.left) && ts.isNumericLiteral(binExpr.right)
-    ) {
-        return `jspp::AnyValue::make_number(${finalLeft} ${op} ${finalRight})`;
+        return `jspp::unsigned_right_shift(${literalLeft}, ${literalRight})`;
     }
 
     if (
@@ -881,7 +906,15 @@ export function visitConditionalExpression(
     context: VisitContext,
 ): string {
     const condExpr = node as ts.ConditionalExpression;
-    const condition = this.visit(condExpr.condition, context);
+    const isBinaryExpression = ts.isBinaryExpression(condExpr.condition) &&
+        constants.booleanOperators.includes(
+            condExpr.condition.operatorToken.kind,
+        );
+
+    const condition = this.visit(condExpr.condition, {
+        ...context,
+        supportedNativeLiterals: isBinaryExpression ? ["boolean"] : undefined,
+    });
     const whenTrueStmt = this.visit(condExpr.whenTrue, {
         ...context,
         isFunctionBody: false,
@@ -890,6 +923,10 @@ export function visitConditionalExpression(
         ...context,
         isFunctionBody: false,
     });
+
+    if (isBinaryExpression) {
+        return `${condition} ? ${whenTrueStmt} : ${whenFalseStmt}`;
+    }
     return `jspp::is_truthy(${condition}) ? ${whenTrueStmt} : ${whenFalseStmt}`;
 }
 

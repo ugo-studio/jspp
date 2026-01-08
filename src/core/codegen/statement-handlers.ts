@@ -1,6 +1,7 @@
 import ts from "typescript";
 
 import { DeclaredSymbols } from "../../ast/symbols.js";
+import { constants } from "../constants.js";
 import {
   collectBlockScopedDeclarations,
   collectFunctionScopedDeclarations,
@@ -374,7 +375,15 @@ export function visitIfStatement(
     context: VisitContext,
 ): string {
     const ifStmt = node as ts.IfStatement;
-    const condition = this.visit(ifStmt.expression, context);
+    const isBinaryExpression = ts.isBinaryExpression(ifStmt.expression) &&
+        constants.booleanOperators.includes(
+            ifStmt.expression.operatorToken.kind,
+        );
+
+    const condition = this.visit(ifStmt.expression, {
+        ...context,
+        supportedNativeLiterals: isBinaryExpression ? ["boolean"] : undefined,
+    });
     const thenStmt = this.visit(ifStmt.thenStatement, {
         ...context,
         isFunctionBody: false,
@@ -387,15 +396,9 @@ export function visitIfStatement(
                 isFunctionBody: false,
             });
     }
-    if (ts.isBinaryExpression(ifStmt.expression)) {
-        const binExpr = ifStmt.expression as ts.BinaryExpression;
-        const op = binExpr.operatorToken.getText();
-        const isBoolean = op === "==" || op === "!=" || op === "===" ||
-            op === "!==" || op === "<" || op === ">" || op === "<=" ||
-            op === ">=" || op === "instanceof" || op === "in";
-        if (isBoolean) {
-            return `${this.indent()}if ((${condition}).as_boolean()) ${thenStmt}${elseStmt}`;
-        }
+
+    if (isBinaryExpression) {
+        return `${this.indent()}if (${condition}) ${thenStmt}${elseStmt}`;
     }
     return `${this.indent()}if (jspp::is_truthy(${condition})) ${thenStmt}${elseStmt}`;
 }

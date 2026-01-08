@@ -6,7 +6,7 @@
   "module": "src/index.ts",
   "type": "module",
   "bin": {
-    "jspp": "dist/cli.js"
+    "jspp": "dist/cli/index.js"
   },
   "files": [
     "dist",
@@ -15,7 +15,7 @@
   ],
   "scripts": {
     "postinstall": "bun run scripts/setup-compiler.ts",
-    "dev": "bun run src/cli.ts",
+    "dev": "bun run src/cli/index.ts",
     "typecheck": "tsc --noEmit",
     "precompile": "bun run scripts/precompile-headers.ts",
     "test": "bun test",
