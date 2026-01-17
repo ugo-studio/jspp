@@ -883,6 +883,13 @@ export function visitBinaryExpression(
         return `jspp::unsigned_right_shift(${literalLeft}, ${literalRight})`;
     }
 
+    // Use literal for at most one side
+    if (isLiteral(binExpr.left)) {
+        finalLeft = binExpr.left.getText();
+    } else if (isLiteral(binExpr.right)) {
+        finalRight = binExpr.right.getText();
+    }
+    // For other arithmetic and bitwise operations, use native operations if possible
     if (
         op === "+" ||
         op === "-" ||
