@@ -103,10 +103,10 @@ export class CodeGenerator {
         mainCode += `    jspp::Scheduler::instance().run();\n`;
         mainCode += `  } catch (const std::exception& ex) {\n`;
         mainCode +=
-            "    auto error = std::make_shared<jspp::AnyValue>(jspp::Exception::exception_to_any_value(ex));\n    {\n";
+            "    auto error = std::make_shared<jspp::AnyValue>(jspp::Exception::exception_to_any_value(ex));\n";
         mainCode +=
-            `      console.call_own_property("error", std::span<const jspp::AnyValue>((const jspp::AnyValue[]){*error}, 1));\n`;
-        mainCode += `      return 1;\n    }\n`;
+            `    console.call_own_property("error", std::span<const jspp::AnyValue>((const jspp::AnyValue[]){*error}, 1));\n`;
+        mainCode += `    return 1;\n`;
         mainCode += `  }\n`;
         mainCode += "  return 0;\n}";
 
