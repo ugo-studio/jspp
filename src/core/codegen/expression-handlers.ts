@@ -1128,6 +1128,7 @@ export function visitCallExpression(
             const name = callee.getText();
             const symbol = context.localScopeSymbols.get(name) ??
                 context.globalScopeSymbols.get(name);
+
             // Optimization: Direct lambda call
             if (symbol && symbol.func?.nativeName) {
                 const callExpr =
