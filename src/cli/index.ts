@@ -18,7 +18,8 @@ async function main() {
             process.argv.slice(2),
         );
 
-    const jsFileName = path.basename(jsFilePath, ".js");
+    const ext = path.extname(jsFilePath);
+    const jsFileName = path.basename(jsFilePath, ext);
     const sourceDir = path.dirname(jsFilePath);
 
     // Intermediate C++ file goes alongside the source JS file

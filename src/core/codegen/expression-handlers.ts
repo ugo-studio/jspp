@@ -1425,3 +1425,35 @@ export function visitDeleteExpression(
     }
     return "jspp::Constants::TRUE"; // delete on non-property is true in JS
 }
+
+export function visitAsExpression(
+    this: CodeGenerator,
+    node: ts.AsExpression,
+    context: VisitContext,
+): string {
+    return this.visit(node.expression, context);
+}
+
+export function visitTypeAssertionExpression(
+    this: CodeGenerator,
+    node: ts.TypeAssertion,
+    context: VisitContext,
+): string {
+    return this.visit(node.expression, context);
+}
+
+export function visitNonNullExpression(
+    this: CodeGenerator,
+    node: ts.NonNullExpression,
+    context: VisitContext,
+): string {
+    return this.visit(node.expression, context);
+}
+
+export function visitSatisfiesExpression(
+    this: CodeGenerator,
+    node: ts.SatisfiesExpression,
+    context: VisitContext,
+): string {
+    return this.visit(node.expression, context);
+}

@@ -28,6 +28,9 @@ export function getDeclaredSymbols(
         } else if (ts.isClassDeclaration(child) && child.name) {
             // Handles class declarations
             symbols.add(child.name.getText());
+        } else if (ts.isEnumDeclaration(child) && child.name) {
+            // Handles enum declarations
+            symbols.add(child.name.getText());
         } else if (ts.isParameter(child)) {
             // Handles function parameters
             symbols.add(child.name.getText());
@@ -166,7 +169,7 @@ export function getReturnCommand(
 
 export function hoistDeclaration(
     this: CodeGenerator,
-    decl: ts.VariableDeclaration | ts.FunctionDeclaration | ts.ClassDeclaration,
+    decl: ts.VariableDeclaration | ts.FunctionDeclaration | ts.ClassDeclaration | ts.EnumDeclaration,
     hoistedSymbols: DeclaredSymbols,
     scopeNode: ts.Node,
 ) {
@@ -185,16 +188,19 @@ export function hoistDeclaration(
         ? DeclarationType.function
         : ts.isClassDeclaration(decl)
         ? DeclarationType.class
+        : ts.isEnumDeclaration(decl)
+        ? DeclarationType.enum
         : DeclarationType.var;
 
     if (hoistedSymbols.has(name)) {
         const existingSymbol = hoistedSymbols.get(name);
-        // Don't allow multiple declaration of `let`,`const`,`function` or `class` variables
+        // Don't allow multiple declaration of `let`,`const`,`function`, `class` or `enum` variables
         if (
             existingSymbol?.type === DeclarationType.let ||
             existingSymbol?.type === DeclarationType.const ||
             existingSymbol?.type === DeclarationType.function ||
             existingSymbol?.type === DeclarationType.class ||
+            existingSymbol?.type === DeclarationType.enum ||
             existingSymbol?.type !== declType
         ) {
             throw new SyntaxError(

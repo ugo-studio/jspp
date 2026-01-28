@@ -724,5 +724,38 @@
             "3",
             "7"
         ]
+    },
+    {
+        "name": "enums",
+        "expected": [
+            "--- Enums ---",
+            "Direction.Up: 0",
+            "Direction.Down: 1",
+            "Direction[0]: Up",
+            "Direction[1]: Down",
+            "Initialized.A: 5",
+            "Initialized.B: 6",
+            "Initialized.C: 10",
+            "Initialized.D: 11",
+            "Initialized[6]: B",
+            "StringEnum.Success: SUCCESS",
+            "StringEnum.Failure: FAILURE",
+            "StringEnum['SUCCESS']: undefined",
+            "Mixed.No: 0",
+            "Mixed.Yes: YES",
+            "Mixed[0]: No"
+        ]
+    },
+    {
+        "name": "typescript",
+        "expected": [
+            "--- TypeScript Support ---",
+            "Hello, Alice",
+            "Length: 5",
+            "y: hello",
+            "len: 3",
+            "width: 100",
+            "TS Test Complete"
+        ]
     }
 ]

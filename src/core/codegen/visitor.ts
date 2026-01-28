@@ -19,6 +19,7 @@ import {
 } from "./declaration-handlers.js";
 import {
   visitArrayLiteralExpression,
+  visitAsExpression,
   visitAwaitExpression,
   visitBinaryExpression,
   visitCallExpression,
@@ -26,12 +27,15 @@ import {
   visitDeleteExpression,
   visitElementAccessExpression,
   visitNewExpression,
+  visitNonNullExpression,
   visitObjectLiteralExpression,
   visitParenthesizedExpression,
   visitPostfixUnaryExpression,
   visitPrefixUnaryExpression,
   visitPropertyAccessExpression,
+  visitSatisfiesExpression,
   visitTemplateExpression,
+  visitTypeAssertionExpression,
   visitTypeOfExpression,
   visitVoidExpression,
 } from "./expression-handlers.js";
@@ -57,13 +61,19 @@ import {
   visitBreakStatement,
   visitCatchClause,
   visitContinueStatement,
+  visitEnumDeclaration,
   visitExpressionStatement,
   visitIfStatement,
+  visitImportDeclaration,
+  visitImportEqualsDeclaration,
+  visitInterfaceDeclaration,
   visitLabeledStatement,
+  visitModuleDeclaration,
   visitReturnStatement,
   visitSourceFile,
   visitThrowStatement,
   visitTryStatement,
+  visitTypeAliasDeclaration,
   visitVariableStatement,
   visitYieldExpression,
 } from "./statement-handlers.js";
@@ -362,6 +372,62 @@ export function visit(
             return visitNullKeyword.call(this);
         case ts.SyntaxKind.ThisKeyword:
             return visitThisKeyword.call(this);
+        case ts.SyntaxKind.AsExpression:
+            return visitAsExpression.call(this, node as ts.AsExpression, context);
+        case ts.SyntaxKind.TypeAssertionExpression:
+            return visitTypeAssertionExpression.call(
+                this,
+                node as ts.TypeAssertion,
+                context,
+            );
+        case ts.SyntaxKind.NonNullExpression:
+            return visitNonNullExpression.call(
+                this,
+                node as ts.NonNullExpression,
+                context,
+            );
+        case ts.SyntaxKind.SatisfiesExpression:
+            return visitSatisfiesExpression.call(
+                this,
+                node as ts.SatisfiesExpression,
+                context,
+            );
+        case ts.SyntaxKind.TypeAliasDeclaration:
+            return visitTypeAliasDeclaration.call(
+                this,
+                node as ts.TypeAliasDeclaration,
+                context,
+            );
+        case ts.SyntaxKind.InterfaceDeclaration:
+            return visitInterfaceDeclaration.call(
+                this,
+                node as ts.InterfaceDeclaration,
+                context,
+            );
+        case ts.SyntaxKind.EnumDeclaration:
+            return visitEnumDeclaration.call(
+                this,
+                node as ts.EnumDeclaration,
+                context,
+            );
+        case ts.SyntaxKind.ModuleDeclaration:
+            return visitModuleDeclaration.call(
+                this,
+                node as ts.ModuleDeclaration,
+                context,
+            );
+        case ts.SyntaxKind.ImportDeclaration:
+            return visitImportDeclaration.call(
+                this,
+                node as ts.ImportDeclaration,
+                context,
+            );
+        case ts.SyntaxKind.ImportEqualsDeclaration:
+            return visitImportEqualsDeclaration.call(
+                this,
+                node as ts.ImportEqualsDeclaration,
+                context,
+            );
         default:
             return `/* Unhandled node: ${ts.SyntaxKind[node.kind]} */`;
     }

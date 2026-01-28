@@ -35,12 +35,22 @@ describe("Interpreter tests", async () => {
 
     for (const caseItem of cases) {
         const caseName = caseItem.name;
-        const inputFile = path.join(
+        let inputFile = path.join(
             pkgDir,
             "test",
             "cases",
             `${caseName}.js`,
         );
+        try {
+            await fs.access(inputFile);
+        } catch {
+            inputFile = path.join(
+                pkgDir,
+                "test",
+                "cases",
+                `${caseName}.ts`,
+            );
+        }
 
         if (isFirstCase) {
             isFirstCase = false;
@@ -73,7 +83,7 @@ describe("Interpreter tests", async () => {
 
     // Transpile to c++
     const interpreter = new Interpreter();
-    const { cppCode, preludePath } = interpreter.interpret(jsCode);
+    const { cppCode, preludePath } = interpreter.interpret(jsCode, "test-suite.ts");
 
     await fs.mkdir(path.dirname(outputFile), {
         recursive: true,

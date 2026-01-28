@@ -451,6 +451,26 @@ export class TypeAnalyzer {
                 },
             },
 
+            EnumDeclaration: {
+                enter: (node) => {
+                    const enumNode = node as ts.EnumDeclaration;
+                    if (enumNode.name) {
+                        const name = enumNode.name.getText();
+                        const typeInfo: TypeInfo = {
+                            type: "object", // Enums are objects
+                            declaration: enumNode,
+                            needsHeapAllocation: true,
+                        };
+                        this.scopeManager.define(name, typeInfo);
+                    }
+                    // Enums don't create a new scope for variables, but they are objects.
+                    // We don't strictly need to enterScope unless we want to track something inside.
+                    // But standard JS/TS behavior doesn't really have block scope inside enum definition that leaks out or captures differently.
+                    // However, we map nodes to scopes.
+                    this.nodeToScope.set(node, this.scopeManager.currentScope);
+                },
+            },
+
             MethodDeclaration: {
                 enter: (node) => {
                     if (ts.isMethodDeclaration(node)) {

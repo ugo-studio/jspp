@@ -22,7 +22,7 @@ namespace jspp
 
             for (size_t i = 0; i < obj->storage.size(); ++i)
             {
-                const auto& prop_val = obj->storage[i];
+                const auto &prop_val = obj->storage[i];
                 if (!is_enumerable_property(prop_val))
                 {
                     prop_count--;
@@ -69,8 +69,8 @@ namespace jspp
                 size_t current_prop = 0;
                 for (size_t i = 0; i < obj->shape->property_names.size(); ++i)
                 {
-                    const auto& key = obj->shape->property_names[i];
-                    const auto& prop_val = obj->storage[i];
+                    const auto &key = obj->shape->property_names[i];
+                    const auto &prop_val = obj->storage[i];
 
                     if (!is_enumerable_property(prop_val))
                         continue;
@@ -81,9 +81,10 @@ namespace jspp
                     }
                     else
                     {
-                        ss << "\"" << key << "\"";
+                        ss << Color::GREEN << "\"" << key << "\"" << Color::RESET;
                     }
-                    ss << ": " << to_log_string(prop_val, visited, depth + 1);
+                    ss << Color::BRIGHT_BLACK << ": " << Color::RESET;
+                    ss << to_log_string(prop_val, visited, depth + 1);
                     if (++current_prop < prop_count)
                         ss << Color::BRIGHT_BLACK << ", " << Color::RESET;
                 }
@@ -98,12 +99,12 @@ namespace jspp
                     size_t props_shown = 0;
                     for (size_t i = 0; i < obj->shape->property_names.size(); ++i)
                     {
-                        const auto& key = obj->shape->property_names[i];
-                        const auto& prop_val = obj->storage[i];
+                        const auto &key = obj->shape->property_names[i];
+                        const auto &prop_val = obj->storage[i];
 
                         if (props_shown >= MAX_OBJECT_PROPS)
                             break;
-                        
+
                         if (!is_enumerable_property(prop_val))
                             continue;
 
@@ -117,9 +118,10 @@ namespace jspp
                         }
                         else
                         {
-                            ss << "\"" << key << "\"";
+                            ss << Color::GREEN << "\"" << key << "\"" << Color::RESET;
                         }
-                        ss << ": " << to_log_string(prop_val, visited, depth + 1);
+                        ss << Color::BRIGHT_BLACK << ": " << Color::RESET;
+                        ss << to_log_string(prop_val, visited, depth + 1);
                         props_shown++;
                     }
                     if (prop_count > MAX_OBJECT_PROPS)

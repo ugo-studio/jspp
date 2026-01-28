@@ -4,6 +4,7 @@ export enum DeclarationType {
     const = "const",
     function = "function",
     class = "class",
+    enum = "enum",
 }
 
 export class DeclaredSymbol {

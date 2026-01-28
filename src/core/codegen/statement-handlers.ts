@@ -23,8 +23,11 @@ export function visitSourceFile(
         sourceFile.statements,
     );
 
-    const funcDecls = sourceFile.statements.filter(ts.isFunctionDeclaration);
+    const funcDecls = sourceFile.statements.filter((s) =>
+        ts.isFunctionDeclaration(s) && !!s.body
+    ) as ts.FunctionDeclaration[];
     const classDecls = sourceFile.statements.filter(ts.isClassDeclaration);
+    const enumDecls = sourceFile.statements.filter(ts.isEnumDeclaration);
 
     const hoistedSymbols = new DeclaredSymbols();
 
@@ -36,6 +39,11 @@ export function visitSourceFile(
     // Hoist class declarations
     classDecls.forEach((cls) => {
         code += this.hoistDeclaration(cls, hoistedSymbols, node);
+    });
+
+    // Hoist enum declarations
+    enumDecls.forEach((enm) => {
+        code += this.hoistDeclaration(enm, hoistedSymbols, node);
     });
 
     // Hoist variable declarations (var)
@@ -163,8 +171,11 @@ export function visitBlock(
     // Collect ONLY block-scoped declarations (let/const)
     const blockScopedDecls = collectBlockScopedDeclarations(block.statements);
 
-    const funcDecls = block.statements.filter(ts.isFunctionDeclaration);
+    const funcDecls = block.statements.filter((s) =>
+        ts.isFunctionDeclaration(s) && !!s.body
+    ) as ts.FunctionDeclaration[];
     const classDecls = block.statements.filter(ts.isClassDeclaration);
+    const enumDecls = block.statements.filter(ts.isEnumDeclaration);
 
     const hoistedSymbols = new DeclaredSymbols();
 
@@ -176,6 +187,11 @@ export function visitBlock(
     // Hoist class declarations
     classDecls.forEach((cls) => {
         code += this.hoistDeclaration(cls, hoistedSymbols, node);
+    });
+
+    // Hoist enum declarations
+    enumDecls.forEach((enm) => {
+        code += this.hoistDeclaration(enm, hoistedSymbols, node);
     });
 
     // Hoist variable declarations (let/const only)
@@ -301,11 +317,127 @@ export function visitVariableStatement(
     node: ts.VariableStatement,
     context: VisitContext,
 ): string {
+    if (
+        node.modifiers &&
+        node.modifiers.some((m) => m.kind === ts.SyntaxKind.DeclareKeyword)
+    ) {
+        return "";
+    }
     return (
         this.indent() +
         this.visit(node.declarationList, context) +
         ";\n"
     );
+}
+
+export function visitTypeAliasDeclaration(
+    this: CodeGenerator,
+    node: ts.TypeAliasDeclaration,
+    context: VisitContext,
+): string {
+    return "";
+}
+
+export function visitInterfaceDeclaration(
+    this: CodeGenerator,
+    node: ts.InterfaceDeclaration,
+    context: VisitContext,
+): string {
+    return "";
+}
+
+export function visitEnumDeclaration(
+    this: CodeGenerator,
+    node: ts.EnumDeclaration,
+    context: VisitContext,
+): string {
+    const name = node.name.getText();
+    const scope = this.getScopeForNode(node);
+    const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+        name,
+        scope,
+    )!;
+
+    // Mark as initialized
+    this.markSymbolAsInitialized(
+        name,
+        context.globalScopeSymbols,
+        context.localScopeSymbols,
+    );
+
+    const enumVar = typeInfo.needsHeapAllocation ? `(*${name})` : name;
+
+    let code =
+        `${this.indent()}${enumVar} = jspp::AnyValue::make_object({});\n`;
+    code += `${this.indent()}{\n`;
+    this.indentationLevel++;
+    code +=
+        `${this.indent()}jspp::AnyValue lastVal = jspp::AnyValue::make_number(-1);\n`; // Previous value tracker
+
+    for (const member of node.members) {
+        const memberName = member.name.getText();
+        let valueCode = "";
+
+        // Handle member name (it could be a string literal or identifier)
+        let key = "";
+        if (ts.isIdentifier(member.name)) {
+            key = `"${memberName}"`;
+        } else if (ts.isStringLiteral(member.name)) {
+            key = member.name.getText(); // Includes quotes
+        } else {
+            // Computed property names or numeric literals in enums are rarer but possible
+            // For now assume simple enum
+            key = `"${memberName}"`;
+        }
+
+        if (member.initializer) {
+            // Visit initializer
+            valueCode = this.visit(member.initializer, context);
+        } else {
+            // Auto-increment
+            valueCode = `lastVal + 1`;
+        }
+
+        code += `${this.indent()}lastVal = ${valueCode};\n`;
+        code +=
+            `${this.indent()}${enumVar}.set_own_property(${key}, lastVal);\n`;
+
+        // Reverse mapping for numeric enums
+        code += `${this.indent()}if (lastVal.is_number()) {\n`;
+        this.indentationLevel++;
+        code +=
+            `${this.indent()}${enumVar}.set_own_property(lastVal, jspp::AnyValue::make_string(${key}));\n`;
+        this.indentationLevel--;
+        code += `${this.indent()}}\n`;
+    }
+
+    this.indentationLevel--;
+    code += `${this.indent()}}\n`;
+    return code;
+}
+
+export function visitModuleDeclaration(
+    this: CodeGenerator,
+    node: ts.ModuleDeclaration,
+    context: VisitContext,
+): string {
+    return "";
+}
+
+export function visitImportDeclaration(
+    this: CodeGenerator,
+    node: ts.ImportDeclaration,
+    context: VisitContext,
+): string {
+    return "";
+}
+
+export function visitImportEqualsDeclaration(
+    this: CodeGenerator,
+    node: ts.ImportEqualsDeclaration,
+    context: VisitContext,
+): string {
+    return "";
 }
 
 export function visitBreakStatement(
