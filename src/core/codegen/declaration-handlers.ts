@@ -1,5 +1,6 @@
 import ts from "typescript";
 
+import { CompilerError } from "../error.js";
 import { CodeGenerator } from "./index.js";
 import type { VisitContext } from "./visitor.js";
 
@@ -127,7 +128,11 @@ export function visitVariableDeclaration(
             // Constant variables must be initialized
             const isConst = (varDecl.parent.flags & (ts.NodeFlags.Const)) !== 0;
             if (isConst) {
-                throw SyntaxError(`The constant "${name}" must be initialized`);
+                throw new CompilerError(
+                    `The constant "${name}" must be initialized`,
+                    varDecl,
+                    "SyntaxError",
+                );
             } else {
                 return `${nativeLambdaCode}${assignmentTarget} = jspp::Constants::UNDEFINED`;
             }

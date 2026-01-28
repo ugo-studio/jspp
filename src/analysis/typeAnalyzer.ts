@@ -5,6 +5,7 @@ import {
   isBuiltinObject,
   shouldIgnoreStatement,
 } from "../core/codegen/helpers.js";
+import { CompilerError } from "../core/error.js";
 import { Traverser } from "../core/traverser.js";
 import { Scope, ScopeManager } from "./scope.js";
 
@@ -220,14 +221,18 @@ export class TypeAnalyzer {
                     const breakNode = node as ts.BreakStatement;
                     if (breakNode.label) {
                         if (!this.labelStack.includes(breakNode.label.text)) {
-                            throw new Error(
-                                `SyntaxError: Undefined label '${breakNode.label.text}'`,
+                            throw new CompilerError(
+                                `Undefined label '${breakNode.label.text}'`,
+                                breakNode.label,
+                                "SyntaxError",
                             );
                         }
                     } else {
                         if (this.loopDepth === 0 && this.switchDepth === 0) {
-                            throw new Error(
-                                "SyntaxError: Unlabeled break must be inside an iteration or switch statement",
+                            throw new CompilerError(
+                                "Unlabeled break must be inside an iteration or switch statement",
+                                node,
+                                "SyntaxError",
                             );
                         }
                     }
@@ -241,16 +246,20 @@ export class TypeAnalyzer {
                         if (
                             !this.labelStack.includes(continueNode.label.text)
                         ) {
-                            throw new Error(
-                                `SyntaxError: Undefined label '${continueNode.label.text}'`,
+                            throw new CompilerError(
+                                `Undefined label '${continueNode.label.text}'`,
+                                continueNode.label,
+                                "SyntaxError",
                             );
                         }
                         // Also need to check if the label belongs to a loop, but that's harder here.
                         // The TS checker should handle this. We'll assume for now it does.
                     } else {
                         if (this.loopDepth === 0) {
-                            throw new Error(
-                                "SyntaxError: Unlabeled continue must be inside an iteration statement",
+                            throw new CompilerError(
+                                "Unlabeled continue must be inside an iteration statement",
+                                node,
+                                "SyntaxError",
                             );
                         }
                     }
@@ -272,20 +281,14 @@ export class TypeAnalyzer {
                             node,
                             this.scopeManager.currentScope,
                         );
+
                         // Catch invalid parameters
                         node.parameters.forEach((p) => {
                             if (p.getText() == "this") {
-                                const sourceFile = node.getSourceFile();
-                                const { line, character } = sourceFile
-                                    .getLineAndCharacterOfPosition(
-                                        p.getStart(),
-                                    );
-                                throw new SyntaxError(
-                                    `Cannot use 'this' as a parameter name.\n\n${
-                                        " ".repeat(6)
-                                    }at ${sourceFile.fileName}:${line + 1}:${
-                                        character + 1
-                                    }\n`,
+                                throw new CompilerError(
+                                    "Cannot use 'this' as a parameter name.",
+                                    p,
+                                    "SyntaxError",
                                 );
                             }
                         });
@@ -337,17 +340,10 @@ export class TypeAnalyzer {
                         // Catch invalid parameters
                         node.parameters.forEach((p) => {
                             if (p.getText() == "this") {
-                                const sourceFile = node.getSourceFile();
-                                const { line, character } = sourceFile
-                                    .getLineAndCharacterOfPosition(
-                                        p.getStart(),
-                                    );
-                                throw new SyntaxError(
-                                    `Cannot use 'this' as a parameter name.\n\n${
-                                        " ".repeat(6)
-                                    }at ${sourceFile.fileName}:${line + 1}:${
-                                        character + 1
-                                    }\n`,
+                                throw new CompilerError(
+                                    "Cannot use 'this' as a parameter name.",
+                                    p,
+                                    "SyntaxError",
                                 );
                             }
                         });
@@ -388,29 +384,23 @@ export class TypeAnalyzer {
                             this.functionTypeInfo.set(node, funcType);
                         }
 
-                        // Catch invalid parameters
-                        node.parameters.forEach((p) => {
-                            if (p.getText() == "this") {
-                                const sourceFile = node.getSourceFile();
-                                const { line, character } = sourceFile
-                                    .getLineAndCharacterOfPosition(
-                                        p.getStart(),
-                                    );
-                                throw new SyntaxError(
-                                    `Cannot use 'this' as a parameter name.\n\n${
-                                        " ".repeat(6)
-                                    }at ${sourceFile.fileName}:${line + 1}:${
-                                        character + 1
-                                    }\n`,
-                                );
-                            }
-                        });
-
                         this.scopeManager.enterScope(node);
                         this.nodeToScope.set(
                             node,
                             this.scopeManager.currentScope,
                         );
+
+                        // Catch invalid parameters
+                        node.parameters.forEach((p) => {
+                            if (p.getText() == "this") {
+                                throw new CompilerError(
+                                    "Cannot use 'this' as a parameter name.",
+                                    p,
+                                    "SyntaxError",
+                                );
+                            }
+                        });
+
                         // Define parameters in the new scope
                         node.parameters.forEach((p) =>
                             this.scopeManager.define(p.name.getText(), {

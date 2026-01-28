@@ -31,6 +31,7 @@ const MODULE_NAME = "__entry_point__";
 export class CodeGenerator {
     public indentationLevel: number = 0;
     public typeAnalyzer!: TypeAnalyzer;
+    public isTypescript = false;
     public globalThisVar!: string;
     public uniqueNameCounter = 0;
 
@@ -63,8 +64,13 @@ export class CodeGenerator {
     /**
      * Main entry point for the code generation process.
      */
-    public generate(ast: Node, analyzer: TypeAnalyzer): string {
+    public generate(
+        ast: Node,
+        analyzer: TypeAnalyzer,
+        isTypescript: boolean,
+    ): string {
         this.typeAnalyzer = analyzer;
+        this.isTypescript = isTypescript;
         this.globalThisVar = this.generateUniqueName(
             "__this_val__",
             this.getDeclaredSymbols(ast),

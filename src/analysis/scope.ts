@@ -1,5 +1,6 @@
 import * as ts from "typescript";
 
+import { CompilerError } from "../core/error.js";
 import type { TypeInfo } from "./typeAnalyzer.js";
 
 export const RESERVED_KEYWORDS = new Set([
@@ -96,6 +97,9 @@ export class ScopeManager {
     define(name: string, type: TypeInfo) {
         // if (name === "named" || name === "letVal") console.log("Defining", name, "in scope. isBuiltin:", type.isBuiltin, " type:", type.type);
         if (this.reservedKeywords.has(name) && !type.isBuiltin) {
+            if (type.declaration) {
+                throw new CompilerError(`Unexpected reserved word "${name}"`, type.declaration, "SyntaxError");
+            }
             throw new Error(`SyntaxError: Unexpected reserved word "${name}"`);
         }
         this.currentScope.define(name, type);
@@ -104,6 +108,9 @@ export class ScopeManager {
     // Defines a `var` variable (hoisted to function or global scope).
     defineVar(name: string, type: TypeInfo) {
         if (this.reservedKeywords.has(name) && !type.isBuiltin) {
+            if (type.declaration) {
+                throw new CompilerError(`Unexpected reserved word "${name}"`, type.declaration, "SyntaxError");
+            }
             throw new Error(`SyntaxError: Unexpected reserved word "${name}"`);
         }
         let scope = this.currentScope;

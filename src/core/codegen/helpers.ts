@@ -3,6 +3,7 @@ import ts from "typescript";
 import { BUILTIN_OBJECTS, Scope } from "../../analysis/scope.js";
 import type { TypeAnalyzer, TypeInfo } from "../../analysis/typeAnalyzer.js";
 import { DeclarationType, DeclaredSymbols } from "../../ast/symbols.js";
+import { CompilerError } from "../error.js";
 import { CodeGenerator } from "./index.js";
 import type { VisitContext } from "./visitor.js";
 
@@ -81,7 +82,11 @@ export function getScopeForNode(this: CodeGenerator, node: ts.Node): Scope {
     }
     const rootScope = this.typeAnalyzer.scopeManager.getAllScopes()[0];
     if (!rootScope) {
-        throw new Error("Compiler bug: Could not find a root scope.");
+        throw new CompilerError(
+            "Could not find a root scope.",
+            node,
+            "CompilerBug",
+        );
     }
     return rootScope;
 }
@@ -118,7 +123,7 @@ export function getDerefCode(
     const symbolName = varName.slice(1).slice(0, -1);
     const symbol = context.localScopeSymbols.get(symbolName) ??
         context.globalScopeSymbols.get(symbolName);
-    const isInitialized: boolean = symbol?.checked.initialized ||
+    const isInitialized: boolean = symbol?.checks.initialized ||
         false;
 
     // Mark the symbol as checked
@@ -149,11 +154,11 @@ export function markSymbolAsInitialized(
 ) {
     if (topLevel.has(name)) {
         topLevel.update(name, {
-            checked: { initialized: true },
+            checks: { initialized: true },
         });
     } else if (local.has(name)) {
         local.update(name, {
-            checked: { initialized: true },
+            checks: { initialized: true },
         });
     }
 }
@@ -207,10 +212,10 @@ export function hoistDeclaration(
             existingSymbol?.type === DeclarationType.enum ||
             existingSymbol?.type !== declType
         ) {
-            throw new SyntaxError(
-                `Identifier '${name}' has already been declared.\n\n${
-                    " ".repeat(6) + decl.getText()
-                }\n`,
+            throw new CompilerError(
+                `Identifier '${name}' has already been declared.`,
+                decl,
+                "SyntaxError",
             );
         }
         // `var` variables can be declared multiple times

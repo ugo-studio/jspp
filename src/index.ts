@@ -10,12 +10,19 @@ export class Interpreter {
     private generator = new CodeGenerator();
 
     public interpret(
-        jsCode: string,
+        code: string,
         fileName?: string,
     ): { cppCode: string; preludePath: string } {
-        const ast = this.parser.parse(jsCode, fileName);
+        const ast = this.parser.parse(code, fileName);
         this.analyzer.analyze(ast);
-        const cppCode = this.generator.generate(ast, this.analyzer);
+        const isTypescript = fileName
+            ? path.extname(fileName) === ".ts"
+            : false;
+        const cppCode = this.generator.generate(
+            ast,
+            this.analyzer,
+            isTypescript,
+        );
         const preludePath = path.resolve(
             import.meta.dirname,
             "..",

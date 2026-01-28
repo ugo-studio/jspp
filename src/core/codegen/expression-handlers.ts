@@ -1,6 +1,7 @@
 import ts from "typescript";
 
 import { constants } from "../constants.js";
+import { CompilerError } from "../error.js";
 import { CodeGenerator } from "./index.js";
 import type { VisitContext } from "./visitor.js";
 
@@ -283,8 +284,10 @@ export function visitPropertyAccessExpression(
 
     if (propAccess.expression.kind === ts.SyntaxKind.SuperKeyword) {
         if (!context.superClassVar) {
-            throw new Error(
+            throw new CompilerError(
                 "super.prop accessed but no super class variable found in context",
+                propAccess.expression,
+                "SyntaxError",
             );
         }
         const propName = propAccess.name.getText();
@@ -947,8 +950,10 @@ export function visitCallExpression(
 
     if (callee.kind === ts.SyntaxKind.SuperKeyword) {
         if (!context.superClassVar) {
-            throw new Error(
+            throw new CompilerError(
                 "super() called but no super class variable found in context",
+                callee,
+                "SyntaxError",
             );
         }
         const args = callExpr.arguments.map((arg) => this.visit(arg, context))
@@ -995,8 +1000,10 @@ export function visitCallExpression(
 
         if (propAccess.expression.kind === ts.SyntaxKind.SuperKeyword) {
             if (!context.superClassVar) {
-                throw new Error(
+                throw new CompilerError(
                     "super.method() called but no super class variable found in context",
+                    propAccess.expression,
+                    "SyntaxError",
                 );
             }
             const propName = propAccess.name.getText();

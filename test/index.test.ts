@@ -30,7 +30,7 @@ const ensureHeaders = () => {
 };
 
 describe("Interpreter tests", async () => {
-    let jsCode = "const caseName = process.argv[2];\n";
+    let code = "const caseName = process.argv[2];\n";
     let isFirstCase = true;
 
     for (const caseItem of cases) {
@@ -55,16 +55,16 @@ describe("Interpreter tests", async () => {
         if (isFirstCase) {
             isFirstCase = false;
         } else {
-            jsCode += "else ";
+            code += "else ";
         }
-        jsCode += `if (caseName === "${caseName}") {{\n`;
+        code += `if (caseName === "${caseName}") {{\n`;
         try {
-            jsCode += `${await fs.readFile(inputFile, "utf-8")}\n`;
+            code += `${await fs.readFile(inputFile, "utf-8")}\n`;
         } catch (e: any) {
-            jsCode +=
+            code +=
                 `throw new Error("Error reading test file: ${e.message}");\n`;
         }
-        jsCode += "}}\n";
+        code += "}}\n";
     }
 
     // Prepare output file paths
@@ -83,7 +83,10 @@ describe("Interpreter tests", async () => {
 
     // Transpile to c++
     const interpreter = new Interpreter();
-    const { cppCode, preludePath } = interpreter.interpret(jsCode, "test-suite.ts");
+    const { cppCode, preludePath } = interpreter.interpret(
+        code,
+        "test-suite.ts",
+    );
 
     await fs.mkdir(path.dirname(outputFile), {
         recursive: true,
@@ -182,29 +185,22 @@ describe("Interpreter tests", async () => {
             { timeout: 20000 },
         );
     }
-
-    test("should throw an error for reserved-keyword.js", async () => {
-        const inputFile = path.join(
-            pkgDir,
-            "test",
-            "cases",
-            "reserved-keyword.js",
-        );
-        const jsCode = await fs.readFile(inputFile, "utf-8");
-        const interpreter = new Interpreter();
-
-        expect(() => interpreter.interpret(jsCode)).toThrow(
-            'SyntaxError: Unexpected reserved word "std"',
-        );
-    });
 });
 
 describe("Syntax Error tests", () => {
+    test("should throw an error for reserved-keyword.js", () => {
+        const interpreter = new Interpreter();
+        const code = "let std = 5;\nlet jspp = 5;";
+        expect(() => interpreter.interpret(code)).toThrow(
+            'Unexpected reserved word "std"',
+        );
+    });
+
     test("should throw for unlabeled break outside a loop", () => {
         const interpreter = new Interpreter();
         const code = "break;";
         expect(() => interpreter.interpret(code)).toThrow(
-            "SyntaxError: Unlabeled break must be inside an iteration or switch statement",
+            "Unlabeled break must be inside an iteration or switch statement",
         );
     });
 
@@ -212,7 +208,7 @@ describe("Syntax Error tests", () => {
         const interpreter = new Interpreter();
         const code = "continue;";
         expect(() => interpreter.interpret(code)).toThrow(
-            "SyntaxError: Unlabeled continue must be inside an iteration statement",
+            "Unlabeled continue must be inside an iteration statement",
         );
     });
 
@@ -220,7 +216,7 @@ describe("Syntax Error tests", () => {
         const interpreter = new Interpreter();
         const code = "outer: while(true) { break inner; }";
         expect(() => interpreter.interpret(code)).toThrow(
-            "SyntaxError: Undefined label 'inner'",
+            "Undefined label 'inner'",
         );
     });
 
@@ -228,7 +224,7 @@ describe("Syntax Error tests", () => {
         const interpreter = new Interpreter();
         const code = "outer: while(true) { continue inner; }";
         expect(() => interpreter.interpret(code)).toThrow(
-            "SyntaxError: Undefined label 'inner'",
+            "Undefined label 'inner'",
         );
     });
 

@@ -5,6 +5,7 @@ import path from "path";
 
 import pkg from "../../package.json" with { type: "json" };
 import { Interpreter } from "../index.js";
+import { CompilerError } from "../core/error.js";
 import { parseArgs } from "./args.js";
 import { COLORS } from "./colors.js";
 import { getLatestMtime } from "./file-utils.js";
@@ -199,6 +200,11 @@ async function main() {
             process.exit(1);
         }
     } catch (error: any) {
+        if (error instanceof CompilerError) {
+            spinner.fail("Compilation failed");
+            console.error(error.getFormattedError());
+            process.exit(1);
+        }
         spinner.fail("An unexpected error occurred");
         console.error(error);
         process.exit(1);

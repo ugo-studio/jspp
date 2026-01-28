@@ -63,11 +63,11 @@ export function visitForStatement(
                         : DeclarationType.const;
                     conditionContext.localScopeSymbols.add(name, {
                         type: declType,
-                        checked: { initialized: true },
+                        checks: { initialized: true },
                     });
                     statementContext.localScopeSymbols.add(name, {
                         type: declType,
-                        checked: { initialized: true },
+                        checks: { initialized: true },
                     });
 
                     if (typeInfo.needsHeapAllocation) {

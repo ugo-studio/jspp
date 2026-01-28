@@ -2,6 +2,7 @@ import ts from "typescript";
 
 import { DeclaredSymbols } from "../../ast/symbols.js";
 import { constants } from "../constants.js";
+import { CompilerError } from "../error.js";
 import {
   collectBlockScopedDeclarations,
   collectFunctionScopedDeclarations,
@@ -915,8 +916,10 @@ export function visitCatchClause(
     const exceptionName = context.exceptionName;
     if (!exceptionName) {
         // This should not happen if it's coming from a TryStatement
-        throw new Error(
-            "Compiler bug: exceptionName not found in context for CatchClause",
+        throw new CompilerError(
+            "exceptionName not found in context for CatchClause",
+            node,
+            "CompilerBug",
         );
     }
 

@@ -1,6 +1,7 @@
 import ts from "typescript";
 
-import { DeclaredSymbols } from "../../ast/symbols.js";
+import { DeclarationType, DeclaredSymbols } from "../../ast/symbols.js";
+import { CompilerError } from "../error.js";
 import { collectFunctionScopedDeclarations } from "./helpers.js";
 import { CodeGenerator } from "./index.js";
 import type { VisitContext } from "./visitor.js";
@@ -146,11 +147,28 @@ export function generateLambda(
         parameters: ts.NodeArray<ts.ParameterDeclaration>,
     ): string => {
         let code = "";
-        parameters.forEach((p, i) => {
+        parameters.filter((p) =>
+            this.isTypescript && p.name.getText() === "this" ? false : true // Ignore "this" parameters
+        ).forEach((p, i) => {
             const name = p.name.getText();
             const defaultValue = p.initializer
                 ? this.visit(p.initializer, visitContext)
                 : "jspp::Constants::UNDEFINED";
+
+            // Catch invalid parameters
+            if (name === "this") {
+                throw new CompilerError(
+                    `Cannot use '${name}' as a parameter name.`,
+                    p,
+                    "SyntaxError",
+                );
+            }
+
+            // Add paramerter to local context
+            visitContext.localScopeSymbols.add(name, {
+                type: DeclarationType.let,
+                checks: { initialized: true },
+            });
 
             const scope = this.getScopeForNode(p);
             const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
@@ -161,8 +179,10 @@ export function generateLambda(
             // Handle rest parameters
             if (!!p.dotDotDotToken) {
                 if (parameters.length - 1 !== i) {
-                    throw new SyntaxError(
+                    throw new CompilerError(
                         "Rest parameter must be last formal parameter.",
+                        p,
+                        "SyntaxError",
                     );
                 }
 

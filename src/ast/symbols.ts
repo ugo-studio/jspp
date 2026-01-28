@@ -9,7 +9,7 @@ export enum DeclarationType {
 
 export class DeclaredSymbol {
     type: DeclarationType;
-    checked: {
+    checks: {
         initialized: boolean;
     };
     func:
@@ -18,7 +18,7 @@ export class DeclaredSymbol {
 
     constructor(type: DeclarationType) {
         this.type = type;
-        this.checked = {
+        this.checks = {
             initialized: false,
         };
         this.func = null;
@@ -29,9 +29,9 @@ export class DeclaredSymbol {
             this.type === DeclarationType.var;
     }
 
-    updateChecked(update: Partial<DeclaredSymbol["checked"]>) {
-        this.checked = {
-            ...this.checked,
+    updateChecked(update: Partial<DeclaredSymbol["checks"]>) {
+        this.checks = {
+            ...this.checks,
             ...update,
         };
     }
@@ -71,11 +71,11 @@ export class DeclaredSymbols {
 
     add(name: string, value: {
         type: DeclaredSymbol["type"];
-        checked?: Partial<DeclaredSymbol["checked"]>;
+        checks?: Partial<DeclaredSymbol["checks"]>;
         func?: Partial<DeclaredSymbol["func"]>;
     }) {
         const sym = new DeclaredSymbol(value.type);
-        if (value.checked !== undefined) sym.updateChecked(value.checked);
+        if (value.checks !== undefined) sym.updateChecked(value.checks);
         if (value.func !== undefined) sym.updateFunc(value.func);
         return this.symbols.set(name, sym);
     }
@@ -85,7 +85,7 @@ export class DeclaredSymbols {
         update: Partial<
             {
                 type: DeclaredSymbol["type"];
-                checked: Partial<DeclaredSymbol["checked"]>;
+                checks: Partial<DeclaredSymbol["checks"]>;
                 func: Partial<DeclaredSymbol["func"]>;
             }
         >,
@@ -93,7 +93,7 @@ export class DeclaredSymbols {
         const sym = this.get(name);
         if (sym) {
             if (update.type !== undefined) sym.type = update.type;
-            if (update.checked !== undefined) sym.updateChecked(update.checked);
+            if (update.checks !== undefined) sym.updateChecked(update.checks);
             if (update.func !== undefined) sym.updateFunc(update.func);
             return this.symbols.set(name, sym);
         }
