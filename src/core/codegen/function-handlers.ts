@@ -147,22 +147,22 @@ export function generateLambda(
         parameters: ts.NodeArray<ts.ParameterDeclaration>,
     ): string => {
         let code = "";
-        parameters.filter((p) =>
-            this.isTypescript && p.name.getText() === "this" ? false : true // Ignore "this" parameters
-        ).forEach((p, i) => {
+        parameters.filter((p) => {
+            if (p.name.getText() === "this") {
+                if (!this.isTypescript) {
+                    // Throw error for "this" parameters in javascript files
+                    throw new CompilerError(
+                        'Cannot use "this" as a parameter name.',
+                        p,
+                        "SyntaxError",
+                    );
+                } else return false; // Ignore "this" parameters in typescript files
+            } else return true;
+        }).forEach((p, i) => {
             const name = p.name.getText();
             const defaultValue = p.initializer
                 ? this.visit(p.initializer, visitContext)
                 : "jspp::Constants::UNDEFINED";
-
-            // Catch invalid parameters
-            if (name === "this") {
-                throw new CompilerError(
-                    `Cannot use '${name}' as a parameter name.`,
-                    p,
-                    "SyntaxError",
-                );
-            }
 
             // Add paramerter to local context
             visitContext.localScopeSymbols.add(name, {
