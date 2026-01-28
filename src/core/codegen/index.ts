@@ -26,7 +26,7 @@ import {
 } from "./helpers.js";
 import { visit } from "./visitor.js";
 
-const MODULE_NAME = "__main_function__";
+const MODULE_NAME = "__entry_point__";
 
 export class CodeGenerator {
     public indentationLevel: number = 0;

@@ -1,7 +1,10 @@
 import * as ts from "typescript";
 
 import type { Node, Visitor } from "../ast/types.js";
-import { isBuiltinObject } from "../core/codegen/helpers.js";
+import {
+  isBuiltinObject,
+  shouldIgnoreStatement,
+} from "../core/codegen/helpers.js";
 import { Traverser } from "../core/traverser.js";
 import { Scope, ScopeManager } from "./scope.js";
 
@@ -546,6 +549,19 @@ export class TypeAnalyzer {
             VariableDeclaration: {
                 enter: (node) => {
                     if (ts.isVariableDeclaration(node)) {
+                        // Check if it is an ambient declaration (declare var/let/const ...)
+                        let isAmbient = false;
+                        if (
+                            ts.isVariableDeclarationList(node.parent) &&
+                            ts.isVariableStatement(node.parent.parent)
+                        ) {
+                            if (shouldIgnoreStatement(node.parent.parent)) {
+                                isAmbient = true;
+                            }
+                        }
+
+                        if (isAmbient) return;
+
                         const name = node.name.getText();
                         const isBlockScoped = (node.parent.flags &
                             (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;

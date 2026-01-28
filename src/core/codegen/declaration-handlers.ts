@@ -124,7 +124,13 @@ export function visitVariableDeclaration(
     if (isLetOrConst) {
         // If there's no initializer, it should be assigned undefined.
         if (!initializer) {
-            return `${nativeLambdaCode}${assignmentTarget} = jspp::Constants::UNDEFINED`;
+            // Constant variables must be initialized
+            const isConst = (varDecl.parent.flags & (ts.NodeFlags.Const)) !== 0;
+            if (isConst) {
+                throw SyntaxError(`The constant "${name}" must be initialized`);
+            } else {
+                return `${nativeLambdaCode}${assignmentTarget} = jspp::Constants::UNDEFINED`;
+            }
         }
         return `${nativeLambdaCode}${assignmentTarget}${initializer}`;
     }
