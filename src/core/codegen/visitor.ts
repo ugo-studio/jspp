@@ -373,7 +373,11 @@ export function visit(
         case ts.SyntaxKind.ThisKeyword:
             return visitThisKeyword.call(this);
         case ts.SyntaxKind.AsExpression:
-            return visitAsExpression.call(this, node as ts.AsExpression, context);
+            return visitAsExpression.call(
+                this,
+                node as ts.AsExpression,
+                context,
+            );
         case ts.SyntaxKind.TypeAssertionExpression:
             return visitTypeAssertionExpression.call(
                 this,

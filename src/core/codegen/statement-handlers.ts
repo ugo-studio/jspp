@@ -5,6 +5,7 @@ import { constants } from "../constants.js";
 import {
   collectBlockScopedDeclarations,
   collectFunctionScopedDeclarations,
+  shouldIgnoreStatement,
 } from "./helpers.js";
 import { CodeGenerator } from "./index.js";
 import type { VisitContext } from "./visitor.js";
@@ -129,22 +130,11 @@ export function visitSourceFile(
         if (ts.isFunctionDeclaration(stmt)) {
             // Already handled
         } else if (ts.isVariableStatement(stmt)) {
-            const isLetOrConst = (stmt.declarationList.flags &
-                (ts.NodeFlags.Let | ts.NodeFlags.Const)) !==
-                0;
-            const contextForVisit = {
+            code += this.visit(stmt, {
                 ...context,
                 globalScopeSymbols,
                 localScopeSymbols,
-                isAssignmentOnly: !isLetOrConst,
-            };
-            const assignments = this.visit(
-                stmt.declarationList,
-                contextForVisit,
-            );
-            if (assignments) {
-                code += `${this.indent()}${assignments};\n`;
-            }
+            });
         } else {
             code += this.visit(stmt, {
                 ...context,
@@ -272,22 +262,11 @@ export function visitBlock(
         if (ts.isFunctionDeclaration(stmt)) {
             // Do nothing, already handled
         } else if (ts.isVariableStatement(stmt)) {
-            const isLetOrConst = (stmt.declarationList.flags &
-                (ts.NodeFlags.Let | ts.NodeFlags.Const)) !==
-                0;
-            const contextForVisit = {
+            code += this.visit(stmt, {
                 ...context,
                 globalScopeSymbols,
                 localScopeSymbols,
-                isAssignmentOnly: !isLetOrConst,
-            };
-            const assignments = this.visit(
-                stmt.declarationList,
-                contextForVisit,
-            );
-            if (assignments) {
-                code += `${this.indent()}${assignments};\n`;
-            }
+            });
         } else {
             code += this.visit(stmt, {
                 ...context,
@@ -317,17 +296,24 @@ export function visitVariableStatement(
     node: ts.VariableStatement,
     context: VisitContext,
 ): string {
-    if (
-        node.modifiers &&
-        node.modifiers.some((m) => m.kind === ts.SyntaxKind.DeclareKeyword)
-    ) {
+    if (shouldIgnoreStatement(node)) {
         return "";
     }
-    return (
-        this.indent() +
-        this.visit(node.declarationList, context) +
-        ";\n"
+    const isLetOrConst = (node.declarationList.flags &
+        (ts.NodeFlags.Let | ts.NodeFlags.Const)) !==
+        0;
+    const visitContext = {
+        ...context,
+        isAssignmentOnly: !isLetOrConst,
+    };
+    const assignments = this.visit(
+        node.declarationList,
+        visitContext,
     );
+    if (assignments) {
+        return `${this.indent()}${assignments};\n`;
+    }
+    return "";
 }
 
 export function visitTypeAliasDeclaration(

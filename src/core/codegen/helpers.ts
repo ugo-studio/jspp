@@ -169,7 +169,11 @@ export function getReturnCommand(
 
 export function hoistDeclaration(
     this: CodeGenerator,
-    decl: ts.VariableDeclaration | ts.FunctionDeclaration | ts.ClassDeclaration | ts.EnumDeclaration,
+    decl:
+        | ts.VariableDeclaration
+        | ts.FunctionDeclaration
+        | ts.ClassDeclaration
+        | ts.EnumDeclaration,
     hoistedSymbols: DeclaredSymbols,
     scopeNode: ts.Node,
 ) {
@@ -281,6 +285,22 @@ export function prepareScopeSymbolsForVisit(
     return new DeclaredSymbols(topLevel, local);
 }
 
+export function shouldIgnoreStatement(
+    stmt: ts.Statement,
+): boolean {
+    // Ignore variable statements with 'declare' modifier
+    if (ts.isVariableStatement(stmt)) {
+        if (
+            stmt.modifiers &&
+            stmt.modifiers.some((m) => m.kind === ts.SyntaxKind.DeclareKeyword)
+        ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 export function collectFunctionScopedDeclarations(
     node: ts.Node,
 ): ts.VariableDeclaration[] {
@@ -288,6 +308,9 @@ export function collectFunctionScopedDeclarations(
 
     function visit(n: ts.Node) {
         if (ts.isVariableStatement(n)) {
+            // Ignore Declare modifier
+            if (shouldIgnoreStatement(n)) return;
+            // Only collect let/const declarations
             const isLetOrConst = (n.declarationList.flags &
                 (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
             if (!isLetOrConst) {
@@ -344,6 +367,9 @@ export function collectBlockScopedDeclarations(
     const decls: ts.VariableDeclaration[] = [];
     for (const stmt of statements) {
         if (ts.isVariableStatement(stmt)) {
+            // Ignore Declare modifier
+            if (shouldIgnoreStatement(stmt)) continue;
+            // Only collect let/const declarations
             const isLetOrConst = (stmt.declarationList.flags &
                 (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
             if (isLetOrConst) {
