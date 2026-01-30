@@ -861,9 +861,21 @@ export function visitBinaryExpression(
         if (opToken.kind === ts.SyntaxKind.ExclamationEqualsToken) {
             return `!jspp::is_equal_to_primitive(${literalLeft}, ${literalRight})`;
         }
+
         if (isLiteral(binExpr.left) && isLiteral(binExpr.right)) {
             return `(${literalLeft} ${op} ${literalRight})`;
-        } else return `(${literalLeft} ${op} ${literalRight}).as_boolean()`;
+        } else if (!isLiteral(binExpr.left) && isLiteral(binExpr.right)) {
+            const leftExprScope = this.getScopeForNode(binExpr.left);
+            const leftExprTypeInfo = this.typeAnalyzer.scopeManager
+                .lookupFromScope(
+                    binExpr.left.getText(),
+                    leftExprScope,
+                );
+            if (leftExprTypeInfo && leftExprTypeInfo.type === "number") {
+                return `${finalLeft}.is_number() ? (${finalLeft}.as_double() ${op} ${literalRight}) : (${finalLeft} ${op} ${literalRight}).as_boolean()`;
+            }
+        }
+        return `(${literalLeft} ${op} ${literalRight}).as_boolean()`;
     }
 
     // Return boxed value

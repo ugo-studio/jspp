@@ -9,8 +9,57 @@ import { CompilerError } from "../core/error.js";
 import { Traverser } from "../core/traverser.js";
 import { Scope, ScopeManager } from "./scope.js";
 
+function getParameterType(node: ts.ParameterDeclaration): string {
+    if (node.type) {
+        switch (node.type.kind) {
+            case ts.SyntaxKind.StringKeyword:
+                return "string";
+            case ts.SyntaxKind.NumberKeyword:
+                return "number";
+            case ts.SyntaxKind.BooleanKeyword:
+                return "boolean";
+            case ts.SyntaxKind.AnyKeyword:
+                return "any";
+            case ts.SyntaxKind.VoidKeyword:
+                return "void";
+            case ts.SyntaxKind.ObjectKeyword:
+                return "object";
+            case ts.SyntaxKind.SymbolKeyword:
+                return "symbol";
+            case ts.SyntaxKind.UndefinedKeyword:
+                return "undefined";
+            case ts.SyntaxKind.UnknownKeyword:
+                return "unknown";
+            case ts.SyntaxKind.NeverKeyword:
+                return "never";
+            case ts.SyntaxKind.ArrayType:
+                return "array";
+            case ts.SyntaxKind.FunctionType:
+                return "function";
+        }
+        if (ts.isTypeReferenceNode(node.type)) {
+            return node.type.typeName.getText();
+        }
+        return node.type.getText();
+    }
+    return "auto";
+}
+
 export interface TypeInfo {
-    type: string;
+    type:
+        | "auto"
+        | "string"
+        | "number"
+        | "boolean"
+        | "array"
+        | "function"
+        | "object"
+        | "symbol"
+        | "void"
+        | "undefined"
+        | "null"
+        | "any"
+        | string;
     isClosure?: boolean;
     isParameter?: boolean;
     isConst?: boolean;
@@ -282,24 +331,22 @@ export class TypeAnalyzer {
                             this.scopeManager.currentScope,
                         );
 
-                        // Catch invalid parameters
+                        // Define parameters in the new scope
                         node.parameters.forEach((p) => {
-                            if (p.getText() == "this") {
+                            if (p.getText() == "this") { // Catch invalid parameters
                                 throw new CompilerError(
                                     "Cannot use 'this' as a parameter name.",
                                     p,
                                     "SyntaxError",
                                 );
                             }
-                        });
-                        // Define parameters in the new scope
-                        node.parameters.forEach((p) =>
+
                             this.scopeManager.define(p.name.getText(), {
-                                type: "auto",
+                                type: getParameterType(p),
                                 isParameter: true,
                                 declaration: p,
-                            })
-                        );
+                            });
+                        });
                         this.functionStack.push(node);
                     }
                 },
@@ -337,25 +384,22 @@ export class TypeAnalyzer {
                             );
                         }
 
-                        // Catch invalid parameters
+                        // Define parameters in the new scope
                         node.parameters.forEach((p) => {
-                            if (p.getText() == "this") {
+                            if (p.getText() == "this") { // Catch invalid parameters
                                 throw new CompilerError(
                                     "Cannot use 'this' as a parameter name.",
                                     p,
                                     "SyntaxError",
                                 );
                             }
-                        });
 
-                        // Define parameters in the new scope
-                        node.parameters.forEach((p) =>
                             this.scopeManager.define(p.name.getText(), {
-                                type: "auto",
+                                type: getParameterType(p),
                                 isParameter: true,
                                 declaration: p,
-                            })
-                        );
+                            });
+                        });
                         this.functionStack.push(node);
                     }
                 },
@@ -390,26 +434,23 @@ export class TypeAnalyzer {
                             this.scopeManager.currentScope,
                         );
 
-                        // Catch invalid parameters
+                        // Define parameters in the new scope
                         node.parameters.forEach((p) => {
-                            if (p.getText() == "this") {
+                            if (p.getText() == "this") { // Catch invalid parameters
                                 throw new CompilerError(
                                     "Cannot use 'this' as a parameter name.",
                                     p,
                                     "SyntaxError",
                                 );
                             }
-                        });
 
-                        // Define parameters in the new scope
-                        node.parameters.forEach((p) =>
                             this.scopeManager.define(p.name.getText(), {
-                                type: "auto",
+                                type: getParameterType(p),
                                 isParameter: true,
 
                                 declaration: p,
-                            })
-                        );
+                            });
+                        });
                         this.functionStack.push(node);
                     }
                 },
