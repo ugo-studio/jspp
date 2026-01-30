@@ -223,45 +223,114 @@ namespace jspp
 
     // --- PRIMITIVE ARITHMETIC OPERATORS ---
     inline double add_primitive(const double &lhs, const double &rhs) { return lhs + rhs; }
+    inline double add_primitive(const AnyValue &lhs, const AnyValue &rhs) { return Operators_Private::ToNumber(lhs) + Operators_Private::ToNumber(rhs); }
+    inline double add_primitive(const AnyValue &lhs, const double &rhs) { return Operators_Private::ToNumber(lhs) + rhs; }
+    inline double add_primitive(const double &lhs, const AnyValue &rhs) { return lhs + Operators_Private::ToNumber(rhs); }
+
     inline double sub_primitive(const double &lhs, const double &rhs) { return lhs - rhs; }
+    inline double sub_primitive(const AnyValue &lhs, const AnyValue &rhs) { return Operators_Private::ToNumber(lhs) - Operators_Private::ToNumber(rhs); }
+    inline double sub_primitive(const AnyValue &lhs, const double &rhs) { return Operators_Private::ToNumber(lhs) - rhs; }
+    inline double sub_primitive(const double &lhs, const AnyValue &rhs) { return lhs - Operators_Private::ToNumber(rhs); }
+
     inline double mul_primitive(const double &lhs, const double &rhs) { return lhs * rhs; }
+    inline double mul_primitive(const AnyValue &lhs, const AnyValue &rhs) { return Operators_Private::ToNumber(lhs) * Operators_Private::ToNumber(rhs); }
+    inline double mul_primitive(const AnyValue &lhs, const double &rhs) { return Operators_Private::ToNumber(lhs) * rhs; }
+    inline double mul_primitive(const double &lhs, const AnyValue &rhs) { return lhs * Operators_Private::ToNumber(rhs); }
+
     inline double div_primitive(const double &lhs, const double &rhs) { return lhs / rhs; }
+    inline double div_primitive(const AnyValue &lhs, const AnyValue &rhs) { return Operators_Private::ToNumber(lhs) / Operators_Private::ToNumber(rhs); }
+    inline double div_primitive(const AnyValue &lhs, const double &rhs) { return Operators_Private::ToNumber(lhs) / rhs; }
+    inline double div_primitive(const double &lhs, const AnyValue &rhs) { return lhs / Operators_Private::ToNumber(rhs); }
+
     inline double mod_primitive(const double &lhs, const double &rhs) { return std::fmod(lhs, rhs); }
+    inline double mod_primitive(const AnyValue &lhs, const AnyValue &rhs) { return std::fmod(Operators_Private::ToNumber(lhs), Operators_Private::ToNumber(rhs)); }
+    inline double mod_primitive(const AnyValue &lhs, const double &rhs) { return std::fmod(Operators_Private::ToNumber(lhs), rhs); }
+    inline double mod_primitive(const double &lhs, const AnyValue &rhs) { return std::fmod(lhs, Operators_Private::ToNumber(rhs)); }
+
     inline double pow_primitive(const double &lhs, const double &rhs) { return std::pow(lhs, rhs); }
+    inline double pow_primitive(const AnyValue &lhs, const AnyValue &rhs) { return std::pow(Operators_Private::ToNumber(lhs), Operators_Private::ToNumber(rhs)); }
+    inline double pow_primitive(const AnyValue &lhs, const double &rhs) { return std::pow(Operators_Private::ToNumber(lhs), rhs); }
+    inline double pow_primitive(const double &lhs, const AnyValue &rhs) { return std::pow(lhs, Operators_Private::ToNumber(rhs)); }
 
     // --- PRIMITIVE COMPARISON OPERATORS ---
     inline bool less_than_primitive(const double &lhs, const double &rhs) { return lhs < rhs; }
+    inline bool less_than_primitive(const AnyValue &lhs, const AnyValue &rhs) { return less_than_primitive(Operators_Private::ToNumber(lhs), Operators_Private::ToNumber(rhs)); }
+    inline bool less_than_primitive(const AnyValue &lhs, const double &rhs) { return less_than_primitive(Operators_Private::ToNumber(lhs), rhs); }
+    inline bool less_than_primitive(const double &lhs, const AnyValue &rhs) { return less_than_primitive(lhs, Operators_Private::ToNumber(rhs)); }
+
     inline bool greater_than_primitive(const double &lhs, const double &rhs) { return lhs > rhs; }
+    inline bool greater_than_primitive(const AnyValue &lhs, const AnyValue &rhs) { return greater_than_primitive(Operators_Private::ToNumber(lhs), Operators_Private::ToNumber(rhs)); }
+    inline bool greater_than_primitive(const AnyValue &lhs, const double &rhs) { return greater_than_primitive(Operators_Private::ToNumber(lhs), rhs); }
+    inline bool greater_than_primitive(const double &lhs, const AnyValue &rhs) { return greater_than_primitive(lhs, Operators_Private::ToNumber(rhs)); }
+
     inline bool less_than_or_equal_primitive(const double &lhs, const double &rhs) { return lhs <= rhs; }
+    inline bool less_than_or_equal_primitive(const AnyValue &lhs, const AnyValue &rhs) { return less_than_or_equal_primitive(Operators_Private::ToNumber(lhs), Operators_Private::ToNumber(rhs)); }
+    inline bool less_than_or_equal_primitive(const AnyValue &lhs, const double &rhs) { return less_than_or_equal_primitive(Operators_Private::ToNumber(lhs), rhs); }
+    inline bool less_than_or_equal_primitive(const double &lhs, const AnyValue &rhs) { return less_than_or_equal_primitive(lhs, Operators_Private::ToNumber(rhs)); }
+
     inline bool greater_than_or_equal_primitive(const double &lhs, const double &rhs) { return lhs >= rhs; }
+    inline bool greater_than_or_equal_primitive(const AnyValue &lhs, const AnyValue &rhs) { return greater_than_or_equal_primitive(Operators_Private::ToNumber(lhs), Operators_Private::ToNumber(rhs)); }
+    inline bool greater_than_or_equal_primitive(const AnyValue &lhs, const double &rhs) { return greater_than_or_equal_primitive(Operators_Private::ToNumber(lhs), rhs); }
+    inline bool greater_than_or_equal_primitive(const double &lhs, const AnyValue &rhs) { return greater_than_or_equal_primitive(lhs, Operators_Private::ToNumber(rhs)); }
+
     inline bool equal_primitive(const double &lhs, const double &rhs) { return lhs == rhs; }
+    inline bool equal_primitive(const AnyValue &lhs, const AnyValue &rhs) { return equal_primitive(Operators_Private::ToNumber(lhs), Operators_Private::ToNumber(rhs)); }
+    inline bool equal_primitive(const AnyValue &lhs, const double &rhs) { return equal_primitive(Operators_Private::ToNumber(lhs), rhs); }
+    inline bool equal_primitive(const double &lhs, const AnyValue &rhs) { return equal_primitive(lhs, Operators_Private::ToNumber(rhs)); }
+
     inline bool not_equal_primitive(const double &lhs, const double &rhs) { return lhs != rhs; }
+    inline bool not_equal_primitive(const AnyValue &lhs, const AnyValue &rhs) { return not_equal_primitive(Operators_Private::ToNumber(lhs), Operators_Private::ToNumber(rhs)); }
+    inline bool not_equal_primitive(const AnyValue &lhs, const double &rhs) { return not_equal_primitive(Operators_Private::ToNumber(lhs), rhs); }
+    inline bool not_equal_primitive(const double &lhs, const AnyValue &rhs) { return not_equal_primitive(lhs, Operators_Private::ToNumber(rhs)); }
 
     // --- PRIMITIVE BITWISE OPERATORS ---
     inline double bitwise_and_primitive(const double &lhs, const double &rhs)
     {
         return static_cast<double>(static_cast<int32_t>(lhs) & static_cast<int32_t>(rhs));
     }
+    inline double bitwise_and_primitive(const AnyValue &lhs, const AnyValue &rhs) { return bitwise_and_primitive(Operators_Private::ToInt32(lhs), Operators_Private::ToInt32(rhs)); }
+    inline double bitwise_and_primitive(const AnyValue &lhs, const double &rhs) { return bitwise_and_primitive(Operators_Private::ToInt32(lhs), rhs); }
+    inline double bitwise_and_primitive(const double &lhs, const AnyValue &rhs) { return bitwise_and_primitive(lhs, Operators_Private::ToInt32(rhs)); }
+
     inline double bitwise_or_primitive(const double &lhs, const double &rhs)
     {
         return static_cast<double>(static_cast<int32_t>(lhs) | static_cast<int32_t>(rhs));
     }
+    inline double bitwise_or_primitive(const AnyValue &lhs, const AnyValue &rhs) { return bitwise_or_primitive(Operators_Private::ToInt32(lhs), Operators_Private::ToInt32(rhs)); }
+    inline double bitwise_or_primitive(const AnyValue &lhs, const double &rhs) { return bitwise_or_primitive(Operators_Private::ToInt32(lhs), rhs); }
+    inline double bitwise_or_primitive(const double &lhs, const AnyValue &rhs) { return bitwise_or_primitive(lhs, Operators_Private::ToInt32(rhs)); }
+
     inline double bitwise_xor_primitive(const double &lhs, const double &rhs)
     {
         return static_cast<double>(static_cast<int32_t>(lhs) ^ static_cast<int32_t>(rhs));
     }
+    inline double bitwise_xor_primitive(const AnyValue &lhs, const AnyValue &rhs) { return bitwise_xor_primitive(Operators_Private::ToInt32(lhs), Operators_Private::ToInt32(rhs)); }
+    inline double bitwise_xor_primitive(const AnyValue &lhs, const double &rhs) { return bitwise_xor_primitive(Operators_Private::ToInt32(lhs), rhs); }
+    inline double bitwise_xor_primitive(const double &lhs, const AnyValue &rhs) { return bitwise_xor_primitive(lhs, Operators_Private::ToInt32(rhs)); }
+
     inline double left_shift_primitive(const double &lhs, const double &rhs)
     {
         return static_cast<double>(static_cast<int32_t>(lhs) << (static_cast<int32_t>(rhs) & 0x1F));
     }
+    inline double left_shift_primitive(const AnyValue &lhs, const AnyValue &rhs) { return left_shift_primitive(Operators_Private::ToInt32(lhs), Operators_Private::ToInt32(rhs)); }
+    inline double left_shift_primitive(const AnyValue &lhs, const double &rhs) { return left_shift_primitive(Operators_Private::ToInt32(lhs), rhs); }
+    inline double left_shift_primitive(const double &lhs, const AnyValue &rhs) { return left_shift_primitive(lhs, Operators_Private::ToInt32(rhs)); }
+
     inline double right_shift_primitive(const double &lhs, const double &rhs)
     {
         return static_cast<double>(static_cast<int32_t>(lhs) >> (static_cast<int32_t>(rhs) & 0x1F));
     }
+    inline double right_shift_primitive(const AnyValue &lhs, const AnyValue &rhs) { return right_shift_primitive(Operators_Private::ToInt32(lhs), Operators_Private::ToInt32(rhs)); }
+    inline double right_shift_primitive(const AnyValue &lhs, const double &rhs) { return right_shift_primitive(Operators_Private::ToInt32(lhs), rhs); }
+    inline double right_shift_primitive(const double &lhs, const AnyValue &rhs) { return right_shift_primitive(lhs, Operators_Private::ToInt32(rhs)); }
+
     inline double unsigned_right_shift_primitive(const double &lhs, const double &rhs)
     {
         uint32_t l = static_cast<uint32_t>(fmod(lhs, 4294967296.0));
         return static_cast<double>(l >> (static_cast<int32_t>(rhs) & 0x1F));
     }
+    inline double unsigned_right_shift_primitive(const AnyValue &lhs, const AnyValue &rhs) { return unsigned_right_shift_primitive(Operators_Private::ToUint32(lhs), Operators_Private::ToInt32(rhs)); }
+    inline double unsigned_right_shift_primitive(const AnyValue &lhs, const double &rhs) { return unsigned_right_shift_primitive(Operators_Private::ToUint32(lhs), rhs); }
+    inline double unsigned_right_shift_primitive(const double &lhs, const AnyValue &rhs) { return unsigned_right_shift_primitive(lhs, Operators_Private::ToInt32(rhs)); }
 
 }

@@ -874,16 +874,16 @@ export function visitBinaryExpression(
 
         let funcName = "";
         if (opToken.kind === ts.SyntaxKind.LessThanToken) {
-            funcName = "jspp::less_than";
+            funcName = "jspp::less_than_primitive";
         }
         if (opToken.kind === ts.SyntaxKind.LessThanEqualsToken) {
-            funcName = "jspp::less_than_or_equal";
+            funcName = "jspp::less_than_or_equal_primitive";
         }
         if (opToken.kind === ts.SyntaxKind.GreaterThanToken) {
-            funcName = "jspp::greater_than";
+            funcName = "jspp::greater_than_primitive";
         }
         if (opToken.kind === ts.SyntaxKind.GreaterThanEqualsToken) {
-            funcName = "jspp::greater_than_or_equal";
+            funcName = "jspp::greater_than_or_equal_primitive";
         }
 
         // For C++ primitive literals, standard operators are fine if they map directly,
@@ -892,6 +892,19 @@ export function visitBinaryExpression(
         // but consistency is safer.
         // Let's stick to valid C++ syntax for literals if possible to avoid overhead?
         // jspp::less_than(1, 2) works.
+
+        const leftExprScope = this.getScopeForNode(binExpr.left);
+        const leftExprTypeinfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+            binExpr.left.getText(),
+            leftExprScope,
+        );
+
+        // number optimizations
+        if (leftExprTypeinfo && leftExprTypeinfo.type === "number") {
+            return `${finalLeft}.is_number() ? ${funcName}(${finalLeft}.as_double(), ${literalRight}) : ${funcName}(${literalLeft}, ${literalRight})`;
+            // return `${funcName}(${finalLeft}.as_double(), ${literalRight})`;
+        }
+
         return `${funcName}(${literalLeft}, ${literalRight})`;
     }
 
@@ -918,33 +931,33 @@ export function visitBinaryExpression(
     // For other arithmetic and bitwise operations, use native operations if possible
     switch (op) {
         case "+":
-            return `jspp::add(${finalLeft}, ${finalRight})`;
+            return `jspp::add(${literalLeft}, ${literalRight})`;
         case "-":
-            return `jspp::sub(${finalLeft}, ${finalRight})`;
+            return `jspp::sub(${literalLeft}, ${literalRight})`;
         case "*":
-            return `jspp::mul(${finalLeft}, ${finalRight})`;
+            return `jspp::mul(${literalLeft}, ${literalRight})`;
         case "/":
-            return `jspp::div(${finalLeft}, ${finalRight})`;
+            return `jspp::div(${literalLeft}, ${literalRight})`;
         case "%":
-            return `jspp::mod(${finalLeft}, ${finalRight})`;
+            return `jspp::mod(${literalLeft}, ${literalRight})`;
         case "^":
-            return `jspp::bitwise_xor(${finalLeft}, ${finalRight})`;
+            return `jspp::bitwise_xor(${literalLeft}, ${literalRight})`;
         case "&":
-            return `jspp::bitwise_and(${finalLeft}, ${finalRight})`;
+            return `jspp::bitwise_and(${literalLeft}, ${literalRight})`;
         case "|":
-            return `jspp::bitwise_or(${finalLeft}, ${finalRight})`;
+            return `jspp::bitwise_or(${literalLeft}, ${literalRight})`;
         case "<<":
-            return `jspp::left_shift(${finalLeft}, ${finalRight})`;
+            return `jspp::left_shift(${literalLeft}, ${literalRight})`;
         case ">>":
-            return `jspp::right_shift(${finalLeft}, ${finalRight})`;
+            return `jspp::right_shift(${literalLeft}, ${literalRight})`;
         case "<":
-            return `jspp::less_than(${finalLeft}, ${finalRight})`;
+            return `jspp::less_than(${literalLeft}, ${literalRight})`;
         case ">":
-            return `jspp::greater_than(${finalLeft}, ${finalRight})`;
+            return `jspp::greater_than(${literalLeft}, ${literalRight})`;
         case "<=":
-            return `jspp::less_than_or_equal(${finalLeft}, ${finalRight})`;
+            return `jspp::less_than_or_equal(${literalLeft}, ${literalRight})`;
         case ">=":
-            return `jspp::greater_than_or_equal(${finalLeft}, ${finalRight})`;
+            return `jspp::greater_than_or_equal(${literalLeft}, ${literalRight})`;
     }
 
     return `/* Unhandled Operator: ${finalLeft} ${op} ${finalRight} */`; // Default fallback
