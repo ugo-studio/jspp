@@ -798,6 +798,10 @@ export function visitBinaryExpression(
                 typeInfo,
             );
         }
+        // Number optimizations
+        if (typeInfo && typeInfo.type === "number") {
+            finalLeft = `${finalLeft}.as_double()`;
+        }
     }
     let finalRight = rightText;
     if (ts.isIdentifier(binExpr.right)) {
@@ -823,6 +827,10 @@ export function visitBinaryExpression(
                 visitContext,
                 typeInfo,
             );
+        }
+        // Number optimizations
+        if (typeInfo && typeInfo.type === "number") {
+            finalRight = `${finalRight}.as_double()`;
         }
     }
 
@@ -892,19 +900,6 @@ export function visitBinaryExpression(
         // but consistency is safer.
         // Let's stick to valid C++ syntax for literals if possible to avoid overhead?
         // jspp::less_than(1, 2) works.
-
-        const leftExprScope = this.getScopeForNode(binExpr.left);
-        const leftExprTypeinfo = this.typeAnalyzer.scopeManager.lookupFromScope(
-            binExpr.left.getText(),
-            leftExprScope,
-        );
-
-        // number optimizations
-        if (leftExprTypeinfo && leftExprTypeinfo.type === "number") {
-            return `${finalLeft}.is_number() ? ${funcName}(${finalLeft}.as_double(), ${literalRight}) : ${funcName}(${literalLeft}, ${literalRight})`;
-            // return `${funcName}(${finalLeft}.as_double(), ${literalRight})`;
-        }
-
         return `${funcName}(${literalLeft}, ${literalRight})`;
     }
 
