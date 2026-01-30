@@ -223,6 +223,16 @@ export function visitPrefixUnaryExpression(
         }
         return `${operator}(${target})`;
     }
+
+    if (operator === "+") {
+        return `jspp::plus(${operand})`;
+    }
+    if (operator === "-") {
+        return `jspp::negate(${operand})`;
+    }
+    if (operator === "!") {
+        return `jspp::logical_not(${operand})`;
+    }
     if (operator === "~") {
         let target = operand;
         if (ts.isIdentifier(prefixUnaryExpr.operand)) {
@@ -237,7 +247,7 @@ export function visitPrefixUnaryExpression(
                 target = `*${operand}`;
             }
         }
-        return `${operator}(${target})`;
+        return `jspp::bitwise_not(${target})`;
     }
     return `${operator}${operand}`;
 }
@@ -862,20 +872,27 @@ export function visitBinaryExpression(
             return `!jspp::is_equal_to_primitive(${literalLeft}, ${literalRight})`;
         }
 
-        if (isLiteral(binExpr.left) && isLiteral(binExpr.right)) {
-            return `(${literalLeft} ${op} ${literalRight})`;
-        } else if (!isLiteral(binExpr.left) && isLiteral(binExpr.right)) {
-            const leftExprScope = this.getScopeForNode(binExpr.left);
-            const leftExprTypeInfo = this.typeAnalyzer.scopeManager
-                .lookupFromScope(
-                    binExpr.left.getText(),
-                    leftExprScope,
-                );
-            if (leftExprTypeInfo && leftExprTypeInfo.type === "number") {
-                return `${finalLeft}.is_number() ? (${finalLeft}.as_double() ${op} ${literalRight}) : (${finalLeft} ${op} ${literalRight}).as_boolean()`;
-            }
+        let funcName = "";
+        if (opToken.kind === ts.SyntaxKind.LessThanToken) {
+            funcName = "jspp::less_than";
         }
-        return `(${literalLeft} ${op} ${literalRight}).as_boolean()`;
+        if (opToken.kind === ts.SyntaxKind.LessThanEqualsToken) {
+            funcName = "jspp::less_than_or_equal";
+        }
+        if (opToken.kind === ts.SyntaxKind.GreaterThanToken) {
+            funcName = "jspp::greater_than";
+        }
+        if (opToken.kind === ts.SyntaxKind.GreaterThanEqualsToken) {
+            funcName = "jspp::greater_than_or_equal";
+        }
+
+        // For C++ primitive literals, standard operators are fine if they map directly,
+        // but we are safe using our functions (which handle doubles correctly).
+        // Actually, for pure numeric literals like "1 < 2", we can leave it as is if we want optimization,
+        // but consistency is safer.
+        // Let's stick to valid C++ syntax for literals if possible to avoid overhead?
+        // jspp::less_than(1, 2) works.
+        return `${funcName}(${literalLeft}, ${literalRight})`;
     }
 
     // Return boxed value
@@ -898,28 +915,39 @@ export function visitBinaryExpression(
         return `jspp::unsigned_right_shift(${literalLeft}, ${literalRight})`;
     }
 
-    // Use literal for at most one side
-    if (isLiteral(binExpr.left)) {
-        finalLeft = binExpr.left.getText();
-    } else if (isLiteral(binExpr.right)) {
-        finalRight = binExpr.right.getText();
-    }
     // For other arithmetic and bitwise operations, use native operations if possible
-    if (
-        op === "+" ||
-        op === "-" ||
-        op === "*" ||
-        op === "/" ||
-        op === "%" ||
-        op === "^" ||
-        op === "&" ||
-        op === "|" ||
-        op === "<<" ||
-        op === ">>"
-    ) {
-        return `(${finalLeft} ${op} ${finalRight})`;
+    switch (op) {
+        case "+":
+            return `jspp::add(${finalLeft}, ${finalRight})`;
+        case "-":
+            return `jspp::sub(${finalLeft}, ${finalRight})`;
+        case "*":
+            return `jspp::mul(${finalLeft}, ${finalRight})`;
+        case "/":
+            return `jspp::div(${finalLeft}, ${finalRight})`;
+        case "%":
+            return `jspp::mod(${finalLeft}, ${finalRight})`;
+        case "^":
+            return `jspp::bitwise_xor(${finalLeft}, ${finalRight})`;
+        case "&":
+            return `jspp::bitwise_and(${finalLeft}, ${finalRight})`;
+        case "|":
+            return `jspp::bitwise_or(${finalLeft}, ${finalRight})`;
+        case "<<":
+            return `jspp::left_shift(${finalLeft}, ${finalRight})`;
+        case ">>":
+            return `jspp::right_shift(${finalLeft}, ${finalRight})`;
+        case "<":
+            return `jspp::less_than(${finalLeft}, ${finalRight})`;
+        case ">":
+            return `jspp::greater_than(${finalLeft}, ${finalRight})`;
+        case "<=":
+            return `jspp::less_than_or_equal(${finalLeft}, ${finalRight})`;
+        case ">=":
+            return `jspp::greater_than_or_equal(${finalLeft}, ${finalRight})`;
     }
-    return `${finalLeft} ${op} ${finalRight}`;
+
+    return `/* Unhandled Operator: ${finalLeft} ${op} ${finalRight} */`; // Default fallback
 }
 
 export function visitConditionalExpression(
@@ -1257,14 +1285,14 @@ export function visitTemplateExpression(
             }
         }
 
-        result += ` + (${finalExpr})`;
+        result = `jspp::add(${result}, ${finalExpr})`;
 
         if (span.literal.text) {
-            result += ` + jspp::AnyValue::make_string("${
+            result = `jspp::add(${result}, jspp::AnyValue::make_string("${
                 this.escapeString(
                     span.literal.text,
                 )
-            }")`;
+            }"))`;
         }
     }
     return result;

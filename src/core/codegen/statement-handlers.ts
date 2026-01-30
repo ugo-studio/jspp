@@ -382,7 +382,7 @@ export function visitEnumDeclaration(
             valueCode = this.visit(member.initializer, context);
         } else {
             // Auto-increment
-            valueCode = `lastVal + 1`;
+            valueCode = `jspp::add(lastVal, 1)`;
         }
 
         code += `${this.indent()}lastVal = ${valueCode};\n`;

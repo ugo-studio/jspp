@@ -44,6 +44,7 @@
 #include "values/helpers/string.hpp"
 
 // utilities
+#include "utils/operators_primitive.hpp"
 #include "utils/operators.hpp"
 #include "utils/assignment_operators.hpp"
 #include "utils/access.hpp"
