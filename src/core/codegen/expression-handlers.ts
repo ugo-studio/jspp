@@ -129,10 +129,12 @@ export function visitObjectLiteralExpression(
                 ...context,
                 isObjectLiteralExpression: true,
             });
-            const lambda = this.generateLambda(prop, {
-                ...context,
-                isInsideFunction: true,
-            });
+            const lambda = this.generateWrappedLambda(
+                this.generateLambdaComponents(prop, {
+                    ...context,
+                    isInsideFunction: true,
+                }),
+            );
             code +=
                 `${this.indent()}${objVar}.define_data_property(${key}, ${lambda});\n`;
         } else if (ts.isGetAccessor(prop)) {
@@ -140,10 +142,12 @@ export function visitObjectLiteralExpression(
                 ...context,
                 isObjectLiteralExpression: true,
             });
-            const lambda = this.generateLambda(prop, {
-                ...context,
-                isInsideFunction: true,
-            });
+            const lambda = this.generateWrappedLambda(
+                this.generateLambdaComponents(prop, {
+                    ...context,
+                    isInsideFunction: true,
+                }),
+            );
             code +=
                 `${this.indent()}${objVar}.define_getter(${key}, ${lambda});\n`;
         } else if (ts.isSetAccessor(prop)) {
@@ -151,10 +155,12 @@ export function visitObjectLiteralExpression(
                 ...context,
                 isObjectLiteralExpression: true,
             });
-            const lambda = this.generateLambda(prop, {
-                ...context,
-                isInsideFunction: true,
-            });
+            const lambda = this.generateWrappedLambda(
+                this.generateLambdaComponents(prop, {
+                    ...context,
+                    isInsideFunction: true,
+                }),
+            );
             code +=
                 `${this.indent()}${objVar}.define_setter(${key}, ${lambda});\n`;
         }
@@ -1194,8 +1200,36 @@ export function visitCallExpression(
 
             // Optimization: Direct lambda call
             if (symbol && symbol.features?.nativeName) {
-                const callExpr =
-                    `${symbol.features.nativeName}(jspp::Constants::UNDEFINED, ${argsSpan})`;
+                let callExpr =
+                    `${symbol.features.nativeName}(jspp::Constants::UNDEFINED`;
+                // Map args to the native lambda params
+                if (symbol.features.parameters) {
+                    // Normal argument
+                    const argsText = argsArray.slice(
+                        0,
+                        symbol.features.parameters.length,
+                    ).filter((_, i) =>
+                        !symbol.features.parameters![i]?.dotDotDotToken
+                    ).join(", ");
+                    if (argsText) callExpr += `, ${argsText}`;
+                    // ... argument
+                    if (
+                        argsArray.length > symbol.features.parameters.length &&
+                        !!symbol.features
+                            .parameters[symbol.features.parameters.length - 1]
+                            ?.dotDotDotToken
+                    ) {
+                        const restArgsText =
+                            `jspp::AnyValue::make_array(std::vector<jspp::AnyValue>{${
+                                argsArray.slice(
+                                    symbol.features.parameters.length - 1,
+                                ).join(", ")
+                            }})`;
+                        callExpr += `, ${restArgsText}`;
+                    }
+                }
+                callExpr += ")";
+                // End of Optimization: Direct lambda call
 
                 if (symbol.features.isGenerator) {
                     if (symbol.features.isAsync) {

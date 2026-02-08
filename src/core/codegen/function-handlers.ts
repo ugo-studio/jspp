@@ -2,11 +2,14 @@ import ts from "typescript";
 
 import { DeclarationType, DeclaredSymbols } from "../../ast/symbols.js";
 import { CompilerError } from "../error.js";
-import { collectFunctionScopedDeclarations } from "./helpers.js";
+import {
+  checkFunctionParams,
+  collectFunctionScopedDeclarations,
+} from "./helpers.js";
 import { CodeGenerator } from "./index.js";
 import type { VisitContext } from "./visitor.js";
 
-export function generateLambda(
+export function generateLambdaComponents(
     this: CodeGenerator,
     node:
         | ts.ArrowFunction
@@ -22,12 +25,9 @@ export function generateLambda(
         capture?: string;
         isClass?: boolean;
         nativeName?: string;
-        generateOnlyLambda?: boolean;
+        noTypeSignature?: boolean;
     },
-): string {
-    const capture = options?.capture || "[=]";
-    const nativeName = options?.nativeName;
-
+) {
     const declaredSymbols = this.getDeclaredSymbols(node);
     const argsName = this.generateUniqueName(
         "__args_",
@@ -38,7 +38,9 @@ export function generateLambda(
 
     const isInsideGeneratorFunction = this.isGeneratorFunction(node);
     const isInsideAsyncFunction = this.isAsyncFunction(node);
-    const returnCmd = this.getReturnCommand({
+    const isArrow = ts.isArrowFunction(node);
+
+    const returnCommand = this.getReturnCommand({
         isInsideGeneratorFunction: isInsideGeneratorFunction,
         isInsideAsyncFunction: isInsideAsyncFunction,
     });
@@ -48,22 +50,10 @@ export function generateLambda(
             ? "jspp::JsIterator<jspp::AnyValue>"
             : (isInsideAsyncFunction ? "jspp::JsPromise" : "jspp::AnyValue"));
 
-    const isArrow = ts.isArrowFunction(node);
-
     // Lambda arguments are ALWAYS const references/spans to avoid copy overhead for normal functions.
     // For generators/async, we manually copy them inside the body.
     const paramThisType = "const jspp::AnyValue&";
     const paramArgsType = "std::span<const jspp::AnyValue>";
-
-    const selfParamPart = nativeName ? `this auto&& ${nativeName}, ` : "";
-    const mutablePart = nativeName ? "" : "mutable ";
-
-    const thisArgParam = isArrow
-        ? "const jspp::AnyValue&" // Arrow functions use captured 'this' or are never generators in this parser context
-        : `${paramThisType} ${this.globalThisVar}`;
-
-    let lambda =
-        `${capture}(${selfParamPart}${thisArgParam}, ${paramArgsType} ${argsName}) ${mutablePart}-> ${funcReturnType} `;
 
     const globalScopeSymbols = this.prepareScopeSymbolsForVisit(
         context.globalScopeSymbols,
@@ -83,26 +73,6 @@ export function generateLambda(
         isInsideAsyncFunction: isInsideAsyncFunction,
     };
 
-    // Preamble to copy arguments for coroutines
-    let preamble = "";
-    if (isInsideGeneratorFunction || isInsideAsyncFunction) {
-        const thisCopy = this.generateUniqueName(
-            "__this_copy",
-            declaredSymbols,
-        );
-        const argsCopy = this.generateUniqueName(
-            "__args_copy",
-            declaredSymbols,
-        );
-
-        if (!isArrow) {
-            preamble +=
-                `${this.indent()}jspp::AnyValue ${thisCopy} = ${this.globalThisVar};\n`;
-        }
-        preamble +=
-            `${this.indent()}std::vector<jspp::AnyValue> ${argsCopy}(${argsName}.begin(), ${argsName}.end());\n`;
-    }
-
     // Adjust parameter names for generator/async to allow shadowing/copying
     let finalThisParamName = isArrow ? "" : this.globalThisVar;
     let finalArgsParamName = argsName;
@@ -120,204 +90,245 @@ export function generateLambda(
         );
     }
 
-    const thisArgParamFinal = isArrow
-        ? "const jspp::AnyValue&"
+    const thisArgParam = isArrow
+        ? "const jspp::AnyValue&" // Arrow functions use captured 'this' or are never generators in this parser context
         : `${paramThisType} ${finalThisParamName}`;
+    const funcArgs = `${paramArgsType} ${finalArgsParamName}`;
 
-    // Re-construct lambda header with potentially new param names
-    lambda =
-        `${capture}(${selfParamPart}${thisArgParamFinal}, ${paramArgsType} ${finalArgsParamName}) ${mutablePart}-> ${funcReturnType} `;
-
-    // Regenerate preamble
-    preamble = "";
+    // Preamble to copy arguments for coroutines
+    let preamble = "";
+    let nativePreamble = "";
     if (isInsideGeneratorFunction || isInsideAsyncFunction) {
         if (!isArrow) {
             preamble +=
                 `${this.indent()}jspp::AnyValue ${this.globalThisVar} = ${finalThisParamName};\n`;
+            nativePreamble +=
+                `${this.indent()}jspp::AnyValue ${this.globalThisVar} = ${finalThisParamName};\n`;
         }
+        // Note: Do not add argument copy to native lambda
         preamble +=
             `${this.indent()}std::vector<jspp::AnyValue> ${argsName}(${finalArgsParamName}.begin(), ${finalArgsParamName}.end());\n`;
     }
 
-    // Now 'argsName' refers to the vector (if copied) or the span (if not).
-    // And 'this.globalThisVar' refers to the copy (if copied) or the param (if not).
-    // So subsequent code using `argsName` and `visit` (using `globalThisVar`) works correctly.
-    const paramExtractor = (
-        parameters: ts.NodeArray<ts.ParameterDeclaration>,
-    ): string => {
-        let code = "";
-        parameters.filter((p) => {
-            if (p.name.getText() === "this") {
-                if (!this.isTypescript) {
-                    // Throw error for "this" parameters in javascript files
-                    throw new CompilerError(
-                        'Cannot use "this" as a parameter name.',
-                        p,
-                        "SyntaxError",
-                    );
-                } else return false; // Ignore "this" parameters in typescript files
-            } else return true;
-        }).forEach((p, i) => {
-            const name = p.name.getText();
-            const defaultValue = p.initializer
-                ? this.visit(p.initializer, visitContext)
-                : "jspp::Constants::UNDEFINED";
+    // Native function arguments for native lambda
+    let nativeFuncArgs = "";
+    let nativeParamsContent = "";
+    this.checkFunctionParams(node.parameters).forEach((p, i) => {
+        const name = p.name.getText();
+        const defaultValue = p.initializer
+            ? this.visit(p.initializer, visitContext)
+            : !!p.dotDotDotToken
+            ? "jspp::AnyValue::make_array(std::vector<jspp::AnyValue>{})"
+            : "jspp::Constants::UNDEFINED";
+        nativeFuncArgs += `, const jspp::AnyValue& ${name} = ${defaultValue}`;
+    });
 
-            // Add paramerter to local context
-            visitContext.localScopeSymbols.add(name, {
-                type: DeclarationType.let,
-                checks: { initialized: true },
-            });
+    // Extract lambda parameters from arguments span/vector
+    const generateParams = () => {
+        let paramsCode = "";
+        this.checkFunctionParams(node.parameters).forEach(
+            (p, i) => {
+                const name = p.name.getText();
+                const defaultValue = p.initializer
+                    ? this.visit(p.initializer, visitContext)
+                    : "jspp::Constants::UNDEFINED";
 
-            const scope = this.getScopeForNode(p);
-            const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
-                name,
-                scope,
-            )!;
+                // Add paramerter to local context
+                visitContext.localScopeSymbols.add(name, {
+                    type: DeclarationType.let,
+                    checks: { initialized: true },
+                });
 
-            // Handle rest parameters
-            if (!!p.dotDotDotToken) {
-                if (parameters.length - 1 !== i) {
-                    throw new CompilerError(
-                        "Rest parameter must be last formal parameter.",
-                        p,
-                        "SyntaxError",
-                    );
+                const scope = this.getScopeForNode(p);
+                const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                    name,
+                    scope,
+                )!;
+
+                // Handle rest parameters
+                if (!!p.dotDotDotToken) {
+                    if (typeInfo.needsHeapAllocation) {
+                        paramsCode +=
+                            `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(jspp::Constants::UNDEFINED);\n`;
+                    } else {
+                        paramsCode +=
+                            `${this.indent()}jspp::AnyValue ${name} = jspp::Constants::UNDEFINED;\n`;
+                    }
+
+                    // Extract rest parameters
+                    const tempName = `temp_${name}`;
+
+                    paramsCode += `${this.indent()}{\n`;
+                    this.indentationLevel++;
+                    paramsCode +=
+                        `${this.indent()}std::vector<std::optional<jspp::AnyValue>> ${tempName};\n`;
+
+                    paramsCode +=
+                        `${this.indent()}if (${argsName}.size() > ${i}) {\n`;
+                    this.indentationLevel++;
+                    paramsCode +=
+                        `${this.indent()}${tempName}.reserve(${argsName}.size() - ${i});\n`;
+                    this.indentationLevel--;
+                    paramsCode += `${this.indent()}}\n`;
+
+                    paramsCode +=
+                        `${this.indent()}for (size_t j = ${i}; j < ${argsName}.size(); j++) {\n`;
+                    this.indentationLevel++;
+                    paramsCode +=
+                        `${this.indent()}${tempName}.push_back(${argsName}[j]);\n`;
+                    this.indentationLevel--;
+                    paramsCode += `${this.indent()}}\n`;
+                    paramsCode += `${this.indent()}${
+                        typeInfo.needsHeapAllocation ? "*" : ""
+                    }${name} = jspp::AnyValue::make_array(std::move(${tempName}));\n`;
+                    this.indentationLevel--;
+                    paramsCode += `${this.indent()}}\n`;
+                    return;
                 }
 
-                if (typeInfo.needsHeapAllocation) {
-                    code +=
-                        `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(jspp::Constants::UNDEFINED);\n`;
+                // Normal parameter
+                const initValue =
+                    `${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue}`;
+                if (typeInfo && typeInfo.needsHeapAllocation) {
+                    paramsCode +=
+                        `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initValue});\n`;
                 } else {
-                    code +=
-                        `${this.indent()}jspp::AnyValue ${name} = jspp::Constants::UNDEFINED;\n`;
+                    paramsCode +=
+                        `${this.indent()}jspp::AnyValue ${name} = ${initValue};\n`;
                 }
-
-                // Extract rest parameters
-                const tempName = `temp_${name}`;
-
-                code += `${this.indent()}{\n`;
-                this.indentationLevel++;
-                code +=
-                    `${this.indent()}std::vector<std::optional<jspp::AnyValue>> ${tempName};\n`;
-
-                code += `${this.indent()}if (${argsName}.size() > ${i}) {\n`;
-                this.indentationLevel++;
-                code +=
-                    `${this.indent()}${tempName}.reserve(${argsName}.size() - ${i});\n`;
-                this.indentationLevel--;
-                code += `${this.indent()}}\n`;
-
-                code +=
-                    `${this.indent()}for (size_t j = ${i}; j < ${argsName}.size(); j++) {\n`;
-                this.indentationLevel++;
-                code +=
-                    `${this.indent()}${tempName}.push_back(${argsName}[j]);\n`;
-                this.indentationLevel--;
-                code += `${this.indent()}}\n`;
-                code += `${this.indent()}${
-                    typeInfo.needsHeapAllocation ? "*" : ""
-                }${name} = jspp::AnyValue::make_array(std::move(${tempName}));\n`;
-                this.indentationLevel--;
-                code += `${this.indent()}}\n`;
-                return;
-            }
-
-            // Normal parameter
-            const initValue =
-                `${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue}`;
-            if (typeInfo && typeInfo.needsHeapAllocation) {
-                code +=
-                    `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initValue});\n`;
-            } else {
-                code +=
-                    `${this.indent()}jspp::AnyValue ${name} = ${initValue};\n`;
-            }
-        });
-        return code;
+            },
+        );
+        return paramsCode;
     };
+
+    // Generate params and function body
+    let paramsContent = "";
+    let blockContentWithoutOpeningBrace = "";
 
     if (node.body) {
         if (ts.isBlock(node.body)) {
             // Hoist var declarations in the function body
             const varDecls = collectFunctionScopedDeclarations(node.body);
             varDecls.forEach((decl) => {
-                preamble += this.hoistDeclaration(
+                const hoistCode = this.hoistDeclaration(
                     decl,
                     visitContext.localScopeSymbols,
                     node.body as ts.Node,
                 );
+                preamble += hoistCode;
+                nativePreamble += hoistCode;
             });
 
             this.indentationLevel++;
-            const paramExtraction = paramExtractor(node.parameters);
+            paramsContent = generateParams();
             this.indentationLevel--;
 
-            const blockContent = this.visit(node.body, {
+            // The block visitor already adds braces, so we need to remove the opening brace to inject the preamble and param extraction.
+            blockContentWithoutOpeningBrace = this.visit(node.body, {
                 ...visitContext,
                 isMainContext: false,
                 isInsideFunction: true,
                 isFunctionBody: true,
                 isInsideGeneratorFunction: isInsideGeneratorFunction,
                 isInsideAsyncFunction: isInsideAsyncFunction,
-            });
-            // The block visitor already adds braces, so we need to inject the preamble and param extraction.
-            lambda += "{\n" + preamble + paramExtraction +
-                blockContent.trimStart().substring(2);
+            }).trimStart().substring(2);
         } else {
-            lambda += "{\n";
             this.indentationLevel++;
-            lambda += preamble;
-            lambda += paramExtractor(node.parameters);
-            lambda += `${this.indent()}${returnCmd} ${
-                this.visit(node.body, {
-                    ...visitContext,
-                    isMainContext: false,
-                    isInsideFunction: true,
-                    isFunctionBody: false,
-                    isInsideGeneratorFunction: isInsideGeneratorFunction,
-                    isInsideAsyncFunction: isInsideAsyncFunction,
-                })
-            };\n`;
+            paramsContent = generateParams();
+            blockContentWithoutOpeningBrace =
+                `${this.indent()}${returnCommand} ${
+                    this.visit(node.body, {
+                        ...visitContext,
+                        isMainContext: false,
+                        isInsideFunction: true,
+                        isFunctionBody: false,
+                        isInsideGeneratorFunction: isInsideGeneratorFunction,
+                        isInsideAsyncFunction: isInsideAsyncFunction,
+                    })
+                };\n`;
             this.indentationLevel--;
-            lambda += `${this.indent()}}`;
+            blockContentWithoutOpeningBrace += `${this.indent()}}`;
         }
     } else {
-        lambda += `{ ${preamble} ${returnCmd} jspp::Constants::UNDEFINED; }\n`;
+        blockContentWithoutOpeningBrace =
+            `${returnCommand} jspp::Constants::UNDEFINED; }\n`;
     }
 
-    // Return only lambda if required
-    if (options?.generateOnlyLambda) {
-        return lambda.trimEnd();
-    }
-
-    return this.generateLambdaExpression(node, context, lambda, options);
+    return {
+        node,
+        context,
+        options,
+        visitContext,
+        thisArgParam,
+        funcArgs,
+        nativeFuncArgs,
+        funcReturnType,
+        preamble,
+        nativePreamble,
+        paramsContent,
+        nativeParamsContent,
+        blockContentWithoutOpeningBrace,
+        isInsideGeneratorFunction,
+        isInsideAsyncFunction,
+    };
 }
 
-export function generateLambdaExpression(
+export function generateNativeLambda(
     this: CodeGenerator,
-    node:
-        | ts.ArrowFunction
-        | ts.FunctionDeclaration
-        | ts.FunctionExpression
-        | ts.ConstructorDeclaration
-        | ts.MethodDeclaration
-        | ts.GetAccessorDeclaration
-        | ts.SetAccessorDeclaration,
-    context: VisitContext,
-    lambda: string,
-    options?: {
-        isAssignment?: boolean;
-        isClass?: boolean;
-        noTypeSignature?: boolean;
-    },
+    comps: ReturnType<typeof generateLambdaComponents>,
 ) {
+    const {
+        options,
+        thisArgParam,
+        nativeFuncArgs,
+        funcReturnType,
+        nativePreamble,
+        nativeParamsContent,
+        blockContentWithoutOpeningBrace,
+    } = comps;
+
+    const capture = options?.capture || "[=]";
+    const nativeName = options?.nativeName;
+
+    const selfParam = nativeName ? `this auto&& ${nativeName}, ` : "";
+    const mutableLabel = nativeName ? "" : "mutable ";
+
+    let lambda =
+        `${capture}(${selfParam}${thisArgParam}${nativeFuncArgs}) ${mutableLabel}-> ${funcReturnType} {\n`;
+    lambda += nativePreamble;
+    lambda += nativeParamsContent;
+    lambda += blockContentWithoutOpeningBrace;
+
+    return lambda;
+}
+
+export function generateWrappedLambda(
+    this: CodeGenerator,
+    comps: ReturnType<typeof generateLambdaComponents>,
+) {
+    const {
+        node,
+        context,
+        options,
+        thisArgParam,
+        funcArgs,
+        funcReturnType,
+        preamble,
+        paramsContent,
+        blockContentWithoutOpeningBrace,
+        isInsideGeneratorFunction,
+        isInsideAsyncFunction,
+    } = comps;
+
+    const capture = options?.capture || "[=]";
     const isAssignment = options?.isAssignment || false;
     const noTypeSignature = options?.noTypeSignature || false;
 
-    const isInsideGeneratorFunction = this.isGeneratorFunction(node);
-    const isInsideAsyncFunction = this.isAsyncFunction(node);
-    const isArrow = ts.isArrowFunction(node);
+    let lambda =
+        `${capture}(${thisArgParam}, ${funcArgs}) mutable -> ${funcReturnType} {\n`;
+    lambda += preamble;
+    lambda += paramsContent;
+    lambda += blockContentWithoutOpeningBrace;
 
     let callable = lambda;
     let method = "";
@@ -366,6 +377,7 @@ export function generateLambdaExpression(
 
     let args = callable;
 
+    const isArrow = ts.isArrowFunction(node);
     const isMethod = ts.isMethodDeclaration(node);
     const isAccessor = ts.isGetAccessor(node) || ts.isSetAccessor(node);
     const isConstructor = !isArrow && !isMethod && !isAccessor;
@@ -406,7 +418,12 @@ export function visitFunctionDeclaration(
         // This will now be handled by the Block visitor for hoisting.
         // However, we still need to generate the lambda for assignment.
         // The block visitor will wrap this in an assignment.
-        return this.generateLambda(node as ts.FunctionDeclaration, context);
+        return this.generateWrappedLambda(
+            this.generateLambdaComponents(
+                node as ts.FunctionDeclaration,
+                context,
+            ),
+        );
     }
     return "";
 }
@@ -416,7 +433,9 @@ export function visitArrowFunction(
     node: ts.ArrowFunction,
     context: VisitContext,
 ): string {
-    return this.generateLambda(node as ts.ArrowFunction, context);
+    return this.generateWrappedLambda(
+        this.generateLambdaComponents(node as ts.ArrowFunction, context),
+    );
 }
 
 export function visitFunctionExpression(
@@ -431,18 +450,22 @@ export function visitFunctionExpression(
         this.indentationLevel++;
         code +=
             `${this.indent()}auto ${funcName} = std::make_shared<jspp::AnyValue>();\n`;
-        const lambda = this.generateLambda(funcExpr, {
-            ...context,
-            lambdaName: funcName,
-        }, {
-            isAssignment: true,
-            capture: "[=]",
-        });
+        const lambda = this.generateWrappedLambda(
+            this.generateLambdaComponents(funcExpr, {
+                ...context,
+                lambdaName: funcName,
+            }, {
+                isAssignment: true,
+                capture: "[=]",
+            }),
+        );
         code += `${this.indent()}*${funcName} = ${lambda};\n`;
         code += `${this.indent()}return *${funcName};\n`;
         this.indentationLevel--;
         code += `${this.indent()}})()`;
         return code;
     }
-    return this.generateLambda(node as ts.FunctionExpression, context);
+    return this.generateWrappedLambda(
+        this.generateLambdaComponents(node as ts.FunctionExpression, context),
+    );
 }

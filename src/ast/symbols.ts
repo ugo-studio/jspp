@@ -1,3 +1,5 @@
+import type ts from "typescript";
+
 export enum DeclarationType {
     var = "var",
     let = "let",
@@ -15,6 +17,7 @@ export type SymbolFeatures = {
     nativeName?: string;
     isAsync?: boolean;
     isGenerator?: boolean;
+    parameters?: ts.ParameterDeclaration[];
 };
 
 export class DeclaredSymbol {

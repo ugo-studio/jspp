@@ -587,30 +587,28 @@ export function visitSwitchStatement(
         );
         hoistedSymbols.update(funcName, { features: { nativeName } });
 
-        // Generate lambda
-        const lambda = this.generateLambda(
+        // Generate lambda components
+        const lambdaComps = this.generateLambdaComponents(
             stmt,
             contextForFunctions,
             {
                 isAssignment: true,
-                generateOnlyLambda: true,
                 nativeName,
+                noTypeSignature: true,
             },
         );
-        code += `${this.indent()}auto ${nativeName} = ${lambda};\n`;
+
+        // Generate native lambda
+        const nativeLambda = this.generateNativeLambda(lambdaComps);
+        code += `${this.indent()}auto ${nativeName} = ${nativeLambda};\n`;
 
         // Generate AnyValue wrapper
         if (
             this.isFunctionUsedAsValue(stmt, node) ||
             this.isFunctionUsedBeforeDeclaration(funcName, node)
         ) {
-            const fullExpression = this.generateLambdaExpression(
-                stmt,
-                contextForFunctions,
-                nativeName,
-                { isAssignment: true, noTypeSignature: true },
-            );
-            code += `${this.indent()}*${funcName} = ${fullExpression};\n`;
+            const wrappedLambda = this.generateWrappedLambda(lambdaComps);
+            code += `${this.indent()}*${funcName} = ${wrappedLambda};\n`;
         }
     });
 

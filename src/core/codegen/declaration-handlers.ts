@@ -86,29 +86,30 @@ export function visitVariableDeclaration(
                 context.globalScopeSymbols,
             );
             context.localScopeSymbols.update(name, {
-                features: { nativeName },
+                features: {
+                    nativeName,
+                    parameters: this.checkFunctionParams(initExpr.parameters),
+                },
             });
 
-            // Generate lambda
-            const lambda = this.generateLambda(
+            // Generate lambda components
+            const lambdaComps = this.generateLambdaComponents(
                 initExpr,
                 initContext,
                 {
                     isAssignment: true,
-                    generateOnlyLambda: true,
                     nativeName,
+                    noTypeSignature: true,
                 },
             );
+
+            // Generate native lambda
+            const nativeLambda = this.generateNativeLambda(lambdaComps);
             nativeLambdaCode =
-                `auto ${nativeName} = ${lambda};\n${this.indent()}`;
+                `auto ${nativeName} = ${nativeLambda};\n${this.indent()}`;
 
             // Generate AnyValue wrapper
-            initText = this.generateLambdaExpression(
-                initExpr,
-                initContext,
-                nativeName,
-                { isAssignment: true, noTypeSignature: true },
-            );
+            initText = this.generateWrappedLambda(lambdaComps);
         }
         initializer = " = " + initText;
     }

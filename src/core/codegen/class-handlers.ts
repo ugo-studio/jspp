@@ -56,11 +56,13 @@ export function visitClassDeclaration(
     let constructorLambda = "";
 
     if (constructor) {
-        constructorLambda = this.generateLambda(constructor, {
-            ...classContext,
-            isInsideFunction: true,
-            lambdaName: className,
-        }, { isClass: true });
+        constructorLambda = this.generateWrappedLambda(
+            this.generateLambdaComponents(constructor, {
+                ...classContext,
+                isInsideFunction: true,
+                lambdaName: className,
+            }, { isClass: true }),
+        );
     } else {
         // Default constructor
         if (parentName) {
@@ -102,10 +104,12 @@ export function visitClassDeclaration(
                 m.kind === ts.SyntaxKind.StaticKeyword
             );
 
-            const methodLambda = this.generateLambda(member, {
-                ...classContext,
-                isInsideFunction: true,
-            });
+            const methodLambda = this.generateWrappedLambda(
+                this.generateLambdaComponents(member, {
+                    ...classContext,
+                    isInsideFunction: true,
+                }),
+            );
 
             if (isStatic) {
                 code +=
@@ -122,10 +126,12 @@ export function visitClassDeclaration(
             const isStatic = member.modifiers?.some((m) =>
                 m.kind === ts.SyntaxKind.StaticKeyword
             );
-            const lambda = this.generateLambda(member, {
-                ...classContext,
-                isInsideFunction: true,
-            });
+            const lambda = this.generateWrappedLambda(
+                this.generateLambdaComponents(member, {
+                    ...classContext,
+                    isInsideFunction: true,
+                }),
+            );
 
             if (isStatic) {
                 code +=
@@ -142,10 +148,12 @@ export function visitClassDeclaration(
             const isStatic = member.modifiers?.some((m) =>
                 m.kind === ts.SyntaxKind.StaticKeyword
             );
-            const lambda = this.generateLambda(member, {
-                ...classContext,
-                isInsideFunction: true,
-            });
+            const lambda = this.generateWrappedLambda(
+                this.generateLambdaComponents(member, {
+                    ...classContext,
+                    isInsideFunction: true,
+                }),
+            );
 
             if (isStatic) {
                 code +=

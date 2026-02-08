@@ -537,3 +537,32 @@ export function isFunctionUsedBeforeDeclaration(
     visit(root);
     return isUsedBefore;
 }
+
+export function checkFunctionParams(
+    this: CodeGenerator,
+    parameters: ts.NodeArray<ts.ParameterDeclaration>,
+) {
+    return parameters.filter((p) => {
+        if (p.name.getText() === "this") {
+            if (!this.isTypescript) {
+                // Throw error for "this" parameters in javascript files
+                throw new CompilerError(
+                    'Cannot use "this" as a parameter name.',
+                    p,
+                    "SyntaxError",
+                );
+            } else return false; // Ignore "this" parameters in typescript files
+        } else return true;
+    }).map((p, i, parameters) => {
+        if (!!p.dotDotDotToken) {
+            if (parameters.length - 1 !== i) {
+                throw new CompilerError(
+                    "Rest parameter must be last formal parameter.",
+                    p,
+                    "SyntaxError",
+                );
+            }
+        }
+        return p;
+    });
+}

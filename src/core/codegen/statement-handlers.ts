@@ -97,32 +97,35 @@ export function visitSourceFile(
             `__${funcName}_native_`,
             hoistedSymbols,
         );
-        hoistedSymbols.update(funcName, { features: { nativeName } });
+        hoistedSymbols.update(funcName, {
+            features: {
+                nativeName,
+                parameters: this.checkFunctionParams(stmt.parameters),
+            },
+        });
 
-        // Generate lambda
-        const lambda = this.generateLambda(
+        // Generate lambda components
+        const lambdaComps = this.generateLambdaComponents(
             stmt,
             contextForFunctions,
             {
                 isAssignment: true,
-                generateOnlyLambda: true,
                 nativeName,
+                noTypeSignature: true,
             },
         );
-        code += `${this.indent()}auto ${nativeName} = ${lambda};\n`;
 
-        // Generate AnyValue wrapper
+        // Generate native lambda
+        const nativeLambda = this.generateNativeLambda(lambdaComps);
+        code += `${this.indent()}auto ${nativeName} = ${nativeLambda};\n`;
+
+        // Generate AnyValue wrapped lamda
         if (
             this.isFunctionUsedAsValue(stmt, node) ||
             this.isFunctionUsedBeforeDeclaration(funcName, node)
         ) {
-            const fullExpression = this.generateLambdaExpression(
-                stmt,
-                contextForFunctions,
-                nativeName,
-                { isAssignment: true, noTypeSignature: true },
-            );
-            code += `${this.indent()}*${funcName} = ${fullExpression};\n`;
+            const wrappedLambda = this.generateWrappedLambda(lambdaComps);
+            code += `${this.indent()}*${funcName} = ${wrappedLambda};\n`;
         }
     });
 
@@ -229,32 +232,35 @@ export function visitBlock(
             `__${funcName}_native_`,
             hoistedSymbols,
         );
-        hoistedSymbols.update(funcName, { features: { nativeName } });
+        hoistedSymbols.update(funcName, {
+            features: {
+                nativeName,
+                parameters: this.checkFunctionParams(stmt.parameters),
+            },
+        });
 
-        // Generate lambda
-        const lambda = this.generateLambda(
+        // Generate lambda components
+        const lambdaComps = this.generateLambdaComponents(
             stmt,
             contextForFunctions,
             {
                 isAssignment: true,
-                generateOnlyLambda: true,
                 nativeName,
+                noTypeSignature: true,
             },
         );
-        code += `${this.indent()}auto ${nativeName} = ${lambda};\n`;
 
-        // Generate AnyValue wrapper
+        // Generate native lambda
+        const nativeLambda = this.generateNativeLambda(lambdaComps);
+        code += `${this.indent()}auto ${nativeName} = ${nativeLambda};\n`;
+
+        // Generate AnyValue wrapped lamda
         if (
             this.isFunctionUsedAsValue(stmt, node) ||
             this.isFunctionUsedBeforeDeclaration(funcName, node)
         ) {
-            const fullExpression = this.generateLambdaExpression(
-                stmt,
-                contextForFunctions,
-                nativeName,
-                { isAssignment: true, noTypeSignature: true },
-            );
-            code += `${this.indent()}*${funcName} = ${fullExpression};\n`;
+            const wrappedLambda = this.generateWrappedLambda(lambdaComps);
+            code += `${this.indent()}*${funcName} = ${wrappedLambda};\n`;
         }
     });
 

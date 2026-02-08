@@ -2,10 +2,12 @@ import type { TypeAnalyzer } from "../../analysis/typeAnalyzer.js";
 import { DeclaredSymbols } from "../../ast/symbols.js";
 import type { Node } from "../../ast/types.js";
 import {
-  generateLambda,
-  generateLambdaExpression,
+  generateLambdaComponents,
+  generateNativeLambda,
+  generateWrappedLambda,
 } from "./function-handlers.js";
 import {
+  checkFunctionParams,
   escapeString,
   generateUniqueExceptionName,
   generateUniqueName,
@@ -56,10 +58,12 @@ export class CodeGenerator {
     public markSymbolAsInitialized = markSymbolAsInitialized;
     public isFunctionUsedAsValue = isFunctionUsedAsValue;
     public isFunctionUsedBeforeDeclaration = isFunctionUsedBeforeDeclaration;
+    public checkFunctionParams = checkFunctionParams;
 
     // function handlers
-    public generateLambda = generateLambda;
-    public generateLambdaExpression = generateLambdaExpression;
+    public generateLambdaComponents = generateLambdaComponents;
+    public generateNativeLambda = generateNativeLambda;
+    public generateWrappedLambda = generateWrappedLambda;
 
     /**
      * Main entry point for the code generation process.
