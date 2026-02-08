@@ -585,7 +585,12 @@ export function visitSwitchStatement(
             `__${funcName}_native_`,
             hoistedSymbols,
         );
-        hoistedSymbols.update(funcName, { features: { nativeName } });
+        hoistedSymbols.update(funcName, {
+            features: {
+                nativeName,
+                parameters: this.checkFunctionParams(stmt.parameters),
+            },
+        });
 
         // Generate lambda components
         const lambdaComps = this.generateLambdaComponents(

@@ -1,11 +1,7 @@
 import ts from "typescript";
 
 import { DeclarationType, DeclaredSymbols } from "../../ast/symbols.js";
-import { CompilerError } from "../error.js";
-import {
-  checkFunctionParams,
-  collectFunctionScopedDeclarations,
-} from "./helpers.js";
+import { collectFunctionScopedDeclarations } from "./helpers.js";
 import { CodeGenerator } from "./index.js";
 import type { VisitContext } from "./visitor.js";
 
