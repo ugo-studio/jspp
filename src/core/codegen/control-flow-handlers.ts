@@ -585,7 +585,7 @@ export function visitSwitchStatement(
             `__${funcName}_native_`,
             hoistedSymbols,
         );
-        hoistedSymbols.update(funcName, { func: { nativeName } });
+        hoistedSymbols.update(funcName, { features: { nativeName } });
 
         // Generate lambda
         const lambda = this.generateLambda(
@@ -604,7 +604,7 @@ export function visitSwitchStatement(
             this.isFunctionUsedAsValue(stmt, node) ||
             this.isFunctionUsedBeforeDeclaration(funcName, node)
         ) {
-            const fullExpression = this.generateFullLambdaExpression(
+            const fullExpression = this.generateLambdaExpression(
                 stmt,
                 contextForFunctions,
                 nativeName,

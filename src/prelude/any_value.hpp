@@ -40,74 +40,93 @@ namespace jspp
     private:
         uint64_t storage;
 
-        static constexpr uint64_t TAG_BASE          = 0xFFFC000000000000ULL;
-        static constexpr uint64_t TAG_POINTER       = 0xFFFC000000000000ULL;
-        static constexpr uint64_t TAG_BOOLEAN       = 0xFFFD000000000000ULL;
-        static constexpr uint64_t TAG_SPECIAL       = 0xFFFE000000000000ULL;
-        
-        static constexpr uint64_t VAL_UNDEFINED     = 0x1ULL;
-        static constexpr uint64_t VAL_NULL          = 0x2ULL;
+        static constexpr uint64_t TAG_BASE = 0xFFFC000000000000ULL;
+        static constexpr uint64_t TAG_POINTER = 0xFFFC000000000000ULL;
+        static constexpr uint64_t TAG_BOOLEAN = 0xFFFD000000000000ULL;
+        static constexpr uint64_t TAG_SPECIAL = 0xFFFE000000000000ULL;
+
+        static constexpr uint64_t VAL_UNDEFINED = 0x1ULL;
+        static constexpr uint64_t VAL_NULL = 0x2ULL;
         static constexpr uint64_t VAL_UNINITIALIZED = 0x3ULL;
 
-        static constexpr uint64_t TAG_MASK          = 0xFFFF000000000000ULL;
-        static constexpr uint64_t PAYLOAD_MASK      = 0x0000FFFFFFFFFFFFULL;
+        static constexpr uint64_t TAG_MASK = 0xFFFF000000000000ULL;
+        static constexpr uint64_t PAYLOAD_MASK = 0x0000FFFFFFFFFFFFULL;
 
-        inline bool has_tag(uint64_t tag) const noexcept {
+        inline bool has_tag(uint64_t tag) const noexcept
+        {
             return (storage & TAG_MASK) == tag;
         }
 
     public:
-        inline HeapObject* get_ptr() const noexcept {
-            return reinterpret_cast<HeapObject*>(storage & PAYLOAD_MASK);
+        inline HeapObject *get_ptr() const noexcept
+        {
+            return reinterpret_cast<HeapObject *>(storage & PAYLOAD_MASK);
         }
 
         // default ctor (Undefined)
         AnyValue() noexcept : storage(TAG_SPECIAL | VAL_UNDEFINED) {}
 
-        explicit AnyValue(double d) noexcept {
+        explicit AnyValue(double d) noexcept
+        {
             std::memcpy(&storage, &d, 8);
-            if (storage >= TAG_BASE) [[unlikely]] {
+            if (storage >= TAG_BASE) [[unlikely]]
+            {
                 storage = 0x7FF8000000000000ULL;
             }
         }
 
         explicit AnyValue(bool b) noexcept : storage(TAG_BOOLEAN | (b ? 1 : 0)) {}
 
-        AnyValue(const AnyValue &other) noexcept : storage(other.storage) {
-            if (is_heap_object()) get_ptr()->ref();
+        AnyValue(const AnyValue &other) noexcept : storage(other.storage)
+        {
+            if (is_heap_object())
+                get_ptr()->ref();
         }
 
-        AnyValue(AnyValue &&other) noexcept : storage(other.storage) {
+        AnyValue(AnyValue &&other) noexcept : storage(other.storage)
+        {
             other.storage = TAG_SPECIAL | VAL_UNDEFINED;
         }
 
-        AnyValue &operator=(const AnyValue &other) noexcept {
-            if (this != &other) {
-                if (is_heap_object()) get_ptr()->deref();
+        AnyValue &operator=(const AnyValue &other) noexcept
+        {
+            if (this != &other)
+            {
+                if (is_heap_object())
+                    get_ptr()->deref();
                 storage = other.storage;
-                if (is_heap_object()) get_ptr()->ref();
+                if (is_heap_object())
+                    get_ptr()->ref();
             }
             return *this;
         }
 
-        AnyValue &operator=(AnyValue &&other) noexcept {
-            if (this != &other) {
-                if (is_heap_object()) get_ptr()->deref();
+        AnyValue &operator=(AnyValue &&other) noexcept
+        {
+            if (this != &other)
+            {
+                if (is_heap_object())
+                    get_ptr()->deref();
                 storage = other.storage;
                 other.storage = TAG_SPECIAL | VAL_UNDEFINED;
             }
             return *this;
         }
 
-        ~AnyValue() {
-            if (is_heap_object()) get_ptr()->deref();
+        ~AnyValue()
+        {
+            if (is_heap_object())
+                get_ptr()->deref();
         }
 
         // Assignments
-        AnyValue &operator=(double val) noexcept {
-            if (is_heap_object()) get_ptr()->deref();
+        AnyValue &operator=(double val) noexcept
+        {
+            if (is_heap_object())
+                get_ptr()->deref();
             std::memcpy(&storage, &val, 8);
-            if (storage >= TAG_BASE) [[unlikely]] {
+            if (storage >= TAG_BASE) [[unlikely]]
+            {
                 storage = 0x7FF8000000000000ULL;
             }
             return *this;
@@ -193,7 +212,8 @@ namespace jspp
         static AnyValue from_async_iterator(JsAsyncIterator<AnyValue> &&iterator) noexcept;
 
         // internal factory for wrapping raw heap object pointers
-        static AnyValue from_ptr(HeapObject* ptr) noexcept {
+        static AnyValue from_ptr(HeapObject *ptr) noexcept
+        {
             AnyValue v;
             v.storage = TAG_POINTER | reinterpret_cast<uint64_t>(ptr);
             ptr->ref();
@@ -204,13 +224,20 @@ namespace jspp
         static AnyValue resolve_property_for_write(AnyValue &val, const AnyValue &thisVal, const AnyValue &new_val, const std::string &propName);
 
         // TYPE CHECKERS AND ACCESSORS ---------------------------------------
-        JsType get_type() const noexcept {
-            if (is_number()) return JsType::Number;
-            if (is_heap_object()) return get_ptr()->get_heap_type();
-            if (is_boolean()) return JsType::Boolean;
-            if (is_undefined()) return JsType::Undefined;
-            if (is_null()) return JsType::Null;
-            if (is_uninitialized()) return JsType::Uninitialized;
+        inline JsType get_type() const noexcept
+        {
+            if (is_number())
+                return JsType::Number;
+            if (is_heap_object())
+                return get_ptr()->get_heap_type();
+            if (is_boolean())
+                return JsType::Boolean;
+            if (is_undefined())
+                return JsType::Undefined;
+            if (is_null())
+                return JsType::Null;
+            if (is_uninitialized())
+                return JsType::Uninitialized;
             return JsType::Undefined;
         }
 
@@ -230,18 +257,18 @@ namespace jspp
         inline bool is_data_descriptor() const noexcept { return is_heap_object() && get_ptr()->get_heap_type() == JsType::DataDescriptor; }
         inline bool is_accessor_descriptor() const noexcept { return is_heap_object() && get_ptr()->get_heap_type() == JsType::AccessorDescriptor; }
         inline bool is_async_iterator() const noexcept { return is_heap_object() && get_ptr()->get_heap_type() == JsType::AsyncIterator; }
-        
-        JsString* as_string() const noexcept;
-        JsObject* as_object() const noexcept;
-        JsArray* as_array() const noexcept;
-        JsFunction* as_function() const noexcept;
-        JsSymbol* as_symbol() const noexcept;
-        JsPromise* as_promise() const noexcept;
-        JsIterator<AnyValue>* as_iterator() const noexcept;
-        JsAsyncIterator<AnyValue>* as_async_iterator() const noexcept;
-        DataDescriptor* as_data_descriptor() const noexcept;
-        AccessorDescriptor* as_accessor_descriptor() const noexcept;
-        
+
+        JsString *as_string() const noexcept;
+        JsObject *as_object() const noexcept;
+        JsArray *as_array() const noexcept;
+        JsFunction *as_function() const noexcept;
+        JsSymbol *as_symbol() const noexcept;
+        JsPromise *as_promise() const noexcept;
+        JsIterator<AnyValue> *as_iterator() const noexcept;
+        JsAsyncIterator<AnyValue> *as_async_iterator() const noexcept;
+        DataDescriptor *as_data_descriptor() const noexcept;
+        AccessorDescriptor *as_accessor_descriptor() const noexcept;
+
         bool is_generator() const noexcept;
 
         double as_double() const noexcept
@@ -258,41 +285,41 @@ namespace jspp
         auto operator co_await() const;
 
         bool has_property(const std::string &key) const;
-        bool has_property(const char* key) const { return has_property(std::string(key)); }
+        bool has_property(const char *key) const { return has_property(std::string(key)); }
 
         AnyValue get_own_property(const std::string &key) const;
-        AnyValue get_own_property(const char* key) const { return get_own_property(std::string(key)); }
+        AnyValue get_own_property(const char *key) const { return get_own_property(std::string(key)); }
         AnyValue get_own_property(uint32_t idx) const;
         AnyValue get_own_property(int idx) const { return get_own_property(static_cast<uint32_t>(idx)); }
         AnyValue get_own_property(const AnyValue &key) const;
 
         AnyValue get_property_with_receiver(const std::string &key, const AnyValue &receiver) const;
-        AnyValue get_property_with_receiver(const char* key, const AnyValue &receiver) const { return get_property_with_receiver(std::string(key), receiver); }
+        AnyValue get_property_with_receiver(const char *key, const AnyValue &receiver) const { return get_property_with_receiver(std::string(key), receiver); }
 
         AnyValue set_own_property(const std::string &key, const AnyValue &value) const;
-        AnyValue set_own_property(const char* key, const AnyValue &value) const { return set_own_property(std::string(key), value); }
+        AnyValue set_own_property(const char *key, const AnyValue &value) const { return set_own_property(std::string(key), value); }
         AnyValue set_own_property(uint32_t idx, const AnyValue &value) const;
         AnyValue set_own_property(int idx, const AnyValue &value) const { return set_own_property(static_cast<uint32_t>(idx), value); }
         AnyValue set_own_property(const AnyValue &key, const AnyValue &value) const;
 
         AnyValue call_own_property(const std::string &key, std::span<const AnyValue> args) const;
-        AnyValue call_own_property(const char* key, std::span<const AnyValue> args) const { return call_own_property(std::string(key), args); }
+        AnyValue call_own_property(const char *key, std::span<const AnyValue> args) const { return call_own_property(std::string(key), args); }
         AnyValue call_own_property(uint32_t idx, std::span<const AnyValue> args) const;
         AnyValue call_own_property(int idx, std::span<const AnyValue> args) const { return call_own_property(static_cast<uint32_t>(idx), args); }
         AnyValue call_own_property(const AnyValue &key, std::span<const AnyValue> args) const;
 
         void define_data_property(const std::string &key, const AnyValue &value);
-        void define_data_property(const char* key, const AnyValue &value) { define_data_property(std::string(key), value); }
+        void define_data_property(const char *key, const AnyValue &value) { define_data_property(std::string(key), value); }
         void define_data_property(const AnyValue &key, const AnyValue &value);
         void define_data_property(const std::string &key, const AnyValue &value, bool writable, bool enumerable, bool configurable);
-        void define_data_property(const char* key, const AnyValue &value, bool writable, bool enumerable, bool configurable) { define_data_property(std::string(key), value, writable, enumerable, configurable); }
+        void define_data_property(const char *key, const AnyValue &value, bool writable, bool enumerable, bool configurable) { define_data_property(std::string(key), value, writable, enumerable, configurable); }
 
         void define_getter(const std::string &key, const AnyValue &getter);
-        void define_getter(const char* key, const AnyValue &getter) { define_getter(std::string(key), getter); }
+        void define_getter(const char *key, const AnyValue &getter) { define_getter(std::string(key), getter); }
         void define_getter(const AnyValue &key, const AnyValue &getter);
 
         void define_setter(const std::string &key, const AnyValue &setter);
-        void define_setter(const char* key, const AnyValue &setter) { define_setter(std::string(key), setter); }
+        void define_setter(const char *key, const AnyValue &setter) { define_setter(std::string(key), setter); }
         void define_setter(const AnyValue &key, const AnyValue &setter);
 
         AnyValue call(const AnyValue &thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr = std::nullopt) const;
@@ -301,7 +328,7 @@ namespace jspp
         std::string to_std_string() const;
 
         inline uint64_t get_storage() const noexcept { return storage; }
-        inline void* get_raw_ptr() const noexcept { return reinterpret_cast<void*>(storage & PAYLOAD_MASK); }
+        inline void *get_raw_ptr() const noexcept { return reinterpret_cast<void *>(storage & PAYLOAD_MASK); }
     };
 
     struct AnyValueAwaiter

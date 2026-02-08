@@ -16,18 +16,15 @@ namespace jspp
         // Implements the ToNumber abstract operation from ECMA-262.
         inline double ToNumber(const AnyValue &val)
         {
-            switch (val.get_type())
-            {
-            case JsType::Number:
+            if (val.is_number())
                 return val.as_double();
-            case JsType::Null:
+            if (val.is_null())
                 return 0.0;
-            case JsType::Uninitialized:
-            case JsType::Undefined:
+            if (val.is_uninitialized() || val.is_undefined())
                 return std::numeric_limits<double>::quiet_NaN();
-            case JsType::Boolean:
+            if (val.is_boolean())
                 return val.as_boolean() ? 1.0 : 0.0;
-            case JsType::String:
+            if (val.is_string())
             {
                 const std::string &s = val.as_string()->value;
                 if (s.empty() || std::all_of(s.begin(), s.end(), [](unsigned char c)
@@ -48,9 +45,8 @@ namespace jspp
                     return std::numeric_limits<double>::quiet_NaN();
                 }
             }
-            default:
-                return std::numeric_limits<double>::quiet_NaN();
-            }
+            // Default to NaN
+            return std::numeric_limits<double>::quiet_NaN();
         }
         // Implements the ToInt32 abstract operation from ECMA-262.
         inline int32_t ToInt32(const AnyValue &val)

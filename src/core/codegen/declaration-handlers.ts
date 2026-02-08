@@ -85,7 +85,9 @@ export function visitVariableDeclaration(
                 context.localScopeSymbols,
                 context.globalScopeSymbols,
             );
-            context.localScopeSymbols.update(name, { func: { nativeName } });
+            context.localScopeSymbols.update(name, {
+                features: { nativeName },
+            });
 
             // Generate lambda
             const lambda = this.generateLambda(
@@ -101,7 +103,7 @@ export function visitVariableDeclaration(
                 `auto ${nativeName} = ${lambda};\n${this.indent()}`;
 
             // Generate AnyValue wrapper
-            initText = this.generateFullLambdaExpression(
+            initText = this.generateLambdaExpression(
                 initExpr,
                 initContext,
                 nativeName,

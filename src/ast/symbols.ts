@@ -7,21 +7,25 @@ export enum DeclarationType {
     enum = "enum",
 }
 
+export type SymbolChecks = {
+    initialized?: boolean;
+};
+
+export type SymbolFeatures = {
+    nativeName?: string;
+    isAsync?: boolean;
+    isGenerator?: boolean;
+};
+
 export class DeclaredSymbol {
     type: DeclarationType;
-    checks: {
-        initialized: boolean;
-    };
-    func:
-        | { nativeName?: string; isAsync?: boolean; isGenerator?: boolean }
-        | null;
+    checks: SymbolChecks;
+    features: SymbolFeatures;
 
     constructor(type: DeclarationType) {
         this.type = type;
-        this.checks = {
-            initialized: false,
-        };
-        this.func = null;
+        this.checks = { initialized: false };
+        this.features = {};
     }
 
     get isMutable() {
@@ -29,20 +33,20 @@ export class DeclaredSymbol {
             this.type === DeclarationType.var;
     }
 
-    updateChecked(update: Partial<DeclaredSymbol["checks"]>) {
+    updateChecked(update: Partial<SymbolChecks>) {
         this.checks = {
             ...this.checks,
             ...update,
         };
     }
 
-    updateFunc(update: Partial<DeclaredSymbol["func"]>) {
-        this.func = update
-            ? {
-                ...this.func,
-                ...update,
-            }
-            : null;
+    updateFeatures(
+        update: Partial<SymbolFeatures>,
+    ) {
+        this.features = {
+            ...this.features,
+            ...update,
+        };
     }
 }
 
@@ -70,13 +74,13 @@ export class DeclaredSymbols {
     }
 
     add(name: string, value: {
-        type: DeclaredSymbol["type"];
-        checks?: Partial<DeclaredSymbol["checks"]>;
-        func?: Partial<DeclaredSymbol["func"]>;
+        type: DeclarationType;
+        checks?: Partial<SymbolChecks>;
+        features?: Partial<SymbolFeatures>;
     }) {
         const sym = new DeclaredSymbol(value.type);
-        if (value.checks !== undefined) sym.updateChecked(value.checks);
-        if (value.func !== undefined) sym.updateFunc(value.func);
+        if (value.checks) sym.updateChecked(value.checks);
+        if (value.features) sym.updateFeatures(value.features);
         return this.symbols.set(name, sym);
     }
 
@@ -84,17 +88,38 @@ export class DeclaredSymbols {
         name: string,
         update: Partial<
             {
-                type: DeclaredSymbol["type"];
-                checks: Partial<DeclaredSymbol["checks"]>;
-                func: Partial<DeclaredSymbol["func"]>;
+                type: DeclarationType;
+                checks: Partial<SymbolChecks>;
+                features: Partial<SymbolFeatures>;
             }
         >,
     ) {
         const sym = this.get(name);
         if (sym) {
-            if (update.type !== undefined) sym.type = update.type;
-            if (update.checks !== undefined) sym.updateChecked(update.checks);
-            if (update.func !== undefined) sym.updateFunc(update.func);
+            if (update.type) sym.type = update.type;
+            if (update.checks) sym.updateChecked(update.checks);
+            if (update.features) {
+                sym.updateFeatures(update.features);
+            }
+            return this.symbols.set(name, sym);
+        }
+    }
+
+    set(
+        name: string,
+        update: Partial<
+            {
+                type: DeclarationType;
+                checks: SymbolChecks;
+                features: SymbolFeatures;
+            }
+        >,
+    ) {
+        const sym = this.get(name);
+        if (sym) {
+            if (update.type) sym.type = update.type;
+            if (update.checks) sym.checks = update.checks;
+            if (update.features) sym.features = update.features;
             return this.symbols.set(name, sym);
         }
     }

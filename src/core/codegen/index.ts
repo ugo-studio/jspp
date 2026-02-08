@@ -2,8 +2,8 @@ import type { TypeAnalyzer } from "../../analysis/typeAnalyzer.js";
 import { DeclaredSymbols } from "../../ast/symbols.js";
 import type { Node } from "../../ast/types.js";
 import {
-  generateFullLambdaExpression,
   generateLambda,
+  generateLambdaExpression,
 } from "./function-handlers.js";
 import {
   escapeString,
@@ -59,7 +59,7 @@ export class CodeGenerator {
 
     // function handlers
     public generateLambda = generateLambda;
-    public generateFullLambdaExpression = generateFullLambdaExpression;
+    public generateLambdaExpression = generateLambdaExpression;
 
     /**
      * Main entry point for the code generation process.

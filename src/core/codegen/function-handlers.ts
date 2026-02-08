@@ -142,7 +142,6 @@ export function generateLambda(
     // Now 'argsName' refers to the vector (if copied) or the span (if not).
     // And 'this.globalThisVar' refers to the copy (if copied) or the param (if not).
     // So subsequent code using `argsName` and `visit` (using `globalThisVar`) works correctly.
-
     const paramExtractor = (
         parameters: ts.NodeArray<ts.ParameterDeclaration>,
     ): string => {
@@ -292,10 +291,10 @@ export function generateLambda(
         return lambda.trimEnd();
     }
 
-    return this.generateFullLambdaExpression(node, context, lambda, options);
+    return this.generateLambdaExpression(node, context, lambda, options);
 }
 
-export function generateFullLambdaExpression(
+export function generateLambdaExpression(
     this: CodeGenerator,
     node:
         | ts.ArrowFunction

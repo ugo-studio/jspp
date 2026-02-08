@@ -227,7 +227,7 @@ export function hoistDeclaration(
             const isGenerator = this.isGeneratorFunction(decl);
             hoistedSymbols.add(name, {
                 type: declType,
-                func: { isAsync, isGenerator },
+                features: { isAsync, isGenerator },
             });
             // Don't hoist functions not used as a variable
             // they will be called with their native lambdas

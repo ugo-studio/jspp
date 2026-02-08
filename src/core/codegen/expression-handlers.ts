@@ -755,15 +755,16 @@ export function visitBinaryExpression(
             : (typeInfo.needsHeapAllocation ? `*${leftText}` : leftText);
 
         // Update scope symbols on variable re-assignment
+        // Reset features
         if (ts.isIdentifier(binExpr.left)) {
             if (!ts.isFunctionDeclaration(binExpr.right)) {
                 if (context.localScopeSymbols.has(binExpr.left.text)) {
-                    context.localScopeSymbols.update(binExpr.left.text, {
-                        func: null,
+                    context.localScopeSymbols.set(binExpr.left.text, {
+                        features: {},
                     });
                 } else if (context.globalScopeSymbols.has(binExpr.left.text)) {
-                    context.globalScopeSymbols.update(binExpr.left.text, {
-                        func: null,
+                    context.globalScopeSymbols.set(binExpr.left.text, {
+                        features: {},
                     });
                 }
             }
@@ -1192,12 +1193,12 @@ export function visitCallExpression(
                 context.globalScopeSymbols.get(name);
 
             // Optimization: Direct lambda call
-            if (symbol && symbol.func?.nativeName) {
+            if (symbol && symbol.features?.nativeName) {
                 const callExpr =
-                    `${symbol.func.nativeName}(jspp::Constants::UNDEFINED, ${argsSpan})`;
+                    `${symbol.features.nativeName}(jspp::Constants::UNDEFINED, ${argsSpan})`;
 
-                if (symbol.func.isGenerator) {
-                    if (symbol.func.isAsync) {
+                if (symbol.features.isGenerator) {
+                    if (symbol.features.isAsync) {
                         return `jspp::AnyValue::from_async_iterator(${callExpr})`;
                     }
                     return `jspp::AnyValue::from_iterator(${callExpr})`;
