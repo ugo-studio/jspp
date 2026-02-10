@@ -20,21 +20,6 @@ namespace jspp
             size_t item_count = static_cast<size_t>(arr->length);
             size_t prop_count = arr->props.size();
 
-            // // If custom toString exists on the object, prefer it
-            // auto itToString = arr->props.find("toString");
-            // if (depth > 0 && itToString != arr->props.end() && itToString->second.is_function())
-            // {
-            //     try
-            //     {
-            //         auto result = itToString->second.as_function()->call(itToString->second, {});
-            //         return to_log_string(result, visited, depth);
-            //     }
-            //     catch (...)
-            //     {
-            //         // ignore and fallback to manual formatting
-            //     }
-            // }
-
             std::string indent(depth * 2, ' ');
             std::string next_indent((depth + 1) * 2, ' ');
             std::stringstream ss;

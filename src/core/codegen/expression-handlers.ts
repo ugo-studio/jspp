@@ -195,6 +195,9 @@ export function visitArrayLiteralExpression(
                     );
                 }
             }
+            if (ts.isOmittedExpression(elem)) {
+                elemText = "jspp::Constants::UNINITIALIZED";
+            }
             return elemText;
         });
     const elementsJoined = elements.join(", ");

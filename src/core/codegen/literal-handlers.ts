@@ -21,8 +21,16 @@ export function visitNumericLiteral(
     this: CodeGenerator,
     node: ts.NumericLiteral,
 ): string {
-    if (node.text === "0") return "jspp::Constants::ZERO";
-    if (node.text === "1") return "jspp::Constants::ONE";
+    if (
+        node.text === "0" || (node.text.startsWith("0.") &&
+            !node.text.substring(2).split("").some((c) => c !== "0"))
+    ) return "jspp::Constants::ZERO";
+
+    if (
+        node.text === "1" || (node.text.startsWith("1.") &&
+            !node.text.substring(2).split("").some((c) => c !== "0"))
+    ) return "jspp::Constants::ONE";
+
     return `jspp::AnyValue::make_number(${this.escapeString(node.text)})`;
 }
 

@@ -13,8 +13,9 @@ inline auto Array = jspp::AnyValue::make_class([](const jspp::AnyValue &thisVal,
              throw jspp::Exception::make_exception("Invalid array length", "RangeError");
         }
         auto arr = jspp::AnyValue::make_array(std::vector<jspp::AnyValue>());
-        arr.as_array()->length = static_cast<uint64_t>(len);
-        arr.as_array()->dense.resize(static_cast<size_t>(len), jspp::Constants::UNINITIALIZED);
+        auto arr_ptr = arr.as_array();
+        arr_ptr->length = static_cast<uint64_t>(len);
+        arr_ptr->dense.resize(static_cast<size_t>(len), jspp::Constants::UNINITIALIZED);
         return arr;
     }
     std::vector<jspp::AnyValue> elements;
