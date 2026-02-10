@@ -1,5 +1,6 @@
 import ts from "typescript";
 
+import type { TypeInfo } from "../../analysis/typeAnalyzer.js";
 import { constants } from "../constants.js";
 import { CompilerError } from "../error.js";
 import { CodeGenerator } from "./index.js";
@@ -1181,80 +1182,83 @@ export function visitCallExpression(
 
     const calleeCode = this.visit(callee, context);
     let derefCallee = calleeCode;
+    let calleeTypeInfo: TypeInfo | null = null;
     if (ts.isIdentifier(callee)) {
         const scope = this.getScopeForNode(callee);
-        const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+        calleeTypeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
             callee.text,
             scope,
         );
-        if (!typeInfo && !this.isBuiltinObject(callee)) {
+        if (!calleeTypeInfo && !this.isBuiltinObject(callee)) {
             return `jspp::Exception::throw_unresolved_reference(${
                 this.getJsVarName(
                     callee,
                 )
             })`;
         }
-        if (typeInfo?.isBuiltin) {
+        if (calleeTypeInfo?.isBuiltin) {
             derefCallee = calleeCode;
-        } else if (typeInfo) {
-            const name = callee.getText();
-            const symbol = context.localScopeSymbols.get(name) ??
-                context.globalScopeSymbols.get(name);
-
-            // Optimization: Direct lambda call
-            if (symbol && symbol.features?.nativeName) {
-                let callExpr =
-                    `${symbol.features.nativeName}(jspp::Constants::UNDEFINED`;
-                // Map args to the native lambda params
-                if (symbol.features.parameters) {
-                    // Normal argument
-                    const argsText = argsArray.slice(
-                        0,
-                        symbol.features.parameters.length,
-                    ).filter((_, i) =>
-                        !symbol.features.parameters![i]?.dotDotDotToken
-                    ).join(", ");
-                    if (argsText) callExpr += `, ${argsText}`;
-                    // ... argument
-                    if (
-                        argsArray.length > symbol.features.parameters.length &&
-                        !!symbol.features
-                            .parameters[symbol.features.parameters.length - 1]
-                            ?.dotDotDotToken
-                    ) {
-                        const restArgsText =
-                            `jspp::AnyValue::make_array(std::vector<jspp::AnyValue>{${
-                                argsArray.slice(
-                                    symbol.features.parameters.length - 1,
-                                ).join(", ")
-                            }})`;
-                        callExpr += `, ${restArgsText}`;
-                    }
-                }
-                callExpr += ")";
-                // End of Optimization: Direct lambda call
-
-                if (symbol.features.isGenerator) {
-                    if (symbol.features.isAsync) {
-                        return `jspp::AnyValue::from_async_iterator(${callExpr})`;
-                    }
-                    return `jspp::AnyValue::from_iterator(${callExpr})`;
-                }
-                return callExpr;
-            }
-
-            // AnyValue function call
+        } else if (calleeTypeInfo) {
             derefCallee = this.getDerefCode(
                 calleeCode,
                 this.getJsVarName(callee),
                 context,
-                typeInfo,
+                calleeTypeInfo,
             );
         }
     }
 
-    let calleeName = "";
+    // Direct native lamda if available
+    if (
+        ts.isIdentifier(callee) && calleeTypeInfo
+    ) {
+        const name = callee.getText();
+        const symbol = context.localScopeSymbols.get(name) ??
+            context.globalScopeSymbols.get(name);
 
+        const nativeName = symbol?.features?.nativeName;
+        const parameters = symbol?.features?.parameters;
+
+        if (nativeName) {
+            let argsPart = "";
+
+            // Map args to the native lambda params
+            if (parameters) {
+                // Normal argument
+                const argsText = argsArray.slice(0, parameters.length).filter((
+                    _,
+                    i,
+                ) => !parameters![i]?.dotDotDotToken).join(", ");
+                if (argsText) argsPart += `, ${argsText}`;
+                // ... argument
+                if (
+                    argsArray.length > parameters.length &&
+                    !!parameters[parameters.length - 1]?.dotDotDotToken
+                ) {
+                    const restArgsText =
+                        `jspp::AnyValue::make_array(std::vector<jspp::AnyValue>{${
+                            argsArray.slice(
+                                parameters.length - 1,
+                            ).join(", ")
+                        }})`;
+                    argsPart += `, ${restArgsText}`;
+                }
+            }
+
+            const callExpr =
+                `${nativeName}(jspp::Constants::UNDEFINED${argsPart})`;
+            if (symbol.features.isGenerator) {
+                if (symbol.features.isAsync) {
+                    return `jspp::AnyValue::from_async_iterator(${callExpr})`;
+                }
+                return `jspp::AnyValue::from_iterator(${callExpr})`;
+            }
+            return callExpr;
+        }
+    }
+
+    // Call AnyValue function
+    let calleeName = "";
     if (ts.isIdentifier(callee) || ts.isPropertyAccessExpression(callee)) {
         calleeName = this.escapeString(callee.getText());
     } else if (
