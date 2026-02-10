@@ -1222,15 +1222,16 @@ export function visitCallExpression(
         if (nativeName) {
             let argsPart = "";
 
-            // Map args to the native lambda params
+            // Map parameters to the native lambda arguments
             if (parameters) {
-                // Normal argument
+                // Normal parameters
                 const argsText = argsArray.slice(0, parameters.length).filter((
                     _,
                     i,
                 ) => !parameters![i]?.dotDotDotToken).join(", ");
                 if (argsText) argsPart += `, ${argsText}`;
-                // ... argument
+
+                // Rest parameter
                 if (
                     argsArray.length > parameters.length &&
                     !!parameters[parameters.length - 1]?.dotDotDotToken
