@@ -7,7 +7,6 @@ import {
   generateWrappedLambda,
 } from "./function-handlers.js";
 import {
-  checkFunctionParams,
   escapeString,
   generateUniqueExceptionName,
   generateUniqueName,
@@ -25,6 +24,7 @@ import {
   isGeneratorFunction,
   markSymbolAsInitialized,
   prepareScopeSymbolsForVisit,
+  validateFunctionParams,
 } from "./helpers.js";
 import { visit } from "./visitor.js";
 
@@ -58,7 +58,7 @@ export class CodeGenerator {
     public markSymbolAsInitialized = markSymbolAsInitialized;
     public isFunctionUsedAsValue = isFunctionUsedAsValue;
     public isFunctionUsedBeforeDeclaration = isFunctionUsedBeforeDeclaration;
-    public checkFunctionParams = checkFunctionParams;
+    public validateFunctionParams = validateFunctionParams;
 
     // function handlers
     public generateLambdaComponents = generateLambdaComponents;

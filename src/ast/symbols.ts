@@ -14,10 +14,13 @@ export type SymbolChecks = {
 };
 
 export type SymbolFeatures = {
-    nativeName?: string;
+    native?: {
+        type: "lambda";
+        name: string;
+        parameters: ts.ParameterDeclaration[];
+    };
     isAsync?: boolean;
     isGenerator?: boolean;
-    parameters?: ts.ParameterDeclaration[];
 };
 
 export class DeclaredSymbol {

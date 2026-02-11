@@ -587,8 +587,11 @@ export function visitSwitchStatement(
         );
         hoistedSymbols.update(funcName, {
             features: {
-                nativeName,
-                parameters: this.checkFunctionParams(stmt.parameters),
+                native: {
+                    type: "lambda",
+                    name: nativeName,
+                    parameters: this.validateFunctionParams(stmt.parameters),
+                },
             },
         });
 

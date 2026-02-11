@@ -1216,10 +1216,12 @@ export function visitCallExpression(
         const symbol = context.localScopeSymbols.get(name) ??
             context.globalScopeSymbols.get(name);
 
-        const nativeName = symbol?.features?.nativeName;
-        const parameters = symbol?.features?.parameters;
+        const nativeFeature = symbol?.features?.native;
 
-        if (nativeName) {
+        if (nativeFeature && nativeFeature.type === "lambda") {
+            const nativeName = nativeFeature.name;
+            const parameters = nativeFeature.parameters;
+
             let argsPart = "";
 
             // Map parameters to the native lambda arguments

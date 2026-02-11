@@ -20,7 +20,7 @@ namespace jspp
                 return val.as_double();
             if (val.is_null())
                 return 0.0;
-            if (val.is_uninitialized() || val.is_undefined())
+            if (val.is_undefined())
                 return std::numeric_limits<double>::quiet_NaN();
             if (val.is_boolean())
                 return val.as_boolean() ? 1.0 : 0.0;
@@ -44,6 +44,11 @@ namespace jspp
                 {
                     return std::numeric_limits<double>::quiet_NaN();
                 }
+            }
+            if (val.is_uninitialized())
+            {
+                // THROW
+                Exception::throw_uninitialized_reference("#<Object>");
             }
             // Default to NaN
             return std::numeric_limits<double>::quiet_NaN();

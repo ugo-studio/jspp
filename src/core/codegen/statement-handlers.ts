@@ -92,15 +92,18 @@ export function visitSourceFile(
             localScopeSymbols,
         );
 
-        // Generate and update self name
+        // Update features in the symbol registry
         const nativeName = this.generateUniqueName(
             `__${funcName}_native_`,
             hoistedSymbols,
         );
         hoistedSymbols.update(funcName, {
             features: {
-                nativeName,
-                parameters: this.checkFunctionParams(stmt.parameters),
+                native: {
+                    type: "lambda",
+                    name: nativeName,
+                    parameters: this.validateFunctionParams(stmt.parameters),
+                },
             },
         });
 
@@ -227,15 +230,18 @@ export function visitBlock(
             localScopeSymbols,
         );
 
-        // Generate and update self name
+        // Update features in the symbol registry
         const nativeName = this.generateUniqueName(
             `__${funcName}_native_`,
             hoistedSymbols,
         );
         hoistedSymbols.update(funcName, {
             features: {
-                nativeName,
-                parameters: this.checkFunctionParams(stmt.parameters),
+                native: {
+                    type: "lambda",
+                    name: nativeName,
+                    parameters: this.validateFunctionParams(stmt.parameters),
+                },
             },
         });
 

@@ -387,18 +387,18 @@ export function collectBlockScopedDeclarations(
 
 export function isFunctionUsedAsValue(
     this: CodeGenerator,
-    decl: ts.FunctionDeclaration | ts.ClassDeclaration,
+    decl: ts.FunctionDeclaration | ts.ClassDeclaration | ts.VariableDeclaration,
     root: ts.Node,
 ): boolean {
-    const funcName = decl.name?.getText();
-    if (!funcName) return false;
+    const name = decl.name?.getText();
+    if (!name) return false;
 
     let isUsed = false;
 
     const visitor = (node: ts.Node) => {
         if (isUsed) return;
 
-        if (ts.isIdentifier(node) && node.text === funcName) {
+        if (ts.isIdentifier(node) && node.text === name) {
             const scope = this.getScopeForNode(node);
             const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
                 node.text,
@@ -450,7 +450,7 @@ export function isFunctionUsedAsValue(
 
 export function isFunctionUsedBeforeDeclaration(
     this: CodeGenerator,
-    funcName: string,
+    name: string,
     root: ts.Node,
 ): boolean {
     let declPos = -1;
@@ -459,7 +459,7 @@ export function isFunctionUsedBeforeDeclaration(
     // Helper to find the function declaration position
     function findDecl(node: ts.Node) {
         if (foundDecl) return;
-        if (ts.isFunctionDeclaration(node) && node.name?.text === funcName) {
+        if (ts.isFunctionDeclaration(node) && node.name?.text === name) {
             declPos = node.getStart();
             foundDecl = true;
         } else {
@@ -476,7 +476,7 @@ export function isFunctionUsedBeforeDeclaration(
     function visit(node: ts.Node) {
         if (isUsedBefore) return;
 
-        if (ts.isIdentifier(node) && node.text === funcName) {
+        if (ts.isIdentifier(node) && node.text === name) {
             const parent = node.parent;
 
             // Ignore declarations where the identifier is the name being declared
@@ -538,7 +538,7 @@ export function isFunctionUsedBeforeDeclaration(
     return isUsedBefore;
 }
 
-export function checkFunctionParams(
+export function validateFunctionParams(
     this: CodeGenerator,
     parameters: ts.NodeArray<ts.ParameterDeclaration>,
 ) {
@@ -564,5 +564,5 @@ export function checkFunctionParams(
             }
         }
         return p;
-    });
+    }) || [];
 }

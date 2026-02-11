@@ -109,7 +109,7 @@ export function generateLambdaComponents(
     // Native function arguments for native lambda
     let nativeFuncArgs = "";
     let nativeParamsContent = "";
-    this.checkFunctionParams(node.parameters).forEach((p, i) => {
+    this.validateFunctionParams(node.parameters).forEach((p, i) => {
         const name = p.name.getText();
         const defaultValue = p.initializer
             ? this.visit(p.initializer, visitContext)
@@ -122,7 +122,7 @@ export function generateLambdaComponents(
     // Extract lambda parameters from arguments span/vector
     const generateParams = () => {
         let paramsCode = "";
-        this.checkFunctionParams(node.parameters).forEach(
+        this.validateFunctionParams(node.parameters).forEach(
             (p, i) => {
                 const name = p.name.getText();
                 const defaultValue = p.initializer

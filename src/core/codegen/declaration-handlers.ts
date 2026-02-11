@@ -73,22 +73,30 @@ export function visitVariableDeclaration(
                     initTypeInfo,
                 );
             }
-        } else if (ts.isArrowFunction(initExpr)) {
+        } else if (
+            ts.isArrowFunction(initExpr) ||
+            (ts.isFunctionExpression(initExpr) && !initExpr.name)
+        ) {
             const initContext: VisitContext = {
                 ...context,
                 lambdaName: name, // Use the variable name as function name
             };
-
-            // Generate and update self name
             const nativeName = this.generateUniqueName(
                 `__${name}_native_`,
                 context.localScopeSymbols,
                 context.globalScopeSymbols,
             );
+
+            // Mark before further visits
             context.localScopeSymbols.update(name, {
                 features: {
-                    nativeName,
-                    parameters: this.checkFunctionParams(initExpr.parameters),
+                    native: {
+                        type: "lambda",
+                        name: nativeName,
+                        parameters: this.validateFunctionParams(
+                            initExpr.parameters,
+                        ),
+                    },
                 },
             });
 
@@ -102,12 +110,10 @@ export function visitVariableDeclaration(
                     noTypeSignature: true,
                 },
             );
+            const nativeLambda = this.generateNativeLambda(lambdaComps);
 
             // Generate native lambda
-            const nativeLambda = this.generateNativeLambda(lambdaComps);
-            nativeLambdaCode =
-                `auto ${nativeName} = ${nativeLambda};\n${this.indent()}`;
-
+            nativeLambdaCode = `auto ${nativeName} = ${nativeLambda}`;
             // Generate AnyValue wrapper
             initText = this.generateWrappedLambda(lambdaComps);
         }
@@ -125,6 +131,7 @@ export function visitVariableDeclaration(
             ? `*${name}`
             : name);
 
+    if (nativeLambdaCode) nativeLambdaCode += `;\n${this.indent()}`;
     if (isLetOrConst) {
         // If there's no initializer, it should be assigned undefined.
         if (!initializer) {
