@@ -306,32 +306,38 @@ namespace jspp
             return Constants::TRUE;
         }
 
-        inline AnyValue optional_get_property(const AnyValue &obj, const std::string &key)
+        inline AnyValue get_optional_property(const AnyValue &obj, const std::string &key)
         {
             if (obj.is_null() || obj.is_undefined())
                 return Constants::UNDEFINED;
             return obj.get_own_property(key);
         }
 
-        inline AnyValue optional_get_element(const AnyValue &obj, const AnyValue &key)
+        inline AnyValue get_optional_element(const AnyValue &obj, const AnyValue &key)
         {
             if (obj.is_null() || obj.is_undefined())
                 return Constants::UNDEFINED;
             return obj.get_own_property(key);
         }
 
-        inline AnyValue optional_get_element(const AnyValue &obj, const double &key)
+        inline AnyValue get_optional_element(const AnyValue &obj, const double &key)
         {
             if (obj.is_null() || obj.is_undefined())
                 return Constants::UNDEFINED;
             return obj.get_own_property(static_cast<uint32_t>(key));
         }
 
-        inline AnyValue optional_call_property(const AnyValue &obj, const std::string &key,  std::span<const AnyValue> args, const std::optional<std::string> &name = std::nullopt)
+        inline AnyValue call_optional_property(const AnyValue &obj, const std::string &key, std::span<const AnyValue> args, const std::optional<std::string> &expr = std::nullopt)
         {
             if (obj.is_null() || obj.is_undefined())
                 return Constants::UNDEFINED;
-            return obj.get_own_property(key).call(obj, args, name);
+            return obj.get_own_property(key).call(obj, args, expr);
+        }
+        inline AnyValue call_optional_property_with_optional_call(const AnyValue &obj, const std::string &key, std::span<const AnyValue> args, const std::optional<std::string> &expr = std::nullopt)
+        {
+            if (obj.is_null() || obj.is_undefined())
+                return Constants::UNDEFINED;
+            return obj.get_own_property(key).optional_call(obj, args, expr);
         }
 
         inline void spread_array(std::vector<AnyValue> &target, const AnyValue &source)

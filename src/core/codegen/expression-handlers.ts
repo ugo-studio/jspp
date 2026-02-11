@@ -500,7 +500,7 @@ export function visitPropertyAccessExpression(
     }
 
     if (propAccess.questionDotToken) {
-        return `jspp::Access::optional_get_property(${finalExpr}, "${propName}")`;
+        return `jspp::Access::get_optional_property(${finalExpr}, "${propName}")`;
     }
 
     return `${finalExpr}.get_own_property("${propName}")`;
@@ -585,7 +585,7 @@ export function visitElementAccessExpression(
     }
 
     if (elemAccess.questionDotToken) {
-        return `jspp::Access::optional_get_element(${finalExpr}, ${argText})`;
+        return `jspp::Access::get_optional_element(${finalExpr}, ${argText})`;
     }
 
     return `${finalExpr}.get_own_property(${argText})`;
@@ -1376,7 +1376,10 @@ export function visitCallExpression(
         if (!hasSpread) {
             const argsSpan = generateArgsSpan(flattened);
             if (propAccess.questionDotToken) {
-                return `jspp::Access::optional_call_property(${derefObj}, "${propName}", ${argsSpan}, "${
+                const method = callExpr.questionDotToken
+                    ? "jspp::Access::call_optional_property_with_optional_call"
+                    : "jspp::Access::call_optional_property";
+                return `${method}(${derefObj}, "${propName}", ${argsSpan}, "${
                     this.escapeString(propName)
                 }")`;
             }
@@ -1390,8 +1393,11 @@ export function visitCallExpression(
             this.indentationLevel++;
             code += generateArgsVectorBuilder(flattened, argsVar);
             if (propAccess.questionDotToken) {
+                const method = callExpr.questionDotToken
+                    ? "jspp::Access::call_optional_property_with_optional_call"
+                    : "jspp::Access::call_optional_property";
                 code +=
-                    `${this.indent()}return jspp::Access::optional_call_property(${derefObj}, "${propName}", ${argsVar}, "${
+                    `${this.indent()}return ${method}(${derefObj}, "${propName}", ${argsVar}, "${
                         this.escapeString(propName)
                     }");\n`;
             } else {
@@ -1471,7 +1477,10 @@ export function visitCallExpression(
         if (!hasSpread) {
             const argsSpan = generateArgsSpan(flattened);
             if (elemAccess.questionDotToken) {
-                return `jspp::Access::optional_call_property(${derefObj}, ${argText}, ${argsSpan})`;
+                const method = callExpr.questionDotToken
+                    ? "jspp::Access::call_optional_property_with_optional_call"
+                    : "jspp::Access::call_optional_property";
+                return `${method}(${derefObj}, ${argText}, ${argsSpan})`;
             }
             return `${derefObj}.call_own_property(${argText}, ${argsSpan})`;
         } else {
@@ -1483,8 +1492,11 @@ export function visitCallExpression(
             this.indentationLevel++;
             code += generateArgsVectorBuilder(flattened, argsVar);
             if (elemAccess.questionDotToken) {
+                const method = callExpr.questionDotToken
+                    ? "jspp::Access::call_optional_property_with_optional_call"
+                    : "jspp::Access::call_optional_property";
                 code +=
-                    `${this.indent()}return jspp::Access::optional_call_property(${derefObj}, ${argText}, ${argsVar});\n`;
+                    `${this.indent()}return ${method}(${derefObj}, ${argText}, ${argsVar});\n`;
             } else {
                 code +=
                     `${this.indent()}return ${derefObj}.call_own_property(${argText}, ${argsVar});\n`;
