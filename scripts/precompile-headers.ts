@@ -3,7 +3,10 @@ import fs from "fs/promises";
 import path from "path";
 
 const PRELUDE_DIR = path.resolve(process.cwd(), "src", "prelude");
-const PRECOMPILED_HEADER_BASE_DIR = path.resolve(process.cwd(), "prelude-build");
+const PRECOMPILED_HEADER_BASE_DIR = path.resolve(
+    process.cwd(),
+    "prelude-build",
+);
 
 const MODES = [
     {
@@ -52,7 +55,9 @@ async function precompileHeaders() {
                 try {
                     const gchStats = await fs.stat(gchPath);
                     if (gchStats.mtimeMs >= sourceMtime) {
-                        console.log(`[${mode.name.toUpperCase()}] Headers are up-to-date. Skipping.`);
+                        console.log(
+                            `[${mode.name.toUpperCase()}] Headers are up-to-date. Skipping.`,
+                        );
                         continue;
                     }
                 } catch (e) {
@@ -78,7 +83,7 @@ async function precompileHeaders() {
 
             console.log(`[${mode.name.toUpperCase()}] Compiling header...`);
             const tempGchPath = `${gchPath}.tmp`;
-            
+
             const compile = spawnSync(
                 "g++",
                 [
@@ -94,12 +99,14 @@ async function precompileHeaders() {
                 ],
                 {
                     stdio: "inherit",
-                }
+                },
             );
 
             if (compile.status !== 0) {
-                if (await fs.stat(tempGchPath).then(() => true, () => false)) {
+                try {
                     await fs.unlink(tempGchPath);
+                } catch (e) {
+                    // Ignore if temp file doesn't exist
                 }
                 console.error(
                     `[${mode.name.toUpperCase()}] Failed to precompile headers.`,
@@ -107,6 +114,7 @@ async function precompileHeaders() {
                 process.exit(1);
             }
 
+            // Atomically replace the old GCH with the new one
             await fs.rename(tempGchPath, gchPath);
             console.log(`[${mode.name.toUpperCase()}] Success.`);
         }
