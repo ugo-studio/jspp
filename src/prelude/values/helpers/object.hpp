@@ -42,7 +42,7 @@ inline bool jspp::JsObject::has_property(const std::string &key) const
         if (proto.has_property(key))
             return true;
     }
-    if (ObjectPrototypes::get(key, const_cast<JsObject *>(this)).has_value())
+    if (ObjectPrototypes::get(key).has_value())
         return true;
     return false;
 }
@@ -62,7 +62,7 @@ inline jspp::AnyValue jspp::JsObject::get_property(const std::string &key, const
             }
         }
 
-        auto proto_it = ObjectPrototypes::get(key, this);
+        auto proto_it = ObjectPrototypes::get(key);
         if (proto_it.has_value())
         {
             return AnyValue::resolve_property_for_read(proto_it.value(), thisVal, key);
@@ -74,7 +74,7 @@ inline jspp::AnyValue jspp::JsObject::get_property(const std::string &key, const
 
 inline jspp::AnyValue jspp::JsObject::set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal)
 {
-    auto proto_it = ObjectPrototypes::get(key, this);
+    auto proto_it = ObjectPrototypes::get(key);
     if (proto_it.has_value())
     {
         auto proto_value = proto_it.value();

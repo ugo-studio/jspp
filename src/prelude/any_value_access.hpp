@@ -86,7 +86,7 @@ namespace jspp
             return as_string()->get_property(key, receiver);
         case JsType::Number:
         {
-            auto proto_it = NumberPrototypes::get(key, as_double());
+            auto proto_it = NumberPrototypes::get(key);
             if (proto_it.has_value())
             {
                 return AnyValue::resolve_property_for_read(proto_it.value(), receiver, key);

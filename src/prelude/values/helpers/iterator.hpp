@@ -60,7 +60,7 @@ jspp::AnyValue jspp::JsIterator<T>::get_property(const std::string &key, const A
         // check prototype
         if constexpr (std::is_same_v<T, AnyValue>)
         {
-            auto proto_it = IteratorPrototypes::get(key, this);
+            auto proto_it = IteratorPrototypes::get(key);
             if (proto_it.has_value())
             {
                 return AnyValue::resolve_property_for_read(proto_it.value(), thisVal, key);
@@ -79,7 +79,7 @@ jspp::AnyValue jspp::JsIterator<T>::set_property(const std::string &key, const A
     // set prototype property if accessor descriptor
     if constexpr (std::is_same_v<T, AnyValue>)
     {
-        auto proto_it = IteratorPrototypes::get(key, this);
+        auto proto_it = IteratorPrototypes::get(key);
         if (proto_it.has_value())
         {
             auto proto_value = proto_it.value();

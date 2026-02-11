@@ -10,14 +10,20 @@ namespace jspp
 {
     namespace ObjectPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key, JsObject *self)
+        inline AnyValue& get_toString_fn()
+        {
+            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> _) -> AnyValue
+                                                         { return AnyValue::make_string(thisVal.to_std_string()); },
+                                                         "toString");
+            return fn;
+        }
+
+        inline std::optional<AnyValue> get(const std::string &key)
         {
             // --- toString() method ---
             if (key == "toString" || key == WellKnownSymbols::toStringTag->key)
             {
-                return AnyValue::make_function([self](const AnyValue &thisVal, std::span<const AnyValue> _) -> AnyValue
-                                               { return AnyValue::make_string(self->to_std_string()); },
-                                               key);
+                return get_toString_fn();
             }
 
             return std::nullopt;

@@ -12,7 +12,7 @@ inline std::string jspp::JsSymbol::to_std_string() const
 
 inline jspp::AnyValue jspp::JsSymbol::get_property(const std::string &key, const AnyValue &thisVal)
 {
-    auto proto_it = SymbolPrototypes::get(key, this);
+    auto proto_it = SymbolPrototypes::get(key);
     if (proto_it.has_value())
     {
         return AnyValue::resolve_property_for_read(proto_it.value(), thisVal, key);

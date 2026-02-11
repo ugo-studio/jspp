@@ -143,7 +143,7 @@ namespace jspp
     inline AnyValue JsPromise::get_property(const std::string &key, const AnyValue &thisVal)
     {
         // Prototype lookup
-        auto proto_it = PromisePrototypes::get(key, const_cast<JsPromise *>(this));
+        auto proto_it = PromisePrototypes::get(key);
         if (proto_it.has_value())
         {
             return AnyValue::resolve_property_for_read(proto_it.value(), thisVal, key);

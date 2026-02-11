@@ -81,7 +81,7 @@ inline bool jspp::JsArray::has_property(const std::string &key) const
             return true;
     }
 
-    if (ArrayPrototypes::get(key, const_cast<JsArray *>(this)).has_value())
+    if (ArrayPrototypes::get(key).has_value())
         return true;
     return false;
 }
@@ -102,7 +102,7 @@ inline jspp::AnyValue jspp::JsArray::get_property(const std::string &key, const 
         {
             if (key == "length")
             {
-                auto proto_it = ArrayPrototypes::get(key, this);
+                auto proto_it = ArrayPrototypes::get(key);
                 if (proto_it.has_value())
                 {
                     return AnyValue::resolve_property_for_read(proto_it.value(), thisVal, key);
@@ -117,7 +117,7 @@ inline jspp::AnyValue jspp::JsArray::get_property(const std::string &key, const 
                 }
             }
 
-            auto proto_it = ArrayPrototypes::get(key, this);
+            auto proto_it = ArrayPrototypes::get(key);
             if (proto_it.has_value())
             {
                 return AnyValue::resolve_property_for_read(proto_it.value(), thisVal, key);
@@ -155,7 +155,7 @@ inline jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const 
     }
     else
     {
-        auto proto_val_opt = ArrayPrototypes::get(key, this);
+        auto proto_val_opt = ArrayPrototypes::get(key);
         
         if (proto_val_opt.has_value())
         {

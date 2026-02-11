@@ -24,7 +24,7 @@ inline jspp::JsIterator<jspp::AnyValue> jspp::JsString::get_iterator()
 
 inline jspp::AnyValue jspp::JsString::get_property(const std::string &key, const AnyValue &thisVal)
 {
-    auto proto_fn = StringPrototypes::get(key, this);
+    auto proto_fn = StringPrototypes::get(key);
     if (proto_fn.has_value())
     {
         return AnyValue::resolve_property_for_read(proto_fn.value(), thisVal, key);

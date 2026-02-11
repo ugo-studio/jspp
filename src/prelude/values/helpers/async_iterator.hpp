@@ -21,7 +21,7 @@ jspp::AnyValue jspp::JsAsyncIterator<T>::get_property(const std::string &key, co
     {
         if constexpr (std::is_same_v<T, AnyValue>)
         {
-            auto proto_it = AsyncIteratorPrototypes::get(key, this);
+            auto proto_it = AsyncIteratorPrototypes::get(key);
             if (proto_it.has_value())
             {
                 return AnyValue::resolve_property_for_read(proto_it.value(), thisVal, key);
@@ -37,7 +37,7 @@ jspp::AnyValue jspp::JsAsyncIterator<T>::set_property(const std::string &key, co
 {
     if constexpr (std::is_same_v<T, AnyValue>)
     {
-        auto proto_it = AsyncIteratorPrototypes::get(key, this);
+        auto proto_it = AsyncIteratorPrototypes::get(key);
         if (proto_it.has_value())
         {
             auto proto_value = proto_it.value();

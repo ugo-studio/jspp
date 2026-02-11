@@ -146,34 +146,34 @@ namespace jspp
     // AnyValue prototypes
     namespace ObjectPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key, JsObject *self);
+        inline std::optional<AnyValue> get(const std::string &key);
     }
     namespace StringPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key, JsString *self);
+        inline std::optional<AnyValue> get(const std::string &key);
     }
     namespace NumberPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key, double self);
+        inline std::optional<AnyValue> get(const std::string &key);
     }
     namespace ArrayPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key, JsArray *self);
+        inline std::optional<AnyValue> get(const std::string &key);
     }
     namespace FunctionPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key, JsFunction *self);
+        inline std::optional<AnyValue> get(const std::string &key);
     }
     namespace PromisePrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key, JsPromise *self);
+        inline std::optional<AnyValue> get(const std::string &key);
     }
     namespace IteratorPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key, JsIterator<AnyValue> *self);
+        inline std::optional<AnyValue> get(const std::string &key);
     }
     namespace SymbolPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key, JsSymbol *self);
+        inline std::optional<AnyValue> get(const std::string &key);
     }
 }
