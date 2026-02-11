@@ -120,7 +120,7 @@ export function generateLambdaComponents(
     });
 
     // Extract lambda parameters from arguments span/vector
-    const generateParams = () => {
+    const generateParamsBuilder = () => {
         let paramsCode = "";
         this.validateFunctionParams(node.parameters).forEach(
             (p, i) => {
@@ -143,42 +143,15 @@ export function generateLambdaComponents(
 
                 // Handle rest parameters
                 if (!!p.dotDotDotToken) {
+                    const initValue =
+                        `jspp::AnyValue::make_array(${argsName}.subspan(${i}))`;
                     if (typeInfo.needsHeapAllocation) {
                         paramsCode +=
-                            `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(jspp::Constants::UNDEFINED);\n`;
+                            `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initValue});\n`;
                     } else {
                         paramsCode +=
-                            `${this.indent()}jspp::AnyValue ${name} = jspp::Constants::UNDEFINED;\n`;
+                            `${this.indent()}jspp::AnyValue ${name} = ${initValue};\n`;
                     }
-
-                    // Extract rest parameters
-                    const tempName = `temp_${name}`;
-
-                    paramsCode += `${this.indent()}{\n`;
-                    this.indentationLevel++;
-                    paramsCode +=
-                        `${this.indent()}std::vector<std::optional<jspp::AnyValue>> ${tempName};\n`;
-
-                    paramsCode +=
-                        `${this.indent()}if (${argsName}.size() > ${i}) {\n`;
-                    this.indentationLevel++;
-                    paramsCode +=
-                        `${this.indent()}${tempName}.reserve(${argsName}.size() - ${i});\n`;
-                    this.indentationLevel--;
-                    paramsCode += `${this.indent()}}\n`;
-
-                    paramsCode +=
-                        `${this.indent()}for (size_t j = ${i}; j < ${argsName}.size(); j++) {\n`;
-                    this.indentationLevel++;
-                    paramsCode +=
-                        `${this.indent()}${tempName}.push_back(${argsName}[j]);\n`;
-                    this.indentationLevel--;
-                    paramsCode += `${this.indent()}}\n`;
-                    paramsCode += `${this.indent()}${
-                        typeInfo.needsHeapAllocation ? "*" : ""
-                    }${name} = jspp::AnyValue::make_array(std::move(${tempName}));\n`;
-                    this.indentationLevel--;
-                    paramsCode += `${this.indent()}}\n`;
                     return;
                 }
 
@@ -216,7 +189,7 @@ export function generateLambdaComponents(
             });
 
             this.indentationLevel++;
-            paramsContent = generateParams();
+            paramsContent = generateParamsBuilder();
             this.indentationLevel--;
 
             // The block visitor already adds braces, so we need to remove the opening brace to inject the preamble and param extraction.
@@ -230,7 +203,7 @@ export function generateLambdaComponents(
             }).trimStart().substring(2);
         } else {
             this.indentationLevel++;
-            paramsContent = generateParams();
+            paramsContent = generateParamsBuilder();
             blockContentWithoutOpeningBrace =
                 `${this.indent()}${returnCommand} ${
                     this.visit(node.body, {
