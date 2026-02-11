@@ -747,6 +747,29 @@
         ]
     },
     {
+        "name": "spread",
+        "expected": [
+            "--- Spread Syntax ---",
+            "--- Array Spread ---",
+            "arr2: 1,2,3,4,5",
+            "arr3: a,b,c,d",
+            "arr4: 10,20,30",
+            "--- Object Spread ---",
+            "obj2.a: 1 obj2.b: 2 obj2.c: 3",
+            "obj3.a: 1",
+            "obj4.a: 5",
+            "--- Function Call Spread ---",
+            "sum(...numbers): 6",
+            "sum(0, ...[1, 2]): 3",
+            "--- New Expression Spread ---",
+            "p.x: 10 p.y: 20",
+            "--- Spread with non-iterable (Object) ---",
+            "obj5.a: 1",
+            "--- Spread with non-iterable (Array) - should throw ---",
+            "Caught expected error for spreading null in array"
+        ]
+    },
+    {
         "name": "typescript",
         "expected": [
             "--- TypeScript Support ---",

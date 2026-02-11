@@ -192,6 +192,7 @@ namespace jspp
         static AnyValue make_array(std::vector<AnyValue> &&dense) noexcept;
         static AnyValue make_array_with_proto(std::span<const AnyValue> dense, AnyValue proto) noexcept;
         static AnyValue make_array_with_proto(const std::vector<AnyValue> &dense, AnyValue proto) noexcept;
+        static AnyValue make_array_with_proto(std::vector<AnyValue> &&dense, AnyValue proto) noexcept;
         static AnyValue make_function(const JsFunctionCallable &call, const std::optional<std::string> &name = std::nullopt, bool is_constructor = true) noexcept;
         static AnyValue make_class(const JsFunctionCallable &call, const std::optional<std::string> &name = std::nullopt) noexcept;
         static AnyValue make_generator(const JsFunctionCallable &call, const std::optional<std::string> &name = std::nullopt) noexcept;

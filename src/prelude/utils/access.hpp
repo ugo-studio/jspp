@@ -334,5 +334,55 @@ namespace jspp
             return fn.call(thisVal, args, name);
         }
 
+        inline void spread_array(std::vector<AnyValue> &target, const AnyValue &source)
+        {
+            if (source.is_array())
+            {
+                auto arr = source.as_array();
+                target.reserve(target.size() + arr->length);
+                for (uint64_t i = 0; i < arr->length; ++i)
+                {
+                    target.push_back(arr->get_property(static_cast<uint32_t>(i)));
+                }
+            }
+            else if (source.is_string())
+            {
+                auto s = source.as_string();
+                target.reserve(target.size() + s->value.length());
+                for (char c : s->value)
+                {
+                    target.push_back(AnyValue::make_string(std::string(1, c)));
+                }
+            }
+            else if (source.is_object() || source.is_function() || source.is_iterator())
+            {
+                auto iter = get_object_value_iterator(source, "spread target");
+                auto next_fn = iter.get_own_property("next");
+                while (true)
+                {
+                    auto next_res = next_fn.call(iter, {});
+                    if (is_truthy(next_res.get_own_property("done")))
+                        break;
+                    target.push_back(next_res.get_own_property("value"));
+                }
+            }
+            else
+            {
+                throw jspp::Exception::make_exception("Spread syntax requires an iterable object", "TypeError");
+            }
+        }
+
+        inline void spread_object(AnyValue &target, const AnyValue &source)
+        {
+            if (source.is_null() || source.is_undefined())
+                return;
+
+            auto keys = get_object_keys(source);
+            for (const auto &key : keys)
+            {
+                target.set_own_property(key, source.get_property_with_receiver(key, source));
+            }
+        }
+
     }
 }

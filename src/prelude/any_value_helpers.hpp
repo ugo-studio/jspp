@@ -82,6 +82,12 @@ namespace jspp
         arr->proto = proto;
         return from_ptr(arr);
     }
+    inline AnyValue AnyValue::make_array_with_proto(std::vector<AnyValue> &&dense, AnyValue proto) noexcept
+    {
+        auto arr = new JsArray(std::move(dense));
+        arr->proto = proto;
+        return from_ptr(arr);
+    }
     inline AnyValue AnyValue::make_function(const JsFunctionCallable &call, const std::optional<std::string> &name, bool is_constructor) noexcept
     {
         auto v = from_ptr(new JsFunction(call, name, {}, false, is_constructor));

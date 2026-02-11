@@ -64,7 +64,7 @@ export function visitObjectLiteralExpression(
             ts.isPropertyAssignment(prop) ||
             ts.isShorthandPropertyAssignment(prop) ||
             ts.isMethodDeclaration(prop) || ts.isGetAccessor(prop) ||
-            ts.isSetAccessor(prop)
+            ts.isSetAccessor(prop) || ts.isSpreadAssignment(prop)
         )
     ) {
         // Empty object
@@ -164,6 +164,25 @@ export function visitObjectLiteralExpression(
             );
             code +=
                 `${this.indent()}${objVar}.define_setter(${key}, ${lambda});\n`;
+        } else if (ts.isSpreadAssignment(prop)) {
+            let spreadExpr = this.visit(prop.expression, context);
+            if (ts.isIdentifier(prop.expression)) {
+                const scope = this.getScopeForNode(prop.expression);
+                const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                    prop.expression.text,
+                    scope,
+                )!;
+                if (typeInfo && !typeInfo.isBuiltin && !typeInfo.isParameter) {
+                    spreadExpr = this.getDerefCode(
+                        spreadExpr,
+                        this.getJsVarName(prop.expression),
+                        context,
+                        typeInfo,
+                    );
+                }
+            }
+            code +=
+                `${this.indent()}jspp::Access::spread_object(${objVar}, ${spreadExpr});\n`;
         }
     }
 
@@ -178,8 +197,71 @@ export function visitArrayLiteralExpression(
     node: ts.ArrayLiteralExpression,
     context: VisitContext,
 ): string {
-    const elements = (node as ts.ArrayLiteralExpression).elements
-        .map((elem) => {
+    const hasSpread = node.elements.some(ts.isSpreadElement);
+
+    if (!hasSpread) {
+        const elements = (node as ts.ArrayLiteralExpression).elements
+            .map((elem) => {
+                let elemText = this.visit(elem, context);
+                if (ts.isIdentifier(elem)) {
+                    const scope = this.getScopeForNode(elem);
+                    const typeInfo = this.typeAnalyzer.scopeManager
+                        .lookupFromScope(
+                            elem.text,
+                            scope,
+                        )!;
+                    if (
+                        typeInfo && !typeInfo.isBuiltin && !typeInfo.isParameter
+                    ) {
+                        elemText = this.getDerefCode(
+                            elemText,
+                            this.getJsVarName(elem),
+                            context,
+                            typeInfo,
+                        );
+                    }
+                }
+                if (ts.isOmittedExpression(elem)) {
+                    elemText = "jspp::Constants::UNINITIALIZED";
+                }
+                return elemText;
+            });
+        const elementsJoined = elements.join(", ");
+        const elementsSpan = elements.length > 0
+            ? `std::span<const jspp::AnyValue>((const jspp::AnyValue[]){${elementsJoined}}, ${elements.length})`
+            : "std::span<const jspp::AnyValue>{}";
+        return `jspp::AnyValue::make_array_with_proto(${elementsSpan}, ::Array.get_own_property("prototype"))`;
+    }
+
+    const arrVar = this.generateUniqueName(
+        "__arr_",
+        this.getDeclaredSymbols(node),
+    );
+    let code = `([&]() {\n`;
+    code += `${this.indent()}  std::vector<jspp::AnyValue> ${arrVar};\n`;
+    this.indentationLevel++;
+
+    for (const elem of node.elements) {
+        if (ts.isSpreadElement(elem)) {
+            let spreadExpr = this.visit(elem.expression, context);
+            if (ts.isIdentifier(elem.expression)) {
+                const scope = this.getScopeForNode(elem.expression);
+                const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                    elem.expression.text,
+                    scope,
+                )!;
+                if (typeInfo && !typeInfo.isBuiltin && !typeInfo.isParameter) {
+                    spreadExpr = this.getDerefCode(
+                        spreadExpr,
+                        this.getJsVarName(elem.expression),
+                        context,
+                        typeInfo,
+                    );
+                }
+            }
+            code +=
+                `${this.indent()}jspp::Access::spread_array(${arrVar}, ${spreadExpr});\n`;
+        } else {
             let elemText = this.visit(elem, context);
             if (ts.isIdentifier(elem)) {
                 const scope = this.getScopeForNode(elem);
@@ -199,13 +281,16 @@ export function visitArrayLiteralExpression(
             if (ts.isOmittedExpression(elem)) {
                 elemText = "jspp::Constants::UNINITIALIZED";
             }
-            return elemText;
-        });
-    const elementsJoined = elements.join(", ");
-    const elementsSpan = elements.length > 0
-        ? `std::span<const jspp::AnyValue>((const jspp::AnyValue[]){${elementsJoined}}, ${elements.length})`
-        : "std::span<const jspp::AnyValue>{}";
-    return `jspp::AnyValue::make_array_with_proto(${elementsSpan}, ::Array.get_own_property("prototype"))`;
+            code += `${this.indent()}${arrVar}.push_back(${elemText});\n`;
+        }
+    }
+
+    this.indentationLevel--;
+    code +=
+        `${this.indent()}  return jspp::AnyValue::make_array_with_proto(std::move(${arrVar}), ::Array.get_own_property("prototype"));\n`;
+    code += `${this.indent()}})()`;
+
+    return code;
 }
 
 export function visitPrefixUnaryExpression(
@@ -1006,6 +1091,7 @@ export function visitCallExpression(
 ): string {
     const callExpr = node as ts.CallExpression;
     const callee = callExpr.expression;
+    const hasSpread = callExpr.arguments.some(ts.isSpreadElement);
 
     if (callee.kind === ts.SyntaxKind.SuperKeyword) {
         if (!context.superClassVar) {
@@ -1015,45 +1101,146 @@ export function visitCallExpression(
                 "SyntaxError",
             );
         }
-        const args = callExpr.arguments.map((arg) => this.visit(arg, context))
-            .join(", ");
-        return `(${context.superClassVar}).call(${this.globalThisVar}, (const jspp::AnyValue[]){${args}}, "super")`;
-    }
-
-    const argsArray = callExpr.arguments
-        .map((arg) => {
-            const argText = this.visit(arg, context);
-            if (ts.isIdentifier(arg)) {
-                const scope = this.getScopeForNode(arg);
-                const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
-                    arg.text,
-                    scope,
-                );
-                if (!typeInfo) {
-                    return `jspp::Exception::throw_unresolved_reference(${
-                        this.getJsVarName(
-                            arg,
-                        )
-                    })`;
-                }
-                if (typeInfo && !typeInfo.isBuiltin) {
-                    return this.getDerefCode(
-                        argText,
-                        this.getJsVarName(arg),
-                        context,
-                        typeInfo,
-                    );
+        if (!hasSpread) {
+            const args = callExpr.arguments.map((arg) =>
+                this.visit(arg, context)
+            )
+                .join(", ");
+            return `(${context.superClassVar}).call(${this.globalThisVar}, (const jspp::AnyValue[]){${args}}, "super")`;
+        } else {
+            const argsVar = this.generateUniqueName(
+                "__args_",
+                this.getDeclaredSymbols(node),
+            );
+            let code = `([&]() {\n`;
+            code +=
+                `${this.indent()}  std::vector<jspp::AnyValue> ${argsVar};\n`;
+            this.indentationLevel++;
+            for (const arg of callExpr.arguments) {
+                if (ts.isSpreadElement(arg)) {
+                    let spreadExpr = this.visit(arg.expression, context);
+                    if (ts.isIdentifier(arg.expression)) {
+                        const scope = this.getScopeForNode(arg.expression);
+                        const typeInfo = this.typeAnalyzer.scopeManager
+                            .lookupFromScope(arg.expression.text, scope)!;
+                        spreadExpr = this.getDerefCode(
+                            spreadExpr,
+                            this.getJsVarName(arg.expression),
+                            context,
+                            typeInfo,
+                        );
+                    }
+                    code +=
+                        `${this.indent()}jspp::Access::spread_array(${argsVar}, ${spreadExpr});\n`;
+                } else {
+                    let argText = this.visit(arg, context);
+                    if (ts.isIdentifier(arg)) {
+                        const scope = this.getScopeForNode(arg);
+                        const typeInfo = this.typeAnalyzer.scopeManager
+                            .lookupFromScope(arg.text, scope)!;
+                        argText = this.getDerefCode(
+                            argText,
+                            this.getJsVarName(arg),
+                            context,
+                            typeInfo,
+                        );
+                    }
+                    code +=
+                        `${this.indent()}${argsVar}.push_back(${argText});\n`;
                 }
             }
-            return argText;
-        });
-    const args = argsArray.join(", ");
-    const argsCount = argsArray.length;
-    const argsSpan = argsCount > 0
-        ? `std::span<const jspp::AnyValue>((const jspp::AnyValue[]){${args}}, ${argsCount})`
-        : "std::span<const jspp::AnyValue>{}";
+            code +=
+                `${this.indent()}  return (${context.superClassVar}).call(${this.globalThisVar}, ${argsVar}, "super");\n`;
+            this.indentationLevel--;
+            code += `${this.indent()}})()`;
+            return code;
+        }
+    }
 
-    // Handle obj.method() -> pass obj as 'this'
+    const generateArgsSpan = (args: ts.NodeArray<ts.Expression>) => {
+        const argsArray = args
+            .map((arg) => {
+                const argText = this.visit(arg, context);
+                if (ts.isIdentifier(arg)) {
+                    const scope = this.getScopeForNode(arg);
+                    const typeInfo = this.typeAnalyzer.scopeManager
+                        .lookupFromScope(
+                            arg.text,
+                            scope,
+                        );
+                    if (!typeInfo) {
+                        return `jspp::Exception::throw_unresolved_reference(${
+                            this.getJsVarName(
+                                arg,
+                            )
+                        })`;
+                    }
+                    if (typeInfo && !typeInfo.isBuiltin) {
+                        return this.getDerefCode(
+                            argText,
+                            this.getJsVarName(arg),
+                            context,
+                            typeInfo,
+                        );
+                    }
+                }
+                return argText;
+            });
+        const argsJoined = argsArray.join(", ");
+        const argsCount = argsArray.length;
+        return argsCount > 0
+            ? `std::span<const jspp::AnyValue>((const jspp::AnyValue[]){${argsJoined}}, ${argsCount})`
+            : "std::span<const jspp::AnyValue>{}";
+    };
+
+    const generateArgsVectorBuilder = (
+        args: ts.NodeArray<ts.Expression>,
+        argsVar: string,
+    ) => {
+        let code = `${this.indent()}std::vector<jspp::AnyValue> ${argsVar};\n`;
+        for (const arg of args) {
+            if (ts.isSpreadElement(arg)) {
+                let spreadExpr = this.visit(arg.expression, context);
+                if (ts.isIdentifier(arg.expression)) {
+                    const scope = this.getScopeForNode(arg.expression);
+                    const typeInfo = this.typeAnalyzer.scopeManager
+                        .lookupFromScope(arg.expression.text, scope)!;
+                    if (
+                        typeInfo && !typeInfo.isBuiltin && !typeInfo.isParameter
+                    ) {
+                        spreadExpr = this.getDerefCode(
+                            spreadExpr,
+                            this.getJsVarName(arg.expression),
+                            context,
+                            typeInfo,
+                        );
+                    }
+                }
+                code +=
+                    `${this.indent()}jspp::Access::spread_array(${argsVar}, ${spreadExpr});\n`;
+            } else {
+                let argText = this.visit(arg, context);
+                if (ts.isIdentifier(arg)) {
+                    const scope = this.getScopeForNode(arg);
+                    const typeInfo = this.typeAnalyzer.scopeManager
+                        .lookupFromScope(arg.text, scope)!;
+                    if (
+                        typeInfo && !typeInfo.isBuiltin && !typeInfo.isParameter
+                    ) {
+                        argText = this.getDerefCode(
+                            argText,
+                            this.getJsVarName(arg),
+                            context,
+                            typeInfo,
+                        );
+                    }
+                }
+                code += `${this.indent()}${argsVar}.push_back(${argText});\n`;
+            }
+        }
+        return code;
+    };
+
     if (ts.isPropertyAccessExpression(callee)) {
         const propAccess = callee as ts.PropertyAccessExpression;
 
@@ -1066,16 +1253,33 @@ export function visitCallExpression(
                 );
             }
             const propName = propAccess.name.getText();
-            return `(${context.superClassVar}).get_own_property("prototype").get_own_property("${propName}").call(${this.globalThisVar}, ${argsSpan}, "${
-                this.escapeString(propName)
-            }")`;
+            if (!hasSpread) {
+                const argsSpan = generateArgsSpan(callExpr.arguments);
+                return `(${context.superClassVar}).get_own_property("prototype").get_own_property("${propName}").call(${this.globalThisVar}, ${argsSpan}, "${
+                    this.escapeString(propName)
+                }")`;
+            } else {
+                const argsVar = this.generateUniqueName(
+                    "__args_",
+                    this.getDeclaredSymbols(node),
+                );
+                let code = `([&]() {\n`;
+                this.indentationLevel++;
+                code += generateArgsVectorBuilder(callExpr.arguments, argsVar);
+                code +=
+                    `${this.indent()}return (${context.superClassVar}).get_own_property("prototype").get_own_property("${propName}").call(${this.globalThisVar}, ${argsVar}, "${
+                        this.escapeString(propName)
+                    }");\n`;
+                this.indentationLevel--;
+                code += `${this.indent()}})()`;
+                return code;
+            }
         }
 
         const objExpr = propAccess.expression;
         const propName = propAccess.name.getText();
         const objCode = this.visit(objExpr, context);
 
-        // We need to dereference the object expression if it's a variable
         let derefObj = objCode;
         if (ts.isIdentifier(objExpr)) {
             const scope = this.getScopeForNode(objExpr);
@@ -1098,16 +1302,37 @@ export function visitCallExpression(
             }
         }
 
-        if (callExpr.questionDotToken) {
-            return `jspp::Access::optional_call(${derefObj}.get_own_property("${propName}"), ${derefObj}, ${argsSpan}, "${
-                this.escapeString(propName)
-            }")`;
+        if (!hasSpread) {
+            const argsSpan = generateArgsSpan(callExpr.arguments);
+            if (callExpr.questionDotToken) {
+                return `jspp::Access::optional_call(${derefObj}.get_own_property("${propName}"), ${derefObj}, ${argsSpan}, "${
+                    this.escapeString(propName)
+                }")`;
+            }
+            return `${derefObj}.call_own_property("${propName}", ${argsSpan})`;
+        } else {
+            const argsVar = this.generateUniqueName(
+                "__args_",
+                this.getDeclaredSymbols(node),
+            );
+            let code = `([&]() {\n`;
+            this.indentationLevel++;
+            code += generateArgsVectorBuilder(callExpr.arguments, argsVar);
+            if (callExpr.questionDotToken) {
+                code +=
+                    `${this.indent()}return jspp::Access::optional_call(${derefObj}.get_own_property("${propName}"), ${derefObj}, ${argsVar}, "${
+                        this.escapeString(propName)
+                    }");\n`;
+            } else {
+                code +=
+                    `${this.indent()}return ${derefObj}.call_own_property("${propName}", ${argsVar});\n`;
+            }
+            this.indentationLevel--;
+            code += `${this.indent()}})()`;
+            return code;
         }
-
-        return `${derefObj}.call_own_property("${propName}", ${argsSpan})`;
     }
 
-    // Handle obj[method]() -> pass obj as 'this'
     if (ts.isElementAccessExpression(callee)) {
         const elemAccess = callee as ts.ElementAccessExpression;
         const objExpr = elemAccess.expression;
@@ -1141,7 +1366,6 @@ export function visitCallExpression(
             { ...context, isBracketNotationPropertyAccess: true },
         );
 
-        // Dereference argument if needed (logic copied from visitElementAccessExpression)
         if (ts.isIdentifier(elemAccess.argumentExpression)) {
             const argScope = this.getScopeForNode(
                 elemAccess.argumentExpression,
@@ -1173,11 +1397,31 @@ export function visitCallExpression(
             }
         }
 
-        if (callExpr.questionDotToken) {
-            return `jspp::Access::optional_call(${derefObj}.get_own_property(${argText}), ${derefObj}, ${argsSpan})`;
+        if (!hasSpread) {
+            const argsSpan = generateArgsSpan(callExpr.arguments);
+            if (callExpr.questionDotToken) {
+                return `jspp::Access::optional_call(${derefObj}.get_own_property(${argText}), ${derefObj}, ${argsSpan})`;
+            }
+            return `${derefObj}.call_own_property(${argText}, ${argsSpan})`;
+        } else {
+            const argsVar = this.generateUniqueName(
+                "__args_",
+                this.getDeclaredSymbols(node),
+            );
+            let code = `([&]() {\n`;
+            this.indentationLevel++;
+            code += generateArgsVectorBuilder(callExpr.arguments, argsVar);
+            if (callExpr.questionDotToken) {
+                code +=
+                    `${this.indent()}return jspp::Access::optional_call(${derefObj}.get_own_property(${argText}), ${derefObj}, ${argsVar});\n`;
+            } else {
+                code +=
+                    `${this.indent()}return ${derefObj}.call_own_property(${argText}, ${argsVar});\n`;
+            }
+            this.indentationLevel--;
+            code += `${this.indent()}})()`;
+            return code;
         }
-
-        return `${derefObj}.call_own_property(${argText}, ${argsSpan})`;
     }
 
     const calleeCode = this.visit(callee, context);
@@ -1220,50 +1464,110 @@ export function visitCallExpression(
 
         if (nativeFeature && nativeFeature.type === "lambda") {
             const nativeName = nativeFeature.name;
-            const parameters = nativeFeature.parameters;
+            const parameters = nativeFeature.parameters || [];
 
-            let argsPart = "";
+            if (!hasSpread) {
+                let argsPart = "";
 
-            // Map parameters to the native lambda arguments
-            if (parameters) {
-                // Normal parameters
-                const argsText = argsArray.slice(0, parameters.length).filter((
-                    _,
-                    i,
-                ) => !parameters![i]?.dotDotDotToken).join(", ");
-                if (argsText) argsPart += `, ${argsText}`;
+                if (parameters) {
+                    const argsArray = callExpr.arguments.map((arg) => {
+                        let argText = this.visit(arg, context);
+                        if (ts.isIdentifier(arg)) {
+                            const scope = this.getScopeForNode(arg);
+                            const typeInfo = this.typeAnalyzer.scopeManager
+                                .lookupFromScope(arg.text, scope)!;
+                            argText = this.getDerefCode(
+                                argText,
+                                this.getJsVarName(arg),
+                                context,
+                                typeInfo,
+                            );
+                        }
+                        return argText;
+                    });
 
-                // Rest parameter
-                if (
-                    argsArray.length > parameters.length &&
-                    !!parameters[parameters.length - 1]?.dotDotDotToken
-                ) {
-                    const restArgsText =
-                        `jspp::AnyValue::make_array(std::vector<jspp::AnyValue>{${
-                            argsArray.slice(
-                                parameters.length - 1,
-                            ).join(", ")
-                        }})`;
-                    argsPart += `, ${restArgsText}`;
+                    const argsText = argsArray.slice(0, parameters.length)
+                        .filter((
+                            _,
+                            i,
+                        ) => !parameters![i]?.dotDotDotToken).join(", ");
+                    if (argsText) argsPart += `, ${argsText}`;
+
+                    if (
+                        argsArray.length > parameters.length &&
+                        !!parameters[parameters.length - 1]?.dotDotDotToken
+                    ) {
+                        const restArgsText =
+                            `jspp::AnyValue::make_array(std::vector<jspp::AnyValue>{${
+                                argsArray.slice(
+                                    parameters.length - 1,
+                                ).join(", ")
+                            }})`;
+                        argsPart += `, ${restArgsText}`;
+                    }
                 }
-            }
 
-            const callExpr =
-                `${nativeName}(jspp::Constants::UNDEFINED${argsPart})`;
-            if (symbol.features.isGenerator) {
+                const callImplementation =
+                    `${nativeName}(jspp::Constants::UNDEFINED${argsPart})`;
+                if (symbol.features.isGenerator) {
+                    if (symbol.features.isAsync) {
+                        return `jspp::AnyValue::from_async_iterator(${callImplementation})`;
+                    }
+                    return `jspp::AnyValue::from_iterator(${callImplementation})`;
+                }
                 if (symbol.features.isAsync) {
-                    return `jspp::AnyValue::from_async_iterator(${callExpr})`;
+                    return `jspp::AnyValue::from_promise(${callImplementation})`;
                 }
-                return `jspp::AnyValue::from_iterator(${callExpr})`;
+                return callImplementation;
+            } else {
+                const argsVar = this.generateUniqueName(
+                    "__args_",
+                    this.getDeclaredSymbols(node),
+                );
+                let code = `([&]() {\n`;
+                this.indentationLevel++;
+                code += generateArgsVectorBuilder(callExpr.arguments, argsVar);
+
+                const callArgs: string[] = [];
+                for (let i = 0; i < parameters.length; i++) {
+                    const p = parameters[i];
+                    if (!p) continue;
+                    if (p.dotDotDotToken) {
+                        callArgs.push(
+                            `jspp::AnyValue::make_array(std::vector<jspp::AnyValue>(${argsVar}.begin() + std::min((size_t)${i}, ${argsVar}.size()), ${argsVar}.end()))`,
+                        );
+                    } else {
+                        callArgs.push(
+                            `(${argsVar}.size() > ${i} ? ${argsVar}[${i}] : jspp::Constants::UNDEFINED)`,
+                        );
+                    }
+                }
+
+                let callExprStr = `${nativeName}(jspp::Constants::UNDEFINED${
+                    callArgs.length > 0 ? ", " + callArgs.join(", ") : ""
+                })`;
+
+                if (symbol.features.isGenerator) {
+                    if (symbol.features.isAsync) {
+                        callExprStr =
+                            `jspp::AnyValue::from_async_iterator(${callExprStr})`;
+                    } else {
+                        callExprStr =
+                            `jspp::AnyValue::from_iterator(${callExprStr})`;
+                    }
+                } else if (symbol.features.isAsync) {
+                    callExprStr =
+                        `jspp::AnyValue::from_promise(${callExprStr})`;
+                }
+
+                code += `${this.indent()}return ${callExprStr};\n`;
+                this.indentationLevel--;
+                code += `${this.indent()}})()`;
+                return code;
             }
-            if (symbol.features.isAsync) {
-                return `jspp::AnyValue::from_promise(${callExpr})`;
-            }
-            return callExpr;
         }
     }
 
-    // Call AnyValue function
     let calleeName = "";
     if (ts.isIdentifier(callee) || ts.isPropertyAccessExpression(callee)) {
         calleeName = this.escapeString(callee.getText());
@@ -1275,16 +1579,35 @@ export function visitCallExpression(
         calleeName = this.escapeString(funcExpr.name?.getText() || "");
     }
 
-    // Pass undefined as 'this' for normal function calls
     const calleeNamePart = calleeName && calleeName.length > 0
         ? `, "${calleeName}"`
         : "";
 
-    if (callExpr.questionDotToken) {
-        return `jspp::Access::optional_call(${derefCallee}, jspp::Constants::UNDEFINED, ${argsSpan}${calleeNamePart})`;
+    if (!hasSpread) {
+        const argsSpan = generateArgsSpan(callExpr.arguments);
+        if (callExpr.questionDotToken) {
+            return `jspp::Access::optional_call(${derefCallee}, jspp::Constants::UNDEFINED, ${argsSpan}${calleeNamePart})`;
+        }
+        return `${derefCallee}.call(jspp::Constants::UNDEFINED, ${argsSpan}${calleeNamePart})`;
+    } else {
+        const argsVar = this.generateUniqueName(
+            "__args_",
+            this.getDeclaredSymbols(node),
+        );
+        let code = `([&]() {\n`;
+        this.indentationLevel++;
+        code += generateArgsVectorBuilder(callExpr.arguments, argsVar);
+        if (callExpr.questionDotToken) {
+            code +=
+                `${this.indent()}return jspp::Access::optional_call(${derefCallee}, jspp::Constants::UNDEFINED, ${argsVar}${calleeNamePart});\n`;
+        } else {
+            code +=
+                `${this.indent()}return ${derefCallee}.call(jspp::Constants::UNDEFINED, ${argsVar}${calleeNamePart});\n`;
+        }
+        this.indentationLevel--;
+        code += `${this.indent()}})()`;
+        return code;
     }
-
-    return `${derefCallee}.call(jspp::Constants::UNDEFINED, ${argsSpan}${calleeNamePart})`;
 }
 
 export function visitVoidExpression(
@@ -1361,6 +1684,7 @@ export function visitNewExpression(
 ): string {
     const newExpr = node as ts.NewExpression;
     const exprText = this.visit(newExpr.expression, context);
+    const hasSpread = newExpr.arguments?.some(ts.isSpreadElement) ?? false;
 
     let derefExpr = exprText;
     let name = `"${exprText}"`;
@@ -1389,45 +1713,106 @@ export function visitNewExpression(
         }
     }
 
-    const argsArray = newExpr.arguments
-        ? newExpr.arguments
-            .map((arg) => {
-                const argText = this.visit(arg, context);
-                if (ts.isIdentifier(arg)) {
-                    const scope = this.getScopeForNode(arg);
-                    const typeInfo = this.typeAnalyzer.scopeManager
-                        .lookupFromScope(
-                            arg.text,
-                            scope,
-                        );
-                    if (!typeInfo) {
-                        return `jspp::Exception::throw_unresolved_reference(${
-                            this.getJsVarName(
-                                arg as ts.Identifier,
-                            )
-                        })`;
+    if (!hasSpread) {
+        const argsArray = newExpr.arguments
+            ? newExpr.arguments
+                .map((arg) => {
+                    const argText = this.visit(arg, context);
+                    if (ts.isIdentifier(arg)) {
+                        const scope = this.getScopeForNode(arg);
+                        const typeInfo = this.typeAnalyzer.scopeManager
+                            .lookupFromScope(
+                                arg.text,
+                                scope,
+                            );
+                        if (!typeInfo) {
+                            return `jspp::Exception::throw_unresolved_reference(${
+                                this.getJsVarName(
+                                    arg as ts.Identifier,
+                                )
+                            })`;
+                        }
+                        if (
+                            typeInfo && !typeInfo.isParameter &&
+                            !typeInfo.isBuiltin
+                        ) {
+                            return this.getDerefCode(
+                                argText,
+                                this.getJsVarName(arg as ts.Identifier),
+                                context,
+                                typeInfo,
+                            );
+                        }
                     }
-                    if (
-                        typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin
-                    ) {
-                        return this.getDerefCode(
-                            argText,
-                            this.getJsVarName(arg as ts.Identifier),
-                            context,
-                            typeInfo,
-                        );
-                    }
-                }
-                return argText;
-            })
-        : [];
-    const args = argsArray.join(", ");
-    const argsCount = argsArray.length;
-    const argsSpan = argsCount > 0
-        ? `std::span<const jspp::AnyValue>((const jspp::AnyValue[]){${args}}, ${argsCount})`
-        : "std::span<const jspp::AnyValue>{}";
+                    return argText;
+                })
+            : [];
+        const args = argsArray.join(", ");
+        const argsCount = argsArray.length;
+        const argsSpan = argsCount > 0
+            ? `std::span<const jspp::AnyValue>((const jspp::AnyValue[]){${args}}, ${argsCount})`
+            : "std::span<const jspp::AnyValue>{}";
 
-    return `${derefExpr}.construct(${argsSpan}, ${name})`;
+        return `${derefExpr}.construct(${argsSpan}, ${name})`;
+    } else {
+        const argsVar = this.generateUniqueName(
+            "__args_",
+            this.getDeclaredSymbols(node),
+        );
+        let code = `([&]() {\n`;
+        this.indentationLevel++;
+        code += `${this.indent()}std::vector<jspp::AnyValue> ${argsVar};\n`;
+        if (newExpr.arguments) {
+            for (const arg of newExpr.arguments) {
+                if (ts.isSpreadElement(arg)) {
+                    let spreadExpr = this.visit(arg.expression, context);
+                    if (ts.isIdentifier(arg.expression)) {
+                        const scope = this.getScopeForNode(arg.expression);
+                        const typeInfo = this.typeAnalyzer.scopeManager
+                            .lookupFromScope(arg.expression.text, scope)!;
+                        if (
+                            typeInfo && !typeInfo.isBuiltin &&
+                            !typeInfo.isParameter
+                        ) {
+                            spreadExpr = this.getDerefCode(
+                                spreadExpr,
+                                this.getJsVarName(arg.expression),
+                                context,
+                                typeInfo,
+                            );
+                        }
+                    }
+                    code +=
+                        `${this.indent()}jspp::Access::spread_array(${argsVar}, ${spreadExpr});\n`;
+                } else {
+                    let argText = this.visit(arg, context);
+                    if (ts.isIdentifier(arg)) {
+                        const scope = this.getScopeForNode(arg);
+                        const typeInfo = this.typeAnalyzer.scopeManager
+                            .lookupFromScope(arg.text, scope)!;
+                        if (
+                            typeInfo && !typeInfo.isBuiltin &&
+                            !typeInfo.isParameter
+                        ) {
+                            argText = this.getDerefCode(
+                                argText,
+                                this.getJsVarName(arg),
+                                context,
+                                typeInfo,
+                            );
+                        }
+                    }
+                    code +=
+                        `${this.indent()}${argsVar}.push_back(${argText});\n`;
+                }
+            }
+        }
+        code +=
+            `${this.indent()}  return ${derefExpr}.construct(${argsVar}, ${name});\n`;
+        this.indentationLevel--;
+        code += `${this.indent()}})()`;
+        return code;
+    }
 }
 
 export function visitTypeOfExpression(
