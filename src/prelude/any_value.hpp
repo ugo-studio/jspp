@@ -325,6 +325,7 @@ namespace jspp
         void define_setter(const AnyValue &key, const AnyValue &setter);
 
         AnyValue call(const AnyValue &thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr = std::nullopt) const;
+        AnyValue optional_call(const AnyValue &thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr = std::nullopt) const;
         AnyValue construct(std::span<const AnyValue> args, const std::optional<std::string> &name = std::nullopt) const;
         void set_prototype(const AnyValue &proto);
         std::string to_std_string() const;

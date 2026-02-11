@@ -780,5 +780,20 @@
             "width: 100",
             "TS Test Complete"
         ]
+    },
+    {
+        "name": "spread-optimization",
+        "expected": [
+            "--- Spread Syntax Optimization ---",
+            "arr1 (optimized): 1,2,3,4",
+            "arr2 (deep optimized): 1",
+            "arr3 (string optimization): a,b,c",
+            "obj1.b: 2 obj1.c: 3",
+            "obj2.a: 1 obj2.b: 2",
+            "sum4(...[1, 2], ...[3, 4]): 10",
+            "sum4(1, ...[2, 3], 4): 10",
+            "v.x: 10 v.y: 20",
+            "mixed: 1,2,3,4,5"
+        ]
     }
 ]

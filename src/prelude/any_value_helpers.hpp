@@ -323,9 +323,13 @@ namespace jspp
     inline AnyValue AnyValue::call(const AnyValue &thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr) const
     {
         if (!is_function())
-        {
             throw Exception::make_exception(expr.value_or(to_std_string()) + " is not a function", "TypeError");
-        }
+        return as_function()->call(thisVal, args);
+    }
+    inline AnyValue AnyValue::optional_call(const AnyValue &thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr) const
+    {
+        if (is_null() || is_undefined())
+            return Constants::UNDEFINED;
         return as_function()->call(thisVal, args);
     }
 

@@ -6,6 +6,59 @@ import { CompilerError } from "../error.js";
 import { CodeGenerator } from "./index.js";
 import type { VisitContext } from "./visitor.js";
 
+/**
+ * Helper to recursively flatten static spread elements in arrays or call arguments.
+ */
+function flattenArrayElements(
+    elements: ts.NodeArray<ts.Expression> | ts.Expression[],
+): (ts.Expression | { dynamicSpread: ts.Expression })[] {
+    const flattened: (ts.Expression | { dynamicSpread: ts.Expression })[] = [];
+    for (const elem of elements) {
+        if (elem && ts.isSpreadElement(elem)) {
+            const expr = elem.expression;
+            if (ts.isArrayLiteralExpression(expr)) {
+                flattened.push(...flattenArrayElements(expr.elements));
+            } else if (
+                ts.isStringLiteral(expr) ||
+                ts.isNoSubstitutionTemplateLiteral(expr)
+            ) {
+                for (const char of expr.text) {
+                    flattened.push(ts.factory.createStringLiteral(char));
+                }
+            } else {
+                flattened.push({ dynamicSpread: expr });
+            }
+        } else {
+            flattened.push(elem as ts.Expression);
+        }
+    }
+    return flattened;
+}
+
+/**
+ * Helper to recursively flatten static spread assignments in object literals.
+ */
+function flattenObjectProperties(
+    properties:
+        | ts.NodeArray<ts.ObjectLiteralElementLike>
+        | ts.ObjectLiteralElementLike[],
+): ts.ObjectLiteralElementLike[] {
+    const flattened: ts.ObjectLiteralElementLike[] = [];
+    for (const prop of properties) {
+        if (ts.isSpreadAssignment(prop)) {
+            const expr = prop.expression;
+            if (ts.isObjectLiteralExpression(expr)) {
+                flattened.push(...flattenObjectProperties(expr.properties));
+            } else {
+                flattened.push(prop);
+            }
+        } else {
+            flattened.push(prop);
+        }
+    }
+    return flattened;
+}
+
 export function visitObjectPropertyName(
     this: CodeGenerator,
     node: ts.PropertyName,
@@ -54,13 +107,15 @@ export function visitObjectLiteralExpression(
     context: VisitContext,
 ): string {
     const obj = node as ts.ObjectLiteralExpression;
+    const properties = flattenObjectProperties(obj.properties);
+
     const objVar = this.generateUniqueName(
         "__obj_",
         this.getDeclaredSymbols(node),
     );
 
     if (
-        !obj.properties.some((prop) =>
+        !properties.some((prop) =>
             ts.isPropertyAssignment(prop) ||
             ts.isShorthandPropertyAssignment(prop) ||
             ts.isMethodDeclaration(prop) || ts.isGetAccessor(prop) ||
@@ -77,7 +132,7 @@ export function visitObjectLiteralExpression(
 
     this.indentationLevel++;
 
-    for (const prop of obj.properties) {
+    for (const prop of properties) {
         if (ts.isPropertyAssignment(prop)) {
             const key = visitObjectPropertyName.call(this, prop.name, {
                 ...context,
@@ -197,17 +252,21 @@ export function visitArrayLiteralExpression(
     node: ts.ArrayLiteralExpression,
     context: VisitContext,
 ): string {
-    const hasSpread = node.elements.some(ts.isSpreadElement);
+    const flattened = flattenArrayElements(node.elements);
+    const hasSpread = flattened.some((e) =>
+        typeof e === "object" && "dynamicSpread" in e
+    );
 
     if (!hasSpread) {
-        const elements = (node as ts.ArrayLiteralExpression).elements
+        const elements = flattened
             .map((elem) => {
-                let elemText = this.visit(elem, context);
-                if (ts.isIdentifier(elem)) {
-                    const scope = this.getScopeForNode(elem);
+                const expr = elem as ts.Expression;
+                let elemText = this.visit(expr, context);
+                if (ts.isIdentifier(expr)) {
+                    const scope = this.getScopeForNode(expr);
                     const typeInfo = this.typeAnalyzer.scopeManager
                         .lookupFromScope(
-                            elem.text,
+                            expr.text,
                             scope,
                         )!;
                     if (
@@ -215,13 +274,13 @@ export function visitArrayLiteralExpression(
                     ) {
                         elemText = this.getDerefCode(
                             elemText,
-                            this.getJsVarName(elem),
+                            this.getJsVarName(expr),
                             context,
                             typeInfo,
                         );
                     }
                 }
-                if (ts.isOmittedExpression(elem)) {
+                if (ts.isOmittedExpression(expr)) {
                     elemText = "jspp::Constants::UNINITIALIZED";
                 }
                 return elemText;
@@ -241,19 +300,20 @@ export function visitArrayLiteralExpression(
     code += `${this.indent()}  std::vector<jspp::AnyValue> ${arrVar};\n`;
     this.indentationLevel++;
 
-    for (const elem of node.elements) {
-        if (ts.isSpreadElement(elem)) {
-            let spreadExpr = this.visit(elem.expression, context);
-            if (ts.isIdentifier(elem.expression)) {
-                const scope = this.getScopeForNode(elem.expression);
+    for (const elem of flattened) {
+        if (typeof elem === "object" && "dynamicSpread" in elem) {
+            const spreadExprSource = elem.dynamicSpread;
+            let spreadExpr = this.visit(spreadExprSource, context);
+            if (ts.isIdentifier(spreadExprSource)) {
+                const scope = this.getScopeForNode(spreadExprSource);
                 const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
-                    elem.expression.text,
+                    spreadExprSource.text,
                     scope,
                 )!;
                 if (typeInfo && !typeInfo.isBuiltin && !typeInfo.isParameter) {
                     spreadExpr = this.getDerefCode(
                         spreadExpr,
-                        this.getJsVarName(elem.expression),
+                        this.getJsVarName(spreadExprSource),
                         context,
                         typeInfo,
                     );
@@ -262,23 +322,24 @@ export function visitArrayLiteralExpression(
             code +=
                 `${this.indent()}jspp::Access::spread_array(${arrVar}, ${spreadExpr});\n`;
         } else {
-            let elemText = this.visit(elem, context);
-            if (ts.isIdentifier(elem)) {
-                const scope = this.getScopeForNode(elem);
+            const expr = elem as ts.Expression;
+            let elemText = this.visit(expr, context);
+            if (ts.isIdentifier(expr)) {
+                const scope = this.getScopeForNode(expr);
                 const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
-                    elem.text,
+                    expr.text,
                     scope,
                 )!;
                 if (typeInfo && !typeInfo.isBuiltin && !typeInfo.isParameter) {
                     elemText = this.getDerefCode(
                         elemText,
-                        this.getJsVarName(elem),
+                        this.getJsVarName(expr),
                         context,
                         typeInfo,
                     );
                 }
             }
-            if (ts.isOmittedExpression(elem)) {
+            if (ts.isOmittedExpression(expr)) {
                 elemText = "jspp::Constants::UNINITIALIZED";
             }
             code += `${this.indent()}${arrVar}.push_back(${elemText});\n`;
@@ -1091,7 +1152,10 @@ export function visitCallExpression(
 ): string {
     const callExpr = node as ts.CallExpression;
     const callee = callExpr.expression;
-    const hasSpread = callExpr.arguments.some(ts.isSpreadElement);
+    const flattened = flattenArrayElements(callExpr.arguments);
+    const hasSpread = flattened.some((e) =>
+        typeof e === "object" && "dynamicSpread" in e
+    );
 
     if (callee.kind === ts.SyntaxKind.SuperKeyword) {
         if (!context.superClassVar) {
@@ -1102,8 +1166,8 @@ export function visitCallExpression(
             );
         }
         if (!hasSpread) {
-            const args = callExpr.arguments.map((arg) =>
-                this.visit(arg, context)
+            const args = flattened.map((arg) =>
+                this.visit(arg as ts.Expression, context)
             )
                 .join(", ");
             return `(${context.superClassVar}).call(${this.globalThisVar}, (const jspp::AnyValue[]){${args}}, "super")`;
@@ -1116,16 +1180,17 @@ export function visitCallExpression(
             code +=
                 `${this.indent()}  std::vector<jspp::AnyValue> ${argsVar};\n`;
             this.indentationLevel++;
-            for (const arg of callExpr.arguments) {
-                if (ts.isSpreadElement(arg)) {
-                    let spreadExpr = this.visit(arg.expression, context);
-                    if (ts.isIdentifier(arg.expression)) {
-                        const scope = this.getScopeForNode(arg.expression);
+            for (const arg of flattened) {
+                if (typeof arg === "object" && "dynamicSpread" in arg) {
+                    const spreadExprSource = arg.dynamicSpread;
+                    let spreadExpr = this.visit(spreadExprSource, context);
+                    if (ts.isIdentifier(spreadExprSource)) {
+                        const scope = this.getScopeForNode(spreadExprSource);
                         const typeInfo = this.typeAnalyzer.scopeManager
-                            .lookupFromScope(arg.expression.text, scope)!;
+                            .lookupFromScope(spreadExprSource.text, scope)!;
                         spreadExpr = this.getDerefCode(
                             spreadExpr,
-                            this.getJsVarName(arg.expression),
+                            this.getJsVarName(spreadExprSource),
                             context,
                             typeInfo,
                         );
@@ -1133,14 +1198,15 @@ export function visitCallExpression(
                     code +=
                         `${this.indent()}jspp::Access::spread_array(${argsVar}, ${spreadExpr});\n`;
                 } else {
-                    let argText = this.visit(arg, context);
-                    if (ts.isIdentifier(arg)) {
-                        const scope = this.getScopeForNode(arg);
+                    const expr = arg as ts.Expression;
+                    let argText = this.visit(expr, context);
+                    if (ts.isIdentifier(expr)) {
+                        const scope = this.getScopeForNode(expr);
                         const typeInfo = this.typeAnalyzer.scopeManager
-                            .lookupFromScope(arg.text, scope)!;
+                            .lookupFromScope(expr.text, scope)!;
                         argText = this.getDerefCode(
                             argText,
-                            this.getJsVarName(arg),
+                            this.getJsVarName(expr),
                             context,
                             typeInfo,
                         );
@@ -1157,28 +1223,31 @@ export function visitCallExpression(
         }
     }
 
-    const generateArgsSpan = (args: ts.NodeArray<ts.Expression>) => {
+    const generateArgsSpan = (
+        args: (ts.Expression | { dynamicSpread: ts.Expression })[],
+    ) => {
         const argsArray = args
             .map((arg) => {
-                const argText = this.visit(arg, context);
-                if (ts.isIdentifier(arg)) {
-                    const scope = this.getScopeForNode(arg);
+                const expr = arg as ts.Expression;
+                const argText = this.visit(expr, context);
+                if (ts.isIdentifier(expr)) {
+                    const scope = this.getScopeForNode(expr);
                     const typeInfo = this.typeAnalyzer.scopeManager
                         .lookupFromScope(
-                            arg.text,
+                            expr.text,
                             scope,
                         );
                     if (!typeInfo) {
                         return `jspp::Exception::throw_unresolved_reference(${
                             this.getJsVarName(
-                                arg,
+                                expr,
                             )
                         })`;
                     }
                     if (typeInfo && !typeInfo.isBuiltin) {
                         return this.getDerefCode(
                             argText,
-                            this.getJsVarName(arg),
+                            this.getJsVarName(expr),
                             context,
                             typeInfo,
                         );
@@ -1194,23 +1263,24 @@ export function visitCallExpression(
     };
 
     const generateArgsVectorBuilder = (
-        args: ts.NodeArray<ts.Expression>,
+        args: (ts.Expression | { dynamicSpread: ts.Expression })[],
         argsVar: string,
     ) => {
         let code = `${this.indent()}std::vector<jspp::AnyValue> ${argsVar};\n`;
         for (const arg of args) {
-            if (ts.isSpreadElement(arg)) {
-                let spreadExpr = this.visit(arg.expression, context);
-                if (ts.isIdentifier(arg.expression)) {
-                    const scope = this.getScopeForNode(arg.expression);
+            if (typeof arg === "object" && "dynamicSpread" in arg) {
+                const spreadExprSource = arg.dynamicSpread;
+                let spreadExpr = this.visit(spreadExprSource, context);
+                if (ts.isIdentifier(spreadExprSource)) {
+                    const scope = this.getScopeForNode(spreadExprSource);
                     const typeInfo = this.typeAnalyzer.scopeManager
-                        .lookupFromScope(arg.expression.text, scope)!;
+                        .lookupFromScope(spreadExprSource.text, scope)!;
                     if (
                         typeInfo && !typeInfo.isBuiltin && !typeInfo.isParameter
                     ) {
                         spreadExpr = this.getDerefCode(
                             spreadExpr,
-                            this.getJsVarName(arg.expression),
+                            this.getJsVarName(spreadExprSource),
                             context,
                             typeInfo,
                         );
@@ -1219,17 +1289,18 @@ export function visitCallExpression(
                 code +=
                     `${this.indent()}jspp::Access::spread_array(${argsVar}, ${spreadExpr});\n`;
             } else {
-                let argText = this.visit(arg, context);
-                if (ts.isIdentifier(arg)) {
-                    const scope = this.getScopeForNode(arg);
+                const expr = arg as ts.Expression;
+                let argText = this.visit(expr, context);
+                if (ts.isIdentifier(expr)) {
+                    const scope = this.getScopeForNode(expr);
                     const typeInfo = this.typeAnalyzer.scopeManager
-                        .lookupFromScope(arg.text, scope)!;
+                        .lookupFromScope(expr.text, scope)!;
                     if (
                         typeInfo && !typeInfo.isBuiltin && !typeInfo.isParameter
                     ) {
                         argText = this.getDerefCode(
                             argText,
-                            this.getJsVarName(arg),
+                            this.getJsVarName(expr),
                             context,
                             typeInfo,
                         );
@@ -1254,7 +1325,7 @@ export function visitCallExpression(
             }
             const propName = propAccess.name.getText();
             if (!hasSpread) {
-                const argsSpan = generateArgsSpan(callExpr.arguments);
+                const argsSpan = generateArgsSpan(flattened);
                 return `(${context.superClassVar}).get_own_property("prototype").get_own_property("${propName}").call(${this.globalThisVar}, ${argsSpan}, "${
                     this.escapeString(propName)
                 }")`;
@@ -1265,9 +1336,9 @@ export function visitCallExpression(
                 );
                 let code = `([&]() {\n`;
                 this.indentationLevel++;
-                code += generateArgsVectorBuilder(callExpr.arguments, argsVar);
+                code += generateArgsVectorBuilder(flattened, argsVar);
                 code +=
-                    `${this.indent()}return (${context.superClassVar}).get_own_property("prototype").get_own_property("${propName}").call(${this.globalThisVar}, ${argsVar}, "${
+                    `${this.indent}return (${context.superClassVar}).get_own_property("prototype").get_own_property("${propName}").call(${this.globalThisVar}, ${argsVar}, "${
                         this.escapeString(propName)
                     }");\n`;
                 this.indentationLevel--;
@@ -1303,9 +1374,9 @@ export function visitCallExpression(
         }
 
         if (!hasSpread) {
-            const argsSpan = generateArgsSpan(callExpr.arguments);
-            if (callExpr.questionDotToken) {
-                return `jspp::Access::optional_call(${derefObj}.get_own_property("${propName}"), ${derefObj}, ${argsSpan}, "${
+            const argsSpan = generateArgsSpan(flattened);
+            if (propAccess.questionDotToken) {
+                return `jspp::Access::optional_call_property(${derefObj}, "${propName}", ${argsSpan}, "${
                     this.escapeString(propName)
                 }")`;
             }
@@ -1317,10 +1388,10 @@ export function visitCallExpression(
             );
             let code = `([&]() {\n`;
             this.indentationLevel++;
-            code += generateArgsVectorBuilder(callExpr.arguments, argsVar);
-            if (callExpr.questionDotToken) {
+            code += generateArgsVectorBuilder(flattened, argsVar);
+            if (propAccess.questionDotToken) {
                 code +=
-                    `${this.indent()}return jspp::Access::optional_call(${derefObj}.get_own_property("${propName}"), ${derefObj}, ${argsVar}, "${
+                    `${this.indent()}return jspp::Access::optional_call_property(${derefObj}, "${propName}", ${argsVar}, "${
                         this.escapeString(propName)
                     }");\n`;
             } else {
@@ -1398,9 +1469,9 @@ export function visitCallExpression(
         }
 
         if (!hasSpread) {
-            const argsSpan = generateArgsSpan(callExpr.arguments);
-            if (callExpr.questionDotToken) {
-                return `jspp::Access::optional_call(${derefObj}.get_own_property(${argText}), ${derefObj}, ${argsSpan})`;
+            const argsSpan = generateArgsSpan(flattened);
+            if (elemAccess.questionDotToken) {
+                return `jspp::Access::optional_call_property(${derefObj}, ${argText}, ${argsSpan})`;
             }
             return `${derefObj}.call_own_property(${argText}, ${argsSpan})`;
         } else {
@@ -1410,10 +1481,10 @@ export function visitCallExpression(
             );
             let code = `([&]() {\n`;
             this.indentationLevel++;
-            code += generateArgsVectorBuilder(callExpr.arguments, argsVar);
-            if (callExpr.questionDotToken) {
+            code += generateArgsVectorBuilder(flattened, argsVar);
+            if (elemAccess.questionDotToken) {
                 code +=
-                    `${this.indent()}return jspp::Access::optional_call(${derefObj}.get_own_property(${argText}), ${derefObj}, ${argsVar});\n`;
+                    `${this.indent()}return jspp::Access::optional_call_property(${derefObj}, ${argText}, ${argsVar});\n`;
             } else {
                 code +=
                     `${this.indent()}return ${derefObj}.call_own_property(${argText}, ${argsVar});\n`;
@@ -1470,15 +1541,16 @@ export function visitCallExpression(
                 let argsPart = "";
 
                 if (parameters) {
-                    const argsArray = callExpr.arguments.map((arg) => {
-                        let argText = this.visit(arg, context);
-                        if (ts.isIdentifier(arg)) {
-                            const scope = this.getScopeForNode(arg);
+                    const argsArray = flattened.map((arg) => {
+                        const expr = arg as ts.Expression;
+                        let argText = this.visit(expr, context);
+                        if (ts.isIdentifier(expr)) {
+                            const scope = this.getScopeForNode(expr);
                             const typeInfo = this.typeAnalyzer.scopeManager
-                                .lookupFromScope(arg.text, scope)!;
+                                .lookupFromScope(expr.text, scope)!;
                             argText = this.getDerefCode(
                                 argText,
-                                this.getJsVarName(arg),
+                                this.getJsVarName(expr),
                                 context,
                                 typeInfo,
                             );
@@ -1526,7 +1598,7 @@ export function visitCallExpression(
                 );
                 let code = `([&]() {\n`;
                 this.indentationLevel++;
-                code += generateArgsVectorBuilder(callExpr.arguments, argsVar);
+                code += generateArgsVectorBuilder(flattened, argsVar);
 
                 const callArgs: string[] = [];
                 for (let i = 0; i < parameters.length; i++) {
@@ -1584,9 +1656,9 @@ export function visitCallExpression(
         : "";
 
     if (!hasSpread) {
-        const argsSpan = generateArgsSpan(callExpr.arguments);
+        const argsSpan = generateArgsSpan(flattened);
         if (callExpr.questionDotToken) {
-            return `jspp::Access::optional_call(${derefCallee}, jspp::Constants::UNDEFINED, ${argsSpan}${calleeNamePart})`;
+            return `${derefCallee}.optional_call(jspp::Constants::UNDEFINED, ${argsSpan}${calleeNamePart})`;
         }
         return `${derefCallee}.call(jspp::Constants::UNDEFINED, ${argsSpan}${calleeNamePart})`;
     } else {
@@ -1596,10 +1668,10 @@ export function visitCallExpression(
         );
         let code = `([&]() {\n`;
         this.indentationLevel++;
-        code += generateArgsVectorBuilder(callExpr.arguments, argsVar);
+        code += generateArgsVectorBuilder(flattened, argsVar);
         if (callExpr.questionDotToken) {
             code +=
-                `${this.indent()}return jspp::Access::optional_call(${derefCallee}, jspp::Constants::UNDEFINED, ${argsVar}${calleeNamePart});\n`;
+                `${this.indent()}return ${derefCallee}.optional_call(jspp::Constants::UNDEFINED, ${argsVar}${calleeNamePart});\n`;
         } else {
             code +=
                 `${this.indent()}return ${derefCallee}.call(jspp::Constants::UNDEFINED, ${argsVar}${calleeNamePart});\n`;
@@ -1684,7 +1756,10 @@ export function visitNewExpression(
 ): string {
     const newExpr = node as ts.NewExpression;
     const exprText = this.visit(newExpr.expression, context);
-    const hasSpread = newExpr.arguments?.some(ts.isSpreadElement) ?? false;
+    const flattened = flattenArrayElements(newExpr.arguments || [] as any);
+    const hasSpread = flattened.some((e) =>
+        typeof e === "object" && "dynamicSpread" in e
+    );
 
     let derefExpr = exprText;
     let name = `"${exprText}"`;
@@ -1714,39 +1789,38 @@ export function visitNewExpression(
     }
 
     if (!hasSpread) {
-        const argsArray = newExpr.arguments
-            ? newExpr.arguments
-                .map((arg) => {
-                    const argText = this.visit(arg, context);
-                    if (ts.isIdentifier(arg)) {
-                        const scope = this.getScopeForNode(arg);
-                        const typeInfo = this.typeAnalyzer.scopeManager
-                            .lookupFromScope(
-                                arg.text,
-                                scope,
-                            );
-                        if (!typeInfo) {
-                            return `jspp::Exception::throw_unresolved_reference(${
-                                this.getJsVarName(
-                                    arg as ts.Identifier,
-                                )
-                            })`;
-                        }
-                        if (
-                            typeInfo && !typeInfo.isParameter &&
-                            !typeInfo.isBuiltin
-                        ) {
-                            return this.getDerefCode(
-                                argText,
-                                this.getJsVarName(arg as ts.Identifier),
-                                context,
-                                typeInfo,
-                            );
-                        }
+        const argsArray = flattened
+            .map((arg) => {
+                const expr = arg as ts.Expression;
+                const argText = this.visit(expr, context);
+                if (ts.isIdentifier(expr)) {
+                    const scope = this.getScopeForNode(expr);
+                    const typeInfo = this.typeAnalyzer.scopeManager
+                        .lookupFromScope(
+                            expr.text,
+                            scope,
+                        );
+                    if (!typeInfo) {
+                        return `jspp::Exception::throw_unresolved_reference(${
+                            this.getJsVarName(
+                                expr as ts.Identifier,
+                            )
+                        })`;
                     }
-                    return argText;
-                })
-            : [];
+                    if (
+                        typeInfo && !typeInfo.isParameter &&
+                        !typeInfo.isBuiltin
+                    ) {
+                        return this.getDerefCode(
+                            argText,
+                            this.getJsVarName(expr as ts.Identifier),
+                            context,
+                            typeInfo,
+                        );
+                    }
+                }
+                return argText;
+            });
         const args = argsArray.join(", ");
         const argsCount = argsArray.length;
         const argsSpan = argsCount > 0
@@ -1763,20 +1837,21 @@ export function visitNewExpression(
         this.indentationLevel++;
         code += `${this.indent()}std::vector<jspp::AnyValue> ${argsVar};\n`;
         if (newExpr.arguments) {
-            for (const arg of newExpr.arguments) {
-                if (ts.isSpreadElement(arg)) {
-                    let spreadExpr = this.visit(arg.expression, context);
-                    if (ts.isIdentifier(arg.expression)) {
-                        const scope = this.getScopeForNode(arg.expression);
+            for (const arg of flattened) {
+                if (typeof arg === "object" && "dynamicSpread" in arg) {
+                    const spreadExprSource = arg.dynamicSpread;
+                    let spreadExpr = this.visit(spreadExprSource, context);
+                    if (ts.isIdentifier(spreadExprSource)) {
+                        const scope = this.getScopeForNode(spreadExprSource);
                         const typeInfo = this.typeAnalyzer.scopeManager
-                            .lookupFromScope(arg.expression.text, scope)!;
+                            .lookupFromScope(spreadExprSource.text, scope)!;
                         if (
                             typeInfo && !typeInfo.isBuiltin &&
                             !typeInfo.isParameter
                         ) {
                             spreadExpr = this.getDerefCode(
                                 spreadExpr,
-                                this.getJsVarName(arg.expression),
+                                this.getJsVarName(spreadExprSource),
                                 context,
                                 typeInfo,
                             );
@@ -1785,18 +1860,19 @@ export function visitNewExpression(
                     code +=
                         `${this.indent()}jspp::Access::spread_array(${argsVar}, ${spreadExpr});\n`;
                 } else {
-                    let argText = this.visit(arg, context);
-                    if (ts.isIdentifier(arg)) {
-                        const scope = this.getScopeForNode(arg);
+                    const expr = arg as ts.Expression;
+                    let argText = this.visit(expr, context);
+                    if (ts.isIdentifier(expr)) {
+                        const scope = this.getScopeForNode(expr);
                         const typeInfo = this.typeAnalyzer.scopeManager
-                            .lookupFromScope(arg.text, scope)!;
+                            .lookupFromScope(expr.text, scope)!;
                         if (
                             typeInfo && !typeInfo.isBuiltin &&
                             !typeInfo.isParameter
                         ) {
                             argText = this.getDerefCode(
                                 argText,
-                                this.getJsVarName(arg),
+                                this.getJsVarName(expr),
                                 context,
                                 typeInfo,
                             );

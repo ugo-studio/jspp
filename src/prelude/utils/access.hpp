@@ -327,11 +327,11 @@ namespace jspp
             return obj.get_own_property(static_cast<uint32_t>(key));
         }
 
-        inline AnyValue optional_call(const AnyValue &fn, const AnyValue &thisVal, std::span<const AnyValue> args, const std::optional<std::string> &name = std::nullopt)
+        inline AnyValue optional_call_property(const AnyValue &obj, const std::string &key,  std::span<const AnyValue> args, const std::optional<std::string> &name = std::nullopt)
         {
-            if (fn.is_null() || fn.is_undefined())
+            if (obj.is_null() || obj.is_undefined())
                 return Constants::UNDEFINED;
-            return fn.call(thisVal, args, name);
+            return obj.get_own_property(key).call(obj, args, name);
         }
 
         inline void spread_array(std::vector<AnyValue> &target, const AnyValue &source)
