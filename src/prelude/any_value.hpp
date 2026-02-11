@@ -207,6 +207,7 @@ namespace jspp
 
         static AnyValue from_symbol(JsSymbol *sym) noexcept;
         static AnyValue from_string(JsString *str) noexcept;
+        static AnyValue from_promise(JsPromise &&promise) noexcept;
         static AnyValue from_iterator(JsIterator<AnyValue> &&iterator) noexcept;
         static AnyValue from_iterator_ref(JsIterator<AnyValue> *iterator) noexcept;
         static AnyValue from_async_iterator(JsAsyncIterator<AnyValue> &&iterator) noexcept;

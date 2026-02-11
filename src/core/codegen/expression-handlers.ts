@@ -1256,6 +1256,9 @@ export function visitCallExpression(
                 }
                 return `jspp::AnyValue::from_iterator(${callExpr})`;
             }
+            if (symbol.features.isAsync) {
+                return `jspp::AnyValue::from_promise(${callExpr})`;
+            }
             return callExpr;
         }
     }
