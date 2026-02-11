@@ -77,6 +77,8 @@ async function precompileHeaders() {
             }
 
             console.log(`[${mode.name.toUpperCase()}] Compiling header...`);
+            const tempGchPath = `${gchPath}.tmp`;
+            
             const compile = spawnSync(
                 "g++",
                 [
@@ -86,7 +88,7 @@ async function precompileHeaders() {
                     ...mode.flags,
                     headerPath,
                     "-o",
-                    gchPath,
+                    tempGchPath,
                     "-I",
                     PRELUDE_DIR,
                 ],
@@ -96,11 +98,16 @@ async function precompileHeaders() {
             );
 
             if (compile.status !== 0) {
+                if (await fs.stat(tempGchPath).then(() => true, () => false)) {
+                    await fs.unlink(tempGchPath);
+                }
                 console.error(
                     `[${mode.name.toUpperCase()}] Failed to precompile headers.`,
                 );
                 process.exit(1);
             }
+
+            await fs.rename(tempGchPath, gchPath);
             console.log(`[${mode.name.toUpperCase()}] Success.`);
         }
     } catch (error: any) {
