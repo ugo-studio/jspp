@@ -887,6 +887,95 @@ export function visitBinaryExpression(
             return `${finalObjExpr}.set_own_property(${argText}, ${finalRightText})`;
         }
 
+        // Array destructuring assignment
+        if (
+            ts.isArrayLiteralExpression(binExpr.left) &&
+            ts.isArrayLiteralExpression(binExpr.right)
+        ) {
+            const propNames = new Array(binExpr.left.elements.length).fill(
+                "std::nullopt",
+            );
+
+            const leftElementBuilder = (elem: ts.Expression, index: number) => {
+                let elemText = rightElementBuilder(elem);
+                if (ts.isIdentifier(elem)) {
+                    elemText = `&(${elemText})`; // Full isIdentifier is handled in rightElementBuilder to avoid duplicate deref logic
+                } else if (ts.isPropertyAccessExpression(elem)) {
+                    elemText = `&(${rightElementBuilder(elem.expression)})`;
+                    propNames[index] = `"${elem.name.getText()}"`;
+                } else if (ts.isElementAccessExpression(elem)) {
+                    elemText = `&(${rightElementBuilder(elem.expression)})`;
+                    propNames[index] = `"${
+                        rightElementBuilder(
+                            elem.argumentExpression,
+                        )
+                    }"`;
+                } else if (ts.isOmittedExpression(elem)) {
+                    elemText = "nullptr";
+                } else {
+                    throw new CompilerError(
+                        "The left-hand side of an assignment expression must be a variable or a property access.",
+                        elem,
+                        "SyntaxError",
+                    );
+                }
+                return elemText;
+            };
+            const rightElementBuilder = (elem: ts.Expression) => {
+                let elemText = this.visit(elem, visitContext);
+                if (ts.isIdentifier(elem)) {
+                    const scope = this.getScopeForNode(elem);
+                    const typeInfo = this.typeAnalyzer.scopeManager
+                        .lookupFromScope(
+                            elem.getText(),
+                            scope,
+                        );
+                    if (
+                        !typeInfo &&
+                        !this.isBuiltinObject(elem as ts.Identifier)
+                    ) {
+                        return `jspp::Exception::throw_unresolved_reference(${
+                            this.getJsVarName(
+                                elem as ts.Identifier,
+                            )
+                        })`;
+                    }
+                    if (
+                        typeInfo && !typeInfo.isParameter && !typeInfo.isBuiltin
+                    ) {
+                        elemText = this.getDerefCode(
+                            elemText,
+                            this.getJsVarName(elem as ts.Identifier),
+                            visitContext,
+                            typeInfo,
+                        );
+                    }
+                }
+                return elemText;
+            };
+
+            const leftElements = binExpr.left.elements.map(leftElementBuilder);
+            const rightElements = binExpr.right.elements.map(
+                rightElementBuilder,
+            );
+
+            const leftElemSpan =
+                `std::span<jspp::AnyValue*>((jspp::AnyValue*[]){${
+                    leftElements.join(", ")
+                }}, ${leftElements.length})`;
+            const rightElemSpan =
+                `std::span<const jspp::AnyValue>((const jspp::AnyValue[]){${
+                    rightElements.join(", ")
+                }}, ${rightElements.length})`;
+            const propNameSpan =
+                `std::span<const std::optional<std::string>>((const std::optional<std::string>[]){${
+                    propNames.join(", ")
+                }}, ${propNames.length})`;
+
+            return `jspp::Access::array_destructuring_assignment(${leftElemSpan}, ${rightElemSpan}, ${propNameSpan}, ::Array.get_own_property("prototype"))`;
+        }
+
+        // Simple variable or property assignment
         const leftText = this.visit(binExpr.left, visitContext);
         const scope = this.getScopeForNode(binExpr.left);
         const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
