@@ -37,6 +37,28 @@ namespace jspp
             return fn;
         }
 
+        inline AnyValue &get_return_fn()
+        {
+            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                                                         {
+                                                             AnyValue val = args.empty() ? Constants::UNDEFINED : args[0];
+                                                             auto res = thisVal.as_iterator()->return_(val);
+                                                             return AnyValue::make_object({{"value", res.value.value_or(Constants::UNDEFINED)}, {"done", AnyValue::make_boolean(res.done)}}); },
+                                                         "return");
+            return fn;
+        }
+
+        inline AnyValue &get_throw_fn()
+        {
+            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                                                         {
+                                                             AnyValue err = args.empty() ? Constants::UNDEFINED : args[0];
+                                                             auto res = thisVal.as_iterator()->throw_(err);
+                                                             return AnyValue::make_object({{"value", res.value.value_or(Constants::UNDEFINED)}, {"done", AnyValue::make_boolean(res.done)}}); },
+                                                         "throw");
+            return fn;
+        }
+
         inline AnyValue &get_toArray_fn()
         {
             static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue>) -> AnyValue
@@ -92,7 +114,8 @@ namespace jspp
                                                                 }
                                                                 if (taken >= take_count) 
                                                                 { 
-                                                                    // TODO: call the iterator's return() method if it exists, to allow early cleanup of resources
+                                                                    // Call the iterator's return() method for early cleanup of resources
+                                                                    self->return_();
                                                                     break; 
                                                                 }
                                                             }
@@ -114,7 +137,8 @@ namespace jspp
                                                                 if (next_res.done) { break; }
                                                                 if (is_truthy(callback->call(thisVal, std::span<const AnyValue>((const jspp::AnyValue[]){next_res.value.value_or(Constants::UNDEFINED)}, 1))))
                                                                 {
-                                                                    // TODO: call the iterator's return() method if it exists, to allow early cleanup of resources
+                                                                    // Call the iterator's return() method for early cleanup of resources
+                                                                    self->return_();
                                                                     return Constants::TRUE;
                                                                 }
                                                             }
@@ -139,6 +163,16 @@ namespace jspp
             if (key == "next")
             {
                 return get_next_fn();
+            }
+            // --- return() method ---
+            if (key == "return")
+            {
+                return get_return_fn();
+            }
+            // --- throw() method ---
+            if (key == "throw")
+            {
+                return get_throw_fn();
             }
             // --- toArray() method ---
             if (key == "toArray")

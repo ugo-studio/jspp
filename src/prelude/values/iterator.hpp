@@ -12,6 +12,9 @@ namespace jspp
     // Forward declaration of AnyValue
     class AnyValue;
 
+    // Special exception to signal a return from a generator
+    struct GeneratorReturnException {};
+
     template <typename T>
     class JsIterator : public HeapObject
     {
@@ -29,6 +32,9 @@ namespace jspp
             std::optional<T> current_value;
             std::exception_ptr exception_;
             T input_value;
+
+            std::exception_ptr pending_exception = nullptr;
+            bool pending_return = false;
 
             JsIterator get_return_object()
             {
@@ -52,7 +58,18 @@ namespace jspp
                     promise_type &p;
                     bool await_ready() { return false; }
                     void await_suspend(std::coroutine_handle<promise_type>) {}
-                    T await_resume() { return p.input_value; }
+                    T await_resume() {
+                        if (p.pending_exception) {
+                            auto ex = p.pending_exception;
+                            p.pending_exception = nullptr;
+                            std::rethrow_exception(ex);
+                        }
+                        if (p.pending_return) {
+                            p.pending_return = false;
+                            throw GeneratorReturnException{};
+                        }
+                        return p.input_value;
+                    }
                 };
                 return Awaiter{*this};
             }
@@ -68,7 +85,13 @@ namespace jspp
 
             void unhandled_exception()
             {
-                exception_ = std::current_exception();
+                try {
+                    throw;
+                } catch (const GeneratorReturnException&) {
+                    // Handled return
+                } catch (...) {
+                    exception_ = std::current_exception();
+                }
             }
         };
 
@@ -92,6 +115,8 @@ namespace jspp
 
         std::string to_std_string() const;
         NextResult next(const T &val = T());
+        NextResult return_(const T &val = T());
+        NextResult throw_(const AnyValue &err);
         std::vector<T> to_vector();
         AnyValue get_property(const std::string &key, const AnyValue &thisVal);
         AnyValue set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal);
