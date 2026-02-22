@@ -224,7 +224,11 @@ export function generateDestructuring(
 
                 if (isRest) {
                     const keysArray = `{${
-                        seenKeys.map((k) => `std::string(${k})`).join(", ")
+                        seenKeys.map((k) =>
+                            k.startsWith('"') && k.endsWith('"')
+                                ? k
+                                : `(${k}).to_std_string()`
+                        ).join(", ")
                     }}`;
                     const restValueCode =
                         `jspp::Access::get_rest_object(${valueCode}, std::vector<std::string>${keysArray})`;

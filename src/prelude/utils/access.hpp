@@ -83,7 +83,7 @@ namespace jspp
         }
 
         // Helper function to get enumerable own property keys/values of an object
-        inline std::vector<std::string> get_object_keys(const AnyValue &obj)
+        inline std::vector<std::string> get_object_keys(const AnyValue &obj, bool include_symbols = false)
         {
             std::vector<std::string> keys;
 
@@ -95,7 +95,7 @@ namespace jspp
                     if (ptr->deleted_keys.count(key))
                         continue;
 
-                    if (JsSymbol::is_internal_key(key))
+                    if (!include_symbols && JsSymbol::is_internal_key(key))
                         continue;
 
                     auto offset_opt = ptr->shape->get_offset(key);
@@ -125,7 +125,7 @@ namespace jspp
                 auto ptr = obj.as_function();
                 for (const auto &pair : ptr->props)
                 {
-                    if (!JsSymbol::is_internal_key(pair.first))
+                    if (include_symbols || !JsSymbol::is_internal_key(pair.first))
                     {
                         if (!pair.second.is_data_descriptor() && !pair.second.is_accessor_descriptor())
                             keys.push_back(pair.first);
@@ -396,7 +396,7 @@ namespace jspp
                 return AnyValue::make_object({});
 
             auto result = AnyValue::make_object({});
-            auto keys = get_object_keys(source);
+            auto keys = get_object_keys(source, true);
             std::unordered_set<std::string> excluded(excluded_keys.begin(), excluded_keys.end());
 
             for (const auto &key : keys)

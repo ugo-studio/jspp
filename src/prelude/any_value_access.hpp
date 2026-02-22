@@ -26,7 +26,7 @@ namespace jspp
         case JsType::AsyncIterator:
             return false;
         case JsType::Symbol:
-            return false;
+            return SymbolPrototypes::get(key).has_value();
         case JsType::String:
             if (key == "length")
                 return true;
@@ -35,9 +35,9 @@ namespace jspp
                 uint32_t idx = static_cast<uint32_t>(std::stoull(key));
                 return idx < as_string()->value.length();
             }
-            return false;
+            return StringPrototypes::get(key).has_value();
         case JsType::Number:
-            return false;
+            return NumberPrototypes::get(key).has_value();
         case JsType::Uninitialized:
             Exception::throw_uninitialized_reference("#<Object>");
             return false;
