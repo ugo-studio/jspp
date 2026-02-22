@@ -389,28 +389,5 @@ namespace jspp
                 target.set_own_property(key, source.get_property_with_receiver(key, source));
             }
         }
-
-        inline AnyValue array_destructuring_assignment(std::span<AnyValue *> left, std::span<const AnyValue> right, std::span<const std::optional<std::string>> prop_names, const AnyValue &array_proto)
-        {
-            size_t right_size = right.size();
-            size_t prop_names_size = prop_names.size();
-            for (size_t i = left.size(); i-- > 0;) // Iterate backwards
-            {
-                if (left[i])
-                {
-                    auto name = prop_names_size > i ? prop_names[i] : std::nullopt;
-                    auto value = right_size > i ? right[i] : Constants::UNDEFINED;
-                    if (name.has_value())
-                    {
-                        left[i]->set_own_property(name.value(), value);
-                    }
-                    else
-                    {
-                        *left[i] = value;
-                    }
-                }
-            }
-            return AnyValue::make_array_with_proto(right, array_proto);
-        }
     }
 }

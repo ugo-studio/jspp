@@ -387,7 +387,7 @@ export function collectBlockScopedDeclarations(
 
 export function isFunctionUsedAsValue(
     this: CodeGenerator,
-    decl: ts.FunctionDeclaration | ts.ClassDeclaration | ts.VariableDeclaration,
+    decl: ts.FunctionDeclaration | ts.ClassDeclaration,
     root: ts.Node,
 ): boolean {
     const name = decl.name?.getText();
