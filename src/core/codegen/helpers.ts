@@ -31,10 +31,23 @@ export function getDeclaredSymbols(
     node: ts.Node,
 ): Set<string> {
     const symbols = new Set<string>();
+
+    const collectNames = (name: ts.BindingName) => {
+        if (ts.isIdentifier(name)) {
+            symbols.add(name.text);
+        } else {
+            name.elements.forEach((element) => {
+                if (ts.isBindingElement(element)) {
+                    collectNames(element.name);
+                }
+            });
+        }
+    };
+
     const visitor = (child: ts.Node) => {
         if (ts.isVariableDeclaration(child)) {
             // Handles let, const, var
-            symbols.add(child.name.getText());
+            collectNames(child.name);
         } else if (ts.isFunctionDeclaration(child) && child.name) {
             // Handles function declarations
             symbols.add(child.name.getText());
@@ -46,10 +59,10 @@ export function getDeclaredSymbols(
             symbols.add(child.name.getText());
         } else if (ts.isParameter(child)) {
             // Handles function parameters
-            symbols.add(child.name.getText());
+            collectNames(child.name);
         } else if (ts.isCatchClause(child) && child.variableDeclaration) {
             // Handles catch clause variable
-            symbols.add(child.variableDeclaration.name.getText());
+            collectNames(child.variableDeclaration.name);
         }
         ts.forEachChild(child, visitor);
     };
@@ -271,13 +284,10 @@ export function hoistDeclaration(
     hoistedSymbols: DeclaredSymbols,
     scopeNode: ts.Node,
 ) {
-    const name = decl.name?.getText();
-    if (!name) {
-        return `/* Unknown declaration name: ${ts.SyntaxKind[decl.kind]} */`;
-    }
-
-    const isLet = (decl.parent.flags & (ts.NodeFlags.Let)) !== 0;
-    const isConst = (decl.parent.flags & (ts.NodeFlags.Const)) !== 0;
+    const isLet = ts.isVariableDeclaration(decl) &&
+        (decl.parent.flags & (ts.NodeFlags.Let)) !== 0;
+    const isConst = ts.isVariableDeclaration(decl) &&
+        (decl.parent.flags & (ts.NodeFlags.Const)) !== 0;
     const declType = isLet
         ? DeclarationType.let
         : isConst
@@ -290,72 +300,105 @@ export function hoistDeclaration(
         ? DeclarationType.enum
         : DeclarationType.var;
 
-    if (hoistedSymbols.has(name)) {
-        const existingSymbol = hoistedSymbols.get(name);
-        // Don't allow multiple declaration of `let`,`const`,`function`, `class` or `enum` variables
-        if (
-            existingSymbol?.type === DeclarationType.let ||
-            existingSymbol?.type === DeclarationType.const ||
-            existingSymbol?.type === DeclarationType.function ||
-            existingSymbol?.type === DeclarationType.class ||
-            existingSymbol?.type === DeclarationType.enum ||
-            existingSymbol?.type !== declType
-        ) {
-            throw new CompilerError(
-                `Identifier '${name}' has already been declared.`,
-                decl,
-                "SyntaxError",
-            );
-        }
-        // `var` variables can be declared multiple times
-        return "";
-    } else {
-        // Add the symbol to the hoisted symbols
-        if (
-            ts.isFunctionDeclaration(decl) ||
-            (ts.isVariableDeclaration(decl) && decl.initializer &&
-                (ts.isArrowFunction(decl.initializer) ||
-                    ts.isFunctionExpression(decl.initializer)))
-        ) {
-            const funcExpr = ts.isVariableDeclaration(decl)
-                ? decl.initializer as ts.ArrowFunction | ts.FunctionExpression
-                : decl;
-            const isAsync = this.isAsyncFunction(funcExpr);
-            const isGenerator = this.isGeneratorFunction(funcExpr);
-            hoistedSymbols.add(name, {
-                type: declType,
-                features: { isAsync, isGenerator },
-            });
-            // Don't hoist declarations not used as a variable
-            // They will be called with their native lambda/value
-            if (
-                !this.isDeclarationUsedAsValue(
-                    decl as ts.FunctionDeclaration | ts.VariableDeclaration,
-                    scopeNode,
-                ) &&
-                !this.isDeclarationUsedBeforeInitialization(name, scopeNode)
-            ) {
+    const hoistName = (nameNode: ts.BindingName): string => {
+        if (ts.isIdentifier(nameNode)) {
+            const name = nameNode.text;
+            if (hoistedSymbols.has(name)) {
+                const existingSymbol = hoistedSymbols.get(name);
+                // Don't allow multiple declaration of `let`,`const`,`function`, `class` or `enum` variables
+                if (
+                    existingSymbol?.type === DeclarationType.let ||
+                    existingSymbol?.type === DeclarationType.const ||
+                    existingSymbol?.type === DeclarationType.function ||
+                    existingSymbol?.type === DeclarationType.class ||
+                    existingSymbol?.type === DeclarationType.enum ||
+                    existingSymbol?.type !== declType
+                ) {
+                    throw new CompilerError(
+                        `Identifier '${name}' has already been declared.`,
+                        decl,
+                        "SyntaxError",
+                    );
+                }
+                // `var` variables can be declared multiple times
                 return "";
+            } else {
+                // Add the symbol to the hoisted symbols
+                if (
+                    ts.isFunctionDeclaration(decl) ||
+                    (ts.isVariableDeclaration(decl) && decl.initializer &&
+                        nameNode === decl.name &&
+                        (ts.isArrowFunction(decl.initializer) ||
+                            ts.isFunctionExpression(decl.initializer)))
+                ) {
+                    const funcExpr = ts.isVariableDeclaration(decl)
+                        ? decl.initializer as
+                            | ts.ArrowFunction
+                            | ts.FunctionExpression
+                        : decl;
+                    const isAsync = this.isAsyncFunction(funcExpr);
+                    const isGenerator = this.isGeneratorFunction(funcExpr);
+                    hoistedSymbols.add(name, {
+                        type: declType,
+                        features: { isAsync, isGenerator },
+                    });
+                    // Don't hoist declarations not used as a variable
+                    // They will be called with their native lambda/value
+                    if (
+                        !this.isDeclarationUsedAsValue(
+                            decl as
+                                | ts.FunctionDeclaration
+                                | ts.VariableDeclaration,
+                            scopeNode,
+                        ) &&
+                        !this.isDeclarationUsedBeforeInitialization(
+                            name,
+                            scopeNode,
+                        )
+                    ) {
+                        return "";
+                    }
+                } else {
+                    hoistedSymbols.add(name, { type: declType });
+                }
+            }
+
+            const scope = this.getScopeForNode(decl);
+            const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                name,
+                scope,
+            )!;
+
+            const initializer = isLet || isConst || ts.isClassDeclaration(decl)
+                ? "jspp::Constants::UNINITIALIZED"
+                : "jspp::Constants::UNDEFINED";
+
+            if (typeInfo.needsHeapAllocation) {
+                return `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;
+            } else {
+                return `${this.indent()}jspp::AnyValue ${name} = ${initializer};\n`;
             }
         } else {
-            hoistedSymbols.add(name, { type: declType });
+            let code = "";
+            nameNode.elements.forEach((element) => {
+                if (ts.isBindingElement(element)) {
+                    code += hoistName(element.name);
+                }
+            });
+            return code;
         }
-    }
+    };
 
-    const scope = this.getScopeForNode(decl);
-    const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
-        name,
-        scope,
-    )!;
-
-    const initializer = isLet || isConst || ts.isClassDeclaration(decl)
-        ? "jspp::Constants::UNINITIALIZED"
-        : "jspp::Constants::UNDEFINED";
-
-    if (typeInfo.needsHeapAllocation) {
-        return `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;
+    if (ts.isVariableDeclaration(decl)) {
+        return hoistName(decl.name);
     } else {
-        return `${this.indent()}jspp::AnyValue ${name} = ${initializer};\n`;
+        const nameNode = decl.name;
+        if (!nameNode) {
+            return `/* Unknown declaration name: ${
+                ts.SyntaxKind[decl.kind]
+            } */`;
+        }
+        return hoistName(nameNode);
     }
 }
 

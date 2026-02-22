@@ -27,6 +27,7 @@ import {
   prepareScopeSymbolsForVisit,
   validateFunctionParams,
 } from "./helpers.js";
+import { generateDestructuring } from "./destructuring-handlers.js";
 import { visit } from "./visitor.js";
 
 const MODULE_NAME = "__entry_point__";
@@ -62,6 +63,7 @@ export class CodeGenerator {
     public isDeclarationUsedBeforeInitialization =
         isDeclarationUsedBeforeInitialization;
     public validateFunctionParams = validateFunctionParams;
+    public generateDestructuring = generateDestructuring;
 
     // function handlers
     public generateLambdaComponents = generateLambdaComponents;

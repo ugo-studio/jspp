@@ -110,13 +110,26 @@ export function generateLambdaComponents(
     let nativeFuncArgs = "";
     let nativeParamsContent = "";
     this.validateFunctionParams(node.parameters).forEach((p, i) => {
-        const name = p.name.getText();
+        const name = ts.isIdentifier(p.name)
+            ? p.name.text
+            : this.generateUniqueName(
+                `__param_native_${i}_`,
+                visitContext.localScopeSymbols,
+            );
         const defaultValue = p.initializer
             ? this.visit(p.initializer, visitContext)
             : !!p.dotDotDotToken
             ? "jspp::AnyValue::make_array(std::vector<jspp::AnyValue>{})"
             : "jspp::Constants::UNDEFINED";
         nativeFuncArgs += `, const jspp::AnyValue& ${name} = ${defaultValue}`;
+
+        if (!ts.isIdentifier(p.name)) {
+            nativeParamsContent += this.generateDestructuring(
+                p.name,
+                name,
+                visitContext,
+            ) + ";\n";
+        }
     });
 
     // Extract lambda parameters from arguments span/vector
@@ -124,46 +137,67 @@ export function generateLambdaComponents(
         let paramsCode = "";
         this.validateFunctionParams(node.parameters).forEach(
             (p, i) => {
-                const name = p.name.getText();
-                const defaultValue = p.initializer
-                    ? this.visit(p.initializer, visitContext)
-                    : "jspp::Constants::UNDEFINED";
+                if (ts.isIdentifier(p.name)) {
+                    const name = p.name.text;
+                    const defaultValue = p.initializer
+                        ? this.visit(p.initializer, visitContext)
+                        : "jspp::Constants::UNDEFINED";
 
-                // Add paramerter to local context
-                visitContext.localScopeSymbols.add(name, {
-                    type: DeclarationType.let,
-                    checks: { initialized: true },
-                });
+                    // Add paramerter to local context
+                    visitContext.localScopeSymbols.add(name, {
+                        type: DeclarationType.let,
+                        checks: { initialized: true },
+                    });
 
-                const scope = this.getScopeForNode(p);
-                const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
-                    name,
-                    scope,
-                )!;
+                    const scope = this.getScopeForNode(p);
+                    const typeInfo = this.typeAnalyzer.scopeManager
+                        .lookupFromScope(
+                            name,
+                            scope,
+                        )!;
 
-                // Handle rest parameters
-                if (!!p.dotDotDotToken) {
+                    // Handle rest parameters
+                    if (!!p.dotDotDotToken) {
+                        const initValue =
+                            `jspp::AnyValue::make_array(${argsName}.subspan(${i}))`;
+                        if (typeInfo.needsHeapAllocation) {
+                            paramsCode +=
+                                `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initValue});\n`;
+                        } else {
+                            paramsCode +=
+                                `${this.indent()}jspp::AnyValue ${name} = ${initValue};\n`;
+                        }
+                        return;
+                    }
+
+                    // Normal parameter
                     const initValue =
-                        `jspp::AnyValue::make_array(${argsName}.subspan(${i}))`;
-                    if (typeInfo.needsHeapAllocation) {
+                        `${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue}`;
+                    if (typeInfo && typeInfo.needsHeapAllocation) {
                         paramsCode +=
                             `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initValue});\n`;
                     } else {
                         paramsCode +=
                             `${this.indent()}jspp::AnyValue ${name} = ${initValue};\n`;
                     }
-                    return;
-                }
-
-                // Normal parameter
-                const initValue =
-                    `${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue}`;
-                if (typeInfo && typeInfo.needsHeapAllocation) {
-                    paramsCode +=
-                        `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initValue});\n`;
                 } else {
+                    const tempName = this.generateUniqueName(
+                        `__param_tmp_${i}_`,
+                        visitContext.localScopeSymbols,
+                    );
+                    const defaultValue = p.initializer
+                        ? this.visit(p.initializer, visitContext)
+                        : "jspp::Constants::UNDEFINED";
+
+                    const initValue =
+                        `${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue}`;
                     paramsCode +=
-                        `${this.indent()}jspp::AnyValue ${name} = ${initValue};\n`;
+                        `${this.indent()}auto ${tempName} = ${initValue};\n`;
+                    paramsCode += this.generateDestructuring(
+                        p.name,
+                        tempName,
+                        visitContext,
+                    ) + ";\n";
                 }
             },
         );

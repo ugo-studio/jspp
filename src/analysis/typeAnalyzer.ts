@@ -593,46 +593,70 @@ export class TypeAnalyzer {
 
                         if (isAmbient) return;
 
-                        const name = node.name.getText();
                         const isBlockScoped = (node.parent.flags &
                             (ts.NodeFlags.Let | ts.NodeFlags.Const)) !== 0;
                         const isConst =
                             (node.parent.flags & ts.NodeFlags.Const) !== 0;
 
-                        let type = "auto";
-                        let needsHeap = false;
-                        if (node.initializer) {
-                            if (
-                                ts.isArrayLiteralExpression(node.initializer)
-                            ) {
-                                type = "array";
-                            } else if (
-                                ts.isArrowFunction(node.initializer) ||
-                                ts.isFunctionExpression(node.initializer)
-                            ) {
-                                type = "function";
-                                needsHeap = true;
-                            } else if (ts.isIdentifier(node.initializer)) {
-                                const typeInfo = this.scopeManager.lookup(
-                                    node.initializer.text,
-                                );
-                                needsHeap = typeInfo?.needsHeapAllocation ??
-                                    false;
-                            }
-                        }
+                        const defineName = (nameNode: ts.BindingName) => {
+                            if (ts.isIdentifier(nameNode)) {
+                                const name = nameNode.text;
+                                let type = "auto";
+                                let needsHeap = false;
 
-                        const typeInfo: TypeInfo = {
-                            type,
-                            declaration: node,
-                            isConst,
-                            needsHeapAllocation: needsHeap,
+                                // Type inference only for simple identifiers
+                                if (
+                                    nameNode === node.name && node.initializer
+                                ) {
+                                    if (
+                                        ts.isArrayLiteralExpression(
+                                            node.initializer,
+                                        )
+                                    ) {
+                                        type = "array";
+                                    } else if (
+                                        ts.isArrowFunction(node.initializer) ||
+                                        ts.isFunctionExpression(
+                                            node.initializer,
+                                        )
+                                    ) {
+                                        type = "function";
+                                        needsHeap = true;
+                                    } else if (
+                                        ts.isIdentifier(node.initializer)
+                                    ) {
+                                        const typeInfo = this.scopeManager
+                                            .lookup(
+                                                node.initializer.text,
+                                            );
+                                        needsHeap =
+                                            typeInfo?.needsHeapAllocation ??
+                                                false;
+                                    }
+                                }
+
+                                const typeInfo: TypeInfo = {
+                                    type,
+                                    declaration: node,
+                                    isConst,
+                                    needsHeapAllocation: needsHeap,
+                                };
+
+                                if (isBlockScoped) {
+                                    this.scopeManager.define(name, typeInfo);
+                                } else {
+                                    this.scopeManager.defineVar(name, typeInfo);
+                                }
+                            } else {
+                                nameNode.elements.forEach((element) => {
+                                    if (ts.isBindingElement(element)) {
+                                        defineName(element.name);
+                                    }
+                                });
+                            }
                         };
 
-                        if (isBlockScoped) {
-                            this.scopeManager.define(name, typeInfo);
-                        } else {
-                            this.scopeManager.defineVar(name, typeInfo);
-                        }
+                        defineName(node.name);
                     }
                 },
             },

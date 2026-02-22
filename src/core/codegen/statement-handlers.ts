@@ -672,10 +672,23 @@ export function visitTryStatement(
                 this.indentationLevel++;
 
                 if (tryStmt.catchClause.variableDeclaration) {
-                    const varName = tryStmt.catchClause.variableDeclaration.name
-                        .getText();
-                    code +=
-                        `${this.indent()}jspp::AnyValue ${varName} = ${caughtValVar};\n`;
+                    if (
+                        ts.isIdentifier(
+                            tryStmt.catchClause.variableDeclaration.name,
+                        )
+                    ) {
+                        const varName = tryStmt.catchClause.variableDeclaration
+                            .name
+                            .getText();
+                        code +=
+                            `${this.indent()}jspp::AnyValue ${varName} = ${caughtValVar};\n`;
+                    } else {
+                        code += this.generateDestructuring(
+                            tryStmt.catchClause.variableDeclaration.name,
+                            caughtValVar,
+                            context,
+                        ) + ";\n";
+                    }
                 }
 
                 const catchContext = { ...innerContext, exceptionName };
@@ -773,10 +786,23 @@ export function visitTryStatement(
                 this.indentationLevel++;
 
                 if (tryStmt.catchClause.variableDeclaration) {
-                    const varName = tryStmt.catchClause.variableDeclaration.name
-                        .getText();
-                    code +=
-                        `${this.indent()}jspp::AnyValue ${varName} = ${caughtValVar};\n`;
+                    if (
+                        ts.isIdentifier(
+                            tryStmt.catchClause.variableDeclaration.name,
+                        )
+                    ) {
+                        const varName = tryStmt.catchClause.variableDeclaration
+                            .name
+                            .getText();
+                        code +=
+                            `${this.indent()}jspp::AnyValue ${varName} = ${caughtValVar};\n`;
+                    } else {
+                        code += this.generateDestructuring(
+                            tryStmt.catchClause.variableDeclaration.name,
+                            caughtValVar,
+                            context,
+                        ) + ";\n";
+                    }
                 }
 
                 code += this.visit(tryStmt.catchClause.block, newContext);
@@ -940,13 +966,22 @@ export function visitCatchClause(
     }
 
     if (catchClause.variableDeclaration) {
-        const varName = catchClause.variableDeclaration.name.getText();
         let code = `{\n`;
         this.indentationLevel++;
 
-        // The JS exception variable is always local to the catch block
-        code +=
-            `${this.indent()}jspp::AnyValue ${varName} = jspp::Exception::exception_to_any_value(${exceptionName});\n`;
+        const exceptionValueCode =
+            `jspp::Exception::exception_to_any_value(${exceptionName})`;
+
+        if (ts.isIdentifier(catchClause.variableDeclaration.name)) {
+            const varName = catchClause.variableDeclaration.name.text;
+            code += `${this.indent()}jspp::AnyValue ${varName} = ${exceptionValueCode};\n`;
+        } else {
+            code += this.generateDestructuring(
+                catchClause.variableDeclaration.name,
+                exceptionValueCode,
+                context,
+            ) + ";\n";
+        }
 
         code += this.visit(catchClause.block, context);
         this.indentationLevel--;

@@ -21,6 +21,15 @@ export function visitVariableDeclaration(
     context: VisitContext,
 ): string {
     const varDecl = node as ts.VariableDeclaration;
+
+    if (!ts.isIdentifier(varDecl.name)) {
+        // Handle destructuring
+        const rhsCode = varDecl.initializer
+            ? this.visit(varDecl.initializer, context)
+            : "jspp::Constants::UNDEFINED";
+        return this.generateDestructuring(varDecl.name, rhsCode, context);
+    }
+
     const name = varDecl.name.getText();
     const scope = this.getScopeForNode(varDecl);
     const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(

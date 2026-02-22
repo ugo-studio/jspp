@@ -389,5 +389,24 @@ namespace jspp
                 target.set_own_property(key, source.get_property_with_receiver(key, source));
             }
         }
+
+        inline AnyValue get_rest_object(const AnyValue &source, const std::vector<std::string> &excluded_keys)
+        {
+            if (source.is_null() || source.is_undefined())
+                return AnyValue::make_object({});
+
+            auto result = AnyValue::make_object({});
+            auto keys = get_object_keys(source);
+            std::unordered_set<std::string> excluded(excluded_keys.begin(), excluded_keys.end());
+
+            for (const auto &key : keys)
+            {
+                if (excluded.find(key) == excluded.end())
+                {
+                    result.set_own_property(key, source.get_property_with_receiver(key, source));
+                }
+            }
+            return result;
+        }
     }
 }

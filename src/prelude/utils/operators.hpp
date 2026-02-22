@@ -327,4 +327,11 @@ namespace jspp
             lhs = rhs;
         return lhs;
     }
+
+    inline AnyValue undefined_coalesce(const AnyValue &lhs, const AnyValue &rhs)
+    {
+        if (!lhs.is_undefined())
+            return lhs;
+        return rhs;
+    }
 }
