@@ -89,7 +89,7 @@ export function generateDestructuring(
             innerCode +=
                 `${this.indent()}auto ${nextVar} = ${iterVar}.get_own_property("next");\n`;
 
-            elements.forEach((element, index) => {
+            elements.forEach((element) => {
                 if (ts.isOmittedExpression(element)) {
                     innerCode +=
                         `${this.indent()}${nextVar}.call(${iterVar}, {}, "next");\n`;
@@ -170,6 +170,11 @@ export function generateDestructuring(
                     innerCode += genAssignment(target, elementValueCode);
                 }
             });
+
+            // Call the return method to clean resources
+            innerCode +=
+                `${this.indent()}jspp::Access::call_optional_property(${iterVar}, "return", {});\n`;
+
             return innerCode;
         } else if (
             ts.isObjectBindingPattern(pattern) ||
@@ -227,7 +232,7 @@ export function generateDestructuring(
                         seenKeys.map((k) =>
                             k.startsWith('"') && k.endsWith('"')
                                 ? k
-                                : `(${k}).to_std_string()`
+                                : `(${k}).to_property_key()`
                         ).join(", ")
                     }}`;
                     const restValueCode =
