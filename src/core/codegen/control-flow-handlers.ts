@@ -612,8 +612,8 @@ export function visitSwitchStatement(
 
         // Generate AnyValue wrapper
         if (
-            this.isFunctionUsedAsValue(stmt, node) ||
-            this.isFunctionUsedBeforeDeclaration(funcName, node)
+            this.isDeclarationUsedAsValue(stmt, node) ||
+            this.isDeclarationUsedBeforeInitialization(funcName, node)
         ) {
             const wrappedLambda = this.generateWrappedLambda(lambdaComps);
             code += `${this.indent()}*${funcName} = ${wrappedLambda};\n`;

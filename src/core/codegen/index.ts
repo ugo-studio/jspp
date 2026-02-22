@@ -19,8 +19,9 @@ import {
   indent,
   isAsyncFunction,
   isBuiltinObject,
-  isFunctionUsedAsValue,
-  isFunctionUsedBeforeDeclaration,
+  isDeclarationCalledAsFunction,
+  isDeclarationUsedAsValue,
+  isDeclarationUsedBeforeInitialization,
   isGeneratorFunction,
   markSymbolAsInitialized,
   prepareScopeSymbolsForVisit,
@@ -56,8 +57,10 @@ export class CodeGenerator {
     public isAsyncFunction = isAsyncFunction;
     public prepareScopeSymbolsForVisit = prepareScopeSymbolsForVisit;
     public markSymbolAsInitialized = markSymbolAsInitialized;
-    public isFunctionUsedAsValue = isFunctionUsedAsValue;
-    public isFunctionUsedBeforeDeclaration = isFunctionUsedBeforeDeclaration;
+    public isDeclarationCalledAsFunction = isDeclarationCalledAsFunction;
+    public isDeclarationUsedAsValue = isDeclarationUsedAsValue;
+    public isDeclarationUsedBeforeInitialization =
+        isDeclarationUsedBeforeInitialization;
     public validateFunctionParams = validateFunctionParams;
 
     // function handlers

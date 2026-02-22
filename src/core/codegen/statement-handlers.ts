@@ -119,13 +119,15 @@ export function visitSourceFile(
         );
 
         // Generate native lambda
-        const nativeLambda = this.generateNativeLambda(lambdaComps);
-        code += `${this.indent()}auto ${nativeName} = ${nativeLambda};\n`;
+        if (this.isDeclarationCalledAsFunction(stmt, node)) {
+            const nativeLambda = this.generateNativeLambda(lambdaComps);
+            code += `${this.indent()}auto ${nativeName} = ${nativeLambda};\n`;
+        }
 
         // Generate AnyValue wrapped lamda
         if (
-            this.isFunctionUsedAsValue(stmt, node) ||
-            this.isFunctionUsedBeforeDeclaration(funcName, node)
+            this.isDeclarationUsedAsValue(stmt, node) ||
+            this.isDeclarationUsedBeforeInitialization(funcName, node)
         ) {
             const wrappedLambda = this.generateWrappedLambda(lambdaComps);
             code += `${this.indent()}*${funcName} = ${wrappedLambda};\n`;
@@ -257,13 +259,15 @@ export function visitBlock(
         );
 
         // Generate native lambda
-        const nativeLambda = this.generateNativeLambda(lambdaComps);
-        code += `${this.indent()}auto ${nativeName} = ${nativeLambda};\n`;
+        if (this.isDeclarationCalledAsFunction(stmt, node)) {
+            const nativeLambda = this.generateNativeLambda(lambdaComps);
+            code += `${this.indent()}auto ${nativeName} = ${nativeLambda};\n`;
+        }
 
         // Generate AnyValue wrapped lamda
         if (
-            this.isFunctionUsedAsValue(stmt, node) ||
-            this.isFunctionUsedBeforeDeclaration(funcName, node)
+            this.isDeclarationUsedAsValue(stmt, node) ||
+            this.isDeclarationUsedBeforeInitialization(funcName, node)
         ) {
             const wrappedLambda = this.generateWrappedLambda(lambdaComps);
             code += `${this.indent()}*${funcName} = ${wrappedLambda};\n`;
