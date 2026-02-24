@@ -85,7 +85,7 @@ export function generateDestructuring(
             );
 
             innerCode +=
-                `${this.indent()}auto ${iterVar} = jspp::Access::get_object_value_iterator(${valueCode}, "destructuring");\n`;
+                `${this.indent()}auto ${iterVar} = jspp::Access::get_object_iterator(${valueCode}, "destructuring");\n`;
             innerCode +=
                 `${this.indent()}auto ${nextVar} = ${iterVar}.get_own_property("next");\n`;
 
@@ -173,7 +173,7 @@ export function generateDestructuring(
 
             // Call the return method to clean resources
             innerCode +=
-                `${this.indent()}jspp::Access::call_optional_property(${iterVar}, "return", {});\n`;
+                `${this.indent()}jspp::Access::call_optional_property_with_optional_call(${iterVar}, "return", {}, "return");\n`;
 
             return innerCode;
         } else if (

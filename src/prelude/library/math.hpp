@@ -264,7 +264,7 @@ struct MathInit {
         Math.define_data_property("sumPrecise", AnyValue::make_function([](const AnyValue&, std::span<const AnyValue> args) -> AnyValue {
             if (args.empty()) throw Exception::make_exception("Math.sumPrecise requires an iterable", "TypeError");
             
-            auto iterObj = jspp::Access::get_object_value_iterator(args[0], "iterable");
+            auto iterObj = jspp::Access::get_object_iterator(args[0], "iterable");
             auto nextFunc = iterObj.get_own_property("next");
             
             double sum = 0;

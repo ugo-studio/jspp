@@ -155,7 +155,7 @@ namespace jspp
             return keys;
         }
 
-        inline AnyValue get_object_value_iterator(const AnyValue &obj, const std::string &name)
+        inline AnyValue get_object_iterator(const AnyValue &obj, const std::string &name)
         {
             if (obj.is_iterator())
             {
@@ -183,7 +183,7 @@ namespace jspp
             throw jspp::Exception::make_exception(name + " is not iterable", "TypeError");
         }
 
-        inline AnyValue get_async_object_value_iterator(const AnyValue &obj, const std::string &name)
+        inline AnyValue get_object_async_iterator(const AnyValue &obj, const std::string &name)
         {
             if (obj.is_async_iterator())
                 return obj;
@@ -362,7 +362,7 @@ namespace jspp
             }
             else if (source.is_object() || source.is_function() || source.is_iterator())
             {
-                auto iter = get_object_value_iterator(source, "spread target");
+                auto iter = get_object_iterator(source, "spread target");
                 auto next_fn = iter.get_own_property("next");
                 while (true)
                 {

@@ -58,7 +58,7 @@ struct ArrayInit
 
             auto iteratorSym = jspp::WellKnownSymbols::iterator;
             if (items.has_property(iteratorSym->key)) {
-                auto iter = jspp::Access::get_object_value_iterator(items, "Array.from source");
+                auto iter = jspp::Access::get_object_iterator(items, "Array.from source");
                 auto nextFn = iter.get_own_property("next");
                 
                 size_t k = 0;

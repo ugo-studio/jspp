@@ -310,10 +310,10 @@ export function visitForOfStatement(
     code += `${this.indent()}auto ${iterableRef} = ${derefIterable};\n`;
     if (isAwait) {
         code +=
-            `${this.indent()}auto ${iterator} = jspp::Access::get_async_object_value_iterator(${iterableRef}, ${varName});\n`;
+            `${this.indent()}auto ${iterator} = jspp::Access::get_object_async_iterator(${iterableRef}, ${varName});\n`;
     } else {
         code +=
-            `${this.indent()}auto ${iterator} = jspp::Access::get_object_value_iterator(${iterableRef}, ${varName});\n`;
+            `${this.indent()}auto ${iterator} = jspp::Access::get_object_iterator(${iterableRef}, ${varName});\n`;
     }
     code +=
         `${this.indent()}auto ${nextFunc} = ${iterator}.get_own_property("next");\n`;
