@@ -6,7 +6,7 @@
 #include "any_value.hpp"
 
 // Define Symbol as a function
-inline auto Symbol = jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+inline auto Symbol = jspp::AnyValue::make_function([](jspp::AnyValue thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                    {
     std::string description = "";
     if (!args.empty() && !args[0].is_undefined()) {
@@ -20,13 +20,13 @@ struct SymbolInit
     SymbolInit()
     {
         // Static methods
-        Symbol.define_data_property("for", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+        Symbol.define_data_property("for", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                          {
              std::string key = "";
              if (!args.empty()) key = args[0].to_std_string();
              return jspp::AnyValue::from_symbol(jspp::JsSymbol::for_global(key)); }, "for"));
 
-        Symbol.define_data_property("keyFor", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+        Symbol.define_data_property("keyFor", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                             {
              if (args.empty() || !args[0].is_symbol()) throw jspp::Exception::make_exception("Symbol.keyFor requires a symbol", "TypeError");
              auto sym = args[0].as_symbol();

@@ -13,7 +13,7 @@ inline auto process = jspp::AnyValue::make_object({
     {"argv", jspp::AnyValue::make_array(std::vector<jspp::AnyValue>{})},
     {"env", jspp::AnyValue::make_object({})},
     {"platform", jspp::AnyValue::make_string(JSPP_PLATFORM)},
-    {"exit", jspp::AnyValue::make_function([](const jspp::AnyValue&, std::span<const jspp::AnyValue> args) -> jspp::AnyValue {
+    {"exit", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue {
         int code = 0;
         if (!args.empty() && args[0].is_number()) {
             code = static_cast<int>(args[0].as_double());

@@ -99,7 +99,9 @@ namespace jspp
         handle_type handle;
 
         explicit JsIterator(handle_type h) : handle(h) {}
-        JsIterator(JsIterator &&other) noexcept : handle(std::exchange(other.handle, nullptr)) {}
+        JsIterator(JsIterator &&other) noexcept 
+            : handle(std::exchange(other.handle, nullptr)),
+              props(std::move(other.props)) {}
 
         // Delete copy constructor/assignment to ensure unique ownership of the handle
         JsIterator(const JsIterator &) = delete;
@@ -118,7 +120,7 @@ namespace jspp
         NextResult return_(const T &val = T());
         NextResult throw_(const AnyValue &err);
         std::vector<T> to_vector();
-        AnyValue get_property(const std::string &key, const AnyValue &thisVal);
-        AnyValue set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal);
+        AnyValue get_property(const std::string &key, AnyValue thisVal);
+        AnyValue set_property(const std::string &key, AnyValue value, AnyValue thisVal);
     };
 }

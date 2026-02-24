@@ -7,7 +7,7 @@
 
 namespace jspp
 {
-    inline void AnyValue::define_data_property(const std::string &key, const AnyValue &value)
+    inline void AnyValue::define_data_property(const std::string &key, AnyValue value)
     {
         if (is_object())
         {
@@ -29,7 +29,7 @@ namespace jspp
         }
     }
 
-    inline void AnyValue::define_data_property(const AnyValue &key, const AnyValue &value)
+    inline void AnyValue::define_data_property(const AnyValue &key, AnyValue value)
     {
         if (key.is_symbol())
             define_data_property(key.as_symbol()->key, value);
@@ -37,12 +37,12 @@ namespace jspp
             define_data_property(key.to_std_string(), value);
     }
 
-    inline void AnyValue::define_data_property(const std::string &key, const AnyValue &value, bool writable, bool enumerable, bool configurable)
+    inline void AnyValue::define_data_property(const std::string &key, AnyValue value, bool writable, bool enumerable, bool configurable)
     {
         define_data_property(key, AnyValue::make_data_descriptor(value, writable, enumerable, configurable));
     }
 
-    inline void AnyValue::define_getter(const std::string &key, const AnyValue &getter)
+    inline void AnyValue::define_getter(const std::string &key, AnyValue getter)
     {
         if (is_object())
         {
@@ -55,14 +55,14 @@ namespace jspp
                 if (val.is_accessor_descriptor())
                 {
                     auto desc = val.as_accessor_descriptor();
-                    desc->get = [getter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                    desc->get = [getter](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                     {
                         return getter.call(thisVal, args);
                     };
                 }
                 else
                 {
-                    auto getFunc = [getter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                    auto getFunc = [getter](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                     {
                         return getter.call(thisVal, args);
                     };
@@ -71,7 +71,7 @@ namespace jspp
             }
             else
             {
-                auto getFunc = [getter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                auto getFunc = [getter](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                 {
                     return getter.call(thisVal, args);
                 };
@@ -86,14 +86,14 @@ namespace jspp
             if (it != props.end() && it->second.is_accessor_descriptor())
             {
                 auto desc = it->second.as_accessor_descriptor();
-                desc->get = [getter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                desc->get = [getter](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                 {
                     return getter.call(thisVal, args);
                 };
             }
             else
             {
-                auto getFunc = [getter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                auto getFunc = [getter](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                 {
                     return getter.call(thisVal, args);
                 };
@@ -102,7 +102,7 @@ namespace jspp
         }
     }
 
-    inline void AnyValue::define_getter(const AnyValue &key, const AnyValue &getter)
+    inline void AnyValue::define_getter(const AnyValue &key, AnyValue getter)
     {
         if (key.is_symbol())
             define_getter(key.as_symbol()->key, getter);
@@ -110,7 +110,7 @@ namespace jspp
             define_getter(key.to_std_string(), getter);
     }
 
-    inline void AnyValue::define_setter(const std::string &key, const AnyValue &setter)
+    inline void AnyValue::define_setter(const std::string &key, AnyValue setter)
     {
         if (is_object())
         {
@@ -123,7 +123,7 @@ namespace jspp
                 if (val.is_accessor_descriptor())
                 {
                     auto desc = val.as_accessor_descriptor();
-                    desc->set = [setter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                    desc->set = [setter](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                     {
                         if (args.empty())
                             return Constants::UNDEFINED;
@@ -132,7 +132,7 @@ namespace jspp
                 }
                 else
                 {
-                    auto setFunc = [setter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                    auto setFunc = [setter](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                     {
                         if (args.empty())
                             return Constants::UNDEFINED;
@@ -143,7 +143,7 @@ namespace jspp
             }
             else
             {
-                auto setFunc = [setter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                auto setFunc = [setter](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                 {
                     if (args.empty())
                         return Constants::UNDEFINED;
@@ -160,7 +160,7 @@ namespace jspp
             if (it != props.end() && it->second.is_accessor_descriptor())
             {
                 auto desc = it->second.as_accessor_descriptor();
-                desc->set = [setter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                desc->set = [setter](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                 {
                     if (args.empty())
                         return Constants::UNDEFINED;
@@ -169,7 +169,7 @@ namespace jspp
             }
             else
             {
-                auto setFunc = [setter](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                auto setFunc = [setter](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                 {
                     if (args.empty())
                         return Constants::UNDEFINED;
@@ -180,7 +180,7 @@ namespace jspp
         }
     }
 
-    inline void AnyValue::define_setter(const AnyValue &key, const AnyValue &setter)
+    inline void AnyValue::define_setter(const AnyValue &key, AnyValue setter)
     {
         if (key.is_symbol())
             define_setter(key.as_symbol()->key, setter);

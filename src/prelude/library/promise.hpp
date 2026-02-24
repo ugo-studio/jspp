@@ -5,7 +5,7 @@
 #include "any_value.hpp"
 #include "exception.hpp"
 
-inline auto Promise = jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+inline auto Promise = jspp::AnyValue::make_function([](jspp::AnyValue thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                     {
                                                         if (args.empty() || !args[0].is_function())
                                                         {
@@ -17,14 +17,14 @@ inline auto Promise = jspp::AnyValue::make_function([](const jspp::AnyValue &thi
                                                         auto state = promise.state; // Share state
 
                                                         // resolve function
-                                                        auto resolveFn = jspp::AnyValue::make_function([state](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+                                                        auto resolveFn = jspp::AnyValue::make_function([state](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                                                        {
         jspp::JsPromise p; p.state = state;
         p.resolve(args.empty() ? jspp::Constants::UNDEFINED : args[0]);
         return jspp::Constants::UNDEFINED; }, "resolve");
 
                                                         // reject function
-                                                        auto rejectFn = jspp::AnyValue::make_function([state](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+                                                        auto rejectFn = jspp::AnyValue::make_function([state](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                                                       {
         jspp::JsPromise p; p.state = state;
         p.reject(args.empty() ? jspp::Constants::UNDEFINED : args[0]);
@@ -52,21 +52,21 @@ struct PromiseInit
     PromiseInit()
     {
         // Promise.resolve(value)
-        Promise.define_data_property("resolve", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+        Promise.define_data_property("resolve", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                               {
             jspp::JsPromise p;
             p.resolve(args.empty() ? jspp::Constants::UNDEFINED : args[0]);
             return jspp::AnyValue::make_promise(p); }, "resolve"));
 
         // Promise.reject(reason)
-        Promise.define_data_property("reject", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+        Promise.define_data_property("reject", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                              {
             jspp::JsPromise p;
             p.reject(args.empty() ? jspp::Constants::UNDEFINED : args[0]);
             return jspp::AnyValue::make_promise(p); }, "reject"));
 
         // Promise.all(iterable)
-        Promise.define_data_property("all", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+        Promise.define_data_property("all", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                           {
              // Handle non-array iterable or empty args
              if (args.empty() || !args[0].is_array()) {
@@ -93,7 +93,7 @@ struct PromiseInit
              for (size_t i = 0; i < len; ++i) {
                  jspp::AnyValue item = arr->get_property(static_cast<uint32_t>(i));
                  
-                 auto handleResult = [masterState, results, count, i, rejected](const jspp::AnyValue& res) {
+                 auto handleResult = [masterState, results, count, i, rejected](jspp::AnyValue res) {
                       if (*rejected) return;
                       (*results)[i] = res;
                       (*count)--;
@@ -103,7 +103,7 @@ struct PromiseInit
                       }
                  };
                  
-                 auto handleReject = [masterState, rejected](const jspp::AnyValue& reason) {
+                 auto handleReject = [masterState, rejected](jspp::AnyValue reason) {
                       if (*rejected) return;
                       *rejected = true;
                       jspp::JsPromise p; p.state = masterState;

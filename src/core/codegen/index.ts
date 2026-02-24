@@ -108,7 +108,7 @@ export class CodeGenerator {
         mainCode += `  try {\n`;
         mainCode += `    jspp::setup_process_argv(argc, argv);\n`;
         mainCode += `    auto p = ${MODULE_NAME}();\n`;
-        mainCode += `    p.then(nullptr, [](const jspp::AnyValue& err) {\n`;
+        mainCode += `    p.then(nullptr, [](jspp::AnyValue err) {\n`;
         mainCode +=
             `        auto error = std::make_shared<jspp::AnyValue>(err);\n`;
         mainCode +=

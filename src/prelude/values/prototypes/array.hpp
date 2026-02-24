@@ -22,20 +22,20 @@ namespace jspp
 
         inline AnyValue &get_iterator_fn()
         {
-            static AnyValue fn = AnyValue::make_generator([](const AnyValue &thisVal, std::span<const AnyValue> _) -> AnyValue
-                                                          { return AnyValue::from_iterator(thisVal.as_array()->get_iterator()); },
+            static AnyValue fn = AnyValue::make_generator([](AnyValue thisVal, std::vector<AnyValue> _) -> jspp::JsIterator<jspp::AnyValue>
+                                                          { return thisVal.as_array()->get_iterator(); },
                                                           "Symbol.iterator");
             return fn;
         }
 
         inline AnyValue &get_length_desc()
         {
-            static auto getter = [](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static auto getter = [](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
             {
                 return AnyValue::make_number(thisVal.as_array()->length);
             };
 
-            static auto setter = [](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static auto setter = [](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
             {
                 if (args.empty())
                 {
@@ -84,7 +84,7 @@ namespace jspp
 
         inline AnyValue &get_push_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              for (const auto &arg : args)
@@ -98,7 +98,7 @@ namespace jspp
 
         inline AnyValue &get_pop_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              if (self->length == 0)
@@ -124,7 +124,7 @@ namespace jspp
 
         inline AnyValue &get_shift_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              if (self->length == 0)
@@ -156,7 +156,7 @@ namespace jspp
 
         inline AnyValue &get_unshift_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              size_t args_count = args.size();
@@ -184,7 +184,7 @@ namespace jspp
 
         inline AnyValue &get_join_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              std::string sep = ",";
@@ -213,7 +213,7 @@ namespace jspp
 
         inline AnyValue &get_forEach_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              if (args.empty() || !args[0].is_function())
@@ -238,7 +238,7 @@ namespace jspp
 
         inline AnyValue &get_at_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              double len = static_cast<double>(self->length);
@@ -254,7 +254,7 @@ namespace jspp
 
         inline AnyValue &get_includes_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              AnyValue searchElement = args.empty() ? Constants::UNDEFINED : args[0];
@@ -280,7 +280,7 @@ namespace jspp
 
         inline AnyValue &get_indexOf_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              AnyValue searchElement = args.empty() ? Constants::UNDEFINED : args[0];
@@ -306,7 +306,7 @@ namespace jspp
 
         inline AnyValue &get_lastIndexOf_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              AnyValue searchElement = args.empty() ? Constants::UNDEFINED : args[0];
@@ -333,7 +333,7 @@ namespace jspp
 
         inline AnyValue &get_find_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              if (args.empty() || !args[0].is_function()) throw Exception::make_exception("callback is not a function", "TypeError");
@@ -357,7 +357,7 @@ namespace jspp
 
         inline AnyValue &get_findIndex_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              if (args.empty() || !args[0].is_function()) throw Exception::make_exception("callback is not a function", "TypeError");
@@ -381,7 +381,7 @@ namespace jspp
 
         inline AnyValue &get_findLast_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              if (args.empty() || !args[0].is_function()) throw Exception::make_exception("callback is not a function", "TypeError");
@@ -405,7 +405,7 @@ namespace jspp
 
         inline AnyValue &get_findLastIndex_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              if (args.empty() || !args[0].is_function()) throw Exception::make_exception("callback is not a function", "TypeError");
@@ -429,7 +429,7 @@ namespace jspp
 
         inline AnyValue &get_values_fn()
         {
-            static AnyValue fn = AnyValue::make_generator([](const AnyValue &thisVal, std::span<const AnyValue> _) -> jspp::JsIterator<jspp::AnyValue>
+            static AnyValue fn = AnyValue::make_generator([](AnyValue thisVal, std::vector<AnyValue> _) -> jspp::JsIterator<jspp::AnyValue>
                                                           { return thisVal.as_array()->get_iterator(); },
                                                           "values");
             return fn;
@@ -437,7 +437,7 @@ namespace jspp
 
         inline AnyValue &get_keys_fn()
         {
-            static AnyValue fn = AnyValue::make_generator([](const AnyValue &thisVal, std::span<const AnyValue> _) -> jspp::JsIterator<jspp::AnyValue>
+            static AnyValue fn = AnyValue::make_generator([](AnyValue thisVal, std::vector<AnyValue> _) -> jspp::JsIterator<jspp::AnyValue>
                                                           { 
                                                               auto self = thisVal.as_array();
                                                               for (uint64_t i = 0; i < self->length; ++i) {
@@ -450,7 +450,7 @@ namespace jspp
 
         inline AnyValue &get_entries_fn()
         {
-            static AnyValue fn = AnyValue::make_generator([](const AnyValue &thisVal, std::span<const AnyValue> _) -> jspp::JsIterator<jspp::AnyValue>
+            static AnyValue fn = AnyValue::make_generator([](AnyValue thisVal, std::vector<AnyValue> _) -> jspp::JsIterator<jspp::AnyValue>
                                                           { 
                                                               auto self = thisVal.as_array();
                                                               for (uint64_t i = 0; i < self->length; ++i) {
@@ -466,7 +466,7 @@ namespace jspp
 
         inline AnyValue &get_map_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              if (args.empty() || !args[0].is_function()) throw Exception::make_exception("callback is not a function", "TypeError");
@@ -493,7 +493,7 @@ namespace jspp
 
         inline AnyValue &get_filter_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              if (args.empty() || !args[0].is_function()) throw Exception::make_exception("callback is not a function", "TypeError");
@@ -519,7 +519,7 @@ namespace jspp
 
         inline AnyValue &get_every_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              if (args.empty() || !args[0].is_function()) throw Exception::make_exception("callback is not a function", "TypeError");
@@ -543,7 +543,7 @@ namespace jspp
 
         inline AnyValue &get_some_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              if (args.empty() || !args[0].is_function()) throw Exception::make_exception("callback is not a function", "TypeError");
@@ -567,7 +567,7 @@ namespace jspp
 
         inline AnyValue &get_reduce_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              if (args.empty() || !args[0].is_function()) throw Exception::make_exception("callback is not a function", "TypeError");
@@ -607,7 +607,7 @@ namespace jspp
 
         inline AnyValue &get_reduceRight_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              if (args.empty() || !args[0].is_function()) throw Exception::make_exception("callback is not a function", "TypeError");
@@ -647,7 +647,7 @@ namespace jspp
 
         inline AnyValue &get_flat_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              double depthVal = (args.size() > 0 && !args[0].is_undefined()) ? Operators_Private::ToNumber(args[0]) : 1;
@@ -681,7 +681,7 @@ namespace jspp
 
         inline AnyValue &get_flatMap_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              if (args.empty() || !args[0].is_function()) throw Exception::make_exception("callback is not a function", "TypeError");
@@ -716,7 +716,7 @@ namespace jspp
 
         inline AnyValue &get_fill_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              AnyValue value = args.empty() ? Constants::UNDEFINED : args[0];
@@ -742,7 +742,7 @@ namespace jspp
 
         inline AnyValue &get_reverse_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              uint64_t len = self->length;
@@ -775,7 +775,7 @@ namespace jspp
 
         inline AnyValue &get_sort_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              AnyValue compareFn = args.empty() ? Constants::UNDEFINED : args[0];
@@ -818,7 +818,7 @@ namespace jspp
 
         inline AnyValue &get_splice_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              double len = static_cast<double>(self->length);
@@ -890,7 +890,7 @@ namespace jspp
 
         inline AnyValue &get_copyWithin_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              double len = static_cast<double>(self->length);
@@ -942,7 +942,7 @@ namespace jspp
 
         inline AnyValue &get_concat_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              std::vector<AnyValue> result;
@@ -989,7 +989,7 @@ namespace jspp
 
         inline AnyValue &get_slice_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              double len = static_cast<double>(self->length);
@@ -1021,7 +1021,7 @@ namespace jspp
 
         inline AnyValue &get_toReversed_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto copy = thisVal.get_property_with_receiver("slice", thisVal).call(thisVal, {});
                                                              copy.get_own_property("reverse").call(copy, {});
@@ -1032,7 +1032,7 @@ namespace jspp
 
         inline AnyValue &get_toSorted_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto copy = thisVal.get_property_with_receiver("slice", thisVal).call(thisVal, {});
                                                              copy.get_own_property("sort").call(copy, args);
@@ -1043,7 +1043,7 @@ namespace jspp
 
         inline AnyValue &get_toSpliced_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto copy = thisVal.get_property_with_receiver("slice", thisVal).call(thisVal, {});
                                                              copy.get_own_property("splice").call(copy, args);
@@ -1054,7 +1054,7 @@ namespace jspp
 
         inline AnyValue &get_with_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              auto copy = thisVal.get_property_with_receiver("slice", thisVal).call(thisVal, {});
@@ -1075,7 +1075,7 @@ namespace jspp
 
         inline AnyValue &get_toLocaleString_fn()
         {
-            static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+            static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                          {
                                                              auto self = thisVal.as_array();
                                                              std::string result = "";

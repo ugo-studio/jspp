@@ -67,14 +67,14 @@ export function visitClassDeclaration(
         // Default constructor
         if (parentName) {
             constructorLambda =
-                `jspp::AnyValue::make_class([=](const jspp::AnyValue& ${this.globalThisVar}, std::span<const jspp::AnyValue> args) mutable -> jspp::AnyValue {
+                `jspp::AnyValue::make_class([=](jspp::AnyValue ${this.globalThisVar}, std::span<const jspp::AnyValue> args) mutable -> jspp::AnyValue {
                  auto __parent = ${parentName};
                  __parent.call(${this.globalThisVar}, args, "super");
                  return jspp::Constants::UNDEFINED;
              }, "${className}")`;
         } else {
             constructorLambda =
-                `jspp::AnyValue::make_class([=](const jspp::AnyValue& ${this.globalThisVar}, std::span<const jspp::AnyValue> args) mutable -> jspp::AnyValue {
+                `jspp::AnyValue::make_class([=](jspp::AnyValue ${this.globalThisVar}, std::span<const jspp::AnyValue> args) mutable -> jspp::AnyValue {
                  return jspp::Constants::UNDEFINED;
              }, "${className}")`;
         }

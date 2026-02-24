@@ -142,8 +142,8 @@ namespace jspp
     {
         return from_ptr(new DataDescriptor(value, writable, enumerable, configurable));
     }
-    inline AnyValue AnyValue::make_accessor_descriptor(const std::optional<std::function<AnyValue(const AnyValue &, std::span<const AnyValue>)>> &get,
-                                                       const std::optional<std::function<AnyValue(const AnyValue &, std::span<const AnyValue>)>> &set,
+    inline AnyValue AnyValue::make_accessor_descriptor(const std::optional<std::function<AnyValue(AnyValue, std::span<const AnyValue>)>> &get,
+                                                       const std::optional<std::function<AnyValue(AnyValue, std::span<const AnyValue>)>> &set,
                                                        bool enumerable,
                                                        bool configurable) noexcept
     {
@@ -180,7 +180,7 @@ namespace jspp
         return from_ptr(it);
     }
 
-    inline AnyValue AnyValue::resolve_property_for_read(const AnyValue &val, const AnyValue &thisVal, const std::string &propName) noexcept
+    inline AnyValue AnyValue::resolve_property_for_read(const AnyValue &val, AnyValue thisVal, const std::string &propName) noexcept
     {
         if (val.is_data_descriptor())
         {
@@ -198,7 +198,7 @@ namespace jspp
         }
         return val;
     }
-    inline AnyValue AnyValue::resolve_property_for_write(AnyValue &val, const AnyValue &thisVal, const AnyValue &new_val, const std::string &propName)
+    inline AnyValue AnyValue::resolve_property_for_write(AnyValue &val, AnyValue thisVal, const AnyValue &new_val, const std::string &propName)
     {
         if (val.is_data_descriptor())
         {
@@ -308,7 +308,7 @@ namespace jspp
         return to_std_string();
     }
 
-    inline void AnyValue::set_prototype(const AnyValue &proto)
+    inline void AnyValue::set_prototype(AnyValue proto)
     {
         if (is_object())
         {
@@ -329,13 +329,13 @@ namespace jspp
     }
 
     // AnyValue::call implementation
-    inline AnyValue AnyValue::call(const AnyValue &thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr) const
+    inline AnyValue AnyValue::call(AnyValue thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr) const
     {
         if (!is_function())
             throw Exception::make_exception(expr.value_or(to_std_string()) + " is not a function", "TypeError");
         return as_function()->call(thisVal, args);
     }
-    inline AnyValue AnyValue::optional_call(const AnyValue &thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr) const
+    inline AnyValue AnyValue::optional_call(AnyValue thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr) const
     {
         if (is_null() || is_undefined())
             return Constants::UNDEFINED;

@@ -89,7 +89,7 @@ std::vector<T> jspp::JsIterator<T>::to_vector()
 }
 
 template <typename T>
-jspp::AnyValue jspp::JsIterator<T>::get_property(const std::string &key, const AnyValue &thisVal)
+jspp::AnyValue jspp::JsIterator<T>::get_property(const std::string &key, AnyValue thisVal)
 {
     auto it = props.find(key);
     if (it == props.end())
@@ -111,7 +111,7 @@ jspp::AnyValue jspp::JsIterator<T>::get_property(const std::string &key, const A
 }
 
 template <typename T>
-jspp::AnyValue jspp::JsIterator<T>::set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal)
+jspp::AnyValue jspp::JsIterator<T>::set_property(const std::string &key, AnyValue value, AnyValue thisVal)
 {
     // set prototype property if accessor descriptor
     if constexpr (std::is_same_v<T, AnyValue>)

@@ -73,10 +73,10 @@ namespace jspp
     JsType get_heap_type() const override { return JsType::Function; }
 
     std::string to_std_string() const;
-    AnyValue call(const AnyValue &thisVal, std::span<const AnyValue> args);
+    AnyValue call(AnyValue thisVal, std::span<const AnyValue> args);
 
     bool has_property(const std::string &key) const;
-    AnyValue get_property(const std::string &key, const AnyValue &thisVal);
-    AnyValue set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal);
+    AnyValue get_property(const std::string &key, AnyValue thisVal);
+    AnyValue set_property(const std::string &key, AnyValue value, AnyValue thisVal);
   };
 }

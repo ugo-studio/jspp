@@ -46,10 +46,12 @@ export function generateLambdaComponents(
             ? "jspp::JsIterator<jspp::AnyValue>"
             : (isInsideAsyncFunction ? "jspp::JsPromise" : "jspp::AnyValue"));
 
-    // Lambda arguments are ALWAYS const references/spans to avoid copy overhead for normal functions.
-    // For generators/async, we manually copy them inside the body.
-    const paramThisType = "const jspp::AnyValue&";
-    const paramArgsType = "std::span<const jspp::AnyValue>";
+    // Lambda arguments: regular functions use std::span for performance.
+    // Generators and async functions use std::vector to ensure they are safely copied into the coroutine frame.
+    const paramThisType = "jspp::AnyValue";
+    const paramArgsType = (isInsideGeneratorFunction || isInsideAsyncFunction)
+        ? "std::vector<jspp::AnyValue>"
+        : "std::span<const jspp::AnyValue>";
 
     const globalScopeSymbols = this.prepareScopeSymbolsForVisit(
         context.globalScopeSymbols,
@@ -87,7 +89,7 @@ export function generateLambdaComponents(
     }
 
     const thisArgParam = isArrow
-        ? "const jspp::AnyValue&" // Arrow functions use captured 'this' or are never generators in this parser context
+        ? "jspp::AnyValue" // Arrow functions use captured 'this' or are never generators in this parser context
         : `${paramThisType} ${finalThisParamName}`;
     const funcArgs = `${paramArgsType} ${finalArgsParamName}`;
 
@@ -101,9 +103,11 @@ export function generateLambdaComponents(
             nativePreamble +=
                 `${this.indent()}jspp::AnyValue ${this.globalThisVar} = ${finalThisParamName};\n`;
         }
-        // Note: Do not add argument copy to native lambda
+        // Note: Arguments are now automatically copied into the coroutine frame because 
+        // the lambda parameter is passed by value (std::vector).
+        // We just need to define argsName as a reference to the parameter.
         preamble +=
-            `${this.indent()}std::vector<jspp::AnyValue> ${argsName}(${finalArgsParamName}.begin(), ${finalArgsParamName}.end());\n`;
+            `${this.indent()}auto& ${argsName} = ${finalArgsParamName};\n`;
     }
 
     // Native function arguments for native lambda
@@ -121,7 +125,7 @@ export function generateLambdaComponents(
             : !!p.dotDotDotToken
             ? "jspp::AnyValue::make_array(std::vector<jspp::AnyValue>{})"
             : "jspp::Constants::UNDEFINED";
-        nativeFuncArgs += `, const jspp::AnyValue& ${name} = ${defaultValue}`;
+        nativeFuncArgs += `, jspp::AnyValue ${name} = ${defaultValue}`;
 
         if (!ts.isIdentifier(p.name)) {
             nativeParamsContent += this.generateDestructuring(
@@ -341,14 +345,14 @@ export function generateWrappedLambda(
         if (isInsideAsyncFunction) {
             if (!noTypeSignature) {
                 const signature =
-                    "jspp::JsAsyncIterator<jspp::AnyValue>(const jspp::AnyValue&, std::span<const jspp::AnyValue>)";
+                    "jspp::JsAsyncIterator<jspp::AnyValue>(jspp::AnyValue, std::vector<jspp::AnyValue>)";
                 callable = `std::function<${signature}>(${lambda})`;
             }
             method = `jspp::AnyValue::make_async_generator`;
         } else {
             if (!noTypeSignature) {
                 const signature =
-                    "jspp::JsIterator<jspp::AnyValue>(const jspp::AnyValue&, std::span<const jspp::AnyValue>)";
+                    "jspp::JsIterator<jspp::AnyValue>(jspp::AnyValue, std::vector<jspp::AnyValue>)";
                 callable = `std::function<${signature}>(${lambda})`;
             }
             method = `jspp::AnyValue::make_generator`;
@@ -357,7 +361,7 @@ export function generateWrappedLambda(
     else if (isInsideAsyncFunction) {
         if (!noTypeSignature) {
             const signature =
-                "jspp::JsPromise(const jspp::AnyValue&, std::span<const jspp::AnyValue>)";
+                "jspp::JsPromise(jspp::AnyValue, std::vector<jspp::AnyValue>)";
             callable = `std::function<${signature}>(${lambda})`;
         }
         method = `jspp::AnyValue::make_async_function`;
@@ -365,7 +369,7 @@ export function generateWrappedLambda(
     else {
         if (!noTypeSignature) {
             const signature =
-                `jspp::AnyValue(const jspp::AnyValue&, std::span<const jspp::AnyValue>)`;
+                `jspp::AnyValue(jspp::AnyValue, std::span<const jspp::AnyValue>)`;
             callable = `std::function<${signature}>(${lambda})`;
         }
         if (options?.isClass) {

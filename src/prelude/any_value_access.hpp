@@ -64,7 +64,7 @@ namespace jspp
         return get_own_property(key.to_std_string());
     }
 
-    inline AnyValue AnyValue::get_property_with_receiver(const std::string &key, const AnyValue &receiver) const
+    inline AnyValue AnyValue::get_property_with_receiver(const std::string &key, AnyValue receiver) const
     {
         switch (get_type())
         {
@@ -104,7 +104,7 @@ namespace jspp
         }
     }
 
-    inline AnyValue AnyValue::set_own_property(const std::string &key, const AnyValue &value) const
+    inline AnyValue AnyValue::set_own_property(const std::string &key, AnyValue value) const
     {
         switch (get_type())
         {
@@ -124,7 +124,7 @@ namespace jspp
             return value;
         }
     }
-    inline AnyValue AnyValue::set_own_property(uint32_t idx, const AnyValue &value) const
+    inline AnyValue AnyValue::set_own_property(uint32_t idx, AnyValue value) const
     {
         if (is_array())
         {
@@ -132,7 +132,7 @@ namespace jspp
         }
         return set_own_property(std::to_string(idx), value);
     }
-    inline AnyValue AnyValue::set_own_property(const AnyValue &key, const AnyValue &value) const
+    inline AnyValue AnyValue::set_own_property(const AnyValue &key, AnyValue value) const
     {
         if (key.is_number() && is_array())
         {

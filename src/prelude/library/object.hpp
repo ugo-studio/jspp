@@ -6,7 +6,7 @@
 #include "exception.hpp"
 
 // Define Object constructor
-inline auto Object = jspp::AnyValue::make_class([](const jspp::AnyValue &thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+inline auto Object = jspp::AnyValue::make_class([](jspp::AnyValue thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                 {
     if (args.empty() || args[0].is_undefined() || args[0].is_null()) {
         return jspp::AnyValue::make_object({});
@@ -23,7 +23,7 @@ struct ObjectInit
     ObjectInit()
     {
         // Object.keys(obj)
-        Object.define_data_property("keys", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+        Object.define_data_property("keys", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                           {
             if (args.empty()) throw jspp::Exception::make_exception("Object.keys called on non-object", "TypeError");
             auto obj = args[0];
@@ -37,7 +37,7 @@ struct ObjectInit
             return jspp::AnyValue::make_array(std::move(keyValues)); }, "keys"));
 
         // Object.values(obj)
-        Object.define_data_property("values", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+        Object.define_data_property("values", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                             {
             if (args.empty()) throw jspp::Exception::make_exception("Object.values called on non-object", "TypeError");
             auto obj = args[0];
@@ -51,7 +51,7 @@ struct ObjectInit
             return jspp::AnyValue::make_array(std::move(values)); }, "values"));
 
         // Object.entries(obj)
-        Object.define_data_property("entries", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+        Object.define_data_property("entries", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                              {
             if (args.empty()) throw jspp::Exception::make_exception("Object.entries called on non-object", "TypeError");
             auto obj = args[0];
@@ -68,7 +68,7 @@ struct ObjectInit
             return jspp::AnyValue::make_array(std::move(entries)); }, "entries"));
 
         // Object.assign(target, ...sources)
-        Object.define_data_property("assign", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+        Object.define_data_property("assign", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                             {
             if (args.empty()) throw jspp::Exception::make_exception("Cannot convert undefined or null to object", "TypeError");
             auto target = args[0];
@@ -87,7 +87,7 @@ struct ObjectInit
             return target; }, "assign"));
 
         // Object.is(value1, value2)
-        Object.define_data_property("is", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+        Object.define_data_property("is", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                         {
             jspp::AnyValue v1 = args.size() > 0 ? args[0] : jspp::Constants::UNDEFINED;
             jspp::AnyValue v2 = args.size() > 1 ? args[1] : jspp::Constants::UNDEFINED;
@@ -105,7 +105,7 @@ struct ObjectInit
             return jspp::is_strictly_equal_to(v1, v2); }, "is"));
 
         // Object.getPrototypeOf(obj)
-        Object.define_data_property("getPrototypeOf", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+        Object.define_data_property("getPrototypeOf", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                                     {
              if (args.empty()) throw jspp::Exception::make_exception("Object.getPrototypeOf called on non-object", "TypeError");
              auto obj = args[0];
@@ -123,7 +123,7 @@ struct ObjectInit
              return jspp::Constants::Null; }, "getPrototypeOf"));
 
         // Object.setPrototypeOf(obj, proto)
-        Object.define_data_property("setPrototypeOf", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+        Object.define_data_property("setPrototypeOf", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                                     {
              if (args.size() < 2) throw jspp::Exception::make_exception("Object.setPrototypeOf requires at least 2 arguments", "TypeError");
              auto obj = args[0];
@@ -144,7 +144,7 @@ struct ObjectInit
              return obj; }, "setPrototypeOf"));
 
         // Object.create(proto, [propertiesObject])
-        Object.define_data_property("create", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+        Object.define_data_property("create", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                             {
              if (args.empty()) throw jspp::Exception::make_exception("Object prototype may only be an Object or null", "TypeError");
              auto proto = args[0];
@@ -162,7 +162,7 @@ struct ObjectInit
              return newObj; }, "create"));
 
         // Object.defineProperty(obj, prop, descriptor)
-        Object.define_data_property("defineProperty", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+        Object.define_data_property("defineProperty", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                                     {
              if (args.size() < 3) throw jspp::Exception::make_exception("Object.defineProperty requires 3 arguments", "TypeError");
              auto obj = args[0];
@@ -202,16 +202,16 @@ struct ObjectInit
 
                  if (obj.is_object()) {
                     auto o_ptr = obj.as_object();
-                    std::optional<std::function<jspp::AnyValue(const jspp::AnyValue &, std::span<const jspp::AnyValue>)>> getFunc;
-                    std::optional<std::function<jspp::AnyValue(const jspp::AnyValue &, std::span<const jspp::AnyValue>)>> setFunc;
+                    std::optional<std::function<jspp::AnyValue(jspp::AnyValue, std::span<const jspp::AnyValue>)>> getFunc;
+                    std::optional<std::function<jspp::AnyValue(jspp::AnyValue, std::span<const jspp::AnyValue>)>> setFunc;
                     
                     if (getter.is_function()) {
-                        getFunc = [getter](const jspp::AnyValue &thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue {
+                        getFunc = [getter](jspp::AnyValue thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue {
                             return getter.call(thisVal, args);
                         };
                     }
                     if (setter.is_function()) {
-                        setFunc = [setter](const jspp::AnyValue &thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue {
+                        setFunc = [setter](jspp::AnyValue thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue {
                             return setter.call(thisVal, args);
                         };
                     }
@@ -230,7 +230,7 @@ struct ObjectInit
              return obj; }, "defineProperty"));
 
         // Object.hasOwn(obj, prop)
-        Object.define_data_property("hasOwn", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+        Object.define_data_property("hasOwn", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                             {
             if (args.empty()) throw jspp::Exception::make_exception("Object.hasOwn called on non-object", "TypeError");
             auto obj = args[0];
@@ -255,7 +255,7 @@ struct ObjectInit
 
         // Object.prototype.hasOwnProperty
         auto proto = Object.get_own_property("prototype");
-        proto.define_data_property("hasOwnProperty", jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+        proto.define_data_property("hasOwnProperty", jspp::AnyValue::make_function([](jspp::AnyValue thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                                    {
              std::string prop = args.size() > 0 ? args[0].to_std_string() : "undefined";
              if (thisVal.is_object()) return jspp::AnyValue::make_boolean(thisVal.as_object()->shape->get_offset(prop).has_value());
