@@ -89,10 +89,10 @@ namespace jspp
     class AnyValue;
 
     using JsFunctionCallable = std::variant<
-        std::function<AnyValue(const AnyValue &, std::span<const AnyValue>)>,
-        std::function<JsIterator<AnyValue>(const AnyValue &, std::span<const AnyValue>)>,
-        std::function<JsPromise(const AnyValue &, std::span<const AnyValue>)>,
-        std::function<JsAsyncIterator<AnyValue>(const AnyValue &, std::span<const AnyValue>)>>;
+        std::function<AnyValue(AnyValue, std::span<const AnyValue>)>,
+        std::function<JsIterator<AnyValue>(AnyValue, std::vector<AnyValue>)>,
+        std::function<JsPromise(AnyValue, std::vector<AnyValue>)>,
+        std::function<JsAsyncIterator<AnyValue>(AnyValue, std::vector<AnyValue>)>>;
 
     // Awaiter for AnyValue
     struct AnyValueAwaiter;

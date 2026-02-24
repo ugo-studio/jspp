@@ -14,7 +14,7 @@ std::string jspp::JsAsyncIterator<T>::to_std_string() const
 }
 
 template <typename T>
-jspp::AnyValue jspp::JsAsyncIterator<T>::get_property(const std::string &key, const AnyValue &thisVal)
+jspp::AnyValue jspp::JsAsyncIterator<T>::get_property(const std::string &key, AnyValue thisVal)
 {
     auto it = props.find(key);
     if (it == props.end())
@@ -33,7 +33,7 @@ jspp::AnyValue jspp::JsAsyncIterator<T>::get_property(const std::string &key, co
 }
 
 template <typename T>
-jspp::AnyValue jspp::JsAsyncIterator<T>::set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal)
+jspp::AnyValue jspp::JsAsyncIterator<T>::set_property(const std::string &key, AnyValue value, AnyValue thisVal)
 {
     if constexpr (std::is_same_v<T, AnyValue>)
     {
@@ -87,8 +87,12 @@ void jspp::JsAsyncIterator<T>::resume_next()
     // After yield/return, if more calls are pending, handle them.
     if (!p.pending_calls.empty() && !p.is_awaiting && !handle.done())
     {
+        this->ref();
         Scheduler::instance().enqueue([this]()
-                                      { this->resume_next(); });
+                                      { 
+                                          this->resume_next(); 
+                                          this->deref();
+                                      });
     }
 }
 

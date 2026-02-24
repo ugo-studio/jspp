@@ -887,6 +887,20 @@ export function visitBinaryExpression(
             return `${finalObjExpr}.set_own_property(${argText}, ${finalRightText})`;
         }
 
+        // Array/Object destructuring assignment
+        if (
+            ts.isArrayLiteralExpression(binExpr.left) ||
+            ts.isObjectLiteralExpression(binExpr.left)
+        ) {
+            const rhsCode = this.visit(binExpr.right, visitContext);
+            return this.generateDestructuring(
+                binExpr.left,
+                rhsCode,
+                visitContext,
+            );
+        }
+
+        // Simple variable or property assignment
         const leftText = this.visit(binExpr.left, visitContext);
         const scope = this.getScopeForNode(binExpr.left);
         const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(

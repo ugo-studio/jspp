@@ -19,13 +19,15 @@ import {
   indent,
   isAsyncFunction,
   isBuiltinObject,
-  isFunctionUsedAsValue,
-  isFunctionUsedBeforeDeclaration,
+  isDeclarationCalledAsFunction,
+  isDeclarationUsedAsValue,
+  isDeclarationUsedBeforeInitialization,
   isGeneratorFunction,
   markSymbolAsInitialized,
   prepareScopeSymbolsForVisit,
   validateFunctionParams,
 } from "./helpers.js";
+import { generateDestructuring } from "./destructuring-handlers.js";
 import { visit } from "./visitor.js";
 
 const MODULE_NAME = "__entry_point__";
@@ -56,9 +58,12 @@ export class CodeGenerator {
     public isAsyncFunction = isAsyncFunction;
     public prepareScopeSymbolsForVisit = prepareScopeSymbolsForVisit;
     public markSymbolAsInitialized = markSymbolAsInitialized;
-    public isFunctionUsedAsValue = isFunctionUsedAsValue;
-    public isFunctionUsedBeforeDeclaration = isFunctionUsedBeforeDeclaration;
+    public isDeclarationCalledAsFunction = isDeclarationCalledAsFunction;
+    public isDeclarationUsedAsValue = isDeclarationUsedAsValue;
+    public isDeclarationUsedBeforeInitialization =
+        isDeclarationUsedBeforeInitialization;
     public validateFunctionParams = validateFunctionParams;
+    public generateDestructuring = generateDestructuring;
 
     // function handlers
     public generateLambdaComponents = generateLambdaComponents;
@@ -103,7 +108,7 @@ export class CodeGenerator {
         mainCode += `  try {\n`;
         mainCode += `    jspp::setup_process_argv(argc, argv);\n`;
         mainCode += `    auto p = ${MODULE_NAME}();\n`;
-        mainCode += `    p.then(nullptr, [](const jspp::AnyValue& err) {\n`;
+        mainCode += `    p.then(nullptr, [](jspp::AnyValue err) {\n`;
         mainCode +=
             `        auto error = std::make_shared<jspp::AnyValue>(err);\n`;
         mainCode +=

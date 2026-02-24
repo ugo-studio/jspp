@@ -201,8 +201,8 @@ namespace jspp
         static AnyValue make_symbol(const std::string &description = "") noexcept;
         static AnyValue make_promise(const JsPromise &promise) noexcept;
         static AnyValue make_data_descriptor(AnyValue value, bool writable, bool enumerable, bool configurable) noexcept;
-        static AnyValue make_accessor_descriptor(const std::optional<std::function<AnyValue(const AnyValue &, std::span<const AnyValue>)>> &get,
-                                                 const std::optional<std::function<AnyValue(const AnyValue &, std::span<const AnyValue>)>> &set,
+        static AnyValue make_accessor_descriptor(const std::optional<std::function<AnyValue(AnyValue, std::span<const AnyValue>)>> &get,
+                                                 const std::optional<std::function<AnyValue(AnyValue, std::span<const AnyValue>)>> &set,
                                                  bool enumerable,
                                                  bool configurable) noexcept;
 
@@ -222,8 +222,8 @@ namespace jspp
             return v;
         }
 
-        static AnyValue resolve_property_for_read(const AnyValue &val, const AnyValue &thisVal, const std::string &propName) noexcept;
-        static AnyValue resolve_property_for_write(AnyValue &val, const AnyValue &thisVal, const AnyValue &new_val, const std::string &propName);
+        static AnyValue resolve_property_for_read(const AnyValue &val, AnyValue thisVal, const std::string &propName) noexcept;
+        static AnyValue resolve_property_for_write(AnyValue &val, AnyValue thisVal, const AnyValue &new_val, const std::string &propName);
 
         // TYPE CHECKERS AND ACCESSORS ---------------------------------------
         inline JsType get_type() const noexcept
@@ -295,14 +295,14 @@ namespace jspp
         AnyValue get_own_property(int idx) const { return get_own_property(static_cast<uint32_t>(idx)); }
         AnyValue get_own_property(const AnyValue &key) const;
 
-        AnyValue get_property_with_receiver(const std::string &key, const AnyValue &receiver) const;
-        AnyValue get_property_with_receiver(const char *key, const AnyValue &receiver) const { return get_property_with_receiver(std::string(key), receiver); }
+        AnyValue get_property_with_receiver(const std::string &key, AnyValue receiver) const;
+        AnyValue get_property_with_receiver(const char *key, AnyValue receiver) const { return get_property_with_receiver(std::string(key), receiver); }
 
-        AnyValue set_own_property(const std::string &key, const AnyValue &value) const;
-        AnyValue set_own_property(const char *key, const AnyValue &value) const { return set_own_property(std::string(key), value); }
-        AnyValue set_own_property(uint32_t idx, const AnyValue &value) const;
-        AnyValue set_own_property(int idx, const AnyValue &value) const { return set_own_property(static_cast<uint32_t>(idx), value); }
-        AnyValue set_own_property(const AnyValue &key, const AnyValue &value) const;
+        AnyValue set_own_property(const std::string &key, AnyValue value) const;
+        AnyValue set_own_property(const char *key, AnyValue value) const { return set_own_property(std::string(key), value); }
+        AnyValue set_own_property(uint32_t idx, AnyValue value) const;
+        AnyValue set_own_property(int idx, AnyValue value) const { return set_own_property(static_cast<uint32_t>(idx), value); }
+        AnyValue set_own_property(const AnyValue &key, AnyValue value) const;
 
         AnyValue call_own_property(const std::string &key, std::span<const AnyValue> args) const;
         AnyValue call_own_property(const char *key, std::span<const AnyValue> args) const { return call_own_property(std::string(key), args); }
@@ -310,25 +310,26 @@ namespace jspp
         AnyValue call_own_property(int idx, std::span<const AnyValue> args) const { return call_own_property(static_cast<uint32_t>(idx), args); }
         AnyValue call_own_property(const AnyValue &key, std::span<const AnyValue> args) const;
 
-        void define_data_property(const std::string &key, const AnyValue &value);
-        void define_data_property(const char *key, const AnyValue &value) { define_data_property(std::string(key), value); }
-        void define_data_property(const AnyValue &key, const AnyValue &value);
-        void define_data_property(const std::string &key, const AnyValue &value, bool writable, bool enumerable, bool configurable);
-        void define_data_property(const char *key, const AnyValue &value, bool writable, bool enumerable, bool configurable) { define_data_property(std::string(key), value, writable, enumerable, configurable); }
+        void define_data_property(const std::string &key, AnyValue value);
+        void define_data_property(const char *key, AnyValue value) { define_data_property(std::string(key), value); }
+        void define_data_property(const AnyValue &key, AnyValue value);
+        void define_data_property(const std::string &key, AnyValue value, bool writable, bool enumerable, bool configurable);
+        void define_data_property(const char *key, AnyValue value, bool writable, bool enumerable, bool configurable) { define_data_property(std::string(key), value, writable, enumerable, configurable); }
 
-        void define_getter(const std::string &key, const AnyValue &getter);
-        void define_getter(const char *key, const AnyValue &getter) { define_getter(std::string(key), getter); }
-        void define_getter(const AnyValue &key, const AnyValue &getter);
+        void define_getter(const std::string &key, AnyValue getter);
+        void define_getter(const char *key, AnyValue getter) { define_getter(std::string(key), getter); }
+        void define_getter(const AnyValue &key, AnyValue getter);
 
-        void define_setter(const std::string &key, const AnyValue &setter);
-        void define_setter(const char *key, const AnyValue &setter) { define_setter(std::string(key), setter); }
-        void define_setter(const AnyValue &key, const AnyValue &setter);
+        void define_setter(const std::string &key, AnyValue setter);
+        void define_setter(const char *key, AnyValue setter) { define_setter(std::string(key), setter); }
+        void define_setter(const AnyValue &key, AnyValue setter);
 
-        AnyValue call(const AnyValue &thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr = std::nullopt) const;
-        AnyValue optional_call(const AnyValue &thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr = std::nullopt) const;
+        AnyValue call(AnyValue thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr = std::nullopt) const;
+        AnyValue optional_call(AnyValue thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr = std::nullopt) const;
         AnyValue construct(std::span<const AnyValue> args, const std::optional<std::string> &name = std::nullopt) const;
-        void set_prototype(const AnyValue &proto);
+        void set_prototype(AnyValue proto);
         std::string to_std_string() const;
+        std::string to_property_key() const;
 
         inline uint64_t get_storage() const noexcept { return storage; }
         inline void *get_raw_ptr() const noexcept { return reinterpret_cast<void *>(storage & PAYLOAD_MASK); }

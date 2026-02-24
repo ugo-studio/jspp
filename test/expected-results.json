@@ -795,5 +795,16 @@
             "v.x: 10 v.y: 20",
             "mixed: 1,2,3,4,5"
         ]
+    },
+    {
+        "name": "destructuring",
+        "expected": [
+            "--- Destructuring ---",
+            "Array: 1 2 3,4,5",
+            "Object: 100 200 10",
+            "Nested: 10 20",
+            "Iterator: one two",
+            "Array Iterator: 10 20"
+        ]
     }
 ]

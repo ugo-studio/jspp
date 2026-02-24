@@ -36,6 +36,43 @@ typename jspp::JsIterator<T>::NextResult jspp::JsIterator<T>::next(const T &val)
 }
 
 template <typename T>
+typename jspp::JsIterator<T>::NextResult jspp::JsIterator<T>::return_(const T &val)
+{
+    if (!handle || handle.done())
+        return {val, true};
+
+    handle.promise().pending_return = true;
+    handle.promise().current_value = val;
+    handle.resume();
+
+    if (handle.promise().exception_)
+    {
+        std::rethrow_exception(handle.promise().exception_);
+    }
+
+    return {handle.promise().current_value, true};
+}
+
+template <typename T>
+typename jspp::JsIterator<T>::NextResult jspp::JsIterator<T>::throw_(const AnyValue &err)
+{
+    if (!handle || handle.done()) {
+        throw Exception(err);
+    }
+
+    handle.promise().pending_exception = std::make_exception_ptr(Exception(err));
+    handle.resume();
+
+    if (handle.promise().exception_)
+    {
+        std::rethrow_exception(handle.promise().exception_);
+    }
+
+    bool is_done = handle.done();
+    return {handle.promise().current_value, is_done};
+}
+
+template <typename T>
 std::vector<T> jspp::JsIterator<T>::to_vector()
 {
     std::vector<T> result;
@@ -52,7 +89,7 @@ std::vector<T> jspp::JsIterator<T>::to_vector()
 }
 
 template <typename T>
-jspp::AnyValue jspp::JsIterator<T>::get_property(const std::string &key, const AnyValue &thisVal)
+jspp::AnyValue jspp::JsIterator<T>::get_property(const std::string &key, AnyValue thisVal)
 {
     auto it = props.find(key);
     if (it == props.end())
@@ -74,7 +111,7 @@ jspp::AnyValue jspp::JsIterator<T>::get_property(const std::string &key, const A
 }
 
 template <typename T>
-jspp::AnyValue jspp::JsIterator<T>::set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal)
+jspp::AnyValue jspp::JsIterator<T>::set_property(const std::string &key, AnyValue value, AnyValue thisVal)
 {
     // set prototype property if accessor descriptor
     if constexpr (std::is_same_v<T, AnyValue>)

@@ -41,14 +41,14 @@ namespace jspp
         JsType get_heap_type() const override { return JsType::Promise; }
 
         // --- Promise Logic ---
-        void resolve(const AnyValue& value);
-        void reject(const AnyValue& reason);
-        void then(std::function<void(const AnyValue&)> onFulfilled, std::function<void(const AnyValue&)> onRejected = nullptr);
+        void resolve(AnyValue value);
+        void reject(AnyValue reason);
+        void then(std::function<void(AnyValue)> onFulfilled, std::function<void(AnyValue)> onRejected = nullptr);
         
         // --- Methods ---
         std::string to_std_string() const;
-        AnyValue get_property(const std::string& key, const AnyValue& thisVal);
-        AnyValue set_property(const std::string& key, const AnyValue& value, const AnyValue& thisVal);
+        AnyValue get_property(const std::string& key, AnyValue thisVal);
+        AnyValue set_property(const std::string& key, AnyValue value, AnyValue thisVal);
 
         auto operator co_await() const;
     };
@@ -60,12 +60,12 @@ namespace jspp
         std::suspend_never initial_suspend() { return {}; }
         std::suspend_never final_suspend() noexcept { return {}; }
         
-        void return_value(const AnyValue& val);
+        void return_value(AnyValue val);
         
         void unhandled_exception();
         
         // await_transform for AnyValue
-        auto await_transform(const AnyValue& value);
+        auto await_transform(AnyValue value);
         // await_transform for JsPromise
         auto await_transform(const JsPromise& value);
     };

@@ -7,6 +7,12 @@ import { CompilerError } from "../error.js";
 import { CodeGenerator } from "./index.js";
 import type { VisitContext } from "./visitor.js";
 
+/**
+ * Checks if an identifier refers to a built-in JavaScript object (e.g., console, Math).
+ *
+ * @param node The identifier node to check.
+ * @returns True if it's a built-in object.
+ */
 export function isBuiltinObject(
     this: CodeGenerator | TypeAnalyzer,
     node: ts.Identifier,
@@ -14,15 +20,34 @@ export function isBuiltinObject(
     return BUILTIN_OBJECTS.values().some((obj) => obj.name === node.text);
 }
 
+/**
+ * Collects all symbols declared within a node's subtree.
+ *
+ * @param node The node to scan for declarations.
+ * @returns A set of declared symbol names.
+ */
 export function getDeclaredSymbols(
     this: CodeGenerator,
     node: ts.Node,
 ): Set<string> {
     const symbols = new Set<string>();
+
+    const collectNames = (name: ts.BindingName) => {
+        if (ts.isIdentifier(name)) {
+            symbols.add(name.text);
+        } else {
+            name.elements.forEach((element) => {
+                if (ts.isBindingElement(element)) {
+                    collectNames(element.name);
+                }
+            });
+        }
+    };
+
     const visitor = (child: ts.Node) => {
         if (ts.isVariableDeclaration(child)) {
             // Handles let, const, var
-            symbols.add(child.name.getText());
+            collectNames(child.name);
         } else if (ts.isFunctionDeclaration(child) && child.name) {
             // Handles function declarations
             symbols.add(child.name.getText());
@@ -34,10 +59,10 @@ export function getDeclaredSymbols(
             symbols.add(child.name.getText());
         } else if (ts.isParameter(child)) {
             // Handles function parameters
-            symbols.add(child.name.getText());
+            collectNames(child.name);
         } else if (ts.isCatchClause(child) && child.variableDeclaration) {
             // Handles catch clause variable
-            symbols.add(child.variableDeclaration.name.getText());
+            collectNames(child.variableDeclaration.name);
         }
         ts.forEachChild(child, visitor);
     };
@@ -45,6 +70,13 @@ export function getDeclaredSymbols(
     return symbols;
 }
 
+/**
+ * Generates a unique name by appending a counter to a prefix, avoiding existing symbols.
+ *
+ * @param prefix The base name for the unique identifier.
+ * @param namesToAvoid Sets or maps of names that should not be used.
+ * @returns A unique identifier string.
+ */
 export function generateUniqueName(
     this: CodeGenerator,
     prefix: string,
@@ -59,6 +91,13 @@ export function generateUniqueName(
     return name;
 }
 
+/**
+ * Generates a unique name for a caught exception variable.
+ *
+ * @param exceptionNameToAvoid The name of the exception variable to potentially avoid shadowing.
+ * @param otherNamesToAvoid Additional names to avoid.
+ * @returns A unique identifier string for the exception.
+ */
 export function generateUniqueExceptionName(
     this: CodeGenerator,
     exceptionNameToAvoid: string | undefined,
@@ -71,6 +110,15 @@ export function generateUniqueExceptionName(
     return this.generateUniqueName(prefix, ...otherNamesToAvoid);
 }
 
+/**
+ * Retrieves the scope associated with a given node.
+ *
+ * Walks up the parent chain until a node with an associated scope is found.
+ *
+ * @param node The node to find the scope for.
+ * @returns The associated Scope.
+ * @throws CompilerError if no scope is found.
+ */
 export function getScopeForNode(this: CodeGenerator, node: ts.Node): Scope {
     let current: ts.Node | undefined = node;
     while (current) {
@@ -91,10 +139,21 @@ export function getScopeForNode(this: CodeGenerator, node: ts.Node): Scope {
     return rootScope;
 }
 
+/**
+ * Returns a string of spaces representing the current indentation level.
+ *
+ * @returns An indentation string.
+ */
 export function indent(this: CodeGenerator) {
     return "  ".repeat(this.indentationLevel);
 }
 
+/**
+ * Escapes special characters in a string for safe use in C++ string literals.
+ *
+ * @param str The string to escape.
+ * @returns The escaped string.
+ */
 export function escapeString(this: CodeGenerator, str: string): string {
     return str
         .replace(/\\/g, "\\\\")
@@ -105,10 +164,28 @@ export function escapeString(this: CodeGenerator, str: string): string {
         .replace(/\?/g, "\\?");
 }
 
+/**
+ * Formats a JavaScript variable name as a C++ string literal for error reporting or property access.
+ *
+ * @param node The identifier node.
+ * @returns The variable name wrapped in quotes.
+ */
 export function getJsVarName(this: CodeGenerator, node: ts.Identifier): string {
     return `"${node.text}"`;
 }
 
+/**
+ * Generates C++ code to dereference a variable, handling TDZ and heap allocation.
+ *
+ * If the symbol is not yet initialized, it generates a call to a deref helper
+ * that performs a runtime check.
+ *
+ * @param nodeText The C++ expression for the variable.
+ * @param varName The JavaScript name of the variable.
+ * @param context The current visit context.
+ * @param typeInfo Type information for the variable.
+ * @returns The C++ code for accessing the variable's value.
+ */
 export function getDerefCode(
     this: CodeGenerator,
     nodeText: string,
@@ -147,6 +224,13 @@ export function getDerefCode(
     }
 }
 
+/**
+ * Marks a symbol as initialized in the provided symbol tables.
+ *
+ * @param name The name of the symbol.
+ * @param topLevel The global symbol table.
+ * @param local The local symbol table.
+ */
 export function markSymbolAsInitialized(
     name: string,
     topLevel: DeclaredSymbols,
@@ -163,6 +247,12 @@ export function markSymbolAsInitialized(
     }
 }
 
+/**
+ * Determines the appropriate C++ return command (return or co_return) based on context.
+ *
+ * @param context Partial visit context.
+ * @returns "co_return" for generators/async, "return" otherwise.
+ */
 export function getReturnCommand(
     this: CodeGenerator,
     context: Partial<VisitContext>,
@@ -172,6 +262,18 @@ export function getReturnCommand(
         : "return";
 }
 
+/**
+ * Generates C++ code to hoist a declaration (var, let, const, function, class, enum).
+ *
+ * It registers the symbol and generates the variable declaration, initializing
+ * block-scoped variables to UNINITIALIZED for TDZ support.
+ *
+ * @param decl The declaration node.
+ * @param hoistedSymbols The symbol table to register with.
+ * @param scopeNode The node representing the current scope.
+ * @returns The C++ declaration code.
+ * @throws CompilerError if a duplicate declaration is found.
+ */
 export function hoistDeclaration(
     this: CodeGenerator,
     decl:
@@ -182,13 +284,10 @@ export function hoistDeclaration(
     hoistedSymbols: DeclaredSymbols,
     scopeNode: ts.Node,
 ) {
-    const name = decl.name?.getText();
-    if (!name) {
-        return `/* Unknown declaration name: ${ts.SyntaxKind[decl.kind]} */`;
-    }
-
-    const isLet = (decl.parent.flags & (ts.NodeFlags.Let)) !== 0;
-    const isConst = (decl.parent.flags & (ts.NodeFlags.Const)) !== 0;
+    const isLet = ts.isVariableDeclaration(decl) &&
+        (decl.parent.flags & (ts.NodeFlags.Let)) !== 0;
+    const isConst = ts.isVariableDeclaration(decl) &&
+        (decl.parent.flags & (ts.NodeFlags.Const)) !== 0;
     const declType = isLet
         ? DeclarationType.let
         : isConst
@@ -201,67 +300,114 @@ export function hoistDeclaration(
         ? DeclarationType.enum
         : DeclarationType.var;
 
-    if (hoistedSymbols.has(name)) {
-        const existingSymbol = hoistedSymbols.get(name);
-        // Don't allow multiple declaration of `let`,`const`,`function`, `class` or `enum` variables
-        if (
-            existingSymbol?.type === DeclarationType.let ||
-            existingSymbol?.type === DeclarationType.const ||
-            existingSymbol?.type === DeclarationType.function ||
-            existingSymbol?.type === DeclarationType.class ||
-            existingSymbol?.type === DeclarationType.enum ||
-            existingSymbol?.type !== declType
-        ) {
-            throw new CompilerError(
-                `Identifier '${name}' has already been declared.`,
-                decl,
-                "SyntaxError",
-            );
-        }
-        // `var` variables can be declared multiple times
-        return "";
-    } else {
-        // Add the symbol to the hoisted symbols
-        if (declType === DeclarationType.function) {
-            const isAsync = this.isAsyncFunction(decl);
-            const isGenerator = this.isGeneratorFunction(decl);
-            hoistedSymbols.add(name, {
-                type: declType,
-                features: { isAsync, isGenerator },
-            });
-            // Don't hoist functions not used as a variable
-            // they will be called with their native lambdas
-            if (
-                !this.isFunctionUsedAsValue(
-                    decl as ts.FunctionDeclaration,
-                    scopeNode,
-                ) &&
-                !this.isFunctionUsedBeforeDeclaration(name, scopeNode)
-            ) {
+    const hoistName = (nameNode: ts.BindingName): string => {
+        if (ts.isIdentifier(nameNode)) {
+            const name = nameNode.text;
+            if (hoistedSymbols.has(name)) {
+                const existingSymbol = hoistedSymbols.get(name);
+                // Don't allow multiple declaration of `let`,`const`,`function`, `class` or `enum` variables
+                if (
+                    existingSymbol?.type === DeclarationType.let ||
+                    existingSymbol?.type === DeclarationType.const ||
+                    existingSymbol?.type === DeclarationType.function ||
+                    existingSymbol?.type === DeclarationType.class ||
+                    existingSymbol?.type === DeclarationType.enum ||
+                    existingSymbol?.type !== declType
+                ) {
+                    throw new CompilerError(
+                        `Identifier '${name}' has already been declared.`,
+                        decl,
+                        "SyntaxError",
+                    );
+                }
+                // `var` variables can be declared multiple times
                 return "";
+            } else {
+                // Add the symbol to the hoisted symbols
+                if (
+                    ts.isFunctionDeclaration(decl) ||
+                    (ts.isVariableDeclaration(decl) && decl.initializer &&
+                        nameNode === decl.name &&
+                        (ts.isArrowFunction(decl.initializer) ||
+                            ts.isFunctionExpression(decl.initializer)))
+                ) {
+                    const funcExpr = ts.isVariableDeclaration(decl)
+                        ? decl.initializer as
+                            | ts.ArrowFunction
+                            | ts.FunctionExpression
+                        : decl;
+                    const isAsync = this.isAsyncFunction(funcExpr);
+                    const isGenerator = this.isGeneratorFunction(funcExpr);
+                    hoistedSymbols.add(name, {
+                        type: declType,
+                        features: { isAsync, isGenerator },
+                    });
+                    // Don't hoist declarations not used as a variable
+                    // They will be called with their native lambda/value
+                    if (
+                        !this.isDeclarationUsedAsValue(
+                            decl as
+                                | ts.FunctionDeclaration
+                                | ts.VariableDeclaration,
+                            scopeNode,
+                        ) &&
+                        !this.isDeclarationUsedBeforeInitialization(
+                            name,
+                            scopeNode,
+                        )
+                    ) {
+                        return "";
+                    }
+                } else {
+                    hoistedSymbols.add(name, { type: declType });
+                }
+            }
+
+            const scope = this.getScopeForNode(decl);
+            const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                name,
+                scope,
+            )!;
+
+            const initializer = isLet || isConst || ts.isClassDeclaration(decl)
+                ? "jspp::Constants::UNINITIALIZED"
+                : "jspp::Constants::UNDEFINED";
+
+            if (typeInfo.needsHeapAllocation) {
+                return `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;
+            } else {
+                return `${this.indent()}jspp::AnyValue ${name} = ${initializer};\n`;
             }
         } else {
-            hoistedSymbols.add(name, { type: declType });
+            let code = "";
+            nameNode.elements.forEach((element) => {
+                if (ts.isBindingElement(element)) {
+                    code += hoistName(element.name);
+                }
+            });
+            return code;
         }
-    }
+    };
 
-    const scope = this.getScopeForNode(decl);
-    const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
-        name,
-        scope,
-    )!;
-
-    const initializer = isLet || isConst || ts.isClassDeclaration(decl)
-        ? "jspp::Constants::UNINITIALIZED"
-        : "jspp::Constants::UNDEFINED";
-
-    if (typeInfo.needsHeapAllocation) {
-        return `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;
+    if (ts.isVariableDeclaration(decl)) {
+        return hoistName(decl.name);
     } else {
-        return `${this.indent()}jspp::AnyValue ${name} = ${initializer};\n`;
+        const nameNode = decl.name;
+        if (!nameNode) {
+            return `/* Unknown declaration name: ${
+                ts.SyntaxKind[decl.kind]
+            } */`;
+        }
+        return hoistName(nameNode);
     }
 }
 
+/**
+ * Checks if a function node is a generator function.
+ *
+ * @param node The node to check.
+ * @returns True if it's a generator.
+ */
 export function isGeneratorFunction(node: ts.Node): boolean {
     return (
         (ts.isFunctionDeclaration(node) ||
@@ -271,6 +417,12 @@ export function isGeneratorFunction(node: ts.Node): boolean {
     );
 }
 
+/**
+ * Checks if a function node is an async function.
+ *
+ * @param node The node to check.
+ * @returns True if it's async.
+ */
 export function isAsyncFunction(node: ts.Node): boolean {
     return (
         (ts.isFunctionDeclaration(node) ||
@@ -282,6 +434,13 @@ export function isAsyncFunction(node: ts.Node): boolean {
     );
 }
 
+/**
+ * Combines top-level and local symbol tables for a nested visit.
+ *
+ * @param topLevel Global/outer symbol table.
+ * @param local Local/inner symbol table.
+ * @returns A new DeclaredSymbols instance representing the merged scope.
+ */
 export function prepareScopeSymbolsForVisit(
     topLevel: DeclaredSymbols,
     local: DeclaredSymbols,
@@ -290,6 +449,12 @@ export function prepareScopeSymbolsForVisit(
     return new DeclaredSymbols(topLevel, local);
 }
 
+/**
+ * Determines if a statement should be ignored (e.g., ambient declarations).
+ *
+ * @param stmt The statement to check.
+ * @returns True if the statement should be ignored.
+ */
 export function shouldIgnoreStatement(
     stmt: ts.Statement,
 ): boolean {
@@ -306,6 +471,13 @@ export function shouldIgnoreStatement(
     return false;
 }
 
+/**
+ * Collects all function-scoped (var) declarations within a node,
+ * respecting function boundaries.
+ *
+ * @param node The root node to scan.
+ * @returns An array of variable declarations.
+ */
 export function collectFunctionScopedDeclarations(
     node: ts.Node,
 ): ts.VariableDeclaration[] {
@@ -366,6 +538,12 @@ export function collectFunctionScopedDeclarations(
     return decls;
 }
 
+/**
+ * Collects block-scoped (let/const) declarations directly within a list of statements.
+ *
+ * @param statements The statements to scan.
+ * @returns An array of variable declarations.
+ */
 export function collectBlockScopedDeclarations(
     statements: ts.NodeArray<ts.Statement> | ts.Statement[],
 ): ts.VariableDeclaration[] {
@@ -385,13 +563,25 @@ export function collectBlockScopedDeclarations(
     return decls;
 }
 
-export function isFunctionUsedAsValue(
+/**
+ * Checks if a declaration is used as a value within a given node.
+ *
+ * This is used to determine if a hoisted function declaration needs to be
+ * wrapped in an AnyValue and assigned to a variable, or if it can be
+ * optimized to only use its native lambda.
+ *
+ * @param decl The declaration to check.
+ * @param root The root node to search for usages within.
+ * @returns True if the declaration is used as a value.
+ */
+export function isDeclarationUsedAsValue(
     this: CodeGenerator,
     decl: ts.FunctionDeclaration | ts.ClassDeclaration | ts.VariableDeclaration,
     root: ts.Node,
 ): boolean {
-    const name = decl.name?.getText();
-    if (!name) return false;
+    const nameNode = decl.name;
+    if (!nameNode || !ts.isIdentifier(nameNode)) return false;
+    const name = nameNode.text;
 
     let isUsed = false;
 
@@ -448,7 +638,67 @@ export function isFunctionUsedAsValue(
     return isUsed;
 }
 
-export function isFunctionUsedBeforeDeclaration(
+/**
+ * Checks if a declaration is called as a function (e.g. decl()) within a given node.
+ *
+ * @param decl The declaration to check.
+ * @param root The root node to search for usages within.
+ * @returns True if the declaration is called as a function.
+ */
+export function isDeclarationCalledAsFunction(
+    this: CodeGenerator,
+    decl: ts.FunctionDeclaration | ts.ClassDeclaration | ts.VariableDeclaration,
+    root: ts.Node,
+): boolean {
+    const nameNode = decl.name;
+    if (!nameNode || !ts.isIdentifier(nameNode)) return false;
+    const name = nameNode.text;
+
+    let isCalled = false;
+
+    const visitor = (node: ts.Node) => {
+        if (isCalled) return;
+
+        if (ts.isIdentifier(node) && node.text === name) {
+            const scope = this.getScopeForNode(node);
+            const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
+                node.text,
+                scope,
+            );
+
+            if (typeInfo?.declaration === decl) {
+                const parent = node.parent;
+
+                if (
+                    ts.isCallExpression(parent) && parent.expression === node
+                ) {
+                    isCalled = true;
+                }
+            }
+        }
+
+        if (!isCalled) {
+            ts.forEachChild(node, visitor);
+        }
+    };
+
+    ts.forEachChild(root, visitor);
+
+    return isCalled;
+}
+
+/**
+ * Checks if a declaration is used before it is initialized within a given node.
+ *
+ * This helps determine if a hoisted declaration (like a function or class)
+ * might be accessed before its assignment logic is executed, necessitating
+ * an AnyValue wrapper for TDZ or forward-reference support.
+ *
+ * @param name The name of the declaration to check.
+ * @param root The root node to search for usages within.
+ * @returns True if the declaration is used before initialization.
+ */
+export function isDeclarationUsedBeforeInitialization(
     this: CodeGenerator,
     name: string,
     root: ts.Node,
@@ -456,10 +706,16 @@ export function isFunctionUsedBeforeDeclaration(
     let declPos = -1;
     let foundDecl = false;
 
-    // Helper to find the function declaration position
+    // Helper to find the declaration position
     function findDecl(node: ts.Node) {
         if (foundDecl) return;
-        if (ts.isFunctionDeclaration(node) && node.name?.text === name) {
+        if (
+            (ts.isFunctionDeclaration(node) ||
+                ts.isClassDeclaration(node) ||
+                ts.isVariableDeclaration(node) ||
+                ts.isEnumDeclaration(node)) &&
+            node.name && ts.isIdentifier(node.name) && node.name.text === name
+        ) {
             declPos = node.getStart();
             foundDecl = true;
         } else {
@@ -538,6 +794,14 @@ export function isFunctionUsedBeforeDeclaration(
     return isUsedBefore;
 }
 
+/**
+ * Validates and filters function parameters, checking for illegal "this"
+ * and correctly positioned rest parameters.
+ *
+ * @param parameters The parameters to validate.
+ * @returns A filtered array of valid parameters.
+ * @throws CompilerError for invalid parameter usage.
+ */
 export function validateFunctionParams(
     this: CodeGenerator,
     parameters: ts.NodeArray<ts.ParameterDeclaration>,

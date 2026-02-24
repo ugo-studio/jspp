@@ -5,7 +5,7 @@
 #include "utils/operators.hpp"
 #include "utils/access.hpp"
 
-inline auto Array = jspp::AnyValue::make_class([](const jspp::AnyValue &thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+inline auto Array = jspp::AnyValue::make_class([](jspp::AnyValue thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                {
     if (args.size() == 1 && args[0].is_number()) {
         double len = args[0].as_double();
@@ -29,13 +29,13 @@ struct ArrayInit
     ArrayInit()
     {
         // Array.isArray(value)
-        Array.define_data_property("isArray", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+        Array.define_data_property("isArray", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                             {
             if (args.empty()) return jspp::Constants::FALSE;
             return jspp::AnyValue::make_boolean(args[0].is_array()); }, "isArray"));
 
         // Array.of(...elements)
-        Array.define_data_property("of", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+        Array.define_data_property("of", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                        {
             std::vector<jspp::AnyValue> elements;
             for(const auto& arg : args) {
@@ -44,7 +44,7 @@ struct ArrayInit
             return jspp::AnyValue::make_array(std::move(elements)); }, "of"));
 
         // Array.from(arrayLike, mapFn?, thisArg?)
-        Array.define_data_property("from", jspp::AnyValue::make_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+        Array.define_data_property("from", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                          {
             if (args.empty() || args[0].is_null() || args[0].is_undefined()) {
                 throw jspp::Exception::make_exception("Array.from requires an array-like object", "TypeError");
@@ -58,7 +58,7 @@ struct ArrayInit
 
             auto iteratorSym = jspp::WellKnownSymbols::iterator;
             if (items.has_property(iteratorSym->key)) {
-                auto iter = jspp::Access::get_object_value_iterator(items, "Array.from source");
+                auto iter = jspp::Access::get_object_iterator(items, "Array.from source");
                 auto nextFn = iter.get_own_property("next");
                 
                 size_t k = 0;
@@ -94,7 +94,7 @@ struct ArrayInit
             return jspp::AnyValue::make_array(std::move(result)); }, "from"));
 
         // Array.fromAsync(iterableOrArrayLike, mapFn?, thisArg?)
-        Array.define_data_property("fromAsync", jspp::AnyValue::make_async_function([](const jspp::AnyValue &, std::span<const jspp::AnyValue> args) -> jspp::JsPromise
+        Array.define_data_property("fromAsync", jspp::AnyValue::make_async_function([](jspp::AnyValue, std::vector<jspp::AnyValue> args) -> jspp::JsPromise
                                                                                     {
             if (args.empty() || args[0].is_null() || args[0].is_undefined()) {
                 throw jspp::Exception::make_exception("Array.fromAsync requires an iterable or array-like object", "TypeError");
@@ -180,7 +180,7 @@ struct ArrayInit
             co_return jspp::AnyValue::make_array(std::move(result)); }, "fromAsync"));
 
         // Array[Symbol.species]
-        Array.define_getter(jspp::AnyValue::from_symbol(jspp::WellKnownSymbols::species), jspp::AnyValue::make_function([](const jspp::AnyValue &thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+        Array.define_getter(jspp::AnyValue::from_symbol(jspp::WellKnownSymbols::species), jspp::AnyValue::make_function([](jspp::AnyValue thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                                                                         { return thisVal; }, "get [Symbol.species]"));
     }
 } arrayInit;

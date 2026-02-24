@@ -12,7 +12,7 @@ namespace jspp
 
     inline JsPromise::JsPromise() : state(std::make_shared<PromiseState>()) {}
 
-    inline void JsPromise::resolve(const AnyValue &value)
+    inline void JsPromise::resolve(AnyValue value)
     {
         if (state->status != PromiseStatus::Pending)
             return;
@@ -29,7 +29,7 @@ namespace jspp
             auto weak_state = std::weak_ptr<PromiseState>(state);
 
             p->then(
-                [weak_state](const AnyValue &v)
+                [weak_state](AnyValue v)
                 {
                     if (auto s = weak_state.lock())
                     {
@@ -49,7 +49,7 @@ namespace jspp
                                                                 { cb(v); });
                     }
                 },
-                [weak_state](const AnyValue &r)
+                [weak_state](AnyValue r)
                 {
                     if (auto s = weak_state.lock())
                     {
@@ -81,7 +81,7 @@ namespace jspp
         }
     }
 
-    inline void JsPromise::reject(const AnyValue &reason)
+    inline void JsPromise::reject(AnyValue reason)
     {
         if (state->status != PromiseStatus::Pending)
             return;
@@ -99,7 +99,7 @@ namespace jspp
         }
     }
 
-    inline void JsPromise::then(std::function<void(const AnyValue &)> onFulfilled, std::function<void(const AnyValue &)> onRejected)
+    inline void JsPromise::then(std::function<void(AnyValue)> onFulfilled, std::function<void(AnyValue)> onRejected)
     {
         if (state->status == PromiseStatus::Fulfilled)
         {
@@ -140,7 +140,7 @@ namespace jspp
         return "[object Promise]";
     }
 
-    inline AnyValue JsPromise::get_property(const std::string &key, const AnyValue &thisVal)
+    inline AnyValue JsPromise::get_property(const std::string &key, AnyValue thisVal)
     {
         // Prototype lookup
         auto proto_it = PromisePrototypes::get(key);
@@ -157,7 +157,7 @@ namespace jspp
         return Constants::UNDEFINED;
     }
 
-    inline AnyValue JsPromise::set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal)
+    inline AnyValue JsPromise::set_property(const std::string &key, AnyValue value, AnyValue thisVal)
     {
         auto it = props.find(key);
         if (it != props.end())
@@ -173,7 +173,7 @@ namespace jspp
 
     // --- Coroutine Methods ---
 
-    inline void JsPromisePromiseType::return_value(const AnyValue &val)
+    inline void JsPromisePromiseType::return_value(AnyValue val)
     {
         promise.resolve(val);
     }
@@ -198,7 +198,7 @@ namespace jspp
         }
     }
 
-    inline auto JsPromisePromiseType::await_transform(const AnyValue &value)
+    inline auto JsPromisePromiseType::await_transform(AnyValue value)
     {
         return AnyValueAwaiter{value};
     }

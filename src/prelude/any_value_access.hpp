@@ -26,7 +26,7 @@ namespace jspp
         case JsType::AsyncIterator:
             return false;
         case JsType::Symbol:
-            return false;
+            return SymbolPrototypes::get(key).has_value();
         case JsType::String:
             if (key == "length")
                 return true;
@@ -35,9 +35,9 @@ namespace jspp
                 uint32_t idx = static_cast<uint32_t>(std::stoull(key));
                 return idx < as_string()->value.length();
             }
-            return false;
+            return StringPrototypes::get(key).has_value();
         case JsType::Number:
-            return false;
+            return NumberPrototypes::get(key).has_value();
         case JsType::Uninitialized:
             Exception::throw_uninitialized_reference("#<Object>");
             return false;
@@ -64,7 +64,7 @@ namespace jspp
         return get_own_property(key.to_std_string());
     }
 
-    inline AnyValue AnyValue::get_property_with_receiver(const std::string &key, const AnyValue &receiver) const
+    inline AnyValue AnyValue::get_property_with_receiver(const std::string &key, AnyValue receiver) const
     {
         switch (get_type())
         {
@@ -104,7 +104,7 @@ namespace jspp
         }
     }
 
-    inline AnyValue AnyValue::set_own_property(const std::string &key, const AnyValue &value) const
+    inline AnyValue AnyValue::set_own_property(const std::string &key, AnyValue value) const
     {
         switch (get_type())
         {
@@ -124,7 +124,7 @@ namespace jspp
             return value;
         }
     }
-    inline AnyValue AnyValue::set_own_property(uint32_t idx, const AnyValue &value) const
+    inline AnyValue AnyValue::set_own_property(uint32_t idx, AnyValue value) const
     {
         if (is_array())
         {
@@ -132,7 +132,7 @@ namespace jspp
         }
         return set_own_property(std::to_string(idx), value);
     }
-    inline AnyValue AnyValue::set_own_property(const AnyValue &key, const AnyValue &value) const
+    inline AnyValue AnyValue::set_own_property(const AnyValue &key, AnyValue value) const
     {
         if (key.is_number() && is_array())
         {

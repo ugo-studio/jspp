@@ -18,23 +18,23 @@ namespace jspp
         return type_part + " " + name_part + "() { [native code] }";
     }
 
-    inline AnyValue JsFunction::call(const AnyValue &thisVal, std::span<const AnyValue> args)
+    inline AnyValue JsFunction::call(AnyValue thisVal, std::span<const AnyValue> args)
     {
-        if (std::function<AnyValue(const AnyValue &, std::span<const AnyValue>)> *func = std::get_if<0>(&callable))
+        if (std::function<AnyValue(AnyValue, std::span<const AnyValue>)> *func = std::get_if<0>(&callable))
         {
             return (*func)(thisVal, args);
         }
-        else if (std::function<jspp::JsIterator<jspp::AnyValue>(const AnyValue &, std::span<const AnyValue>)> *func = std::get_if<1>(&callable))
+        else if (std::function<jspp::JsIterator<jspp::AnyValue>(AnyValue, std::vector<AnyValue>)> *func = std::get_if<1>(&callable))
         {
-            return AnyValue::from_iterator((*func)(thisVal, args));
+            return AnyValue::from_iterator((*func)(thisVal, std::vector<AnyValue>(args.begin(), args.end())));
         }
-        else if (std::function<jspp::JsPromise(const AnyValue &, std::span<const AnyValue>)> *func = std::get_if<2>(&callable))
+        else if (std::function<jspp::JsPromise(AnyValue, std::vector<AnyValue>)> *func = std::get_if<2>(&callable))
         {
-            return AnyValue::make_promise((*func)(thisVal, args));
+            return AnyValue::make_promise((*func)(thisVal, std::vector<AnyValue>(args.begin(), args.end())));
         }
-        else if (std::function<jspp::JsAsyncIterator<jspp::AnyValue>(const AnyValue &, std::span<const AnyValue>)> *func = std::get_if<3>(&callable))
+        else if (std::function<jspp::JsAsyncIterator<jspp::AnyValue>(AnyValue, std::vector<AnyValue>)> *func = std::get_if<3>(&callable))
         {
-            return AnyValue::from_async_iterator((*func)(thisVal, args));
+            return AnyValue::from_async_iterator((*func)(thisVal, std::vector<AnyValue>(args.begin(), args.end())));
         }
         else
         {
@@ -56,7 +56,7 @@ namespace jspp
         return false;
     }
 
-    inline AnyValue JsFunction::get_property(const std::string &key, const AnyValue &thisVal)
+    inline AnyValue JsFunction::get_property(const std::string &key, AnyValue thisVal)
     {
         auto it = props.find(key);
         if (it == props.end())
@@ -79,7 +79,7 @@ namespace jspp
         return AnyValue::resolve_property_for_read(it->second, thisVal, key);
     }
 
-    inline AnyValue JsFunction::set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal)
+    inline AnyValue JsFunction::set_property(const std::string &key, AnyValue value, AnyValue thisVal)
     {
         auto proto_it = FunctionPrototypes::get(key);
         if (proto_it.has_value())

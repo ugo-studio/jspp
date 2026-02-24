@@ -14,10 +14,24 @@ inline std::string jspp::JsString::to_std_string() const
 
 inline jspp::JsIterator<jspp::AnyValue> jspp::JsString::get_iterator()
 {
-    size_t strLength = value.length();
-    for (size_t idx = 0; idx < strLength; idx++)
+    for (size_t i = 0; i < value.length();)
     {
-        co_yield AnyValue::make_string(std::string(1, value[idx]));
+        unsigned char c = static_cast<unsigned char>(value[i]);
+        size_t len = 1;
+        if ((c & 0x80) == 0)
+            len = 1;
+        else if ((c & 0xE0) == 0xC0)
+            len = 2;
+        else if ((c & 0xF0) == 0xE0)
+            len = 3;
+        else if ((c & 0xF8) == 0xF0)
+            len = 4;
+
+        if (i + len > value.length())
+            len = value.length() - i;
+
+        co_yield AnyValue::make_string(value.substr(i, len));
+        i += len;
     }
     co_return AnyValue::make_undefined();
 }

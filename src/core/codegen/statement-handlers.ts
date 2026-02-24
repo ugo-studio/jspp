@@ -119,13 +119,15 @@ export function visitSourceFile(
         );
 
         // Generate native lambda
-        const nativeLambda = this.generateNativeLambda(lambdaComps);
-        code += `${this.indent()}auto ${nativeName} = ${nativeLambda};\n`;
+        if (this.isDeclarationCalledAsFunction(stmt, node)) {
+            const nativeLambda = this.generateNativeLambda(lambdaComps);
+            code += `${this.indent()}auto ${nativeName} = ${nativeLambda};\n`;
+        }
 
         // Generate AnyValue wrapped lamda
         if (
-            this.isFunctionUsedAsValue(stmt, node) ||
-            this.isFunctionUsedBeforeDeclaration(funcName, node)
+            this.isDeclarationUsedAsValue(stmt, node) ||
+            this.isDeclarationUsedBeforeInitialization(funcName, node)
         ) {
             const wrappedLambda = this.generateWrappedLambda(lambdaComps);
             code += `${this.indent()}*${funcName} = ${wrappedLambda};\n`;
@@ -257,13 +259,15 @@ export function visitBlock(
         );
 
         // Generate native lambda
-        const nativeLambda = this.generateNativeLambda(lambdaComps);
-        code += `${this.indent()}auto ${nativeName} = ${nativeLambda};\n`;
+        if (this.isDeclarationCalledAsFunction(stmt, node)) {
+            const nativeLambda = this.generateNativeLambda(lambdaComps);
+            code += `${this.indent()}auto ${nativeName} = ${nativeLambda};\n`;
+        }
 
         // Generate AnyValue wrapped lamda
         if (
-            this.isFunctionUsedAsValue(stmt, node) ||
-            this.isFunctionUsedBeforeDeclaration(funcName, node)
+            this.isDeclarationUsedAsValue(stmt, node) ||
+            this.isDeclarationUsedBeforeInitialization(funcName, node)
         ) {
             const wrappedLambda = this.generateWrappedLambda(lambdaComps);
             code += `${this.indent()}*${funcName} = ${wrappedLambda};\n`;
@@ -668,10 +672,23 @@ export function visitTryStatement(
                 this.indentationLevel++;
 
                 if (tryStmt.catchClause.variableDeclaration) {
-                    const varName = tryStmt.catchClause.variableDeclaration.name
-                        .getText();
-                    code +=
-                        `${this.indent()}jspp::AnyValue ${varName} = ${caughtValVar};\n`;
+                    if (
+                        ts.isIdentifier(
+                            tryStmt.catchClause.variableDeclaration.name,
+                        )
+                    ) {
+                        const varName = tryStmt.catchClause.variableDeclaration
+                            .name
+                            .getText();
+                        code +=
+                            `${this.indent()}jspp::AnyValue ${varName} = ${caughtValVar};\n`;
+                    } else {
+                        code += this.generateDestructuring(
+                            tryStmt.catchClause.variableDeclaration.name,
+                            caughtValVar,
+                            context,
+                        ) + ";\n";
+                    }
                 }
 
                 const catchContext = { ...innerContext, exceptionName };
@@ -769,10 +786,23 @@ export function visitTryStatement(
                 this.indentationLevel++;
 
                 if (tryStmt.catchClause.variableDeclaration) {
-                    const varName = tryStmt.catchClause.variableDeclaration.name
-                        .getText();
-                    code +=
-                        `${this.indent()}jspp::AnyValue ${varName} = ${caughtValVar};\n`;
+                    if (
+                        ts.isIdentifier(
+                            tryStmt.catchClause.variableDeclaration.name,
+                        )
+                    ) {
+                        const varName = tryStmt.catchClause.variableDeclaration
+                            .name
+                            .getText();
+                        code +=
+                            `${this.indent()}jspp::AnyValue ${varName} = ${caughtValVar};\n`;
+                    } else {
+                        code += this.generateDestructuring(
+                            tryStmt.catchClause.variableDeclaration.name,
+                            caughtValVar,
+                            context,
+                        ) + ";\n";
+                    }
                 }
 
                 code += this.visit(tryStmt.catchClause.block, newContext);
@@ -936,13 +966,22 @@ export function visitCatchClause(
     }
 
     if (catchClause.variableDeclaration) {
-        const varName = catchClause.variableDeclaration.name.getText();
         let code = `{\n`;
         this.indentationLevel++;
 
-        // The JS exception variable is always local to the catch block
-        code +=
-            `${this.indent()}jspp::AnyValue ${varName} = jspp::Exception::exception_to_any_value(${exceptionName});\n`;
+        const exceptionValueCode =
+            `jspp::Exception::exception_to_any_value(${exceptionName})`;
+
+        if (ts.isIdentifier(catchClause.variableDeclaration.name)) {
+            const varName = catchClause.variableDeclaration.name.text;
+            code += `${this.indent()}jspp::AnyValue ${varName} = ${exceptionValueCode};\n`;
+        } else {
+            code += this.generateDestructuring(
+                catchClause.variableDeclaration.name,
+                exceptionValueCode,
+                context,
+            ) + ";\n";
+        }
 
         code += this.visit(catchClause.block, context);
         this.indentationLevel--;
@@ -1017,10 +1056,10 @@ export function visitYieldExpression(
             code += `${this.indent()}auto ${iterableRef} = ${exprText};\n`;
             if (context.isInsideAsyncFunction) {
                 code +=
-                    `${this.indent()}auto ${iterator} = jspp::Access::get_async_object_value_iterator(${iterableRef}, ${varName});\n`;
+                    `${this.indent()}auto ${iterator} = jspp::Access::get_object_async_iterator(${iterableRef}, ${varName});\n`;
             } else {
                 code +=
-                    `${this.indent()}auto ${iterator} = jspp::Access::get_object_value_iterator(${iterableRef}, ${varName});\n`;
+                    `${this.indent()}auto ${iterator} = jspp::Access::get_object_iterator(${iterableRef}, ${varName});\n`;
             }
             code +=
                 `${this.indent()}auto ${nextFunc} = ${iterator}.get_own_property("next");\n`;

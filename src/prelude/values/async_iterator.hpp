@@ -56,7 +56,9 @@ namespace jspp
         handle_type handle;
 
         explicit JsAsyncIterator(handle_type h) : handle(h) {}
-        JsAsyncIterator(JsAsyncIterator &&other) noexcept : handle(std::exchange(other.handle, nullptr)) {}
+        JsAsyncIterator(JsAsyncIterator &&other) noexcept 
+            : handle(std::exchange(other.handle, nullptr)),
+              props(std::move(other.props)) {}
 
         JsAsyncIterator(const JsAsyncIterator &) = delete;
         JsAsyncIterator &operator=(const JsAsyncIterator &) = delete;
@@ -73,8 +75,8 @@ namespace jspp
 
         JsPromise next(const T &val = T());
 
-        AnyValue get_property(const std::string &key, const AnyValue &thisVal);
-        AnyValue set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal);
+        AnyValue get_property(const std::string &key, AnyValue thisVal);
+        AnyValue set_property(const std::string &key, AnyValue value, AnyValue thisVal);
 
         void resume_next();
     };

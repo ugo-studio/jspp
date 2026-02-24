@@ -21,6 +21,15 @@ export function visitVariableDeclaration(
     context: VisitContext,
 ): string {
     const varDecl = node as ts.VariableDeclaration;
+
+    if (!ts.isIdentifier(varDecl.name)) {
+        // Handle destructuring
+        const rhsCode = varDecl.initializer
+            ? this.visit(varDecl.initializer, context)
+            : "jspp::Constants::UNDEFINED";
+        return this.generateDestructuring(varDecl.name, rhsCode, context);
+    }
+
     const name = varDecl.name.getText();
     const scope = this.getScopeForNode(varDecl);
     const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
@@ -86,6 +95,9 @@ export function visitVariableDeclaration(
                 context.localScopeSymbols,
                 context.globalScopeSymbols,
             );
+            const scopeNode = ts.isVariableDeclarationList(varDecl.parent)
+                ? varDecl.parent.parent.parent
+                : varDecl.parent;
 
             // Mark before further visits
             context.localScopeSymbols.update(name, {
@@ -110,12 +122,22 @@ export function visitVariableDeclaration(
                     noTypeSignature: true,
                 },
             );
-            const nativeLambda = this.generateNativeLambda(lambdaComps);
 
             // Generate native lambda
-            nativeLambdaCode = `auto ${nativeName} = ${nativeLambda}`;
+            if (this.isDeclarationCalledAsFunction(varDecl, scopeNode)) {
+                const nativeLambda = this.generateNativeLambda(lambdaComps);
+                nativeLambdaCode = `auto ${nativeName} = ${nativeLambda}`;
+            }
+
             // Generate AnyValue wrapper
-            initText = this.generateWrappedLambda(lambdaComps);
+            if (
+                this.isDeclarationUsedAsValue(varDecl, scopeNode) ||
+                this.isDeclarationUsedBeforeInitialization(name, scopeNode)
+            ) {
+                initText = this.generateWrappedLambda(lambdaComps);
+            } else {
+                return nativeLambdaCode;
+            }
         }
         initializer = " = " + initText;
     }
