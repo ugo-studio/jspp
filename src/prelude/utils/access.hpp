@@ -157,6 +157,11 @@ namespace jspp
 
         inline AnyValue get_object_iterator(const AnyValue &obj, const std::optional<std::string> &name = std::nullopt)
         {
+            if (obj.is_null() || obj.is_undefined())
+            {
+                throw jspp::Exception::make_exception("Cannot read properties of " + obj.to_std_string() + " (reading 'Symbol.iterator')", "TypeError");
+            }
+
             if (obj.is_iterator())
             {
                 return obj;
@@ -185,6 +190,11 @@ namespace jspp
 
         inline AnyValue get_object_async_iterator(const AnyValue &obj, const std::optional<std::string> &name = std::nullopt)
         {
+            if (obj.is_null() || obj.is_undefined())
+            {
+                throw jspp::Exception::make_exception("Cannot read properties of " + obj.to_std_string() + " (reading 'Symbol.asyncIterator')", "TypeError");
+            }
+
             if (obj.is_async_iterator())
                 return obj;
 
