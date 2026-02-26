@@ -814,7 +814,9 @@
             "Mapped (should be empty): [ 10 x empty items ]",
             "Mapped length: 10",
             "Reversed: [ 10 x empty items ]",
-            "With added: [ 10 x empty items, \"added\" ]"
+            "With added:",
+            "10 x empty items",
+            "\"added\""
         ]
     }
 ]
