@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <cstdlib>
 #include "types.hpp"
 #include "values/promise.hpp"
 #include "any_value.hpp"
@@ -26,6 +27,7 @@ namespace jspp
                 msg = result.to_std_string();
             }
             std::cerr << "UnhandledPromiseRejection: " << msg << "\n";
+            std::exit(1);
         }
     }
 
