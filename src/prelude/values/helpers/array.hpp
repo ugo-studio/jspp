@@ -50,16 +50,6 @@ inline std::string jspp::JsArray::to_std_string() const
     return result;
 }
 
-inline jspp::JsIterator<jspp::AnyValue> jspp::JsArray::get_iterator()
-{
-    for (uint64_t idx = 0; idx < length; ++idx)
-    {
-        co_yield get_property(static_cast<uint32_t>(idx));
-    }
-
-    co_return AnyValue::make_undefined();
-}
-
 inline bool jspp::JsArray::has_property(const std::string &key) const
 {
     if (key == "length")
@@ -68,9 +58,9 @@ inline bool jspp::JsArray::has_property(const std::string &key) const
     {
         uint32_t idx = static_cast<uint32_t>(std::stoull(key));
         if (idx < dense.size())
-            return true;
+            return !dense[idx].is_uninitialized();
         if (sparse.find(idx) != sparse.end())
-            return true;
+            return !sparse.at(idx).is_uninitialized();
     }
     if (props.find(key) != props.end())
         return true;

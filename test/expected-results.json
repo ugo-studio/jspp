@@ -806,5 +806,17 @@
             "Iterator: one two",
             "Array Iterator: 10 20"
         ]
+    },
+    {
+        "name": "array-holes",
+        "expected": [
+            "--- Array Holes and Methods ---",
+            "Mapped (should be empty): [ 10 x empty items ]",
+            "Mapped length: 10",
+            "Reversed: [ 10 x empty items ]",
+            "With added:",
+            "10 x empty items",
+            "\"added\""
+        ]
     }
 ]

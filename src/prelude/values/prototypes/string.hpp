@@ -24,8 +24,30 @@ namespace jspp
 
         inline AnyValue &get_iterator_fn()
         {
-            static AnyValue fn = AnyValue::make_generator([](const AnyValue &thisVal, std::span<const AnyValue> _) -> AnyValue
-                                                          { return AnyValue::from_iterator(thisVal.as_string()->get_iterator()); },
+            static AnyValue fn = AnyValue::make_generator([](AnyValue thisVal, std::vector<AnyValue> _) -> jspp::JsIterator<jspp::AnyValue>
+                                                          {
+                                                              auto self = thisVal.as_string();
+                                                              const std::string &value = self->value;
+                                                              for (size_t i = 0; i < value.length();)
+                                                              {
+                                                                  unsigned char c = static_cast<unsigned char>(value[i]);
+                                                                  size_t len = 1;
+                                                                  if ((c & 0x80) == 0)
+                                                                      len = 1;
+                                                                  else if ((c & 0xE0) == 0xC0)
+                                                                      len = 2;
+                                                                  else if ((c & 0xF0) == 0xE0)
+                                                                      len = 3;
+                                                                  else if ((c & 0xF8) == 0xF0)
+                                                                      len = 4;
+
+                                                                  if (i + len > value.length())
+                                                                      len = value.length() - i;
+
+                                                                  co_yield AnyValue::make_string(value.substr(i, len));
+                                                                  i += len;
+                                                              }
+                                                              co_return AnyValue::make_undefined(); },
                                                           "Symbol.iterator");
             return fn;
         }
