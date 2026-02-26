@@ -359,7 +359,7 @@ export function visitEnumDeclaration(
     const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
         name,
         scope,
-    )!;
+    );
 
     // Mark as initialized
     this.markSymbolAsInitialized(
@@ -368,7 +368,7 @@ export function visitEnumDeclaration(
         context.localScopeSymbols,
     );
 
-    const enumVar = typeInfo.needsHeapAllocation ? `(*${name})` : name;
+    const enumVar = typeInfo?.needsHeapAllocation ? `(*${name})` : name;
 
     let code =
         `${this.indent()}${enumVar} = jspp::AnyValue::make_object({});\n`;
@@ -974,7 +974,8 @@ export function visitCatchClause(
 
         if (ts.isIdentifier(catchClause.variableDeclaration.name)) {
             const varName = catchClause.variableDeclaration.name.text;
-            code += `${this.indent()}jspp::AnyValue ${varName} = ${exceptionValueCode};\n`;
+            code +=
+                `${this.indent()}jspp::AnyValue ${varName} = ${exceptionValueCode};\n`;
         } else {
             code += this.generateDestructuring(
                 catchClause.variableDeclaration.name,

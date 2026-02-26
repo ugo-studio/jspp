@@ -191,7 +191,7 @@ export function getDerefCode(
     nodeText: string,
     varName: string,
     context: VisitContext,
-    typeInfo: TypeInfo,
+    typeInfo: TypeInfo | null,
 ): string {
     // Make sure varName is incased in quotes
     if (!varName.startsWith('"')) varName = '"' + varName;

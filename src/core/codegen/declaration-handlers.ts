@@ -35,7 +35,7 @@ export function visitVariableDeclaration(
     const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
         name,
         scope,
-    )!;
+    );
 
     // Mark the symbol as checked
     this.markSymbolAsInitialized(
@@ -63,7 +63,7 @@ export function visitVariableDeclaration(
 
             // Check if both target and initializer are heap allocated
             if (
-                typeInfo.needsHeapAllocation &&
+                typeInfo?.needsHeapAllocation &&
                 initTypeInfo?.needsHeapAllocation
             ) {
                 shouldSkipDeref = true;
@@ -149,7 +149,7 @@ export function visitVariableDeclaration(
 
     const assignmentTarget = shouldDeref
         ? this.getDerefCode(name, name, context, typeInfo)
-        : (typeInfo.needsHeapAllocation && !shouldSkipDeref
+        : (typeInfo?.needsHeapAllocation && !shouldSkipDeref
             ? `*${name}`
             : name);
 
@@ -182,7 +182,7 @@ export function visitVariableDeclaration(
         const initValue = initializer
             ? initializer.substring(3)
             : "jspp::Constants::UNDEFINED";
-        if (typeInfo.needsHeapAllocation) {
+        if (typeInfo?.needsHeapAllocation) {
             return `auto ${name} = std::make_shared<jspp::AnyValue>(${initValue})`;
         } else {
             return `jspp::AnyValue ${name} = ${initValue}`;

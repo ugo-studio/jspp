@@ -161,8 +161,8 @@ export function visitForInStatement(
             const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
                 varName,
                 scope,
-            )!;
-            if (typeInfo.needsHeapAllocation) {
+            );
+            if (typeInfo?.needsHeapAllocation) {
                 code +=
                     `${this.indent()}auto ${varName} = std::make_shared<jspp::AnyValue>(jspp::Constants::UNDEFINED);\n`;
                 assignmentTarget = `*${varName}`;
@@ -178,8 +178,8 @@ export function visitForInStatement(
         const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
             varName,
             scope,
-        )!;
-        assignmentTarget = typeInfo.needsHeapAllocation
+        );
+        assignmentTarget = typeInfo?.needsHeapAllocation
             ? `*${varName}`
             : varName;
     }
@@ -193,7 +193,7 @@ export function visitForInStatement(
         const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
             expr.getText(),
             scope,
-        )!;
+        );
         derefExpr = this.getDerefCode(
             exprText,
             this.getJsVarName(expr),
@@ -258,8 +258,8 @@ export function visitForOfStatement(
             const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
                 elemName,
                 scope,
-            )!;
-            if (typeInfo.needsHeapAllocation) {
+            );
+            if (typeInfo?.needsHeapAllocation) {
                 code +=
                     `${this.indent()}auto ${elemName} = std::make_shared<jspp::AnyValue>(jspp::Constants::UNDEFINED);\n`;
                 assignmentTarget = `*${elemName}`;
@@ -275,8 +275,8 @@ export function visitForOfStatement(
         const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
             elemName,
             scope,
-        )!;
-        assignmentTarget = typeInfo.needsHeapAllocation
+        );
+        assignmentTarget = typeInfo?.needsHeapAllocation
             ? `*${elemName}`
             : elemName;
     }
@@ -288,7 +288,7 @@ export function visitForOfStatement(
         const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
             forOf.expression.getText(),
             scope,
-        )!;
+        );
         const varName = this.getJsVarName(forOf.expression as ts.Identifier);
         derefIterable = this.getDerefCode(
             iterableExpr,
