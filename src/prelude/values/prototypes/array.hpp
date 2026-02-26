@@ -23,7 +23,13 @@ namespace jspp
         inline AnyValue &get_iterator_fn()
         {
             static AnyValue fn = AnyValue::make_generator([](AnyValue thisVal, std::vector<AnyValue> _) -> jspp::JsIterator<jspp::AnyValue>
-                                                          { return thisVal.as_array()->get_iterator(); },
+                                                          {
+                                                              auto arr = thisVal.as_array();
+                                                              for (uint64_t idx = 0; idx < arr->length; ++idx)
+                                                              {
+                                                                  co_yield arr->get_property(static_cast<uint32_t>(idx));
+                                                              }
+                                                              co_return Constants::UNDEFINED; },
                                                           "Symbol.iterator");
             return fn;
         }
@@ -430,7 +436,13 @@ namespace jspp
         inline AnyValue &get_values_fn()
         {
             static AnyValue fn = AnyValue::make_generator([](AnyValue thisVal, std::vector<AnyValue> _) -> jspp::JsIterator<jspp::AnyValue>
-                                                          { return thisVal.as_array()->get_iterator(); },
+                                                          {
+                                                              auto arr = thisVal.as_array();
+                                                              for (uint64_t idx = 0; idx < arr->length; ++idx)
+                                                              {
+                                                                  co_yield arr->get_property(static_cast<uint32_t>(idx));
+                                                              }
+                                                              co_return Constants::UNDEFINED; },
                                                           "values");
             return fn;
         }

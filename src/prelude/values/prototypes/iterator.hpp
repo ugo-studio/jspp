@@ -69,7 +69,7 @@ namespace jspp
 
         inline AnyValue &get_drop_fn()
         {
-            static AnyValue fn = AnyValue::make_generator([](const AnyValue &thisVal, std::span<const AnyValue> args) -> JsIterator<AnyValue>
+            static AnyValue fn = AnyValue::make_generator([](AnyValue thisVal, std::vector<AnyValue> args) -> JsIterator<AnyValue>
                                                           { 
                                                             auto self = thisVal.as_iterator();
                                                             size_t skip_count = 0;
@@ -95,7 +95,7 @@ namespace jspp
 
         inline AnyValue &get_take_fn()
         {
-            static AnyValue fn = AnyValue::make_generator([](const AnyValue &thisVal, std::span<const AnyValue> args) -> JsIterator<AnyValue>
+            static AnyValue fn = AnyValue::make_generator([](AnyValue thisVal, std::vector<AnyValue> args) -> JsIterator<AnyValue>
                                                           { 
                                                             auto self = thisVal.as_iterator();
                                                             size_t take_count = 0;

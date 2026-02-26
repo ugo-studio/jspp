@@ -50,16 +50,6 @@ inline std::string jspp::JsArray::to_std_string() const
     return result;
 }
 
-inline jspp::JsIterator<jspp::AnyValue> jspp::JsArray::get_iterator()
-{
-    for (uint64_t idx = 0; idx < length; ++idx)
-    {
-        co_yield get_property(static_cast<uint32_t>(idx));
-    }
-
-    co_return AnyValue::make_undefined();
-}
-
 inline bool jspp::JsArray::has_property(const std::string &key) const
 {
     if (key == "length")

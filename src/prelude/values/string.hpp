@@ -19,7 +19,6 @@ namespace jspp
         JsType get_heap_type() const override { return JsType::String; }
 
         std::string to_std_string() const;
-        JsIterator<AnyValue> get_iterator();
 
         AnyValue get_property(const std::string &key, const AnyValue &thisVal);
         AnyValue get_property(uint32_t idx);
