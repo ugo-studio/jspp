@@ -58,9 +58,9 @@ inline bool jspp::JsArray::has_property(const std::string &key) const
     {
         uint32_t idx = static_cast<uint32_t>(std::stoull(key));
         if (idx < dense.size())
-            return true;
+            return !dense[idx].is_uninitialized();
         if (sparse.find(idx) != sparse.end())
-            return true;
+            return !sparse.at(idx).is_uninitialized();
     }
     if (props.find(key) != props.end())
         return true;
