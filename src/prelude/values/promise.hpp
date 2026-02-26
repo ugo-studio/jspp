@@ -24,7 +24,10 @@ namespace jspp
         std::vector<std::function<void(const AnyValue&)>> onFulfilled;
         std::vector<std::function<void(const AnyValue&)>> onRejected;
         
+        bool handled = false;
+
         PromiseState(); // Defined in helpers
+        ~PromiseState(); // Defined in helpers
     };
 
     struct JsPromisePromiseType; // Forward declaration

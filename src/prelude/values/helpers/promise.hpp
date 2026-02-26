@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include "types.hpp"
 #include "values/promise.hpp"
 #include "any_value.hpp"
@@ -8,7 +9,25 @@
 namespace jspp
 {
 
-    inline PromiseState::PromiseState() : result(Constants::UNDEFINED) {}
+    inline PromiseState::PromiseState() : result(Constants::UNDEFINED), handled(false) {}
+
+    inline PromiseState::~PromiseState()
+    {
+        if (status == PromiseStatus::Rejected && !handled)
+        {
+            std::string msg;
+            try {
+                if (result.is_object() || result.is_function()) {
+                    msg = result.call_own_property("toString", {}).to_std_string();
+                } else {
+                    msg = result.to_std_string();
+                }
+            } catch (...) {
+                msg = result.to_std_string();
+            }
+            std::cerr << "UnhandledPromiseRejection: " << msg << "\n";
+        }
+    }
 
     inline JsPromise::JsPromise() : state(std::make_shared<PromiseState>()) {}
 
@@ -101,6 +120,7 @@ namespace jspp
 
     inline void JsPromise::then(std::function<void(AnyValue)> onFulfilled, std::function<void(AnyValue)> onRejected)
     {
+        state->handled = true;
         if (state->status == PromiseStatus::Fulfilled)
         {
             if (onFulfilled)

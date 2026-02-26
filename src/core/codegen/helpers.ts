@@ -193,6 +193,10 @@ export function getDerefCode(
     context: VisitContext,
     typeInfo: TypeInfo | null,
 ): string {
+    if (typeInfo?.isBuiltin) {
+        return nodeText;
+    }
+
     // Make sure varName is incased in quotes
     if (!varName.startsWith('"')) varName = '"' + varName;
     if (!varName.endsWith('"')) varName = varName + '"';
