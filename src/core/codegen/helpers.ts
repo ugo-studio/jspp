@@ -280,15 +280,18 @@ export function hoistDeclaration(
         | ts.VariableDeclaration
         | ts.FunctionDeclaration
         | ts.ClassDeclaration
-        | ts.EnumDeclaration,
+        | ts.EnumDeclaration
+        | ts.ParameterDeclaration,
     hoistedSymbols: DeclaredSymbols,
     scopeNode: ts.Node,
 ) {
-    const isLet = ts.isVariableDeclaration(decl) &&
-        (decl.parent.flags & (ts.NodeFlags.Let)) !== 0;
+    const isLet = ts.isParameter(decl) || (ts.isVariableDeclaration(decl) &&
+        (decl.parent.flags & (ts.NodeFlags.Let)) !== 0);
     const isConst = ts.isVariableDeclaration(decl) &&
         (decl.parent.flags & (ts.NodeFlags.Const)) !== 0;
-    const declType = isLet
+    const declType = ts.isParameter(decl)
+        ? DeclarationType.let
+        : isLet
         ? DeclarationType.let
         : isConst
         ? DeclarationType.const
@@ -367,13 +370,13 @@ export function hoistDeclaration(
             const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
                 name,
                 scope,
-            )!;
+            );
 
             const initializer = isLet || isConst || ts.isClassDeclaration(decl)
                 ? "jspp::Constants::UNINITIALIZED"
                 : "jspp::Constants::UNDEFINED";
 
-            if (typeInfo.needsHeapAllocation) {
+            if (typeInfo?.needsHeapAllocation) {
                 return `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;
             } else {
                 return `${this.indent()}jspp::AnyValue ${name} = ${initializer};\n`;

@@ -155,7 +155,7 @@ namespace jspp
             return keys;
         }
 
-        inline AnyValue get_object_iterator(const AnyValue &obj, const std::string &name)
+        inline AnyValue get_object_iterator(const AnyValue &obj, const std::optional<std::string> &name = std::nullopt)
         {
             if (obj.is_iterator())
             {
@@ -180,10 +180,10 @@ namespace jspp
                 }
             }
 
-            throw jspp::Exception::make_exception(name + " is not iterable", "TypeError");
+            throw jspp::Exception::make_exception(name.value_or(obj.to_std_string()) + " is not iterable", "TypeError");
         }
 
-        inline AnyValue get_object_async_iterator(const AnyValue &obj, const std::string &name)
+        inline AnyValue get_object_async_iterator(const AnyValue &obj, const std::optional<std::string> &name = std::nullopt)
         {
             if (obj.is_async_iterator())
                 return obj;
@@ -204,7 +204,7 @@ namespace jspp
                     return iter;
             }
 
-            throw jspp::Exception::make_exception(name + " is not async iterable", "TypeError");
+            throw jspp::Exception::make_exception(name.value_or(obj.to_std_string()) + " is not async iterable", "TypeError");
         }
 
         inline AnyValue in(const AnyValue &lhs, const AnyValue &rhs)

@@ -173,7 +173,7 @@ export function generateDestructuring(
 
             // Call the return method to clean resources
             innerCode +=
-                `${this.indent()}jspp::Access::call_optional_property_with_optional_call(${iterVar}, "return", {}, "return");\n`;
+                `${this.indent()}jspp::Access::call_optional_property_with_optional_call(${iterVar}, "return", {});\n`;
 
             return innerCode;
         } else if (

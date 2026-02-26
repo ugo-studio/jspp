@@ -52,7 +52,7 @@ export function visitForStatement(
                         .lookupFromScope(
                             name,
                             scope,
-                        )!;
+                        );
 
                     conditionContext.localScopeSymbols = new DeclaredSymbols();
 
@@ -70,7 +70,7 @@ export function visitForStatement(
                         checks: { initialized: true },
                     });
 
-                    if (typeInfo.needsHeapAllocation) {
+                    if (typeInfo?.needsHeapAllocation) {
                         initializerCode =
                             `auto ${name} = std::make_shared<jspp::AnyValue>(${initValue})`;
                     } else {

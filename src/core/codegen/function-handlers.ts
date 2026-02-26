@@ -103,7 +103,7 @@ export function generateLambdaComponents(
             nativePreamble +=
                 `${this.indent()}jspp::AnyValue ${this.globalThisVar} = ${finalThisParamName};\n`;
         }
-        // Note: Arguments are now automatically copied into the coroutine frame because 
+        // Note: Arguments are now automatically copied into the coroutine frame because
         // the lambda parameter is passed by value (std::vector).
         // We just need to define argsName as a reference to the parameter.
         preamble +=
@@ -114,7 +114,8 @@ export function generateLambdaComponents(
     let nativeFuncArgs = "";
     let nativeParamsContent = "";
     this.validateFunctionParams(node.parameters).forEach((p, i) => {
-        const name = ts.isIdentifier(p.name)
+        const isIdentifier = ts.isIdentifier(p.name);
+        const name = isIdentifier
             ? p.name.text
             : this.generateUniqueName(
                 `__param_native_${i}_`,
@@ -125,14 +126,38 @@ export function generateLambdaComponents(
             : !!p.dotDotDotToken
             ? "jspp::AnyValue::make_array(std::vector<jspp::AnyValue>{})"
             : "jspp::Constants::UNDEFINED";
-        nativeFuncArgs += `, jspp::AnyValue ${name} = ${defaultValue}`;
 
-        if (!ts.isIdentifier(p.name)) {
-            nativeParamsContent += this.generateDestructuring(
-                p.name,
+        let signatureName = name;
+        let needsTemp = !isIdentifier;
+
+        if (isIdentifier) {
+            const scope = this.getScopeForNode(p);
+            const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
                 name,
-                visitContext,
-            ) + ";\n";
+                scope,
+            );
+            if (typeInfo?.needsHeapAllocation) {
+                needsTemp = true;
+                signatureName = this.generateUniqueName(
+                    `__${name}_param_`,
+                    visitContext.localScopeSymbols,
+                );
+            }
+        }
+
+        nativeFuncArgs += `, jspp::AnyValue ${signatureName} = ${defaultValue}`;
+
+        if (needsTemp) {
+            if (isIdentifier) {
+                nativeParamsContent +=
+                    `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${signatureName});\n`;
+            } else {
+                nativeParamsContent += this.generateDestructuring(
+                    p.name,
+                    signatureName,
+                    visitContext,
+                ) + ";\n";
+            }
         }
     });
 
@@ -158,13 +183,13 @@ export function generateLambdaComponents(
                         .lookupFromScope(
                             name,
                             scope,
-                        )!;
+                        );
 
                     // Handle rest parameters
                     if (!!p.dotDotDotToken) {
                         const initValue =
                             `jspp::AnyValue::make_array(${argsName}.subspan(${i}))`;
-                        if (typeInfo.needsHeapAllocation) {
+                        if (typeInfo?.needsHeapAllocation) {
                             paramsCode +=
                                 `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initValue});\n`;
                         } else {
@@ -177,7 +202,7 @@ export function generateLambdaComponents(
                     // Normal parameter
                     const initValue =
                         `${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue}`;
-                    if (typeInfo && typeInfo.needsHeapAllocation) {
+                    if (typeInfo?.needsHeapAllocation) {
                         paramsCode +=
                             `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initValue});\n`;
                     } else {
@@ -224,6 +249,19 @@ export function generateLambdaComponents(
                 );
                 preamble += hoistCode;
                 nativePreamble += hoistCode;
+            });
+
+            // Hoist parameters (especially for destructuring)
+            node.parameters.forEach((p) => {
+                if (!ts.isIdentifier(p.name)) {
+                    const hoistCode = this.hoistDeclaration(
+                        p,
+                        visitContext.localScopeSymbols,
+                        node.body as ts.Node,
+                    );
+                    preamble += hoistCode;
+                    nativePreamble += hoistCode;
+                }
             });
 
             this.indentationLevel++;

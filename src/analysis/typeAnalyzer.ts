@@ -97,6 +97,26 @@ export class TypeAnalyzer {
     private loopDepth = 0;
     private switchDepth = 0;
 
+    private defineParameter(
+        nameNode: ts.BindingName,
+        p: ts.ParameterDeclaration,
+        type?: string,
+    ) {
+        if (ts.isIdentifier(nameNode)) {
+            this.scopeManager.define(nameNode.text, {
+                type: type || getParameterType(p),
+                isParameter: true,
+                declaration: p,
+            });
+        } else {
+            nameNode.elements.forEach((element) => {
+                if (ts.isBindingElement(element)) {
+                    this.defineParameter(element.name, p, type);
+                }
+            });
+        }
+    }
+
     public analyze(ast: Node) {
         this.nodeToScope.set(ast, this.scopeManager.currentScope);
 
@@ -341,11 +361,7 @@ export class TypeAnalyzer {
                                 );
                             }
 
-                            this.scopeManager.define(p.name.getText(), {
-                                type: getParameterType(p),
-                                isParameter: true,
-                                declaration: p,
-                            });
+                            this.defineParameter(p.name, p);
                         });
                         this.functionStack.push(node);
                     }
@@ -394,11 +410,7 @@ export class TypeAnalyzer {
                                 );
                             }
 
-                            this.scopeManager.define(p.name.getText(), {
-                                type: getParameterType(p),
-                                isParameter: true,
-                                declaration: p,
-                            });
+                            this.defineParameter(p.name, p);
                         });
                         this.functionStack.push(node);
                     }
@@ -444,12 +456,7 @@ export class TypeAnalyzer {
                                 );
                             }
 
-                            this.scopeManager.define(p.name.getText(), {
-                                type: getParameterType(p),
-                                isParameter: true,
-
-                                declaration: p,
-                            });
+                            this.defineParameter(p.name, p);
                         });
                         this.functionStack.push(node);
                     }
@@ -525,11 +532,7 @@ export class TypeAnalyzer {
                             this.scopeManager.currentScope,
                         );
                         node.parameters.forEach((p) =>
-                            this.scopeManager.define(p.name.getText(), {
-                                type: "auto",
-                                isParameter: true,
-                                declaration: p,
-                            })
+                            this.defineParameter(p.name, p, "auto")
                         );
                         this.functionStack.push(node);
                     }
@@ -560,11 +563,7 @@ export class TypeAnalyzer {
                             this.scopeManager.currentScope,
                         );
                         node.parameters.forEach((p) =>
-                            this.scopeManager.define(p.name.getText(), {
-                                type: "auto",
-                                isParameter: true,
-                                declaration: p,
-                            })
+                            this.defineParameter(p.name, p, "auto")
                         );
                         this.functionStack.push(node); // Constructor acts like a function
                     }
