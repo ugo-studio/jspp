@@ -10,6 +10,60 @@
 
 namespace jspp
 {
+    // ---- Constructor A: infer flags ----
+    inline JsFunction::JsFunction(const JsFunctionCallable &c,
+                                  std::optional<std::string> n,
+                                  std::unordered_map<std::string, AnyValue> p,
+                                  bool is_cls,
+                                  bool is_ctor)
+        : callable(c),
+          name(std::move(n)),
+          props(std::move(p)),
+          proto(Constants::Null),
+          is_generator(callable.index() == 1),
+          is_async(callable.index() == 2),
+          is_class(is_cls),
+          is_constructor(is_ctor && !is_generator && !is_async) // Generators and asyncs are never constructors
+    {
+    }
+
+    // ---- Constructor B: explicit generator flag (backward compat) ----
+    inline JsFunction::JsFunction(const JsFunctionCallable &c,
+                                  bool is_gen,
+                                  std::optional<std::string> n,
+                                  std::unordered_map<std::string, AnyValue> p,
+                                  bool is_cls,
+                                  bool is_ctor)
+        : callable(c),
+          name(std::move(n)),
+          props(std::move(p)),
+          proto(Constants::Null),
+          is_generator(is_gen),
+          is_async(callable.index() == 2),
+          is_class(is_cls),
+          is_constructor(is_ctor && !is_gen && !is_async)
+    {
+    }
+
+    // ---- Constructor C: explicit async flag ----
+    inline JsFunction::JsFunction(const JsFunctionCallable &c,
+                                  bool is_gen,
+                                  bool is_async_func,
+                                  std::optional<std::string> n,
+                                  std::unordered_map<std::string, AnyValue> p,
+                                  bool is_cls,
+                                  bool is_ctor)
+        : callable(c),
+          name(std::move(n)),
+          props(std::move(p)),
+          proto(Constants::Null),
+          is_generator(is_gen),
+          is_async(is_async_func),
+          is_class(is_cls),
+          is_constructor(is_ctor && !is_gen && !is_async_func)
+    {
+    }
+
     inline std::string JsFunction::to_std_string() const
     {
         std::string type_part = this->is_async ? "async function" : this->is_generator ? "function*"

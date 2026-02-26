@@ -24,16 +24,7 @@ namespace jspp
                std::optional<std::string> n = std::nullopt,
                std::unordered_map<std::string, AnyValue> p = {},
                bool is_cls = false,
-               bool is_ctor = true)
-        : callable(c),
-          name(std::move(n)),
-          props(std::move(p)),
-          is_generator(callable.index() == 1),
-          is_async(callable.index() == 2),
-          is_class(is_cls),
-          is_constructor(is_ctor && !is_generator && !is_async) // Generators and asyncs are never constructors
-    {
-    }
+               bool is_ctor = true);
 
     // ---- Constructor B: explicit generator flag (backward compat) ----
     JsFunction(const JsFunctionCallable &c,
@@ -41,16 +32,7 @@ namespace jspp
                std::optional<std::string> n = std::nullopt,
                std::unordered_map<std::string, AnyValue> p = {},
                bool is_cls = false,
-               bool is_ctor = true)
-        : callable(c),
-          name(std::move(n)),
-          props(std::move(p)),
-          is_generator(is_gen),
-          is_async(callable.index() == 2),
-          is_class(is_cls),
-          is_constructor(is_ctor && !is_gen && !is_async)
-    {
-    }
+               bool is_ctor = true);
 
     // ---- Constructor C: explicit async flag ----
     JsFunction(const JsFunctionCallable &c,
@@ -59,16 +41,7 @@ namespace jspp
                std::optional<std::string> n = std::nullopt,
                std::unordered_map<std::string, AnyValue> p = {},
                bool is_cls = false,
-               bool is_ctor = true)
-        : callable(c),
-          name(std::move(n)),
-          props(std::move(p)),
-          is_generator(is_gen),
-          is_async(is_async_func),
-          is_class(is_cls),
-          is_constructor(is_ctor && !is_gen && !is_async_func)
-    {
-    }
+               bool is_ctor = true);
 
     JsType get_heap_type() const override { return JsType::Function; }
 

@@ -161,6 +161,113 @@ struct ObjectInit
              
              return newObj; }, "create"));
 
+        // Object.getOwnPropertyDescriptor(obj, prop)
+        auto getDescHelper = [](jspp::AnyValue descVal) -> jspp::AnyValue
+        {
+            if (descVal.is_undefined())
+                return jspp::Constants::UNDEFINED;
+
+            auto result = jspp::AnyValue::make_object({});
+
+            if (descVal.is_data_descriptor())
+            {
+                auto d = descVal.as_data_descriptor();
+                result.set_own_property("value", d->value);
+                result.set_own_property("writable", jspp::AnyValue::make_boolean(d->writable));
+                result.set_own_property("enumerable", jspp::AnyValue::make_boolean(d->enumerable));
+                result.set_own_property("configurable", jspp::AnyValue::make_boolean(d->configurable));
+            }
+            else if (descVal.is_accessor_descriptor())
+            {
+                auto a = descVal.as_accessor_descriptor();
+                if (a->get.has_value())
+                {
+                    result.set_own_property("get", jspp::AnyValue::make_function(a->get.value(), std::nullopt));
+                }
+                else
+                {
+                    result.set_own_property("get", jspp::Constants::UNDEFINED);
+                }
+
+                if (a->set.has_value())
+                {
+                    result.set_own_property("set", jspp::AnyValue::make_function(a->set.value(), std::nullopt));
+                }
+                else
+                {
+                    result.set_own_property("set", jspp::Constants::UNDEFINED);
+                }
+                result.set_own_property("enumerable", jspp::AnyValue::make_boolean(a->enumerable));
+                result.set_own_property("configurable", jspp::AnyValue::make_boolean(a->configurable));
+            }
+            else
+            {
+                result.set_own_property("value", descVal);
+                result.set_own_property("writable", jspp::Constants::TRUE);
+                result.set_own_property("enumerable", jspp::Constants::TRUE);
+                result.set_own_property("configurable", jspp::Constants::TRUE);
+            }
+
+            return result;
+        };
+
+        Object.define_data_property("getOwnPropertyDescriptor", jspp::AnyValue::make_function([getDescHelper](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+                                                                                              {
+            if (args.empty()) throw jspp::Exception::make_exception("Object.getOwnPropertyDescriptor called on non-object", "TypeError");
+            auto obj = args[0];
+            if (obj.is_null() || obj.is_undefined()) throw jspp::Exception::make_exception("Object.getOwnPropertyDescriptor called on null or undefined", "TypeError");
+            
+            std::string prop = args.size() > 1 ? args[1].to_property_key() : "undefined";
+            
+            return getDescHelper(obj.get_own_property_descriptor(prop)); }, "getOwnPropertyDescriptor"));
+
+        // Object.getOwnPropertyDescriptors(obj)
+        Object.define_data_property("getOwnPropertyDescriptors", jspp::AnyValue::make_function([getDescHelper](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+                                                                                               {
+            if (args.empty()) throw jspp::Exception::make_exception("Object.getOwnPropertyDescriptors called on non-object", "TypeError");
+            auto obj = args[0];
+            if (obj.is_null() || obj.is_undefined()) throw jspp::Exception::make_exception("Object.getOwnPropertyDescriptors called on null or undefined", "TypeError");
+            
+            auto result = jspp::AnyValue::make_object({});
+            
+            if (obj.is_object()) {
+                auto o = obj.as_object();
+                for (const auto& name : o->shape->property_names) {
+                    if (o->deleted_keys.count(name)) continue;
+                    result.set_own_property(name, getDescHelper(obj.get_own_property_descriptor(name)));
+                }
+            } else if (obj.is_array()) {
+                auto a = obj.as_array();
+                result.set_own_property("length", getDescHelper(obj.get_own_property_descriptor("length")));
+                for (size_t i = 0; i < a->dense.size(); ++i) {
+                    if (!a->dense[i].is_uninitialized()) {
+                        std::string key = std::to_string(i);
+                        result.set_own_property(key, getDescHelper(obj.get_own_property_descriptor(key)));
+                    }
+                }
+                for (const auto& [idx, val] : a->sparse) {
+                    std::string key = std::to_string(idx);
+                    result.set_own_property(key, getDescHelper(obj.get_own_property_descriptor(key)));
+                }
+                for (const auto& [name, val] : a->props) {
+                    result.set_own_property(name, getDescHelper(obj.get_own_property_descriptor(name)));
+                }
+            } else if (obj.is_function()) {
+                auto f = obj.as_function();
+                for (const auto& [name, val] : f->props) {
+                    result.set_own_property(name, getDescHelper(obj.get_own_property_descriptor(name)));
+                }
+            } else if (obj.is_string()) {
+                auto s = obj.as_string();
+                result.set_own_property("length", getDescHelper(obj.get_own_property_descriptor("length")));
+                for (size_t i = 0; i < s->value.length(); ++i) {
+                    std::string key = std::to_string(i);
+                    result.set_own_property(key, getDescHelper(obj.get_own_property_descriptor(key)));
+                }
+            }
+            
+            return result; }, "getOwnPropertyDescriptors"));
+
         // Object.defineProperty(obj, prop, descriptor)
         Object.define_data_property("defineProperty", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                                     {
@@ -271,6 +378,41 @@ struct ObjectInit
                  }
                  return jspp::AnyValue::make_boolean(thisVal.as_array()->props.count(prop));
              }
-             return jspp::Constants::FALSE; }, "hasOwnProperty"));
+             return jspp::Constants::FALSE; }, "hasOwnProperty"),
+                                   true, false, true);
+
+        // Object.prototype.toString
+        auto toStringFn = jspp::ObjectPrototypes::get("toString");
+        if (toStringFn.has_value())
+        {
+            proto.define_data_property("toString", toStringFn.value(), true, false, true);
+        }
+
+        // Object.prototype.valueOf
+        proto.define_data_property("valueOf", jspp::AnyValue::make_function([](jspp::AnyValue thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+                                                                            { return thisVal; }, "valueOf"),
+                                   true, false, true);
+
+        // Object.prototype.isPrototypeOf
+        proto.define_data_property("isPrototypeOf", jspp::AnyValue::make_function([](jspp::AnyValue thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+                                                                                  {
+            if (args.empty() || !args[0].is_object()) return jspp::Constants::FALSE;
+            auto target = args[0];
+            auto current = target.get_own_property("__proto__"); // or getPrototypeOf
+            if (current.is_undefined()) {
+                 if (target.is_object()) current = target.as_object()->proto;
+                 else if (target.is_array()) current = target.as_array()->proto;
+                 else if (target.is_function()) current = target.as_function()->proto;
+            }
+            
+            while (!current.is_null()) {
+                if (jspp::is_strictly_equal_to_primitive(current, thisVal)) return jspp::Constants::TRUE;
+                if (current.is_object()) current = current.as_object()->proto;
+                else if (current.is_array()) current = current.as_array()->proto;
+                else if (current.is_function()) current = current.as_function()->proto;
+                else break;
+            }
+            return jspp::Constants::FALSE; }, "isPrototypeOf"),
+                                   true, false, true);
     }
 } objectInit;

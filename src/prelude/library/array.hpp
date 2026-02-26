@@ -182,5 +182,17 @@ struct ArrayInit
         // Array[Symbol.species]
         Array.define_getter(jspp::AnyValue::from_symbol(jspp::WellKnownSymbols::species), jspp::AnyValue::make_function([](jspp::AnyValue thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                                                                                                                         { return thisVal; }, "get [Symbol.species]"));
+
+        // Define common methods on Array.prototype from ArrayPrototypes
+        auto proto = Array.get_own_property("prototype");
+        const char *methods[] = {"push", "pop", "shift", "unshift", "join", "forEach", "map", "filter", "slice", "splice", "concat", "indexOf", "lastIndexOf", "includes", "every", "some", "reduce", "reduceRight", "flat", "flatMap", "fill", "reverse", "sort", "at", "values", "keys", "entries", "toString", "toLocaleString"};
+        for (const char *m : methods)
+        {
+            auto method_fn = jspp::ArrayPrototypes::get(m);
+            if (method_fn.has_value())
+            {
+                proto.define_data_property(m, method_fn.value(), true, false, true);
+            }
+        }
     }
 } arrayInit;

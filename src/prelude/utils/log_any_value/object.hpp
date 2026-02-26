@@ -39,14 +39,29 @@ namespace jspp
             std::string next_indent((depth + 1) * 2, ' ');
             std::stringstream ss;
 
+            // Use Symbol.toStringTag for object prefix
+            bool has_tag = false;
+            try
+            {
+                auto tag_val = val.get_own_property(WellKnownSymbols::toStringTag->key);
+                if (tag_val.is_string())
+                {
+                    ss << tag_val.to_std_string() << " ";
+                    has_tag = true;
+                }
+            }
+            catch (...)
+            {
+            }
+
             // Special handling for Error objects
             try
             {
                 const AnyValue args[] = {val};
-                auto is_error = is_truthy(isErrorFn.call(isErrorFn, std::span<const AnyValue>(args, 1)));
+                auto is_error = is_truthy(isErrorFn.call(isErrorFn, std::span<const jspp::AnyValue>(args, 1)));
                 if (is_error)
                 {
-                    auto result = errorToStringFn.call(val, std::span<const AnyValue>{});
+                    auto result = errorToStringFn.call(val, std::span<const jspp::AnyValue>{});
                     if (result.is_string())
                     {
                         ss << result.to_std_string();
@@ -74,6 +89,8 @@ namespace jspp
 
                     if (!is_enumerable_property(prop_val))
                         continue;
+
+                    // Skip toStringTag if already used as prefix and it's non-enumerable (it is skipped by is_enumerable_property anyway)
 
                     if (is_valid_js_identifier(key))
                     {

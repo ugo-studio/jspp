@@ -407,7 +407,21 @@ export function generateWrappedLambda(
         }
     }
 
-    const fullExpression = `${method}(${args})`;
+    let prototypeExpr = "";
+    if (isInsideGeneratorFunction) {
+        if (isInsideAsyncFunction) {
+            prototypeExpr =
+                '::AsyncGeneratorFunction.get_own_property("prototype")';
+        } else {
+            prototypeExpr = '::GeneratorFunction.get_own_property("prototype")';
+        }
+    } else if (isInsideAsyncFunction) {
+        prototypeExpr = '::AsyncFunction.get_own_property("prototype")';
+    } else {
+        prototypeExpr = '::Function.get_own_property("prototype")';
+    }
+
+    const fullExpression = `${method}(${args}).set_prototype(${prototypeExpr})`;
 
     if (ts.isFunctionDeclaration(node) && !isAssignment && node.name) {
         const funcName = node.name?.getText();

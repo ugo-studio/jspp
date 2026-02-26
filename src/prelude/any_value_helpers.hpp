@@ -308,7 +308,7 @@ namespace jspp
         return to_std_string();
     }
 
-    inline void AnyValue::set_prototype(AnyValue proto)
+    inline AnyValue &AnyValue::set_prototype(AnyValue proto)
     {
         if (is_object())
         {
@@ -326,6 +326,7 @@ namespace jspp
         {
             Exception::throw_uninitialized_reference("#<Object>");
         }
+        return *this;
     }
 
     // AnyValue::call implementation

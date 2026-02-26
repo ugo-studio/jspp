@@ -290,6 +290,7 @@ namespace jspp
         bool has_property(const char *key) const { return has_property(std::string(key)); }
 
         AnyValue get_own_property(const std::string &key) const;
+        AnyValue get_own_property_descriptor(const std::string &key) const;
         AnyValue get_own_property(const char *key) const { return get_own_property(std::string(key)); }
         AnyValue get_own_property(uint32_t idx) const;
         AnyValue get_own_property(int idx) const { return get_own_property(static_cast<uint32_t>(idx)); }
@@ -327,7 +328,7 @@ namespace jspp
         AnyValue call(AnyValue thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr = std::nullopt) const;
         AnyValue optional_call(AnyValue thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr = std::nullopt) const;
         AnyValue construct(std::span<const AnyValue> args, const std::optional<std::string> &name = std::nullopt) const;
-        void set_prototype(AnyValue proto);
+        AnyValue &set_prototype(AnyValue proto);
         std::string to_std_string() const;
         std::string to_property_key() const;
 

@@ -9,6 +9,61 @@ namespace jspp
     {
         return get_property_with_receiver(key, *this);
     }
+    inline AnyValue AnyValue::get_own_property_descriptor(const std::string &key) const
+    {
+        switch (get_type())
+        {
+        case JsType::Object:
+        {
+            auto obj = as_object();
+            if (obj->deleted_keys.count(key))
+                return Constants::UNDEFINED;
+            auto offset = obj->shape->get_offset(key);
+            if (offset.has_value())
+                return obj->storage[offset.value()];
+            return Constants::UNDEFINED;
+        }
+        case JsType::Array:
+        {
+            auto arr = as_array();
+            if (key == "length")
+                return AnyValue::make_number(arr->length);
+            if (JsArray::is_array_index(key))
+            {
+                uint32_t idx = static_cast<uint32_t>(std::stoull(key));
+                if (idx < arr->dense.size() && !arr->dense[idx].is_uninitialized())
+                    return arr->dense[idx];
+                if (arr->sparse.count(idx))
+                    return arr->sparse[idx];
+            }
+            if (arr->props.count(key))
+                return arr->props.at(key);
+            return Constants::UNDEFINED;
+        }
+        case JsType::Function:
+        {
+            auto func = as_function();
+            if (func->props.count(key))
+                return func->props.at(key);
+            return Constants::UNDEFINED;
+        }
+        case JsType::String:
+        {
+            auto str = as_string();
+            if (key == "length")
+                return AnyValue::make_number(str->value.length());
+            if (JsArray::is_array_index(key))
+            {
+                uint32_t idx = static_cast<uint32_t>(std::stoull(key));
+                if (idx < str->value.length())
+                    return AnyValue::make_string(std::string(1, str->value[idx]));
+            }
+            return Constants::UNDEFINED;
+        }
+        default:
+            return Constants::UNDEFINED;
+        }
+    }
     inline bool AnyValue::has_property(const std::string &key) const
     {
         switch (get_type())
