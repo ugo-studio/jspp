@@ -15,11 +15,19 @@
 
 namespace jspp
 {
+    inline bool AnyValue::operator==(const AnyValue &other) const noexcept
+    {
+        return storage == other.storage;
+    }
     inline bool AnyValue::operator==(const std::string &other) const noexcept
     {
         if (!is_string())
             return false;
         return as_string()->value == other;
+    }
+    inline bool AnyValue::operator<(const AnyValue &other) const noexcept
+    {
+        return storage < other.storage;
     }
 
     // --- AnyValue GETTERS ---

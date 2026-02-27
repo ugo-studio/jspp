@@ -340,17 +340,9 @@ namespace jspp
         inline uint64_t get_storage() const noexcept { return storage; }
         inline void *get_raw_ptr() const noexcept { return reinterpret_cast<void *>(storage & PAYLOAD_MASK); }
 
-        bool operator==(const AnyValue &other) const noexcept
-        {
-            return storage == other.storage;
-        }
-
+        bool operator==(const AnyValue &other) const noexcept;
         bool operator==(const std::string &other) const noexcept;
-
-        bool operator<(const AnyValue &other) const noexcept
-        {
-            return storage < other.storage;
-        }
+        bool operator<(const AnyValue &other) const noexcept;
     };
 
     struct AnyValueAwaiter

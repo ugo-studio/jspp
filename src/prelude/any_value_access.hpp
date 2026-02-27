@@ -359,7 +359,7 @@ namespace jspp
             return as_string()->get_property(key.as_double()).call((*this), args, "[" + key.to_std_string() + "]");
 
         if (key.is_symbol())
-            return call_own_property(key, args);
+            return get_own_symbol_property(key).call((*this), args, key.to_std_string());
 
         return call_own_property(key.to_std_string(), args);
     }
