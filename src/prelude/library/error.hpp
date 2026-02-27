@@ -26,7 +26,7 @@ inline auto errorConstructor = [](jspp::AnyValue thisVal, std::span<const jspp::
 
     if (!is_construct_call)
     {
-        target = jspp::AnyValue::make_object_with_proto({}, proto);
+        target = jspp::AnyValue::make_object({}).set_prototype(proto);
     }
 
     std::string name = "Error";

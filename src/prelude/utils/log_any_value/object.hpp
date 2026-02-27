@@ -51,7 +51,7 @@ namespace jspp
             std::string indent(depth * 2, ' ');
             std::string next_indent((depth + 1) * 2, ' ');
             std::stringstream ss;
-// ... (omitting intermediate parts for brevity in explanation, but including in replacement)
+            // ... (omitting intermediate parts for brevity in explanation, but including in replacement)
             // Use Symbol.toStringTag for object prefix
             bool has_tag = false;
             try
@@ -121,8 +121,9 @@ namespace jspp
                     if (!is_enumerable_property(pair.second))
                         continue;
 
+                    ss << Color::BRIGHT_BLACK << "[" << Color::RESET;
                     ss << Color::BLUE << pair.first.to_std_string() << Color::RESET;
-                    ss << Color::BRIGHT_BLACK << ": " << Color::RESET;
+                    ss << Color::BRIGHT_BLACK << "]: " << Color::RESET;
                     ss << to_log_string(pair.second, visited, depth + 1);
                     if (++current_prop < prop_count)
                         ss << Color::BRIGHT_BLACK << ", " << Color::RESET;

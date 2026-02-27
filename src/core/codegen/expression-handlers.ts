@@ -123,12 +123,12 @@ export function visitObjectLiteralExpression(
         )
     ) {
         // Empty object
-        return `jspp::AnyValue::make_object_with_proto({}, ::Object.get_own_property("prototype"))`;
+        return `jspp::AnyValue::make_object({}).set_prototype(::Object.get_own_property("prototype"))`;
     }
 
     let code = `([&]() {\n`;
     code +=
-        `${this.indent()}  auto ${objVar} = jspp::AnyValue::make_object_with_proto({}, ::Object.get_own_property("prototype"));\n`;
+        `${this.indent()}  auto ${objVar} = jspp::AnyValue::make_object({}).set_prototype(::Object.get_own_property("prototype"));\n`;
 
     this.indentationLevel++;
 
@@ -289,7 +289,7 @@ export function visitArrayLiteralExpression(
         const elementsSpan = elements.length > 0
             ? `std::span<const jspp::AnyValue>((const jspp::AnyValue[]){${elementsJoined}}, ${elements.length})`
             : "std::span<const jspp::AnyValue>{}";
-        return `jspp::AnyValue::make_array_with_proto(${elementsSpan}, ::Array.get_own_property("prototype"))`;
+        return `jspp::AnyValue::make_array(${elementsSpan}).set_prototype(::Array.get_own_property("prototype"))`;
     }
 
     const arrVar = this.generateUniqueName(
@@ -348,7 +348,7 @@ export function visitArrayLiteralExpression(
 
     this.indentationLevel--;
     code +=
-        `${this.indent()}  return jspp::AnyValue::make_array_with_proto(std::move(${arrVar}), ::Array.get_own_property("prototype"));\n`;
+        `${this.indent()}  return jspp::AnyValue::make_array(std::move(${arrVar})).set_prototype(::Array.get_own_property("prototype"));\n`;
     code += `${this.indent()}})()`;
 
     return code;

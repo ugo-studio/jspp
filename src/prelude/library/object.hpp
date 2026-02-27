@@ -166,7 +166,7 @@ struct ObjectInit
                  throw jspp::Exception::make_exception("Object prototype may only be an Object or null", "TypeError");
              }
              
-             auto newObj = jspp::AnyValue::make_object_with_proto({}, proto);
+             auto newObj = jspp::AnyValue::make_object({}).set_prototype(proto);
              
              if (args.size() > 1 && !args[1].is_undefined()) {
                  // Object.defineProperties(newObj, propertiesObject)

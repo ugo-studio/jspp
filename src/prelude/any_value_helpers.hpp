@@ -57,14 +57,6 @@ namespace jspp
     {
         return from_ptr(new JsObject(props, make_null()));
     }
-    inline AnyValue AnyValue::make_object_with_proto(std::initializer_list<std::pair<std::string, AnyValue>> props, AnyValue proto) noexcept
-    {
-        return from_ptr(new JsObject(props, proto));
-    }
-    inline AnyValue AnyValue::make_object_with_proto(const std::map<std::string, AnyValue> &props, AnyValue proto) noexcept
-    {
-        return from_ptr(new JsObject(props, proto));
-    }
     inline AnyValue AnyValue::make_array(std::span<const AnyValue> dense) noexcept
     {
         std::vector<AnyValue> vec;
@@ -80,28 +72,6 @@ namespace jspp
     inline AnyValue AnyValue::make_array(std::vector<AnyValue> &&dense) noexcept
     {
         return from_ptr(new JsArray(std::move(dense)));
-    }
-    inline AnyValue AnyValue::make_array_with_proto(std::span<const AnyValue> dense, AnyValue proto) noexcept
-    {
-        auto arr = new JsArray();
-        arr->dense.reserve(dense.size());
-        for (const auto &item : dense)
-            arr->dense.push_back(item);
-        arr->length = dense.size();
-        arr->proto = proto;
-        return from_ptr(arr);
-    }
-    inline AnyValue AnyValue::make_array_with_proto(const std::vector<AnyValue> &dense, AnyValue proto) noexcept
-    {
-        auto arr = new JsArray(dense);
-        arr->proto = proto;
-        return from_ptr(arr);
-    }
-    inline AnyValue AnyValue::make_array_with_proto(std::vector<AnyValue> &&dense, AnyValue proto) noexcept
-    {
-        auto arr = new JsArray(std::move(dense));
-        arr->proto = proto;
-        return from_ptr(arr);
     }
     inline AnyValue AnyValue::make_function(const JsFunctionCallable &call, const std::optional<std::string> &name, bool is_constructor) noexcept
     {
@@ -374,7 +344,7 @@ namespace jspp
         }
 
         // 2. Create instance
-        AnyValue instance = AnyValue::make_object_with_proto({}, proto);
+        AnyValue instance = AnyValue::make_object({}).set_prototype(proto);
 
         // 3. Call function
         AnyValue result = call(instance, args);

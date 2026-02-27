@@ -185,14 +185,9 @@ namespace jspp
         static AnyValue make_string(const std::string &raw_s) noexcept;
         static AnyValue make_object(std::initializer_list<std::pair<std::string, AnyValue>> props) noexcept;
         static AnyValue make_object(const std::map<std::string, AnyValue> &props) noexcept;
-        static AnyValue make_object_with_proto(std::initializer_list<std::pair<std::string, AnyValue>> props, AnyValue proto) noexcept;
-        static AnyValue make_object_with_proto(const std::map<std::string, AnyValue> &props, AnyValue proto) noexcept;
         static AnyValue make_array(std::span<const AnyValue> dense) noexcept;
         static AnyValue make_array(const std::vector<AnyValue> &dense) noexcept;
         static AnyValue make_array(std::vector<AnyValue> &&dense) noexcept;
-        static AnyValue make_array_with_proto(std::span<const AnyValue> dense, AnyValue proto) noexcept;
-        static AnyValue make_array_with_proto(const std::vector<AnyValue> &dense, AnyValue proto) noexcept;
-        static AnyValue make_array_with_proto(std::vector<AnyValue> &&dense, AnyValue proto) noexcept;
         static AnyValue make_function(const JsFunctionCallable &call, const std::optional<std::string> &name = std::nullopt, bool is_constructor = true) noexcept;
         static AnyValue make_class(const JsFunctionCallable &call, const std::optional<std::string> &name = std::nullopt) noexcept;
         static AnyValue make_generator(const JsFunctionCallable &call, const std::optional<std::string> &name = std::nullopt) noexcept;
