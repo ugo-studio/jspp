@@ -206,5 +206,22 @@ namespace jspp
 
             return std::nullopt;
         }
+
+        inline std::optional<AnyValue> get(const AnyValue &key)
+        {
+            // --- toString() method ---
+            if (key == "toString" || key == AnyValue::from_symbol(WellKnownSymbols::toStringTag))
+            {
+                return get_toString_fn();
+            }
+
+            // --- valueOf() method ---
+            if (key == "valueOf")
+            {
+                return get_valueOf_fn();
+            }
+
+            return std::nullopt;
+        }
     }
 }

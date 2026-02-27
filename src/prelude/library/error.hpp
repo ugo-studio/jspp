@@ -105,7 +105,7 @@ struct ErrorInit
         // Define Error.prototype.toString
         auto proto = Error.get_own_property("prototype");
         proto.define_data_property("toString", errorToStringFn, true, false, true);
-        proto.define_data_property(jspp::WellKnownSymbols::toStringTag->key, errorToStringFn, true, false, true);
+        proto.define_data_property(jspp::AnyValue::from_symbol(jspp::WellKnownSymbols::toStringTag), errorToStringFn, true, false, true);
 
         // Define static Error.isError
         Error.define_data_property("isError", isErrorFn, true, false, true);

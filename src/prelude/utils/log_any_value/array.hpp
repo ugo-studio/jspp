@@ -18,7 +18,7 @@ namespace jspp
         {
             auto arr = val.as_array();
             size_t item_count = static_cast<size_t>(arr->length);
-            size_t prop_count = arr->props.size();
+            size_t prop_count = arr->props.size() + arr->symbol_props.size();
 
             std::string indent(depth * 2, ' ');
             std::string next_indent((depth + 1) * 2, ' ');
@@ -102,28 +102,36 @@ namespace jspp
                 }
 
                 // Print properties
-                if (prop_count > 0)
+                for (const auto &pair : arr->props)
                 {
-                    ss << Color::BRIGHT_BLACK << ", " << Color::RESET;
+                    if (!is_enumerable_property(pair.second))
+                        continue;
 
-                    size_t current_prop = 0;
-                    for (const auto &pair : arr->props)
+                    if (needs_comma)
+                        ss << Color::BRIGHT_BLACK << ", " << Color::RESET;
+
+                    if (is_valid_js_identifier(pair.first))
                     {
-                        if (!is_enumerable_property(pair.second))
-                            continue;
-
-                        if (is_valid_js_identifier(pair.first))
-                        {
-                            ss << pair.first;
-                        }
-                        else
-                        {
-                            ss << "\"" << pair.first << "\"";
-                        }
-                        ss << ": " << to_log_string(pair.second, visited, depth + 1);
-                        if (++current_prop < prop_count)
-                            ss << Color::BRIGHT_BLACK << ", " << Color::RESET;
+                        ss << pair.first;
                     }
+                    else
+                    {
+                        ss << "\"" << pair.first << "\"";
+                    }
+                    ss << ": " << to_log_string(pair.second, visited, depth + 1);
+                    needs_comma = true;
+                }
+                for (const auto &pair : arr->symbol_props)
+                {
+                    if (!is_enumerable_property(pair.second))
+                        continue;
+
+                    if (needs_comma)
+                        ss << Color::BRIGHT_BLACK << ", " << Color::RESET;
+
+                    ss << Color::BLUE << pair.first.to_std_string() << Color::RESET;
+                    ss << ": " << to_log_string(pair.second, visited, depth + 1);
+                    needs_comma = true;
                 }
 
                 ss << " ]";
@@ -193,34 +201,47 @@ namespace jspp
                 ss << next_indent << Color::BRIGHT_BLACK << "... " << (item_count - items_to_show) << " more items" << Color::RESET;
             }
             // Print properties
-            else if (prop_count > 0)
+            size_t current_prop = 0;
+            for (const auto &pair : arr->props)
             {
+                if (current_prop >= MAX_OBJECT_PROPS)
+                    break;
+                if (!is_enumerable_property(pair.second))
+                    continue;
+
                 if (first_item_printed)
                     ss << Color::BRIGHT_BLACK << ",\n"
                        << Color::RESET;
 
-                size_t current_prop = 0;
-                for (const auto &pair : arr->props)
+                ss << next_indent;
+                if (is_valid_js_identifier(pair.first))
                 {
-                    if (current_prop >= MAX_OBJECT_PROPS)
-                        break;
-                    if (!is_enumerable_property(pair.second))
-                        continue;
-
-                    ss << next_indent;
-                    if (is_valid_js_identifier(pair.first))
-                    {
-                        ss << pair.first;
-                    }
-                    else
-                    {
-                        ss << "\"" << pair.first << "\"";
-                    }
-                    ss << ": " << to_log_string(pair.second, visited, depth + 1);
-                    if (++current_prop < prop_count)
-                        ss << Color::BRIGHT_BLACK << ",\n"
-                           << Color::RESET;
+                    ss << pair.first;
                 }
+                else
+                {
+                    ss << "\"" << pair.first << "\"";
+                }
+                ss << ": " << to_log_string(pair.second, visited, depth + 1);
+                first_item_printed = true;
+                current_prop++;
+            }
+            for (const auto &pair : arr->symbol_props)
+            {
+                if (current_prop >= MAX_OBJECT_PROPS)
+                    break;
+                if (!is_enumerable_property(pair.second))
+                    continue;
+
+                if (first_item_printed)
+                    ss << Color::BRIGHT_BLACK << ",\n"
+                       << Color::RESET;
+
+                ss << next_indent;
+                ss << Color::BLUE << pair.first.to_std_string() << Color::RESET;
+                ss << ": " << to_log_string(pair.second, visited, depth + 1);
+                first_item_printed = true;
+                current_prop++;
             }
             ss << "\n";
             ss << indent << "]";

@@ -287,23 +287,27 @@ namespace jspp
         auto operator co_await() const;
 
         bool has_property(const std::string &key) const;
+        bool has_property(const AnyValue &key) const;
         bool has_property(const char *key) const { return has_property(std::string(key)); }
 
         AnyValue get_own_property(const std::string &key) const;
-        AnyValue get_own_property_descriptor(const std::string &key) const;
+        AnyValue get_own_property_descriptor(const AnyValue &key) const;
         AnyValue get_own_property(const char *key) const { return get_own_property(std::string(key)); }
         AnyValue get_own_property(uint32_t idx) const;
         AnyValue get_own_property(int idx) const { return get_own_property(static_cast<uint32_t>(idx)); }
         AnyValue get_own_property(const AnyValue &key) const;
+        AnyValue get_own_symbol_property(const AnyValue &key) const;
 
         AnyValue get_property_with_receiver(const std::string &key, AnyValue receiver) const;
         AnyValue get_property_with_receiver(const char *key, AnyValue receiver) const { return get_property_with_receiver(std::string(key), receiver); }
+        AnyValue get_symbol_property_with_receiver(const AnyValue &key, AnyValue receiver) const;
 
         AnyValue set_own_property(const std::string &key, AnyValue value) const;
         AnyValue set_own_property(const char *key, AnyValue value) const { return set_own_property(std::string(key), value); }
         AnyValue set_own_property(uint32_t idx, AnyValue value) const;
         AnyValue set_own_property(int idx, AnyValue value) const { return set_own_property(static_cast<uint32_t>(idx), value); }
         AnyValue set_own_property(const AnyValue &key, AnyValue value) const;
+        AnyValue set_own_symbol_property(const AnyValue &key, AnyValue value) const;
 
         AnyValue call_own_property(const std::string &key, std::span<const AnyValue> args) const;
         AnyValue call_own_property(const char *key, std::span<const AnyValue> args) const { return call_own_property(std::string(key), args); }
@@ -314,6 +318,7 @@ namespace jspp
         void define_data_property(const std::string &key, AnyValue value);
         void define_data_property(const char *key, AnyValue value) { define_data_property(std::string(key), value); }
         void define_data_property(const AnyValue &key, AnyValue value);
+        void define_data_property(const AnyValue &key, AnyValue value, bool writable, bool enumerable, bool configurable);
         void define_data_property(const std::string &key, AnyValue value, bool writable, bool enumerable, bool configurable);
         void define_data_property(const char *key, AnyValue value, bool writable, bool enumerable, bool configurable) { define_data_property(std::string(key), value, writable, enumerable, configurable); }
 
@@ -334,6 +339,18 @@ namespace jspp
 
         inline uint64_t get_storage() const noexcept { return storage; }
         inline void *get_raw_ptr() const noexcept { return reinterpret_cast<void *>(storage & PAYLOAD_MASK); }
+
+        bool operator==(const AnyValue &other) const noexcept
+        {
+            return storage == other.storage;
+        }
+
+        bool operator==(const std::string &other) const noexcept;
+
+        bool operator<(const AnyValue &other) const noexcept
+        {
+            return storage < other.storage;
+        }
     };
 
     struct AnyValueAwaiter
@@ -343,6 +360,10 @@ namespace jspp
         void await_suspend(std::coroutine_handle<> h);
         AnyValue await_resume();
     };
+}
+
+namespace jspp
+{
 
     inline auto AnyValue::operator co_await() const
     {

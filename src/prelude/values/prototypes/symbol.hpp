@@ -51,7 +51,32 @@ namespace jspp
         inline std::optional<AnyValue> get(const std::string &key)
         {
             // --- toString() method ---
-            if (key == "toString" || key == WellKnownSymbols::toStringTag->key)
+            if (key == "toString")
+            {
+                return get_toString_fn();
+            }
+
+            // --- valueOf() method ---
+            if (key == "valueOf")
+            {
+                return get_valueOf_fn();
+            }
+
+            // --- description property ---
+            if (key == "description")
+            {
+                return get_description_desc();
+            }
+
+            return std::nullopt;
+        }
+        inline std::optional<AnyValue> get(const AnyValue &key)
+        {
+            if (key.is_string())
+                return get(key.as_string()->value);
+
+            // --- toString() method ---
+            if (key == AnyValue::from_symbol(WellKnownSymbols::toStringTag))
             {
                 return get_toString_fn();
             }
@@ -63,15 +88,9 @@ namespace jspp
             }
 
             // --- [Symbol.toPrimitive] ---
-            if (key == WellKnownSymbols::toPrimitive->key)
+            if (key == AnyValue::from_symbol(WellKnownSymbols::toPrimitive))
             {
                 return get_toPrimitive_fn();
-            }
-
-            // --- description property ---
-            if (key == "description")
-            {
-                return get_description_desc();
             }
 
             return std::nullopt;

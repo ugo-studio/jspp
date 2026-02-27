@@ -13,6 +13,7 @@ namespace jspp
         std::vector<AnyValue> dense;                     // dense storage for small/contiguous indices
         std::unordered_map<uint32_t, AnyValue> sparse;   // sparse indices (very large indices)
         std::unordered_map<std::string, AnyValue> props; // non-index string properties
+        std::map<AnyValue, AnyValue> symbol_props;
         AnyValue proto;
         uint64_t length = 0;
 
@@ -25,10 +26,13 @@ namespace jspp
         std::string to_std_string() const;
 
         bool has_property(const std::string &key) const;
+        bool has_symbol_property(const AnyValue &key) const;
         AnyValue get_property(const std::string &key, const AnyValue &thisVal);
         AnyValue get_property(uint32_t idx);
+        AnyValue get_symbol_property(const AnyValue &key, const AnyValue &thisVal);
         AnyValue set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal);
         AnyValue set_property(uint32_t idx, const AnyValue &value);
+        AnyValue set_symbol_property(const AnyValue &key, const AnyValue &value, const AnyValue &thisVal);
 
         static bool is_array_index(const std::string &s)
         {

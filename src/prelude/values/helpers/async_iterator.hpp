@@ -14,6 +14,12 @@ std::string jspp::JsAsyncIterator<T>::to_std_string() const
 }
 
 template <typename T>
+bool jspp::JsAsyncIterator<T>::has_symbol_property(const AnyValue &key) const
+{
+    return symbol_props.count(key) > 0;
+}
+
+template <typename T>
 jspp::AnyValue jspp::JsAsyncIterator<T>::get_property(const std::string &key, AnyValue thisVal)
 {
     auto it = props.find(key);
@@ -30,6 +36,25 @@ jspp::AnyValue jspp::JsAsyncIterator<T>::get_property(const std::string &key, An
         return Constants::UNDEFINED;
     }
     return AnyValue::resolve_property_for_read(it->second, thisVal, key);
+}
+
+template <typename T>
+jspp::AnyValue jspp::JsAsyncIterator<T>::get_symbol_property(const AnyValue &key, AnyValue thisVal)
+{
+    auto it = symbol_props.find(key);
+    if (it == symbol_props.end())
+    {
+        if constexpr (std::is_same_v<T, AnyValue>)
+        {
+            auto proto_it = AsyncIteratorPrototypes::get(key);
+            if (proto_it.has_value())
+            {
+                return AnyValue::resolve_property_for_read(proto_it.value(), thisVal, key.to_std_string());
+            }
+        }
+        return Constants::UNDEFINED;
+    }
+    return AnyValue::resolve_property_for_read(it->second, thisVal, key.to_std_string());
 }
 
 template <typename T>
@@ -65,6 +90,21 @@ jspp::AnyValue jspp::JsAsyncIterator<T>::set_property(const std::string &key, An
 }
 
 template <typename T>
+jspp::AnyValue jspp::JsAsyncIterator<T>::set_symbol_property(const AnyValue &key, AnyValue value, AnyValue thisVal)
+{
+    auto it = symbol_props.find(key);
+    if (it != symbol_props.end())
+    {
+        return AnyValue::resolve_property_for_write(it->second, thisVal, value, key.to_std_string());
+    }
+    else
+    {
+        symbol_props[key] = value;
+        return value;
+    }
+}
+
+template <typename T>
 void jspp::JsAsyncIterator<T>::resume_next()
 {
     if (!handle || handle.done())
@@ -91,8 +131,7 @@ void jspp::JsAsyncIterator<T>::resume_next()
         Scheduler::instance().enqueue([this]()
                                       { 
                                           this->resume_next(); 
-                                          this->deref();
-                                      });
+                                          this->deref(); });
     }
 }
 
@@ -217,7 +256,7 @@ auto jspp::JsAsyncIterator<T>::promise_type::await_transform(AnyValue value)
             if (!base_awaiter.value.is_promise())
             {
                 jspp::Scheduler::instance().enqueue([h]() mutable
-                                              {
+                                                    {
                     auto &pr = h.promise();
                     pr.is_awaiting = false;
                     pr.is_running = true;

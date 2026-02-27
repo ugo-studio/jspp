@@ -38,6 +38,7 @@ namespace jspp
 
         std::shared_ptr<PromiseState> state;
         std::unordered_map<std::string, AnyValue> props;
+        std::map<AnyValue, AnyValue> symbol_props;
 
         JsPromise();
 
@@ -50,8 +51,11 @@ namespace jspp
         
         // --- Methods ---
         std::string to_std_string() const;
+        bool has_symbol_property(const AnyValue& key) const;
         AnyValue get_property(const std::string& key, AnyValue thisVal);
+        AnyValue get_symbol_property(const AnyValue& key, AnyValue thisVal);
         AnyValue set_property(const std::string& key, AnyValue value, AnyValue thisVal);
+        AnyValue set_symbol_property(const AnyValue& key, AnyValue value, AnyValue thisVal);
 
         auto operator co_await() const;
     };

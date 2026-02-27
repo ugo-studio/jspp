@@ -17,13 +17,19 @@ namespace jspp
         if (status == PromiseStatus::Rejected && !handled)
         {
             std::string msg;
-            try {
-                if (result.is_object() || result.is_function()) {
+            try
+            {
+                if (result.is_object() || result.is_function())
+                {
                     msg = result.call_own_property("toString", {}).to_std_string();
-                } else {
+                }
+                else
+                {
                     msg = result.to_std_string();
                 }
-            } catch (...) {
+            }
+            catch (...)
+            {
                 msg = result.to_std_string();
             }
             std::cerr << "UnhandledPromiseRejection: " << msg << "\n";
@@ -162,6 +168,15 @@ namespace jspp
         return "[object Promise]";
     }
 
+    inline bool JsPromise::has_symbol_property(const AnyValue &key) const
+    {
+        if (symbol_props.count(key) > 0)
+            return true;
+        if (PromisePrototypes::get(key).has_value())
+            return true;
+        return false;
+    }
+
     inline AnyValue JsPromise::get_property(const std::string &key, AnyValue thisVal)
     {
         // Prototype lookup
@@ -179,6 +194,21 @@ namespace jspp
         return Constants::UNDEFINED;
     }
 
+    inline AnyValue JsPromise::get_symbol_property(const AnyValue &key, AnyValue thisVal)
+    {
+        auto it = symbol_props.find(key);
+        if (it == symbol_props.end())
+        {
+            auto proto_it = PromisePrototypes::get(key);
+            if (proto_it.has_value())
+            {
+                return AnyValue::resolve_property_for_read(proto_it.value(), thisVal, key.to_std_string());
+            }
+            return Constants::UNDEFINED;
+        }
+        return AnyValue::resolve_property_for_read(it->second, thisVal, key.to_std_string());
+    }
+
     inline AnyValue JsPromise::set_property(const std::string &key, AnyValue value, AnyValue thisVal)
     {
         auto it = props.find(key);
@@ -189,6 +219,20 @@ namespace jspp
         else
         {
             props[key] = value;
+            return value;
+        }
+    }
+
+    inline AnyValue JsPromise::set_symbol_property(const AnyValue &key, AnyValue value, AnyValue thisVal)
+    {
+        auto it = symbol_props.find(key);
+        if (it != symbol_props.end())
+        {
+            return AnyValue::resolve_property_for_write(it->second, thisVal, value, key.to_std_string());
+        }
+        else
+        {
+            symbol_props[key] = value;
             return value;
         }
     }

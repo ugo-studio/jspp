@@ -421,15 +421,9 @@ namespace jspp
         inline std::optional<AnyValue> get(const std::string &key)
         {
             // --- toString() & valueOf() ---
-            if (key == "toString" || key == "valueOf" || key == WellKnownSymbols::toStringTag->key)
+            if (key == "toString" || key == "valueOf")
             {
                 return get_toString_fn();
-            }
-
-            // --- [Symbol.iterator]() method ---
-            if (key == WellKnownSymbols::iterator->key)
-            {
-                return get_iterator_fn();
             }
 
             // --- length property ---
@@ -556,6 +550,26 @@ namespace jspp
             if (key == "trimStart")
             {
                 return get_trimStart_fn();
+            }
+
+            return std::nullopt;
+        }
+
+        inline std::optional<AnyValue> get(const AnyValue &key)
+        {
+            if (key.is_string())
+                return get(key.as_string()->value);
+
+            // --- toString() & valueOf() ---
+            if (key == AnyValue::from_symbol(WellKnownSymbols::toStringTag))
+            {
+                return get_toString_fn();
+            }
+
+            // --- [Symbol.iterator]() method ---
+            if (key == AnyValue::from_symbol(WellKnownSymbols::iterator))
+            {
+                return get_iterator_fn();
             }
 
             return std::nullopt;

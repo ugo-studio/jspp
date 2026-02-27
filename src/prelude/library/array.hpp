@@ -56,8 +56,8 @@ struct ArrayInit
 
             std::vector<jspp::AnyValue> result;
 
-            auto iteratorSym = jspp::WellKnownSymbols::iterator;
-            if (items.has_property(iteratorSym->key)) {
+            auto iteratorSym = jspp::AnyValue::from_symbol(jspp::WellKnownSymbols::iterator);
+            if (items.has_property(iteratorSym)) {
                 auto iter = jspp::Access::get_object_iterator(items, "Array.from source");
                 auto nextFn = iter.get_own_property("next");
                 
@@ -110,8 +110,9 @@ struct ArrayInit
             jspp::AnyValue iter = jspp::Constants::UNDEFINED;
             jspp::AnyValue nextFn = jspp::Constants::UNDEFINED;
 
-            if (items.has_property(jspp::WellKnownSymbols::asyncIterator->key)) {
-                auto method = items.get_property_with_receiver(jspp::WellKnownSymbols::asyncIterator->key, items);
+            auto asyncIterSym = jspp::AnyValue::from_symbol(jspp::WellKnownSymbols::asyncIterator);
+            if (items.has_property(asyncIterSym)) {
+                auto method = items.get_own_property(asyncIterSym);
                 if (method.is_function()) {
                     iter = method.call(items, {});
                     nextFn = iter.get_own_property("next");
@@ -119,8 +120,9 @@ struct ArrayInit
                 }
             } 
             
-            if (!isAsync && items.has_property(jspp::WellKnownSymbols::iterator->key)) {
-                auto method = items.get_property_with_receiver(jspp::WellKnownSymbols::iterator->key, items);
+            auto iterSym = jspp::AnyValue::from_symbol(jspp::WellKnownSymbols::iterator);
+            if (!isAsync && items.has_property(iterSym)) {
+                auto method = items.get_own_property(iterSym);
                 if (method.is_function()) {
                     iter = method.call(items, {});
                     nextFn = iter.get_own_property("next");
@@ -186,13 +188,17 @@ struct ArrayInit
         // Define common methods on Array.prototype from ArrayPrototypes
         auto proto = Array.get_own_property("prototype");
         const char *methods[] = {"push", "pop", "shift", "unshift", "join", "forEach", "map", "filter", "slice", "splice", "concat", "indexOf", "lastIndexOf", "includes", "every", "some", "reduce", "reduceRight", "flat", "flatMap", "fill", "reverse", "sort", "at", "values", "keys", "entries", "toString", "toLocaleString"};
-        for (const char *m : methods)
-        {
-            auto method_fn = jspp::ArrayPrototypes::get(m);
-            if (method_fn.has_value())
-            {
-                proto.define_data_property(m, method_fn.value(), true, false, true);
+                for (const char *m : methods)
+                {
+                    auto method_fn = jspp::ArrayPrototypes::get(m);
+                    if (method_fn.has_value())
+                    {
+                        proto.define_data_property(m, method_fn.value(), true, false, true);
+                    }
+                }
+        
+                auto iteratorSym = jspp::AnyValue::from_symbol(jspp::WellKnownSymbols::iterator);
+                proto.define_data_property(iteratorSym, jspp::ArrayPrototypes::get(iteratorSym).value(), true, false, true);
             }
-        }
-    }
-} arrayInit;
+        } arrayInit;
+        

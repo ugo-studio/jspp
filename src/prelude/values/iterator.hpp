@@ -101,7 +101,8 @@ namespace jspp
         explicit JsIterator(handle_type h) : handle(h) {}
         JsIterator(JsIterator &&other) noexcept 
             : handle(std::exchange(other.handle, nullptr)),
-              props(std::move(other.props)) {}
+              props(std::move(other.props)),
+              symbol_props(std::move(other.symbol_props)) {}
 
         // Delete copy constructor/assignment to ensure unique ownership of the handle
         JsIterator(const JsIterator &) = delete;
@@ -113,14 +114,19 @@ namespace jspp
                 handle.destroy();
         }
 
-        std::unordered_map<std::string, AnyValue> props;
-
-        std::string to_std_string() const;
-        NextResult next(const T &val = T());
-        NextResult return_(const T &val = T());
-        NextResult throw_(const AnyValue &err);
-        std::vector<T> to_vector();
-        AnyValue get_property(const std::string &key, AnyValue thisVal);
-        AnyValue set_property(const std::string &key, AnyValue value, AnyValue thisVal);
-    };
-}
+                std::unordered_map<std::string, AnyValue> props;
+                std::map<AnyValue, AnyValue> symbol_props;
+        
+                std::string to_std_string() const;
+                NextResult next(const T &val = T());
+                NextResult return_(const T &val = T());
+                NextResult throw_(const AnyValue &err);
+                std::vector<T> to_vector();
+                bool has_symbol_property(const AnyValue &key) const;
+                AnyValue get_property(const std::string &key, AnyValue thisVal);
+                AnyValue get_symbol_property(const AnyValue &key, AnyValue thisVal);
+                AnyValue set_property(const std::string &key, AnyValue value, AnyValue thisVal);
+                AnyValue set_symbol_property(const AnyValue &key, AnyValue value, AnyValue thisVal);
+            };
+        }
+        

@@ -32,7 +32,7 @@ struct ObjectInit
             auto keys = jspp::Access::get_object_keys(obj);
             std::vector<jspp::AnyValue> keyValues;
             for(const auto& k : keys) {
-                keyValues.push_back(jspp::AnyValue::make_string(k));
+                keyValues.push_back(k);
             }
             return jspp::AnyValue::make_array(std::move(keyValues)); }, "keys"));
 
@@ -46,7 +46,7 @@ struct ObjectInit
             auto keys = jspp::Access::get_object_keys(obj);
             std::vector<jspp::AnyValue> values;
             for(const auto& k : keys) {
-                values.push_back(obj.get_property_with_receiver(k, obj));
+                values.push_back(obj.get_own_property(k));
             }
             return jspp::AnyValue::make_array(std::move(values)); }, "values"));
 
@@ -61,8 +61,8 @@ struct ObjectInit
             std::vector<jspp::AnyValue> entries;
             for(const auto& k : keys) {
                 std::vector<jspp::AnyValue> entry;
-                entry.push_back(jspp::AnyValue::make_string(k));
-                entry.push_back(obj.get_property_with_receiver(k, obj));
+                entry.push_back(k);
+                entry.push_back(obj.get_own_property(k));
                 entries.push_back(jspp::AnyValue::make_array(std::move(entry)));
             }
             return jspp::AnyValue::make_array(std::move(entries)); }, "entries"));
@@ -78,13 +78,27 @@ struct ObjectInit
                 auto source = args[i];
                 if (source.is_null() || source.is_undefined()) continue;
                 
-                auto keys = jspp::Access::get_object_keys(source);
+                auto keys = jspp::Access::get_object_keys(source, true);
                 for(const auto& k : keys) {
-                     auto val = source.get_property_with_receiver(k, source);
+                     auto val = source.get_own_property(k);
                      target.set_own_property(k, val);
                 }
             }
             return target; }, "assign"));
+
+        // Object.getOwnPropertySymbols(obj)
+        Object.define_data_property("getOwnPropertySymbols", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+                                                                                           {
+            if (args.empty()) throw jspp::Exception::make_exception("Object.getOwnPropertySymbols called on non-object", "TypeError");
+            auto obj = args[0];
+            if (obj.is_null() || obj.is_undefined()) throw jspp::Exception::make_exception("Object.getOwnPropertySymbols called on null or undefined", "TypeError");
+            
+            auto keys = jspp::Access::get_object_keys(obj, true);
+            std::vector<jspp::AnyValue> symbolValues;
+            for(const auto& k : keys) {
+                if (k.is_symbol()) symbolValues.push_back(k);
+            }
+            return jspp::AnyValue::make_array(std::move(symbolValues)); }, "getOwnPropertySymbols"));
 
         // Object.is(value1, value2)
         Object.define_data_property("is", jspp::AnyValue::make_function([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
@@ -217,7 +231,7 @@ struct ObjectInit
             auto obj = args[0];
             if (obj.is_null() || obj.is_undefined()) throw jspp::Exception::make_exception("Object.getOwnPropertyDescriptor called on null or undefined", "TypeError");
             
-            std::string prop = args.size() > 1 ? args[1].to_property_key() : "undefined";
+            jspp::AnyValue prop = args.size() > 1 ? args[1] : jspp::Constants::UNDEFINED;
             
             return getDescHelper(obj.get_own_property_descriptor(prop)); }, "getOwnPropertyDescriptor"));
 
@@ -234,34 +248,46 @@ struct ObjectInit
                 auto o = obj.as_object();
                 for (const auto& name : o->shape->property_names) {
                     if (o->deleted_keys.count(name)) continue;
-                    result.set_own_property(name, getDescHelper(obj.get_own_property_descriptor(name)));
+                    jspp::AnyValue nameVal = jspp::AnyValue::make_string(name);
+                    result.set_own_property(nameVal, getDescHelper(obj.get_own_property_descriptor(nameVal)));
+                }
+                for (const auto& pair : o->symbol_props) {
+                    result.set_own_symbol_property(pair.first, getDescHelper(obj.get_own_property_descriptor(pair.first)));
                 }
             } else if (obj.is_array()) {
                 auto a = obj.as_array();
-                result.set_own_property("length", getDescHelper(obj.get_own_property_descriptor("length")));
+                result.set_own_property("length", getDescHelper(obj.get_own_property_descriptor(jspp::AnyValue::make_string("length"))));
                 for (size_t i = 0; i < a->dense.size(); ++i) {
                     if (!a->dense[i].is_uninitialized()) {
-                        std::string key = std::to_string(i);
+                        jspp::AnyValue key = jspp::AnyValue::make_string(std::to_string(i));
                         result.set_own_property(key, getDescHelper(obj.get_own_property_descriptor(key)));
                     }
                 }
                 for (const auto& [idx, val] : a->sparse) {
-                    std::string key = std::to_string(idx);
+                    jspp::AnyValue key = jspp::AnyValue::make_string(std::to_string(idx));
                     result.set_own_property(key, getDescHelper(obj.get_own_property_descriptor(key)));
                 }
                 for (const auto& [name, val] : a->props) {
-                    result.set_own_property(name, getDescHelper(obj.get_own_property_descriptor(name)));
+                    jspp::AnyValue key = jspp::AnyValue::make_string(name);
+                    result.set_own_property(key, getDescHelper(obj.get_own_property_descriptor(key)));
+                }
+                for (const auto& pair : a->symbol_props) {
+                    result.set_own_symbol_property(pair.first, getDescHelper(obj.get_own_property_descriptor(pair.first)));
                 }
             } else if (obj.is_function()) {
                 auto f = obj.as_function();
                 for (const auto& [name, val] : f->props) {
-                    result.set_own_property(name, getDescHelper(obj.get_own_property_descriptor(name)));
+                    jspp::AnyValue key = jspp::AnyValue::make_string(name);
+                    result.set_own_property(key, getDescHelper(obj.get_own_property_descriptor(key)));
+                }
+                for (const auto& pair : f->symbol_props) {
+                    result.set_own_symbol_property(pair.first, getDescHelper(obj.get_own_property_descriptor(pair.first)));
                 }
             } else if (obj.is_string()) {
                 auto s = obj.as_string();
-                result.set_own_property("length", getDescHelper(obj.get_own_property_descriptor("length")));
+                result.set_own_property("length", getDescHelper(obj.get_own_property_descriptor(jspp::AnyValue::make_string("length"))));
                 for (size_t i = 0; i < s->value.length(); ++i) {
-                    std::string key = std::to_string(i);
+                    jspp::AnyValue key = jspp::AnyValue::make_string(std::to_string(i));
                     result.set_own_property(key, getDescHelper(obj.get_own_property_descriptor(key)));
                 }
             }

@@ -231,12 +231,12 @@ export function generateDestructuring(
                     const keysArray = `{${
                         seenKeys.map((k) =>
                             k.startsWith('"') && k.endsWith('"')
-                                ? k
-                                : `(${k}).to_property_key()`
+                                ? `jspp::AnyValue::make_string(${k})`
+                                : `(${k})`
                         ).join(", ")
                     }}`;
                     const restValueCode =
-                        `jspp::Access::get_rest_object(${valueCode}, std::vector<std::string>${keysArray})`;
+                        `jspp::Access::get_rest_object(${valueCode}, std::vector<jspp::AnyValue>${keysArray})`;
                     innerCode += genAssignment(target, restValueCode);
                 } else {
                     if (propertyName) {

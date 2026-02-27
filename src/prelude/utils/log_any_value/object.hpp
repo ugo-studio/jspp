@@ -17,7 +17,7 @@ namespace jspp
         {
             auto obj = val.as_object();
 
-            size_t prop_count = obj->storage.size();
+            size_t prop_count = obj->storage.size() + obj->symbol_props.size();
             bool use_horizontal_layout = prop_count > 0 && prop_count <= HORIZONTAL_OBJECT_MAX_PROPS;
 
             for (size_t i = 0; i < obj->storage.size(); ++i)
@@ -34,16 +34,29 @@ namespace jspp
                     break;
                 }
             }
+            for (const auto &pair : obj->symbol_props)
+            {
+                if (!is_enumerable_property(pair.second))
+                {
+                    prop_count--;
+                    continue;
+                }
+                if (use_horizontal_layout && !is_simple_value(pair.second))
+                {
+                    use_horizontal_layout = false;
+                    break;
+                }
+            }
 
             std::string indent(depth * 2, ' ');
             std::string next_indent((depth + 1) * 2, ' ');
             std::stringstream ss;
-
+// ... (omitting intermediate parts for brevity in explanation, but including in replacement)
             // Use Symbol.toStringTag for object prefix
             bool has_tag = false;
             try
             {
-                auto tag_val = val.get_own_property(WellKnownSymbols::toStringTag->key);
+                auto tag_val = val.get_own_property(AnyValue::from_symbol(WellKnownSymbols::toStringTag));
                 if (tag_val.is_string())
                 {
                     ss << tag_val.to_std_string() << " ";
@@ -90,8 +103,6 @@ namespace jspp
                     if (!is_enumerable_property(prop_val))
                         continue;
 
-                    // Skip toStringTag if already used as prefix and it's non-enumerable (it is skipped by is_enumerable_property anyway)
-
                     if (is_valid_js_identifier(key))
                     {
                         ss << key;
@@ -102,6 +113,17 @@ namespace jspp
                     }
                     ss << Color::BRIGHT_BLACK << ": " << Color::RESET;
                     ss << to_log_string(prop_val, visited, depth + 1);
+                    if (++current_prop < prop_count)
+                        ss << Color::BRIGHT_BLACK << ", " << Color::RESET;
+                }
+                for (const auto &pair : obj->symbol_props)
+                {
+                    if (!is_enumerable_property(pair.second))
+                        continue;
+
+                    ss << Color::BLUE << pair.first.to_std_string() << Color::RESET;
+                    ss << Color::BRIGHT_BLACK << ": " << Color::RESET;
+                    ss << to_log_string(pair.second, visited, depth + 1);
                     if (++current_prop < prop_count)
                         ss << Color::BRIGHT_BLACK << ", " << Color::RESET;
                 }
@@ -139,6 +161,23 @@ namespace jspp
                         }
                         ss << Color::BRIGHT_BLACK << ": " << Color::RESET;
                         ss << to_log_string(prop_val, visited, depth + 1);
+                        props_shown++;
+                    }
+                    for (const auto &pair : obj->symbol_props)
+                    {
+                        if (props_shown >= MAX_OBJECT_PROPS)
+                            break;
+
+                        if (!is_enumerable_property(pair.second))
+                            continue;
+
+                        if (props_shown > 0)
+                            ss << ",\n";
+
+                        ss << next_indent;
+                        ss << Color::BLUE << pair.first.to_std_string() << Color::RESET;
+                        ss << Color::BRIGHT_BLACK << ": " << Color::RESET;
+                        ss << to_log_string(pair.second, visited, depth + 1);
                         props_shown++;
                     }
                     if (prop_count > MAX_OBJECT_PROPS)

@@ -204,11 +204,11 @@ export function visitForInStatement(
 
     const keysVar = this.generateUniqueName("__keys_", new Set([varName]));
     code +=
-        `${this.indent()}std::vector<std::string> ${keysVar} = jspp::Access::get_object_keys(${derefExpr});\n`;
-    code += `${this.indent()}for (const auto& ${varName}_str : ${keysVar}) {\n`;
+        `${this.indent()}std::vector<jspp::AnyValue> ${keysVar} = jspp::Access::get_object_keys(${derefExpr});\n`;
+    code += `${this.indent()}for (const auto& ${varName}_val : ${keysVar}) {\n`;
     this.indentationLevel++;
     code +=
-        `${this.indent()}${assignmentTarget} = jspp::AnyValue::make_string(${varName}_str);\n`;
+        `${this.indent()}${assignmentTarget} = ${varName}_val;\n`;
     code += this.visit(forIn.statement, {
         ...context,
         currentLabel: undefined,

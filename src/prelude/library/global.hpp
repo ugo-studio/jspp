@@ -52,10 +52,12 @@ struct GlobalInit
         auto functionProto = ::Function.get_own_property("prototype");
         auto arrayProto = ::Array.get_own_property("prototype");
 
+        auto toStringTagSym = jspp::AnyValue::from_symbol(jspp::WellKnownSymbols::toStringTag);
+
         // Set identification tags
-        objectProto.define_data_property(jspp::WellKnownSymbols::toStringTag->key, jspp::AnyValue::make_string("Object"), true, false, true);
-        functionProto.define_data_property(jspp::WellKnownSymbols::toStringTag->key, jspp::AnyValue::make_string("Function"), true, false, true);
-        arrayProto.define_data_property(jspp::WellKnownSymbols::toStringTag->key, jspp::AnyValue::make_string("Array"), true, false, true);
+        objectProto.define_data_property(toStringTagSym, jspp::AnyValue::make_string("Object"), true, false, true);
+        functionProto.define_data_property(toStringTagSym, jspp::AnyValue::make_string("Function"), true, false, true);
+        arrayProto.define_data_property(toStringTagSym, jspp::AnyValue::make_string("Array"), true, false, true);
 
         // Tie built-in prototypes to Object.prototype
         arrayProto.set_prototype(objectProto);
@@ -67,15 +69,15 @@ struct GlobalInit
         // Set up function hierarchy
         auto generatorFunctionProto = ::GeneratorFunction.get_own_property("prototype");
         generatorFunctionProto.set_prototype(functionProto);
-        generatorFunctionProto.define_data_property(jspp::WellKnownSymbols::toStringTag->key, jspp::AnyValue::make_string("GeneratorFunction"), true, false, true);
+        generatorFunctionProto.define_data_property(toStringTagSym, jspp::AnyValue::make_string("GeneratorFunction"), true, false, true);
 
         auto asyncFunctionProto = ::AsyncFunction.get_own_property("prototype");
         asyncFunctionProto.set_prototype(functionProto);
-        asyncFunctionProto.define_data_property(jspp::WellKnownSymbols::toStringTag->key, jspp::AnyValue::make_string("AsyncFunction"), true, false, true);
+        asyncFunctionProto.define_data_property(toStringTagSym, jspp::AnyValue::make_string("AsyncFunction"), true, false, true);
 
         auto asyncGeneratorFunctionProto = ::AsyncGeneratorFunction.get_own_property("prototype");
         asyncGeneratorFunctionProto.set_prototype(functionProto);
-        asyncGeneratorFunctionProto.define_data_property(jspp::WellKnownSymbols::toStringTag->key, jspp::AnyValue::make_string("AsyncGeneratorFunction"), true, false, true);
+        asyncGeneratorFunctionProto.define_data_property(toStringTagSym, jspp::AnyValue::make_string("AsyncGeneratorFunction"), true, false, true);
 
         // Also set internal [[Prototype]] of constructors to Function.prototype
         ::Object.set_prototype(functionProto);

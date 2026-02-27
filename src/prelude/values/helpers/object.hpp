@@ -47,6 +47,19 @@ inline bool jspp::JsObject::has_property(const std::string &key) const
     return false;
 }
 
+inline bool jspp::JsObject::has_symbol_property(const AnyValue &key) const
+{
+    if (symbol_props.count(key))
+        return true;
+    if (!proto.is_null() && !proto.is_undefined())
+    {
+        if (proto.has_property(key)) return true;
+    }
+    if (ObjectPrototypes::get(key).has_value())
+        return true;
+    return false;
+}
+
 inline jspp::AnyValue jspp::JsObject::get_property(const std::string &key, const AnyValue &thisVal)
 {
     if (deleted_keys.count(key)) return Constants::UNDEFINED;
@@ -70,6 +83,28 @@ inline jspp::AnyValue jspp::JsObject::get_property(const std::string &key, const
         return Constants::UNDEFINED;
     }
     return AnyValue::resolve_property_for_read(storage[offset.value()], thisVal, key);
+}
+
+inline jspp::AnyValue jspp::JsObject::get_symbol_property(const AnyValue &key, const AnyValue &thisVal)
+{
+    auto it = symbol_props.find(key);
+    if (it == symbol_props.end())
+    {
+        if (!proto.is_null() && !proto.is_undefined())
+        {
+            auto res = proto.get_symbol_property_with_receiver(key, thisVal);
+            if (!res.is_undefined()) return res;
+        }
+
+        auto proto_it = ObjectPrototypes::get(key);
+        if (proto_it.has_value())
+        {
+            return AnyValue::resolve_property_for_read(proto_it.value(), thisVal, key.to_std_string());
+        }
+        return Constants::UNDEFINED;
+    }
+    // For symbols, we use description as propName for errors
+    return AnyValue::resolve_property_for_read(it->second, thisVal, key.to_std_string());
 }
 
 inline jspp::AnyValue jspp::JsObject::set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal)
@@ -99,6 +134,21 @@ inline jspp::AnyValue jspp::JsObject::set_property(const std::string &key, const
     {
         shape = shape->transition(key);
         storage.push_back(value);
+        return value;
+    }
+}
+
+inline jspp::AnyValue jspp::JsObject::set_symbol_property(const AnyValue &key, const AnyValue &value, const AnyValue &thisVal)
+{
+    // Prototypes for symbols are not yet supported in ObjectPrototypes, but we check proto anyway.
+    auto it = symbol_props.find(key);
+    if (it != symbol_props.end())
+    {
+        return AnyValue::resolve_property_for_write(it->second, thisVal, value, key.to_std_string());
+    }
+    else
+    {
+        symbol_props[key] = value;
         return value;
     }
 }

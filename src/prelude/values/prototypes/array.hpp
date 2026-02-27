@@ -370,8 +370,7 @@ namespace jspp
                                                              auto callback = args[0].as_function();
                                                              auto thisArg = (args.size() > 1) ? args[1] : Constants::UNDEFINED;
                                                              
-                                                             for (uint64_t i = 0; i < self->length; ++i)
-                                                             {
+                                                             for (uint64_t i = 0; i < self->length; ++i) {
                                                                  AnyValue element = self->get_property(static_cast<uint32_t>(i));
                                                                  AnyValue kVal = AnyValue::make_number(i);
                                                                  const AnyValue cbArgs[] = {element, kVal, thisVal};
@@ -968,16 +967,15 @@ namespace jspp
                                                              
                                                              for (const auto& item : args) {
                                                                  bool spreadable = false;
+                                                                 auto spreadableSym = AnyValue::from_symbol(WellKnownSymbols::isConcatSpreadable);
                                                                  if (item.is_array()) {
                                                                      spreadable = true;
-                                                                     auto sym = WellKnownSymbols::isConcatSpreadable;
-                                                                     if (item.has_property(sym->key)) {
-                                                                         spreadable = is_truthy(item.get_property_with_receiver(sym->key, item));
+                                                                     if (item.has_property(spreadableSym)) {
+                                                                         spreadable = is_truthy(item.get_own_property(spreadableSym));
                                                                      }
                                                                  } else if (item.is_object()) {
-                                                                      auto sym = WellKnownSymbols::isConcatSpreadable;
-                                                                      if (item.has_property(sym->key)) {
-                                                                         spreadable = is_truthy(item.get_property_with_receiver(sym->key, item));
+                                                                      if (item.has_property(spreadableSym)) {
+                                                                         spreadable = is_truthy(item.get_own_property(spreadableSym));
                                                                       }
                                                                  }
                                                                  
@@ -1006,20 +1004,12 @@ namespace jspp
                                                              auto self = thisVal.as_array();
                                                              double len = static_cast<double>(self->length);
                                                              double start = args.empty() ? 0 : Operators_Private::ToNumber(args[0]);
+                                                             double actualStart = (start < 0) ? std::max(len + start, 0.0) : std::min(start, len);
                                                              double end = (args.size() < 2 || args[1].is_undefined()) ? len : Operators_Private::ToNumber(args[1]);
-                                                             
-                                                             double k;
-                                                             if (start >= 0) k = start; else k = len + start;
-                                                             if (k < 0) k = 0;
-                                                             
-                                                             double final;
-                                                             if (end >= 0) final = end; else final = len + end;
-                                                             if (final > len) final = len;
-                                                             
-                                                             if (final < k) final = k;
+                                                             double actualEnd = (end < 0) ? std::max(len + end, 0.0) : std::min(end, len);
                                                              
                                                              std::vector<AnyValue> result;
-                                                             for (uint64_t i = static_cast<uint64_t>(k); i < static_cast<uint64_t>(final); ++i) {
+                                                             for (uint64_t i = static_cast<uint64_t>(actualStart); i < static_cast<uint64_t>(actualEnd); ++i) {
                                                                  if (self->has_property(std::to_string(i))) {
                                                                      result.push_back(self->get_property(static_cast<uint32_t>(i)));
                                                                  } else {
@@ -1113,15 +1103,9 @@ namespace jspp
         inline std::optional<AnyValue> get(const std::string &key)
         {
             // --- toString() method ---
-            if (key == "toString" || key == WellKnownSymbols::toStringTag->key)
+            if (key == "toString")
             {
                 return get_toString_fn();
-            }
-
-            // --- [Symbol.iterator]() method ---
-            if (key == WellKnownSymbols::iterator->key)
-            {
-                return get_iterator_fn();
             }
 
             // --- length property ---
@@ -1350,6 +1334,26 @@ namespace jspp
             if (key == "toLocaleString")
             {
                 return get_toLocaleString_fn();
+            }
+
+            return std::nullopt;
+        }
+
+        inline std::optional<AnyValue> get(const AnyValue &key)
+        {
+            if (key.is_string())
+                return get(key.as_string()->value);
+
+            auto toStringTagSym = AnyValue::from_symbol(WellKnownSymbols::toStringTag);
+            if (key == toStringTagSym)
+            {
+                return get_toString_fn();
+            }
+
+            auto iteratorSym = AnyValue::from_symbol(WellKnownSymbols::iterator);
+            if (key == iteratorSym)
+            {
+                return get_iterator_fn();
             }
 
             return std::nullopt;

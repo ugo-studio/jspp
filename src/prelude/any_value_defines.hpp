@@ -32,7 +32,16 @@ namespace jspp
     inline void AnyValue::define_data_property(const AnyValue &key, AnyValue value)
     {
         if (key.is_symbol())
-            define_data_property(key.as_symbol()->key, value);
+        {
+            if (is_object())
+            {
+                as_object()->symbol_props[key] = value;
+            }
+            else if (is_function())
+            {
+                as_function()->symbol_props[key] = value;
+            }
+        }
         else
             define_data_property(key.to_std_string(), value);
     }
@@ -102,10 +111,42 @@ namespace jspp
         }
     }
 
+    inline void AnyValue::define_data_property(const AnyValue &key, AnyValue value, bool writable, bool enumerable, bool configurable)
+    {
+        if (key.is_symbol())
+        {
+            auto desc = AnyValue::make_data_descriptor(value, writable, enumerable, configurable);
+            if (is_object())
+            {
+                as_object()->symbol_props[key] = desc;
+            }
+            else if (is_function())
+            {
+                as_function()->symbol_props[key] = desc;
+            }
+        }
+        else
+            define_data_property(key.to_std_string(), value, writable, enumerable, configurable);
+    }
+
     inline void AnyValue::define_getter(const AnyValue &key, AnyValue getter)
     {
         if (key.is_symbol())
-            define_getter(key.as_symbol()->key, getter);
+        {
+            auto getFunc = [getter](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
+            {
+                return getter.call(thisVal, args);
+            };
+            auto desc = AnyValue::make_accessor_descriptor(getFunc, std::nullopt, true, true);
+            if (is_object())
+            {
+                as_object()->symbol_props[key] = desc;
+            }
+            else if (is_function())
+            {
+                as_function()->symbol_props[key] = desc;
+            }
+        }
         else
             define_getter(key.to_std_string(), getter);
     }
@@ -180,11 +221,28 @@ namespace jspp
         }
     }
 
-    inline void AnyValue::define_setter(const AnyValue &key, AnyValue setter)
-    {
-        if (key.is_symbol())
-            define_setter(key.as_symbol()->key, setter);
-        else
-            define_setter(key.to_std_string(), setter);
+        inline void AnyValue::define_setter(const AnyValue &key, AnyValue setter)
+        {
+            if (key.is_symbol())
+            {
+                auto setFunc = [setter](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
+                {
+                    if (args.empty())
+                        return Constants::UNDEFINED;
+                    return setter.call(thisVal, args);
+                };
+                auto desc = AnyValue::make_accessor_descriptor(std::nullopt, setFunc, true, true);
+                if (is_object())
+                {
+                    as_object()->symbol_props[key] = desc;
+                }
+                else if (is_function())
+                {
+                    as_function()->symbol_props[key] = desc;
+                }
+            }
+            else
+                define_setter(key.to_std_string(), setter);
+        }
     }
-}
+    

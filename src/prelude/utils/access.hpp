@@ -83,9 +83,9 @@ namespace jspp
         }
 
         // Helper function to get enumerable own property keys/values of an object
-        inline std::vector<std::string> get_object_keys(const AnyValue &obj, bool include_symbols = false)
+        inline std::vector<AnyValue> get_object_keys(const AnyValue &obj, bool include_symbols = false)
         {
-            std::vector<std::string> keys;
+            std::vector<AnyValue> keys;
 
             if (obj.is_object())
             {
@@ -93,9 +93,6 @@ namespace jspp
                 for (const auto &key : ptr->shape->property_names)
                 {
                     if (ptr->deleted_keys.count(key))
-                        continue;
-
-                    if (!include_symbols && JsSymbol::is_internal_key(key))
                         continue;
 
                     auto offset_opt = ptr->shape->get_offset(key);
@@ -107,16 +104,37 @@ namespace jspp
                     if (val.is_data_descriptor())
                     {
                         if (val.as_data_descriptor()->enumerable)
-                            keys.push_back(key);
+                            keys.push_back(AnyValue::make_string(key));
                     }
                     else if (val.is_accessor_descriptor())
                     {
                         if (val.as_accessor_descriptor()->enumerable)
-                            keys.push_back(key);
+                            keys.push_back(AnyValue::make_string(key));
                     }
                     else
                     {
-                        keys.push_back(key);
+                        keys.push_back(AnyValue::make_string(key));
+                    }
+                }
+                if (include_symbols)
+                {
+                    for (const auto &pair : ptr->symbol_props)
+                    {
+                        const auto &val = pair.second;
+                        if (val.is_data_descriptor())
+                        {
+                            if (val.as_data_descriptor()->enumerable)
+                                keys.push_back(pair.first);
+                        }
+                        else if (val.is_accessor_descriptor())
+                        {
+                            if (val.as_accessor_descriptor()->enumerable)
+                                keys.push_back(pair.first);
+                        }
+                        else
+                        {
+                            keys.push_back(pair.first);
+                        }
                     }
                 }
             }
@@ -125,22 +143,62 @@ namespace jspp
                 auto ptr = obj.as_function();
                 for (const auto &pair : ptr->props)
                 {
-                    if (include_symbols || !JsSymbol::is_internal_key(pair.first))
+                    if (!pair.second.is_data_descriptor() && !pair.second.is_accessor_descriptor())
+                        keys.push_back(AnyValue::make_string(pair.first));
+                    else if ((pair.second.is_data_descriptor() && pair.second.as_data_descriptor()->enumerable) ||
+                             (pair.second.is_accessor_descriptor() && pair.second.as_accessor_descriptor()->enumerable))
+                        keys.push_back(AnyValue::make_string(pair.first));
+                }
+                if (include_symbols)
+                {
+                    for (const auto &pair : ptr->symbol_props)
                     {
-                        if (!pair.second.is_data_descriptor() && !pair.second.is_accessor_descriptor())
+                        const auto &val = pair.second;
+                        if (val.is_data_descriptor())
+                        {
+                            if (val.as_data_descriptor()->enumerable)
+                                keys.push_back(pair.first);
+                        }
+                        else if (val.is_accessor_descriptor())
+                        {
+                            if (val.as_accessor_descriptor()->enumerable)
+                                keys.push_back(pair.first);
+                        }
+                        else
+                        {
                             keys.push_back(pair.first);
-                        else if ((pair.second.is_data_descriptor() && pair.second.as_data_descriptor()->enumerable) ||
-                                 (pair.second.is_accessor_descriptor() && pair.second.as_accessor_descriptor()->enumerable))
-                            keys.push_back(pair.first);
+                        }
                     }
                 }
             }
             if (obj.is_array())
             {
-                auto len = obj.as_array()->length;
+                auto ptr = obj.as_array();
+                auto len = ptr->length;
                 for (uint64_t i = 0; i < len; ++i)
                 {
-                    keys.push_back(std::to_string(i));
+                    keys.push_back(AnyValue::make_string(std::to_string(i)));
+                }
+                if (include_symbols)
+                {
+                    for (const auto &pair : ptr->symbol_props)
+                    {
+                        const auto &val = pair.second;
+                        if (val.is_data_descriptor())
+                        {
+                            if (val.as_data_descriptor()->enumerable)
+                                keys.push_back(pair.first);
+                        }
+                        else if (val.is_accessor_descriptor())
+                        {
+                            if (val.as_accessor_descriptor()->enumerable)
+                                keys.push_back(pair.first);
+                        }
+                        else
+                        {
+                            keys.push_back(pair.first);
+                        }
+                    }
                 }
             }
             if (obj.is_string())
@@ -148,7 +206,7 @@ namespace jspp
                 auto len = obj.as_string()->value.length();
                 for (size_t i = 0; i < len; ++i)
                 {
-                    keys.push_back(std::to_string(i));
+                    keys.push_back(AnyValue::make_string(std::to_string(i)));
                 }
             }
 
@@ -167,10 +225,11 @@ namespace jspp
                 return obj;
             }
 
-            auto gen_fn = obj.get_own_property(WellKnownSymbols::iterator->key);
+            auto iterSym = AnyValue::from_symbol(WellKnownSymbols::iterator);
+            auto gen_fn = obj.get_own_property(iterSym);
             if (gen_fn.is_function())
             {
-                auto iter = gen_fn.call(obj, {}, WellKnownSymbols::iterator->key);
+                auto iter = gen_fn.call(obj, {}, iterSym.to_std_string());
                 if (iter.is_iterator())
                 {
                     return iter;
@@ -198,18 +257,20 @@ namespace jspp
             if (obj.is_async_iterator())
                 return obj;
 
-            auto method = obj.get_own_property(WellKnownSymbols::asyncIterator->key);
+            auto asyncIterSym = AnyValue::from_symbol(WellKnownSymbols::asyncIterator);
+            auto method = obj.get_own_property(asyncIterSym);
             if (method.is_function())
             {
-                auto iter = method.call(obj, {}, WellKnownSymbols::asyncIterator->key);
+                auto iter = method.call(obj, {}, asyncIterSym.to_std_string());
                 if (iter.is_object() || iter.is_async_iterator() || iter.is_iterator())
                     return iter;
             }
 
-            auto syncMethod = obj.get_own_property(WellKnownSymbols::iterator->key);
+            auto iterSym = AnyValue::from_symbol(WellKnownSymbols::iterator);
+            auto syncMethod = obj.get_own_property(iterSym);
             if (syncMethod.is_function())
             {
-                auto iter = syncMethod.call(obj, {}, WellKnownSymbols::iterator->key);
+                auto iter = syncMethod.call(obj, {}, iterSym.to_std_string());
                 if (iter.is_object() || iter.is_iterator())
                     return iter;
             }
@@ -396,24 +457,34 @@ namespace jspp
             auto keys = get_object_keys(source);
             for (const auto &key : keys)
             {
-                target.set_own_property(key, source.get_property_with_receiver(key, source));
+                target.set_own_property(key, source.get_property_with_receiver(key.to_std_string(), source));
             }
         }
 
-        inline AnyValue get_rest_object(const AnyValue &source, const std::vector<std::string> &excluded_keys)
+        inline AnyValue get_rest_object(const AnyValue &source, const std::vector<AnyValue> &excluded_keys)
         {
             if (source.is_null() || source.is_undefined())
                 return AnyValue::make_object({});
 
             auto result = AnyValue::make_object({});
             auto keys = get_object_keys(source, true);
-            std::unordered_set<std::string> excluded(excluded_keys.begin(), excluded_keys.end());
+            
+            auto is_excluded = [&](const AnyValue& key) {
+                for (const auto& ex : excluded_keys) {
+                    if (is_strictly_equal_to_primitive(key, ex)) return true;
+                }
+                return false;
+            };
 
             for (const auto &key : keys)
             {
-                if (excluded.find(key) == excluded.end())
+                if (!is_excluded(key))
                 {
-                    result.set_own_property(key, source.get_property_with_receiver(key, source));
+                    if (key.is_symbol()) {
+                        result.set_own_symbol_property(key, source.get_symbol_property_with_receiver(key, source));
+                    } else {
+                        result.set_own_property(key.to_std_string(), source.get_property_with_receiver(key.to_std_string(), source));
+                    }
                 }
             }
             return result;

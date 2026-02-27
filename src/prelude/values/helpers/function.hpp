@@ -14,11 +14,13 @@ namespace jspp
     inline JsFunction::JsFunction(const JsFunctionCallable &c,
                                   std::optional<std::string> n,
                                   std::unordered_map<std::string, AnyValue> p,
+                                  std::map<AnyValue, AnyValue> sp,
                                   bool is_cls,
                                   bool is_ctor)
         : callable(c),
           name(std::move(n)),
           props(std::move(p)),
+          symbol_props(std::move(sp)),
           proto(Constants::Null),
           is_generator(callable.index() == 1),
           is_async(callable.index() == 2),
@@ -32,11 +34,13 @@ namespace jspp
                                   bool is_gen,
                                   std::optional<std::string> n,
                                   std::unordered_map<std::string, AnyValue> p,
+                                  std::map<AnyValue, AnyValue> sp,
                                   bool is_cls,
                                   bool is_ctor)
         : callable(c),
           name(std::move(n)),
           props(std::move(p)),
+          symbol_props(std::move(sp)),
           proto(Constants::Null),
           is_generator(is_gen),
           is_async(callable.index() == 2),
@@ -51,11 +55,13 @@ namespace jspp
                                   bool is_async_func,
                                   std::optional<std::string> n,
                                   std::unordered_map<std::string, AnyValue> p,
+                                  std::map<AnyValue, AnyValue> sp,
                                   bool is_cls,
                                   bool is_ctor)
         : callable(c),
           name(std::move(n)),
           props(std::move(p)),
+          symbol_props(std::move(sp)),
           proto(Constants::Null),
           is_generator(is_gen),
           is_async(is_async_func),
@@ -110,6 +116,20 @@ namespace jspp
         return false;
     }
 
+    inline bool JsFunction::has_symbol_property(const AnyValue &key) const
+    {
+        if (symbol_props.count(key))
+            return true;
+        if (!proto.is_null() && !proto.is_undefined())
+        {
+            if (proto.has_property(key))
+                return true;
+        }
+        if (FunctionPrototypes::get(key).has_value())
+            return true;
+        return false;
+    }
+
     inline AnyValue JsFunction::get_property(const std::string &key, AnyValue thisVal)
     {
         auto it = props.find(key);
@@ -131,6 +151,28 @@ namespace jspp
             return Constants::UNDEFINED;
         }
         return AnyValue::resolve_property_for_read(it->second, thisVal, key);
+    }
+
+    inline AnyValue JsFunction::get_symbol_property(const AnyValue &key, AnyValue thisVal)
+    {
+        auto it = symbol_props.find(key);
+        if (it == symbol_props.end())
+        {
+            if (!proto.is_null() && !proto.is_undefined())
+            {
+                auto res = proto.get_symbol_property_with_receiver(key, thisVal);
+                if (!res.is_undefined())
+                    return res;
+            }
+
+            auto proto_it = FunctionPrototypes::get(key);
+            if (proto_it.has_value())
+            {
+                return AnyValue::resolve_property_for_read(proto_it.value(), thisVal, key.to_std_string());
+            }
+            return Constants::UNDEFINED;
+        }
+        return AnyValue::resolve_property_for_read(it->second, thisVal, key.to_std_string());
     }
 
     inline AnyValue JsFunction::set_property(const std::string &key, AnyValue value, AnyValue thisVal)
@@ -157,6 +199,20 @@ namespace jspp
         else
         {
             props[key] = value;
+            return value;
+        }
+    }
+
+    inline AnyValue JsFunction::set_symbol_property(const AnyValue &key, AnyValue value, AnyValue thisVal)
+    {
+        auto it = symbol_props.find(key);
+        if (it != symbol_props.end())
+        {
+            return AnyValue::resolve_property_for_write(it->second, thisVal, value, key.to_std_string());
+        }
+        else
+        {
+            symbol_props[key] = value;
             return value;
         }
     }

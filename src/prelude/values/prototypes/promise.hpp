@@ -192,5 +192,15 @@ namespace jspp
 
             return std::nullopt;
         }
+
+        inline std::optional<AnyValue> get(const AnyValue &key)
+        {
+            if (key == AnyValue::from_symbol(WellKnownSymbols::toStringTag))
+            {
+                // Promises don't have a specific toString method in our implementation, but usually it's [object Promise]
+                return std::nullopt; 
+            }
+            return std::nullopt;
+        }
     }
 }

@@ -58,7 +58,8 @@ namespace jspp
         explicit JsAsyncIterator(handle_type h) : handle(h) {}
         JsAsyncIterator(JsAsyncIterator &&other) noexcept 
             : handle(std::exchange(other.handle, nullptr)),
-              props(std::move(other.props)) {}
+              props(std::move(other.props)),
+              symbol_props(std::move(other.symbol_props)) {}
 
         JsAsyncIterator(const JsAsyncIterator &) = delete;
         JsAsyncIterator &operator=(const JsAsyncIterator &) = delete;
@@ -70,13 +71,17 @@ namespace jspp
         }
 
         std::unordered_map<std::string, AnyValue> props;
+        std::map<AnyValue, AnyValue> symbol_props;
 
         std::string to_std_string() const;
 
         JsPromise next(const T &val = T());
 
+        bool has_symbol_property(const AnyValue &key) const;
         AnyValue get_property(const std::string &key, AnyValue thisVal);
+        AnyValue get_symbol_property(const AnyValue &key, AnyValue thisVal);
         AnyValue set_property(const std::string &key, AnyValue value, AnyValue thisVal);
+        AnyValue set_symbol_property(const AnyValue &key, AnyValue value, AnyValue thisVal);
 
         void resume_next();
     };

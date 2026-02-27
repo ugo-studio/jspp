@@ -56,7 +56,8 @@ typename jspp::JsIterator<T>::NextResult jspp::JsIterator<T>::return_(const T &v
 template <typename T>
 typename jspp::JsIterator<T>::NextResult jspp::JsIterator<T>::throw_(const AnyValue &err)
 {
-    if (!handle || handle.done()) {
+    if (!handle || handle.done())
+    {
         throw Exception(err);
     }
 
@@ -89,6 +90,12 @@ std::vector<T> jspp::JsIterator<T>::to_vector()
 }
 
 template <typename T>
+bool jspp::JsIterator<T>::has_symbol_property(const AnyValue &key) const
+{
+    return symbol_props.count(key) > 0;
+}
+
+template <typename T>
 jspp::AnyValue jspp::JsIterator<T>::get_property(const std::string &key, AnyValue thisVal)
 {
     auto it = props.find(key);
@@ -108,6 +115,26 @@ jspp::AnyValue jspp::JsIterator<T>::get_property(const std::string &key, AnyValu
     }
 
     return AnyValue::resolve_property_for_read(it->second, thisVal, key);
+}
+
+template <typename T>
+jspp::AnyValue jspp::JsIterator<T>::get_symbol_property(const AnyValue &key, AnyValue thisVal)
+{
+    auto it = symbol_props.find(key);
+    if (it == symbol_props.end())
+    {
+        // check prototype
+        if constexpr (std::is_same_v<T, AnyValue>)
+        {
+            auto proto_it = IteratorPrototypes::get(key);
+            if (proto_it.has_value())
+            {
+                return AnyValue::resolve_property_for_read(proto_it.value(), thisVal, key.to_std_string());
+            }
+        }
+        return Constants::UNDEFINED;
+    }
+    return AnyValue::resolve_property_for_read(it->second, thisVal, key.to_std_string());
 }
 
 template <typename T>
@@ -140,6 +167,21 @@ jspp::AnyValue jspp::JsIterator<T>::set_property(const std::string &key, AnyValu
     else
     {
         props[key] = value;
+        return value;
+    }
+}
+
+template <typename T>
+jspp::AnyValue jspp::JsIterator<T>::set_symbol_property(const AnyValue &key, AnyValue value, AnyValue thisVal)
+{
+    auto it = symbol_props.find(key);
+    if (it != symbol_props.end())
+    {
+        return AnyValue::resolve_property_for_write(it->second, thisVal, value, key.to_std_string());
+    }
+    else
+    {
+        symbol_props[key] = value;
         return value;
     }
 }

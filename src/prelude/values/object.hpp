@@ -16,6 +16,7 @@ namespace jspp
         std::vector<AnyValue> storage;
         AnyValue proto;
         std::unordered_set<std::string> deleted_keys;
+        std::map<AnyValue, AnyValue> symbol_props;
 
         JsObject();
         JsObject(std::initializer_list<std::pair<std::string, AnyValue>> p, AnyValue pr);
@@ -25,7 +26,10 @@ namespace jspp
 
         std::string to_std_string() const;
         bool has_property(const std::string &key) const;
+        bool has_symbol_property(const AnyValue &key) const;
         AnyValue get_property(const std::string &key, const AnyValue &thisVal);
+        AnyValue get_symbol_property(const AnyValue &key, const AnyValue &thisVal);
         AnyValue set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal);
+        AnyValue set_symbol_property(const AnyValue &key, const AnyValue &value, const AnyValue &thisVal);
     };
 }

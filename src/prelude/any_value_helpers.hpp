@@ -15,6 +15,13 @@
 
 namespace jspp
 {
+    inline bool AnyValue::operator==(const std::string &other) const noexcept
+    {
+        if (!is_string())
+            return false;
+        return as_string()->value == other;
+    }
+
     // --- AnyValue GETTERS ---
     inline JsString *AnyValue::as_string() const noexcept { return static_cast<JsString *>(get_ptr()); }
     inline JsObject *AnyValue::as_object() const noexcept { return static_cast<JsObject *>(get_ptr()); }
@@ -90,7 +97,7 @@ namespace jspp
     }
     inline AnyValue AnyValue::make_function(const JsFunctionCallable &call, const std::optional<std::string> &name, bool is_constructor) noexcept
     {
-        auto v = from_ptr(new JsFunction(call, name, {}, false, is_constructor));
+        auto v = from_ptr(new JsFunction(call, name, {}, {}, false, is_constructor));
         auto proto = make_object({});
         proto.define_data_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
         v.define_data_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
@@ -98,7 +105,7 @@ namespace jspp
     }
     inline AnyValue AnyValue::make_class(const JsFunctionCallable &call, const std::optional<std::string> &name) noexcept
     {
-        auto v = from_ptr(new JsFunction(call, name, {}, true));
+        auto v = from_ptr(new JsFunction(call, name, {}, {}, true));
         auto proto = make_object({});
         proto.define_data_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
         v.define_data_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
@@ -106,7 +113,7 @@ namespace jspp
     }
     inline AnyValue AnyValue::make_generator(const JsFunctionCallable &call, const std::optional<std::string> &name) noexcept
     {
-        auto v = from_ptr(new JsFunction(call, true, name));
+        auto v = from_ptr(new JsFunction(call, true, name, {}, {}, false));
         auto proto = make_object({});
         proto.define_data_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
         v.define_data_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
@@ -114,7 +121,7 @@ namespace jspp
     }
     inline AnyValue AnyValue::make_async_function(const JsFunctionCallable &call, const std::optional<std::string> &name) noexcept
     {
-        auto v = from_ptr(new JsFunction(call, false, true, name));
+        auto v = from_ptr(new JsFunction(call, false, true, name, {}, {}, false));
         auto proto = make_object({});
         proto.define_data_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
         v.define_data_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
@@ -122,7 +129,7 @@ namespace jspp
     }
     inline AnyValue AnyValue::make_async_generator(const JsFunctionCallable &call, const std::optional<std::string> &name) noexcept
     {
-        auto v = from_ptr(new JsFunction(call, true, true, name));
+        auto v = from_ptr(new JsFunction(call, true, true, name, {}, {}, false));
         auto proto = make_object({});
         proto.define_data_property("constructor", AnyValue::make_data_descriptor(v, true, false, false));
         v.define_data_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));

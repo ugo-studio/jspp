@@ -150,14 +150,9 @@ namespace jspp
         inline std::optional<AnyValue> get(const std::string &key)
         {
             // --- toString() method ---
-            if (key == "toString" || key == WellKnownSymbols::toStringTag->key)
+            if (key == "toString")
             {
                 return get_toString_fn();
-            }
-            // --- [Symbol.iterator]() method ---
-            if (key == WellKnownSymbols::iterator->key)
-            {
-                return get_iterator_fn();
             }
             // --- next() method ---
             if (key == "next")
@@ -193,6 +188,24 @@ namespace jspp
             if (key == "some")
             {
                 return get_some_fn();
+            }
+
+            return std::nullopt;
+        }
+        inline std::optional<AnyValue> get(const AnyValue &key)
+        {
+            if (key.is_string())
+                return get(key.as_string()->value);
+
+            // --- toString() method ---
+            if (key == AnyValue::from_symbol(WellKnownSymbols::toStringTag))
+            {
+                return get_toString_fn();
+            }
+            // --- [Symbol.iterator]() method ---
+            if (key == AnyValue::from_symbol(WellKnownSymbols::iterator))
+            {
+                return get_iterator_fn();
             }
 
             return std::nullopt;

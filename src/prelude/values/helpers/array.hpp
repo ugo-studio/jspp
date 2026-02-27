@@ -76,11 +76,24 @@ inline bool jspp::JsArray::has_property(const std::string &key) const
     return false;
 }
 
+inline bool jspp::JsArray::has_symbol_property(const AnyValue &key) const
+{
+    if (symbol_props.count(key))
+        return true;
+    if (!proto.is_null() && !proto.is_undefined())
+    {
+        if (proto.has_property(key))
+            return true;
+    }
+    if (ArrayPrototypes::get(key).has_value())
+        return true;
+    return false;
+}
+
 inline jspp::AnyValue jspp::JsArray::get_property(const std::string &key, const AnyValue &thisVal)
 {
     if (
-        !key.empty() && std::isdigit(static_cast<unsigned char>(key[0])) 
-        && is_array_index(key))
+        !key.empty() && std::isdigit(static_cast<unsigned char>(key[0])) && is_array_index(key))
     {
         uint32_t idx = static_cast<uint32_t>(std::stoull(key));
         return get_property(idx);
@@ -118,6 +131,28 @@ inline jspp::AnyValue jspp::JsArray::get_property(const std::string &key, const 
     }
 }
 
+inline jspp::AnyValue jspp::JsArray::get_symbol_property(const AnyValue &key, const AnyValue &thisVal)
+{
+    auto it = symbol_props.find(key);
+    if (it == symbol_props.end())
+    {
+        if (!proto.is_null() && !proto.is_undefined())
+        {
+            auto res = proto.get_symbol_property_with_receiver(key, thisVal);
+            if (!res.is_undefined())
+                return res;
+        }
+
+        auto proto_it = ArrayPrototypes::get(key);
+        if (proto_it.has_value())
+        {
+            return AnyValue::resolve_property_for_read(proto_it.value(), thisVal, key.to_std_string());
+        }
+        return Constants::UNDEFINED;
+    }
+    return AnyValue::resolve_property_for_read(it->second, thisVal, key.to_std_string());
+}
+
 inline jspp::AnyValue jspp::JsArray::get_property(uint32_t idx)
 {
     if (idx < dense.size())
@@ -137,8 +172,7 @@ inline jspp::AnyValue jspp::JsArray::get_property(uint32_t idx)
 inline jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const AnyValue &value, const AnyValue &thisVal)
 {
     if (
-        !key.empty() && std::isdigit(static_cast<unsigned char>(key[0])) 
-        && is_array_index(key))
+        !key.empty() && std::isdigit(static_cast<unsigned char>(key[0])) && is_array_index(key))
     {
         uint32_t idx = static_cast<uint32_t>(std::stoull(key));
         return set_property(idx, value);
@@ -146,7 +180,7 @@ inline jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const 
     else
     {
         auto proto_val_opt = ArrayPrototypes::get(key);
-        
+
         if (proto_val_opt.has_value())
         {
             auto proto_value = proto_val_opt.value();
@@ -170,6 +204,20 @@ inline jspp::AnyValue jspp::JsArray::set_property(const std::string &key, const 
             props[key] = value;
             return value;
         }
+    }
+}
+
+inline jspp::AnyValue jspp::JsArray::set_symbol_property(const AnyValue &key, const AnyValue &value, const AnyValue &thisVal)
+{
+    auto it = symbol_props.find(key);
+    if (it != symbol_props.end())
+    {
+        return AnyValue::resolve_property_for_write(it->second, thisVal, value, key.to_std_string());
+    }
+    else
+    {
+        symbol_props[key] = value;
+        return value;
     }
 }
 
