@@ -1,5 +1,7 @@
 import ts from "typescript";
 
+import { RESERVED_VAR_NAMES_FOR_STRICT_MODE } from "../../analysis/scope.js";
+import { CompilerError } from "../error.js";
 import { visitObjectPropertyName } from "./expression-handlers.js";
 import { CodeGenerator } from "./index.js";
 import { type VisitContext } from "./visitor.js";
@@ -28,6 +30,15 @@ export function generateDestructuring(
     const genAssignment = (pattern: ts.Node, valueCode: string): string => {
         if (ts.isIdentifier(pattern)) {
             const name = pattern.text;
+
+            if (RESERVED_VAR_NAMES_FOR_STRICT_MODE.has(name)) {
+                throw new CompilerError(
+                    `Cannot destructure to a variable named '${name}' in strict mode.`,
+                    pattern,
+                    "SyntaxError",
+                );
+            }
+
             const scope = this.getScopeForNode(pattern);
             const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
                 name,

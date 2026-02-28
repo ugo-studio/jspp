@@ -10,6 +10,9 @@ export const RESERVED_KEYWORDS = new Set([
     "co_return",
     "co_await",
 ]);
+export const RESERVED_VAR_NAMES_FOR_STRICT_MODE = new Set([
+    "arguments",
+]);
 export const BUILTIN_OBJECTS = new Set([
     { name: "undefined", isConst: true },
     { name: "null", isConst: true },
@@ -62,7 +65,6 @@ export class Scope {
 export class ScopeManager {
     public currentScope: Scope;
     private readonly allScopes: Scope[] = []; // Array to store all created scopes
-    private readonly reservedKeywords = new Set(RESERVED_KEYWORDS);
 
     constructor() {
         const rootScope = new Scope(null, null); // The global scope
@@ -96,9 +98,13 @@ export class ScopeManager {
     // Defines a variable in the current scope.
     define(name: string, type: TypeInfo) {
         // if (name === "named" || name === "letVal") console.log("Defining", name, "in scope. isBuiltin:", type.isBuiltin, " type:", type.type);
-        if (this.reservedKeywords.has(name) && !type.isBuiltin) {
+        if (RESERVED_KEYWORDS.has(name) && !type.isBuiltin) {
             if (type.declaration) {
-                throw new CompilerError(`Unexpected reserved word "${name}"`, type.declaration, "SyntaxError");
+                throw new CompilerError(
+                    `Unexpected reserved word "${name}"`,
+                    type.declaration,
+                    "SyntaxError",
+                );
             }
             throw new Error(`SyntaxError: Unexpected reserved word "${name}"`);
         }
@@ -107,9 +113,13 @@ export class ScopeManager {
 
     // Defines a `var` variable (hoisted to function or global scope).
     defineVar(name: string, type: TypeInfo) {
-        if (this.reservedKeywords.has(name) && !type.isBuiltin) {
+        if (RESERVED_KEYWORDS.has(name) && !type.isBuiltin) {
             if (type.declaration) {
-                throw new CompilerError(`Unexpected reserved word "${name}"`, type.declaration, "SyntaxError");
+                throw new CompilerError(
+                    `Unexpected reserved word "${name}"`,
+                    type.declaration,
+                    "SyntaxError",
+                );
             }
             throw new Error(`SyntaxError: Unexpected reserved word "${name}"`);
         }

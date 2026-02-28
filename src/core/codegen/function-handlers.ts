@@ -31,6 +31,18 @@ export function generateLambdaComponents(
         context.globalScopeSymbols,
         context.localScopeSymbols,
     );
+    const nativeExcessArgsName = this.generateUniqueName(
+        "__excess_args",
+        declaredSymbols,
+        context.globalScopeSymbols,
+        context.localScopeSymbols,
+    );
+    const nativeTotalArgsSizeName = this.generateUniqueName(
+        "__total_args_size",
+        declaredSymbols,
+        context.globalScopeSymbols,
+        context.localScopeSymbols,
+    );
 
     const isInsideGeneratorFunction = this.isGeneratorFunction(node);
     const isInsideAsyncFunction = this.isAsyncFunction(node);
@@ -115,12 +127,10 @@ export function generateLambdaComponents(
     let nativeParamsContent = "";
     this.validateFunctionParams(node.parameters).forEach((p, i) => {
         const isIdentifier = ts.isIdentifier(p.name);
-        const name = isIdentifier
-            ? p.name.text
-            : this.generateUniqueName(
-                `__param_native_${i}_`,
-                visitContext.localScopeSymbols,
-            );
+        const name = isIdentifier ? p.name.text : this.generateUniqueName(
+            `__param_native_${i}_`,
+            visitContext.localScopeSymbols,
+        );
         const defaultValue = p.initializer
             ? this.visit(p.initializer, visitContext)
             : !!p.dotDotDotToken
@@ -237,6 +247,38 @@ export function generateLambdaComponents(
     let paramsContent = "";
     let blockContentWithoutOpeningBrace = "";
 
+    // Generate `arguments` variable if it used in the function body
+    if (
+        this.isVariableUsedWithoutDeclaration("arguments", node.body as ts.Node)
+    ) {
+        // Add span parameter for holding the excess arguments from the caller of the native lambda
+        nativeFuncArgs +=
+            `, const std::size_t ${nativeTotalArgsSizeName}, std::span<const jspp::AnyValue> ${nativeExcessArgsName} = {}`;
+
+        // TODO: compile arguments array from parameters
+
+        // this.indentationLevel++;
+        // nativeParamsContent +=
+        //     `${this.indent()}jspp::AnyValue arguments = jspp::Constants::UNDEFINED;\n`;
+        // nativeParamsContent += `${this.indent()}{\n`;
+        // this.indentationLevel++;
+        // nativeParamsContent +=
+        //     `${this.indent()}std::vector<jspp::AnyValue> ${argsName};\n`;
+        // this.validateFunctionParams(node.parameters).forEach(
+        //     (p, i) => {
+
+        //     },
+        // );
+        // this.indentationLevel--;
+        // nativeParamsContent += `${this.indent()}}\n`;
+        // this.indentationLevel--;
+
+        // this.indentationLevel++;
+        // paramsContent =
+        //     `${this.indent()}jspp::AnyValue arguments = jspp::AnyValue::make_array(${argsName});\n`;
+        // this.indentationLevel--;
+    }
+
     if (node.body) {
         if (ts.isBlock(node.body)) {
             // Hoist var declarations in the function body
@@ -265,7 +307,7 @@ export function generateLambdaComponents(
             });
 
             this.indentationLevel++;
-            paramsContent = generateParamsBuilder();
+            paramsContent += generateParamsBuilder();
             this.indentationLevel--;
 
             // The block visitor already adds braces, so we need to remove the opening brace to inject the preamble and param extraction.
@@ -279,7 +321,7 @@ export function generateLambdaComponents(
             }).trimStart().substring(2);
         } else {
             this.indentationLevel++;
-            paramsContent = generateParamsBuilder();
+            paramsContent += generateParamsBuilder();
             blockContentWithoutOpeningBrace =
                 `${this.indent()}${returnCommand} ${
                     this.visit(node.body, {

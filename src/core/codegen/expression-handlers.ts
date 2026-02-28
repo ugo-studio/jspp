@@ -1562,6 +1562,7 @@ export function visitCallExpression(
         if (nativeFeature && nativeFeature.type === "lambda") {
             const nativeName = nativeFeature.name;
             const parameters = nativeFeature.parameters || [];
+            const argumentKeywordIsUsed = nativeFeature.argumentKeywordIsUsed;
 
             if (!hasSpread) {
                 let argsPart = "";
@@ -1592,7 +1593,7 @@ export function visitCallExpression(
                     if (argsText) argsPart += `, ${argsText}`;
 
                     if (
-                        argsArray.length > parameters.length &&
+                        argsArray.length >= parameters.length &&
                         !!parameters[parameters.length - 1]?.dotDotDotToken
                     ) {
                         const restArgsText =
@@ -1601,7 +1602,22 @@ export function visitCallExpression(
                                     parameters.length - 1,
                                 ).join(", ")
                             }})`;
-                        argsPart += `, ${restArgsText}`;
+                        argsPart += `, ${restArgsText}${
+                            argumentKeywordIsUsed ? `, ${argsArray.length}` : ""
+                        }`;
+                    } else if (
+                        argsArray.length > parameters.length &&
+                        argumentKeywordIsUsed
+                    ) {
+                        const restArgsArray = argsArray.slice(
+                            parameters.length,
+                        );
+                        const nativeRestArgsText =
+                            `std::span<const jspp::AnyValue>((const jspp::AnyValue[]){${
+                                restArgsArray.join(", ")
+                            }}, ${restArgsArray.length})`;
+                        argsPart +=
+                            `, ${argsArray.length}, ${nativeRestArgsText}`;
                     }
                 }
 
@@ -1632,7 +1648,7 @@ export function visitCallExpression(
                     if (!p) continue;
                     if (p.dotDotDotToken) {
                         callArgs.push(
-                            `jspp::AnyValue::make_array(std::vector<jspp::AnyValue>(${argsVar}.begin() + std::min((size_t)${i}, ${argsVar}.size()), ${argsVar}.end()))`,
+                            `jspp::AnyValue::make_array(std::vector<jspp::AnyValue>(${argsVar}.begin() + std::min((std::size_t)${i}, ${argsVar}.size()), ${argsVar}.end()))`,
                         );
                     } else {
                         callArgs.push(
@@ -1641,24 +1657,30 @@ export function visitCallExpression(
                     }
                 }
 
-                let callExprStr = `${nativeName}(jspp::Constants::UNDEFINED${
-                    callArgs.length > 0 ? ", " + callArgs.join(", ") : ""
-                })`;
+                const callArgsPart = callArgs.length > 0
+                    ? `, ${callArgs.join(", ")}`
+                    : "";
+                const totalArgsSizePart = argumentKeywordIsUsed
+                    ? `, ${argsVar}.size()`
+                    : "";
+
+                let callImplementation =
+                    `${nativeName}(jspp::Constants::UNDEFINED${callArgsPart}${totalArgsSizePart})`;
 
                 if (symbol.features.isGenerator) {
                     if (symbol.features.isAsync) {
-                        callExprStr =
-                            `jspp::AnyValue::from_async_iterator(${callExprStr})`;
+                        callImplementation =
+                            `jspp::AnyValue::from_async_iterator(${callImplementation})`;
                     } else {
-                        callExprStr =
-                            `jspp::AnyValue::from_iterator(${callExprStr})`;
+                        callImplementation =
+                            `jspp::AnyValue::from_iterator(${callImplementation})`;
                     }
                 } else if (symbol.features.isAsync) {
-                    callExprStr =
-                        `jspp::AnyValue::from_promise(${callExprStr})`;
+                    callImplementation =
+                        `jspp::AnyValue::from_promise(${callImplementation})`;
                 }
 
-                code += `${this.indent()}return ${callExprStr};\n`;
+                code += `${this.indent()}return ${callImplementation};\n`;
                 this.indentationLevel--;
                 code += `${this.indent()}})()`;
                 return code;

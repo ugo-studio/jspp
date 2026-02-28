@@ -336,7 +336,8 @@ export function hoistDeclaration(
                     (ts.isVariableDeclaration(decl) && decl.initializer &&
                         nameNode === decl.name &&
                         (ts.isArrowFunction(decl.initializer) ||
-                            ts.isFunctionExpression(decl.initializer)))
+                            (ts.isFunctionExpression(decl.initializer) &&
+                                !decl.initializer.name)))
                 ) {
                     const funcExpr = ts.isVariableDeclaration(decl)
                         ? decl.initializer as
@@ -799,6 +800,92 @@ export function isDeclarationUsedBeforeInitialization(
 
     visit(root);
     return isUsedBefore;
+}
+
+/**
+ * Checks if a variable name is used within a node subtree without a preceding declaration.
+ * Returns true if:
+ * 1. The variable is used but never declared within the provided root node.
+ * 2. The variable is used lexically before its declaration within the root node.
+ *
+ * @param name The variable name to check.
+ * @param root The root node to search within.
+ * @returns True if used without/before declaration.
+ */
+export function isVariableUsedWithoutDeclaration(
+    this: CodeGenerator,
+    name: string,
+    root: ts.Node,
+): boolean {
+    let declPos = -1;
+    let foundDecl = false;
+
+    // 1. Find the declaration position within this root
+    const findDecl = (node: ts.Node) => {
+        if (foundDecl) return;
+        if (
+            (ts.isFunctionDeclaration(node) ||
+                ts.isClassDeclaration(node) ||
+                ts.isVariableDeclaration(node) ||
+                ts.isEnumDeclaration(node) ||
+                ts.isParameter(node)) &&
+            node.name && ts.isIdentifier(node.name) && node.name.text === name
+        ) {
+            declPos = node.getStart();
+            foundDecl = true;
+        } else {
+            ts.forEachChild(node, findDecl);
+        }
+    };
+    findDecl(root);
+
+    let isUsedIllegally = false;
+
+    // 2. Traverse for usages
+    const visit = (node: ts.Node) => {
+        if (isUsedIllegally) return;
+
+        if (ts.isIdentifier(node) && node.text === name) {
+            const parent = node.parent;
+
+            // Skip if this identifier IS the declaration site
+            const isDeclarationSite = (ts.isFunctionDeclaration(parent) ||
+                ts.isVariableDeclaration(parent) ||
+                ts.isClassDeclaration(parent) ||
+                ts.isMethodDeclaration(parent) ||
+                ts.isEnumDeclaration(parent) ||
+                ts.isEnumMember(parent) ||
+                ts.isParameter(parent) ||
+                ts.isImportSpecifier(parent)) &&
+                parent.name === node;
+
+            // Skip if it's a property access (e.g., obj.name)
+            const isProperty = (ts.isPropertyAccessExpression(parent) &&
+                parent.name === node) ||
+                (ts.isPropertyAssignment(parent) && parent.name === node);
+
+            if (!isDeclarationSite && !isProperty) {
+                const usagePos = node.getStart();
+
+                // Case 1: Used but not declared in this node
+                if (!foundDecl) {
+                    isUsedIllegally = true;
+                    return;
+                }
+
+                // Case 2: Used lexically before declaration
+                if (usagePos < declPos) {
+                    isUsedIllegally = true;
+                    return;
+                }
+            }
+        }
+
+        ts.forEachChild(node, visit);
+    };
+
+    visit(root);
+    return isUsedIllegally;
 }
 
 /**

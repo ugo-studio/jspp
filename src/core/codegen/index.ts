@@ -22,6 +22,7 @@ import {
   isDeclarationCalledAsFunction,
   isDeclarationUsedAsValue,
   isDeclarationUsedBeforeInitialization,
+  isVariableUsedWithoutDeclaration,
   isGeneratorFunction,
   markSymbolAsInitialized,
   prepareScopeSymbolsForVisit,
@@ -62,6 +63,7 @@ export class CodeGenerator {
     public isDeclarationUsedAsValue = isDeclarationUsedAsValue;
     public isDeclarationUsedBeforeInitialization =
         isDeclarationUsedBeforeInitialization;
+    public isVariableUsedWithoutDeclaration = isVariableUsedWithoutDeclaration;
     public validateFunctionParams = validateFunctionParams;
     public generateDestructuring = generateDestructuring;
 

@@ -97,12 +97,17 @@ export function visitSourceFile(
             `__${funcName}_native_`,
             hoistedSymbols,
         );
+        const argumentKeywordIsUsed = this.isVariableUsedWithoutDeclaration(
+            "arguments",
+            stmt.body as ts.Node,
+        );
         hoistedSymbols.update(funcName, {
             features: {
                 native: {
                     type: "lambda",
                     name: nativeName,
                     parameters: this.validateFunctionParams(stmt.parameters),
+                    argumentKeywordIsUsed,
                 },
             },
         });
@@ -237,12 +242,17 @@ export function visitBlock(
             `__${funcName}_native_`,
             hoistedSymbols,
         );
+        const argumentKeywordIsUsed = this.isVariableUsedWithoutDeclaration(
+            "arguments",
+            stmt.body as ts.Node,
+        );
         hoistedSymbols.update(funcName, {
             features: {
                 native: {
                     type: "lambda",
                     name: nativeName,
                     parameters: this.validateFunctionParams(stmt.parameters),
+                    argumentKeywordIsUsed,
                 },
             },
         });

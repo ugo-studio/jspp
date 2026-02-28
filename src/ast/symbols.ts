@@ -18,6 +18,7 @@ export type SymbolFeatures = {
         type: "lambda";
         name: string;
         parameters: ts.ParameterDeclaration[];
+        argumentKeywordIsUsed: boolean;
     };
     isAsync?: boolean;
     isGenerator?: boolean;

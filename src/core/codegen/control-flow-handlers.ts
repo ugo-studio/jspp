@@ -207,8 +207,7 @@ export function visitForInStatement(
         `${this.indent()}std::vector<jspp::AnyValue> ${keysVar} = jspp::Access::get_object_keys(${derefExpr});\n`;
     code += `${this.indent()}for (const auto& ${varName}_val : ${keysVar}) {\n`;
     this.indentationLevel++;
-    code +=
-        `${this.indent()}${assignmentTarget} = ${varName}_val;\n`;
+    code += `${this.indent()}${assignmentTarget} = ${varName}_val;\n`;
     code += this.visit(forIn.statement, {
         ...context,
         currentLabel: undefined,
@@ -585,12 +584,17 @@ export function visitSwitchStatement(
             `__${funcName}_native_`,
             hoistedSymbols,
         );
+        const argumentKeywordIsUsed = this.isVariableUsedWithoutDeclaration(
+            "arguments",
+            stmt.body as ts.Node,
+        );
         hoistedSymbols.update(funcName, {
             features: {
                 native: {
                     type: "lambda",
                     name: nativeName,
                     parameters: this.validateFunctionParams(stmt.parameters),
+                    argumentKeywordIsUsed,
                 },
             },
         });
