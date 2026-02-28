@@ -89,7 +89,7 @@ namespace jspp
     inline AnyValue add(const AnyValue &lhs, const AnyValue &rhs)
     {
         if (lhs.is_number() && rhs.is_number())
-            return AnyValue::make_number(add_primitive(lhs.as_double(), rhs.as_double()));
+            return AnyValue::make_number(lhs.as_double() + rhs.as_double());
         if (lhs.is_string() || rhs.is_string())
             return AnyValue::make_string(lhs.to_std_string() + rhs.to_std_string());
         return AnyValue::make_number(add_primitive(lhs, rhs));
@@ -97,7 +97,7 @@ namespace jspp
     inline AnyValue add(const AnyValue &lhs, const double &rhs)
     {
         if (lhs.is_number())
-            return AnyValue::make_number(add_primitive(lhs.as_double(), rhs));
+            return AnyValue::make_number(lhs.as_double() + rhs);
         if (lhs.is_string())
             return AnyValue::make_string(lhs.to_std_string() + std::to_string(rhs));
         return AnyValue::make_number(add_primitive(lhs, rhs));
@@ -105,21 +105,36 @@ namespace jspp
     inline AnyValue add(const double &lhs, const AnyValue &rhs)
     {
         if (rhs.is_number())
-            return AnyValue::make_number(add_primitive(lhs, rhs.as_double()));
+            return AnyValue::make_number(lhs + rhs.as_double());
         if (rhs.is_string())
             return AnyValue::make_string(std::to_string(lhs) + rhs.to_std_string());
         return AnyValue::make_number(add_primitive(lhs, rhs));
     }
     inline AnyValue add(const double &lhs, const double &rhs)
     {
-        return AnyValue::make_number(add_primitive(lhs, rhs));
+        return AnyValue::make_number(lhs + rhs);
     }
 
     // Function sub
-    inline AnyValue sub(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(sub_primitive(lhs, rhs)); }
-    inline AnyValue sub(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(sub_primitive(lhs, rhs)); }
-    inline AnyValue sub(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(sub_primitive(lhs, rhs)); }
-    inline AnyValue sub(const double &lhs, const double &rhs) { return AnyValue::make_number(sub_primitive(lhs, rhs)); }
+    inline AnyValue sub(const AnyValue &lhs, const AnyValue &rhs)
+    {
+        if (lhs.is_number() && rhs.is_number())
+            return AnyValue::make_number(lhs.as_double() - rhs.as_double());
+        return AnyValue::make_number(sub_primitive(lhs, rhs));
+    }
+    inline AnyValue sub(const AnyValue &lhs, const double &rhs)
+    {
+        if (lhs.is_number())
+            return AnyValue::make_number(lhs.as_double() - rhs);
+        return AnyValue::make_number(sub_primitive(lhs, rhs));
+    }
+    inline AnyValue sub(const double &lhs, const AnyValue &rhs)
+    {
+        if (rhs.is_number())
+            return AnyValue::make_number(lhs - rhs.as_double());
+        return AnyValue::make_number(sub_primitive(lhs, rhs));
+    }
+    inline AnyValue sub(const double &lhs, const double &rhs) { return AnyValue::make_number(lhs - rhs); }
 
     // Function mul
     inline AnyValue mul(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(mul_primitive(lhs, rhs)); }
@@ -194,7 +209,7 @@ namespace jspp
     inline AnyValue less_than_or_equal(const AnyValue &lhs, const AnyValue &rhs)
     {
         if (lhs.is_string() && rhs.is_string())
-             return AnyValue::make_boolean(lhs.as_string()->value <= rhs.as_string()->value);
+            return AnyValue::make_boolean(lhs.as_string()->value <= rhs.as_string()->value);
         return AnyValue::make_boolean(less_than_or_equal_primitive(lhs, rhs));
     }
     inline AnyValue less_than_or_equal(const AnyValue &lhs, const double &rhs)
@@ -213,7 +228,7 @@ namespace jspp
     inline AnyValue greater_than_or_equal(const AnyValue &lhs, const AnyValue &rhs)
     {
         if (lhs.is_string() && rhs.is_string())
-             return AnyValue::make_boolean(lhs.as_string()->value >= rhs.as_string()->value);
+            return AnyValue::make_boolean(lhs.as_string()->value >= rhs.as_string()->value);
         return AnyValue::make_boolean(greater_than_or_equal_primitive(lhs, rhs));
     }
     inline AnyValue greater_than_or_equal(const AnyValue &lhs, const double &rhs)

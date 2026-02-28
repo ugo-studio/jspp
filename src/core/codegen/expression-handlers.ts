@@ -601,7 +601,6 @@ export function visitBinaryExpression(
     const op = opToken.getText();
     const visitContext: VisitContext = {
         ...context,
-        supportedNativeLiterals: undefined,
     };
 
     const assignmentOperators = [
@@ -1022,8 +1021,8 @@ export function visitBinaryExpression(
     }
 
     const isLiteral = (n: ts.Node) => ts.isNumericLiteral(n);
-    const supportsNativeBoolean =
-        context.supportedNativeLiterals?.includes("boolean") || false;
+    const supportsNativeBoolean = ts.isIfStatement(node.parent) ||
+        ts.isConditionalExpression(node.parent);
 
     // Native values for lhs and rhs
     const literalLeft = isLiteral(binExpr.left)
@@ -1140,10 +1139,7 @@ export function visitConditionalExpression(
             condExpr.condition.operatorToken.kind,
         );
 
-    const condition = this.visit(condExpr.condition, {
-        ...context,
-        supportedNativeLiterals: isBinaryExpression ? ["boolean"] : undefined,
-    });
+    const condition = this.visit(condExpr.condition, context);
     const whenTrueStmt = this.visit(condExpr.whenTrue, {
         ...context,
         isFunctionBody: false,

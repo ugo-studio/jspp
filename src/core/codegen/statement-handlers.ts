@@ -525,10 +525,7 @@ export function visitIfStatement(
             ifStmt.expression.operatorToken.kind,
         );
 
-    const condition = this.visit(ifStmt.expression, {
-        ...context,
-        supportedNativeLiterals: isBinaryExpression ? ["boolean"] : undefined,
-    });
+    const condition = this.visit(ifStmt.expression, context);
     const thenStmt = this.visit(ifStmt.thenStatement, {
         ...context,
         isFunctionBody: false,
