@@ -120,4 +120,5 @@ struct PromiseInit
              
              return jspp::AnyValue::make_promise(masterPromise); }, "all"));
     }
-} promiseInit;
+};
+inline PromiseInit promiseInit;

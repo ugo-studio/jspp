@@ -110,4 +110,5 @@ struct ErrorInit
         // Define static Error.isError
         Error.define_data_property("isError", isErrorFn, true, false, true);
     }
-} errorInit;
+};
+inline ErrorInit errorInit;

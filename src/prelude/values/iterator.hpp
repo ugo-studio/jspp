@@ -128,5 +128,5 @@ namespace jspp
                 AnyValue set_property(const std::string &key, AnyValue value, AnyValue thisVal);
                 AnyValue set_symbol_property(const AnyValue &key, AnyValue value, AnyValue thisVal);
             };
-        }
+}
         

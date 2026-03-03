@@ -60,4 +60,5 @@ struct FunctionInit
             proto.define_data_property("toString", toStringFn.value(), true, false, true);
         }
     }
-} functionInit;
+};
+inline FunctionInit functionInit;

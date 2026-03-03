@@ -441,4 +441,5 @@ struct ObjectInit
             return jspp::Constants::FALSE; }, "isPrototypeOf"),
                                    true, false, true);
     }
-} objectInit;
+};
+inline ObjectInit objectInit;

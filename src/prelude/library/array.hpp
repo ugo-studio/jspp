@@ -200,5 +200,6 @@ struct ArrayInit
                 auto iteratorSym = jspp::AnyValue::from_symbol(jspp::WellKnownSymbols::iterator);
                 proto.define_data_property(iteratorSym, jspp::ArrayPrototypes::get(iteratorSym).value(), true, false, true);
             }
-        } arrayInit;
+};
+inline ArrayInit arrayInit;
         

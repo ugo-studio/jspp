@@ -5,11 +5,11 @@
 
 namespace jspp
 {
-    inline AnyValue AnyValue::get_own_property(const std::string &key) const
+    AnyValue AnyValue::get_own_property(const std::string &key) const
     {
         return get_property_with_receiver(key, *this);
     }
-    inline AnyValue AnyValue::get_own_property_descriptor(const AnyValue &key) const
+    AnyValue AnyValue::get_own_property_descriptor(const AnyValue &key) const
     {
         if (key.is_symbol())
         {
@@ -98,7 +98,7 @@ namespace jspp
             return Constants::UNDEFINED;
         }
     }
-    inline bool AnyValue::has_property(const std::string &key) const
+    bool AnyValue::has_property(const std::string &key) const
     {
         switch (get_type())
         {
@@ -134,7 +134,7 @@ namespace jspp
             return false;
         }
     }
-    inline bool AnyValue::has_property(const AnyValue &key) const
+    bool AnyValue::has_property(const AnyValue &key) const
     {
         if (key.is_symbol())
         {
@@ -158,13 +158,13 @@ namespace jspp
         }
         return has_property(key.to_std_string());
     }
-    inline AnyValue AnyValue::get_own_property(uint32_t idx) const
+    AnyValue AnyValue::get_own_property(uint32_t idx) const
     {
         if (is_array()) return as_array()->get_property(idx);
         if (is_string()) return as_string()->get_property(idx);
         return get_own_property(std::to_string(idx));
     }
-    inline AnyValue AnyValue::get_own_property(const AnyValue &key) const
+    AnyValue AnyValue::get_own_property(const AnyValue &key) const
     {
         if (key.is_number() && is_array())
             return as_array()->get_property(key.as_double());
@@ -176,12 +176,12 @@ namespace jspp
 
         return get_own_property(key.to_std_string());
     }
-    inline AnyValue AnyValue::get_own_symbol_property(const AnyValue &key) const
+    AnyValue AnyValue::get_own_symbol_property(const AnyValue &key) const
     {
         return get_symbol_property_with_receiver(key, *this);
     }
 
-    inline AnyValue AnyValue::get_property_with_receiver(const std::string &key, AnyValue receiver) const
+    AnyValue AnyValue::get_property_with_receiver(const std::string &key, AnyValue receiver) const
     {
         switch (get_type())
         {
@@ -221,7 +221,7 @@ namespace jspp
         }
     }
 
-    inline AnyValue AnyValue::get_symbol_property_with_receiver(const AnyValue &key, AnyValue receiver) const
+    AnyValue AnyValue::get_symbol_property_with_receiver(const AnyValue &key, AnyValue receiver) const
     {
         switch (get_type())
         {
@@ -275,7 +275,7 @@ namespace jspp
         }
     }
 
-    inline AnyValue AnyValue::set_own_property(const std::string &key, AnyValue value) const
+    AnyValue AnyValue::set_own_property(const std::string &key, AnyValue value) const
     {
         switch (get_type())
         {
@@ -295,7 +295,7 @@ namespace jspp
             return value;
         }
     }
-    inline AnyValue AnyValue::set_own_property(uint32_t idx, AnyValue value) const
+    AnyValue AnyValue::set_own_property(uint32_t idx, AnyValue value) const
     {
         if (is_array())
         {
@@ -303,7 +303,7 @@ namespace jspp
         }
         return set_own_property(std::to_string(idx), value);
     }
-    inline AnyValue AnyValue::set_own_property(const AnyValue &key, AnyValue value) const
+    AnyValue AnyValue::set_own_property(const AnyValue &key, AnyValue value) const
     {
         if (key.is_number() && is_array())
         {
@@ -316,7 +316,7 @@ namespace jspp
         return set_own_property(key.to_std_string(), value);
     }
 
-    inline AnyValue AnyValue::set_own_symbol_property(const AnyValue &key, AnyValue value) const
+    AnyValue AnyValue::set_own_symbol_property(const AnyValue &key, AnyValue value) const
     {
         switch (get_type())
         {
@@ -341,17 +341,17 @@ namespace jspp
         }
     }
 
-    inline AnyValue AnyValue::call_own_property(const std::string &key, std::span<const AnyValue> args) const
+    AnyValue AnyValue::call_own_property(const std::string &key, std::span<const AnyValue> args) const
     {
         return get_own_property(key).call((*this), args, key);
     }
-    inline AnyValue AnyValue::call_own_property(uint32_t idx, std::span<const AnyValue> args) const
+    AnyValue AnyValue::call_own_property(uint32_t idx, std::span<const AnyValue> args) const
     {
         if (is_array()) return as_array()->get_property(idx).call((*this), args, "[" + std::to_string(idx) + "]");
         if (is_string()) return as_string()->get_property(idx).call((*this), args, "[" + std::to_string(idx) + "]");
         return call_own_property(std::to_string(idx), args);
     }
-    inline AnyValue AnyValue::call_own_property(const AnyValue &key, std::span<const AnyValue> args) const
+    AnyValue AnyValue::call_own_property(const AnyValue &key, std::span<const AnyValue> args) const
     {
         if (key.is_number() && is_array())
             return as_array()->get_property(key.as_double()).call((*this), args, "[" + key.to_std_string() + "]");

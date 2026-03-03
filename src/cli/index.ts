@@ -80,6 +80,7 @@ async function main() {
         spinner.start();
 
         const pchFile = path.join(pchDir, "jspp.hpp.gch");
+        const runtimeLibPath = path.join(pchDir, "libjspp.a");
         let shouldRebuild = false;
         try {
             const pchStats = await fs.stat(pchFile);
@@ -141,6 +142,7 @@ async function main() {
                 "-include",
                 "jspp.hpp",
                 cppFilePath,
+                runtimeLibPath,
                 "-o",
                 exeFilePath,
                 "-I",

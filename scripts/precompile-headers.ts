@@ -40,6 +40,15 @@ async function getLatestMtime(dirPath: string): Promise<number> {
     return maxMtime;
 }
 
+async function findCppFiles(dir: string): Promise<string[]> {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    const files = await Promise.all(entries.map((entry) => {
+        const res = path.resolve(dir, entry.name);
+        return entry.isDirectory() ? findCppFiles(res) : res;
+    }));
+    return Array.prototype.concat(...files).filter(f => f.endsWith('.cpp'));
+}
+
 async function precompileHeaders() {
     const force = process.argv.includes("--force");
     try {
@@ -118,7 +127,58 @@ async function precompileHeaders() {
 
             // Atomically replace the old GCH with the new one
             await fs.rename(tempGchPath, gchPath);
-            console.log(`[${mode.name.toUpperCase()}] Success.`);
+            console.log(`[${mode.name.toUpperCase()}] PCH Success.`);
+
+            // --- NEW: Compile all .cpp files into libjspp.a ---
+            console.log(
+                `[${mode.name.toUpperCase()}] Compiling runtime library...`,
+            );
+            
+            const cppFiles = await findCppFiles(PRELUDE_DIR);
+            const objFiles: string[] = [];
+
+            for (const cppFile of cppFiles) {
+                const relativePath = path.relative(PRELUDE_DIR, cppFile);
+                const objFile = path.join(modeDir, relativePath.replace(/\.cpp$/, '.o'));
+                await fs.mkdir(path.dirname(objFile), { recursive: true });
+                
+                const compile = spawnSync(
+                    "g++",
+                    [
+                        "-c",
+                        "-std=c++23",
+                        ...mode.flags,
+                        cppFile,
+                        "-o",
+                        objFile,
+                        "-I",
+                        modeDir,
+                        "-I",
+                        PRELUDE_DIR,
+                    ],
+                    { stdio: "inherit" }
+                );
+
+                if (compile.status !== 0) {
+                    console.error(`[${mode.name.toUpperCase()}] Failed to compile ${relativePath}`);
+                    process.exit(1);
+                }
+                objFiles.push(objFile);
+            }
+
+            const libPath = path.join(modeDir, "libjspp.a");
+            const archive = spawnSync(
+                "ar",
+                ["rcs", libPath, ...objFiles],
+                { stdio: "inherit" }
+            );
+
+            if (archive.status !== 0) {
+                console.error(`[${mode.name.toUpperCase()}] Failed to create static library.`);
+                process.exit(1);
+            }
+
+            console.log(`[${mode.name.toUpperCase()}] Runtime Library Success.`);
         }
     } catch (error: any) {
         console.error(`Error: ${error.message}`);

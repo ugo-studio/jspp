@@ -18,11 +18,7 @@
 #include "values/function.hpp"
 #include "values/promise.hpp"
 #include "values/descriptors.hpp"
-#include "any_value_helpers.hpp"
-#include "any_value_access.hpp"
-#include "any_value_defines.hpp"
 #include "library/error.hpp"
-#include "exception_helpers.hpp"
 #include "scheduler.hpp"
 
 #include "values/prototypes/symbol.hpp"
@@ -39,8 +35,6 @@
 #include "values/helpers/object.hpp"
 #include "values/helpers/array.hpp"
 #include "values/helpers/function.hpp"
-#include "values/helpers/iterator.hpp"
-#include "values/helpers/async_iterator.hpp"
 #include "values/helpers/promise.hpp"
 #include "values/helpers/string.hpp"
 

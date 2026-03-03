@@ -49,4 +49,5 @@ struct SymbolInit
         Symbol.define_data_property("toStringTag", jspp::AnyValue::from_symbol(jspp::WellKnownSymbols::toStringTag), false, false, false);
         Symbol.define_data_property("unscopables", jspp::AnyValue::from_symbol(jspp::WellKnownSymbols::unscopables), false, false, false);
     }
-} symbolInit;
+};
+inline SymbolInit symbolInit;

@@ -31,7 +31,7 @@ inline auto global = jspp::AnyValue::make_object({
     {"GeneratorFunction", GeneratorFunction},
     {"AsyncFunction", AsyncFunction},
     {"AsyncGeneratorFunction", AsyncGeneratorFunction},
-    {"console", console},
+    {"console", jspp::console},
     {"performance", performance},
     {"Error", Error},
     {"Promise", Promise},
@@ -39,7 +39,7 @@ inline auto global = jspp::AnyValue::make_object({
     {"clearTimeout", clearTimeout},
     {"setInterval", setInterval},
     {"clearInterval", clearInterval},
-    {"Math", Math},
+    {"Math", jspp::Math},
     {"Object", Object},
     {"Array", Array},
 });
@@ -90,4 +90,5 @@ struct GlobalInit
         ::Promise.set_prototype(functionProto);
         ::Symbol.set_prototype(functionProto);
     }
-} globalInit;
+};
+inline GlobalInit globalInit;

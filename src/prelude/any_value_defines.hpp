@@ -7,7 +7,7 @@
 
 namespace jspp
 {
-    inline void AnyValue::define_data_property(const std::string &key, AnyValue value)
+    void AnyValue::define_data_property(const std::string &key, AnyValue value)
     {
         if (is_object())
         {
@@ -29,7 +29,7 @@ namespace jspp
         }
     }
 
-    inline void AnyValue::define_data_property(const AnyValue &key, AnyValue value)
+    void AnyValue::define_data_property(const AnyValue &key, AnyValue value)
     {
         if (key.is_symbol())
         {
@@ -46,12 +46,12 @@ namespace jspp
             define_data_property(key.to_std_string(), value);
     }
 
-    inline void AnyValue::define_data_property(const std::string &key, AnyValue value, bool writable, bool enumerable, bool configurable)
+    void AnyValue::define_data_property(const std::string &key, AnyValue value, bool writable, bool enumerable, bool configurable)
     {
         define_data_property(key, AnyValue::make_data_descriptor(value, writable, enumerable, configurable));
     }
 
-    inline void AnyValue::define_getter(const std::string &key, AnyValue getter)
+    void AnyValue::define_getter(const std::string &key, AnyValue getter)
     {
         if (is_object())
         {
@@ -111,7 +111,7 @@ namespace jspp
         }
     }
 
-    inline void AnyValue::define_data_property(const AnyValue &key, AnyValue value, bool writable, bool enumerable, bool configurable)
+    void AnyValue::define_data_property(const AnyValue &key, AnyValue value, bool writable, bool enumerable, bool configurable)
     {
         if (key.is_symbol())
         {
@@ -129,7 +129,7 @@ namespace jspp
             define_data_property(key.to_std_string(), value, writable, enumerable, configurable);
     }
 
-    inline void AnyValue::define_getter(const AnyValue &key, AnyValue getter)
+    void AnyValue::define_getter(const AnyValue &key, AnyValue getter)
     {
         if (key.is_symbol())
         {
@@ -151,7 +151,7 @@ namespace jspp
             define_getter(key.to_std_string(), getter);
     }
 
-    inline void AnyValue::define_setter(const std::string &key, AnyValue setter)
+    void AnyValue::define_setter(const std::string &key, AnyValue setter)
     {
         if (is_object())
         {
@@ -173,10 +173,10 @@ namespace jspp
                 }
                 else
                 {
-                    auto setFunc = [setter](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
+                    auto setFunc = [setter](AnyValue thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                     {
                         if (args.empty())
-                            return Constants::UNDEFINED;
+                            return jspp::Constants::UNDEFINED;
                         return setter.call(thisVal, args);
                     };
                     obj->storage[offset.value()] = AnyValue::make_accessor_descriptor(std::nullopt, setFunc, true, true);
@@ -184,10 +184,10 @@ namespace jspp
             }
             else
             {
-                auto setFunc = [setter](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
+                auto setFunc = [setter](AnyValue thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                 {
                     if (args.empty())
-                        return Constants::UNDEFINED;
+                        return jspp::Constants::UNDEFINED;
                     return setter.call(thisVal, args);
                 };
                 obj->shape = obj->shape->transition(key);
@@ -210,10 +210,10 @@ namespace jspp
             }
             else
             {
-                auto setFunc = [setter](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
+                auto setFunc = [setter](AnyValue thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
                 {
                     if (args.empty())
-                        return Constants::UNDEFINED;
+                        return jspp::Constants::UNDEFINED;
                     return setter.call(thisVal, args);
                 };
                 props[key] = AnyValue::make_accessor_descriptor(std::nullopt, setFunc, true, true);
@@ -221,7 +221,7 @@ namespace jspp
         }
     }
 
-        inline void AnyValue::define_setter(const AnyValue &key, AnyValue setter)
+        void AnyValue::define_setter(const AnyValue &key, AnyValue setter)
         {
             if (key.is_symbol())
             {

@@ -15,49 +15,49 @@
 
 namespace jspp
 {
-    inline bool AnyValue::operator==(const AnyValue &other) const noexcept
+    bool AnyValue::operator==(const AnyValue &other) const noexcept
     {
         return storage == other.storage;
     }
-    inline bool AnyValue::operator==(const std::string &other) const noexcept
+    bool AnyValue::operator==(const std::string &other) const noexcept
     {
         if (!is_string())
             return false;
         return as_string()->value == other;
     }
-    inline bool AnyValue::operator<(const AnyValue &other) const noexcept
+    bool AnyValue::operator<(const AnyValue &other) const noexcept
     {
         return storage < other.storage;
     }
 
     // --- AnyValue GETTERS ---
-    inline JsString *AnyValue::as_string() const noexcept { return static_cast<JsString *>(get_ptr()); }
-    inline JsObject *AnyValue::as_object() const noexcept { return static_cast<JsObject *>(get_ptr()); }
-    inline JsArray *AnyValue::as_array() const noexcept { return static_cast<JsArray *>(get_ptr()); }
-    inline JsFunction *AnyValue::as_function() const noexcept { return static_cast<JsFunction *>(get_ptr()); }
-    inline JsSymbol *AnyValue::as_symbol() const noexcept { return static_cast<JsSymbol *>(get_ptr()); }
-    inline JsPromise *AnyValue::as_promise() const noexcept { return static_cast<JsPromise *>(get_ptr()); }
-    inline JsIterator<AnyValue> *AnyValue::as_iterator() const noexcept { return static_cast<JsIterator<AnyValue> *>(get_ptr()); }
-    inline JsAsyncIterator<AnyValue> *AnyValue::as_async_iterator() const noexcept { return static_cast<JsAsyncIterator<AnyValue> *>(get_ptr()); }
-    inline DataDescriptor *AnyValue::as_data_descriptor() const noexcept { return static_cast<DataDescriptor *>(get_ptr()); }
-    inline AccessorDescriptor *AnyValue::as_accessor_descriptor() const noexcept { return static_cast<AccessorDescriptor *>(get_ptr()); }
+    JsString *AnyValue::as_string() const noexcept { return static_cast<JsString *>(get_ptr()); }
+    JsObject *AnyValue::as_object() const noexcept { return static_cast<JsObject *>(get_ptr()); }
+    JsArray *AnyValue::as_array() const noexcept { return static_cast<JsArray *>(get_ptr()); }
+    JsFunction *AnyValue::as_function() const noexcept { return static_cast<JsFunction *>(get_ptr()); }
+    JsSymbol *AnyValue::as_symbol() const noexcept { return static_cast<JsSymbol *>(get_ptr()); }
+    JsPromise *AnyValue::as_promise() const noexcept { return static_cast<JsPromise *>(get_ptr()); }
+    JsIterator<AnyValue> *AnyValue::as_iterator() const noexcept { return static_cast<JsIterator<AnyValue> *>(get_ptr()); }
+    JsAsyncIterator<AnyValue> *AnyValue::as_async_iterator() const noexcept { return static_cast<JsAsyncIterator<AnyValue> *>(get_ptr()); }
+    DataDescriptor *AnyValue::as_data_descriptor() const noexcept { return static_cast<DataDescriptor *>(get_ptr()); }
+    AccessorDescriptor *AnyValue::as_accessor_descriptor() const noexcept { return static_cast<AccessorDescriptor *>(get_ptr()); }
 
-    inline bool AnyValue::is_generator() const noexcept { return is_function() && as_function()->is_generator; }
+    bool AnyValue::is_generator() const noexcept { return is_function() && as_function()->is_generator; }
 
     // --- AnyValue FACTORIES ---
-    inline AnyValue AnyValue::make_string(const std::string &raw_s) noexcept
+    AnyValue AnyValue::make_string(const std::string &raw_s) noexcept
     {
         return from_ptr(new JsString(raw_s));
     }
-    inline AnyValue AnyValue::make_object(std::initializer_list<std::pair<std::string, AnyValue>> props) noexcept
+    AnyValue AnyValue::make_object(std::initializer_list<std::pair<std::string, AnyValue>> props) noexcept
     {
         return from_ptr(new JsObject(props, make_null()));
     }
-    inline AnyValue AnyValue::make_object(const std::map<std::string, AnyValue> &props) noexcept
+    AnyValue AnyValue::make_object(const std::map<std::string, AnyValue> &props) noexcept
     {
         return from_ptr(new JsObject(props, make_null()));
     }
-    inline AnyValue AnyValue::make_array(std::span<const AnyValue> dense) noexcept
+    AnyValue AnyValue::make_array(std::span<const AnyValue> dense) noexcept
     {
         std::vector<AnyValue> vec;
         vec.reserve(dense.size());
@@ -65,15 +65,15 @@ namespace jspp
             vec.push_back(item);
         return from_ptr(new JsArray(std::move(vec)));
     }
-    inline AnyValue AnyValue::make_array(const std::vector<AnyValue> &dense) noexcept
+    AnyValue AnyValue::make_array(const std::vector<AnyValue> &dense) noexcept
     {
         return from_ptr(new JsArray(dense));
     }
-    inline AnyValue AnyValue::make_array(std::vector<AnyValue> &&dense) noexcept
+    AnyValue AnyValue::make_array(std::vector<AnyValue> &&dense) noexcept
     {
         return from_ptr(new JsArray(std::move(dense)));
     }
-    inline AnyValue AnyValue::make_function(const JsFunctionCallable &call, const std::optional<std::string> &name, bool is_constructor) noexcept
+    AnyValue AnyValue::make_function(const JsFunctionCallable &call, const std::optional<std::string> &name, bool is_constructor) noexcept
     {
         auto v = from_ptr(new JsFunction(call, name, {}, {}, false, is_constructor));
         auto proto = make_object({});
@@ -81,7 +81,7 @@ namespace jspp
         v.define_data_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
         return v;
     }
-    inline AnyValue AnyValue::make_class(const JsFunctionCallable &call, const std::optional<std::string> &name) noexcept
+    AnyValue AnyValue::make_class(const JsFunctionCallable &call, const std::optional<std::string> &name) noexcept
     {
         auto v = from_ptr(new JsFunction(call, name, {}, {}, true));
         auto proto = make_object({});
@@ -89,7 +89,7 @@ namespace jspp
         v.define_data_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
         return v;
     }
-    inline AnyValue AnyValue::make_generator(const JsFunctionCallable &call, const std::optional<std::string> &name) noexcept
+    AnyValue AnyValue::make_generator(const JsFunctionCallable &call, const std::optional<std::string> &name) noexcept
     {
         auto v = from_ptr(new JsFunction(call, true, name, {}, {}, false));
         auto proto = make_object({});
@@ -97,7 +97,7 @@ namespace jspp
         v.define_data_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
         return v;
     }
-    inline AnyValue AnyValue::make_async_function(const JsFunctionCallable &call, const std::optional<std::string> &name) noexcept
+    AnyValue AnyValue::make_async_function(const JsFunctionCallable &call, const std::optional<std::string> &name) noexcept
     {
         auto v = from_ptr(new JsFunction(call, false, true, name, {}, {}, false));
         auto proto = make_object({});
@@ -105,7 +105,7 @@ namespace jspp
         v.define_data_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
         return v;
     }
-    inline AnyValue AnyValue::make_async_generator(const JsFunctionCallable &call, const std::optional<std::string> &name) noexcept
+    AnyValue AnyValue::make_async_generator(const JsFunctionCallable &call, const std::optional<std::string> &name) noexcept
     {
         auto v = from_ptr(new JsFunction(call, true, true, name, {}, {}, false));
         auto proto = make_object({});
@@ -113,21 +113,21 @@ namespace jspp
         v.define_data_property("prototype", AnyValue::make_data_descriptor(proto, false, false, false));
         return v;
     }
-    inline AnyValue AnyValue::make_symbol(const std::string &description) noexcept
+    AnyValue AnyValue::make_symbol(const std::string &description) noexcept
     {
         return from_ptr(new JsSymbol(description));
     }
-    inline AnyValue AnyValue::make_promise(const JsPromise &promise) noexcept
+    AnyValue AnyValue::make_promise(const JsPromise &promise) noexcept
     {
         auto p = new JsPromise();
         *p = promise;
         return from_ptr(p);
     }
-    inline AnyValue AnyValue::make_data_descriptor(AnyValue value, bool writable, bool enumerable, bool configurable) noexcept
+    AnyValue AnyValue::make_data_descriptor(AnyValue value, bool writable, bool enumerable, bool configurable) noexcept
     {
         return from_ptr(new DataDescriptor(value, writable, enumerable, configurable));
     }
-    inline AnyValue AnyValue::make_accessor_descriptor(const std::optional<std::function<AnyValue(AnyValue, std::span<const AnyValue>)>> &get,
+    AnyValue AnyValue::make_accessor_descriptor(const std::optional<std::function<AnyValue(AnyValue, std::span<const AnyValue>)>> &get,
                                                        const std::optional<std::function<AnyValue(AnyValue, std::span<const AnyValue>)>> &set,
                                                        bool enumerable,
                                                        bool configurable) noexcept
@@ -135,37 +135,37 @@ namespace jspp
         return from_ptr(new AccessorDescriptor(get, set, enumerable, configurable));
     }
 
-    inline AnyValue AnyValue::from_symbol(JsSymbol *sym) noexcept
+    AnyValue AnyValue::from_symbol(JsSymbol *sym) noexcept
     {
         return from_ptr(sym);
     }
-    inline AnyValue AnyValue::from_string(JsString *str) noexcept
+    AnyValue AnyValue::from_string(JsString *str) noexcept
     {
         return from_ptr(str);
     }
 
-    inline AnyValue AnyValue::from_promise(JsPromise &&promise) noexcept
+    AnyValue AnyValue::from_promise(JsPromise &&promise) noexcept
     {
         auto it = new JsPromise(std::move(promise));
         return from_ptr(it);
     }
 
-    inline AnyValue AnyValue::from_iterator(JsIterator<AnyValue> &&iterator) noexcept
+    AnyValue AnyValue::from_iterator(JsIterator<AnyValue> &&iterator) noexcept
     {
         auto it = new JsIterator<AnyValue>(std::move(iterator));
         return from_ptr(it);
     }
-    inline AnyValue AnyValue::from_iterator_ref(JsIterator<AnyValue> *iterator) noexcept
+    AnyValue AnyValue::from_iterator_ref(JsIterator<AnyValue> *iterator) noexcept
     {
         return from_ptr(iterator);
     }
-    inline AnyValue AnyValue::from_async_iterator(JsAsyncIterator<AnyValue> &&iterator) noexcept
+    AnyValue AnyValue::from_async_iterator(JsAsyncIterator<AnyValue> &&iterator) noexcept
     {
         auto it = new JsAsyncIterator<AnyValue>(std::move(iterator));
         return from_ptr(it);
     }
 
-    inline AnyValue AnyValue::resolve_property_for_read(const AnyValue &val, AnyValue thisVal, const std::string &propName) noexcept
+    AnyValue AnyValue::resolve_property_for_read(const AnyValue &val, AnyValue thisVal, const std::string &propName) noexcept
     {
         if (val.is_data_descriptor())
         {
@@ -183,7 +183,7 @@ namespace jspp
         }
         return val;
     }
-    inline AnyValue AnyValue::resolve_property_for_write(AnyValue &val, AnyValue thisVal, const AnyValue &new_val, const std::string &propName)
+    AnyValue AnyValue::resolve_property_for_write(AnyValue &val, AnyValue thisVal, const AnyValue &new_val, const std::string &propName)
     {
         if (val.is_data_descriptor())
         {
@@ -216,7 +216,7 @@ namespace jspp
         return new_val;
     }
 
-    inline std::string AnyValue::to_std_string() const
+    std::string AnyValue::to_std_string() const
     {
         switch (get_type())
         {
@@ -284,7 +284,7 @@ namespace jspp
         }
     }
 
-    inline std::string AnyValue::to_property_key() const
+    std::string AnyValue::to_property_key() const
     {
         if (is_symbol())
         {
@@ -293,7 +293,7 @@ namespace jspp
         return to_std_string();
     }
 
-    inline AnyValue &AnyValue::set_prototype(AnyValue proto)
+    AnyValue &AnyValue::set_prototype(AnyValue proto)
     {
         if (is_object())
         {
@@ -315,13 +315,13 @@ namespace jspp
     }
 
     // AnyValue::call implementation
-    inline AnyValue AnyValue::call(AnyValue thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr) const
+    AnyValue AnyValue::call(AnyValue thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr) const
     {
         if (!is_function())
             throw Exception::make_exception(expr.value_or(to_std_string()) + " is not a function", "TypeError");
         return as_function()->call(thisVal, args);
     }
-    inline AnyValue AnyValue::optional_call(AnyValue thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr) const
+    AnyValue AnyValue::optional_call(AnyValue thisVal, std::span<const AnyValue> args, const std::optional<std::string> &expr) const
     {
         if (is_null() || is_undefined())
             return Constants::UNDEFINED;
@@ -329,7 +329,7 @@ namespace jspp
     }
 
     // AnyValue::construct implementation
-    inline AnyValue AnyValue::construct(std::span<const AnyValue> args, const std::optional<std::string> &name) const
+    AnyValue AnyValue::construct(std::span<const AnyValue> args, const std::optional<std::string> &name) const
     {
         if (!is_function() || !as_function()->is_constructor)
         {
@@ -357,4 +357,8 @@ namespace jspp
         return instance;
     }
 
+    // Explicit template instantiation declarations
+    // This works here because AnyValue is now a complete type.
+    extern template class JsIterator<AnyValue>;
+    extern template class JsAsyncIterator<AnyValue>;
 }
