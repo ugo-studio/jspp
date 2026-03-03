@@ -48,8 +48,8 @@ async function precompileHeaders() {
 
         for (const mode of MODES) {
             const modeDir = path.join(PRECOMPILED_HEADER_BASE_DIR, mode.name);
-            const headerPath = path.join(modeDir, "index.hpp");
-            const gchPath = path.join(modeDir, "index.hpp.gch");
+            const headerPath = path.join(modeDir, "jspp.hpp");
+            const gchPath = path.join(modeDir, "jspp.hpp.gch");
 
             if (!force) {
                 try {
@@ -68,8 +68,8 @@ async function precompileHeaders() {
             console.log(`\n[${mode.name.toUpperCase()}] Setting up...`);
             await fs.mkdir(modeDir, { recursive: true });
 
-            // Copy index.hpp
-            await fs.copyFile(path.join(PRELUDE_DIR, "index.hpp"), headerPath);
+            // Copy jspp.hpp
+            await fs.copyFile(path.join(PRELUDE_DIR, "jspp.hpp"), headerPath);
 
             // Remove existing gch if it exists
             if (
@@ -94,6 +94,8 @@ async function precompileHeaders() {
                     headerPath,
                     "-o",
                     tempGchPath,
+                    "-I",
+                    modeDir,
                     "-I",
                     PRELUDE_DIR,
                 ],

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef JSPP_PRELUDE_JSPP_HPP
+#define JSPP_PRELUDE_JSPP_HPP
 
 #include "types.hpp"
 #include "utils/well_known_symbols.hpp"
@@ -61,3 +62,5 @@
 #include "library/object.hpp"
 #include "library/array.hpp"
 #include "library/global.hpp"
+
+#endif // JSPP_PRELUDE_JSPP_HPP

@@ -8,8 +8,8 @@ import { CompilerError } from "../core/error.js";
 import { Interpreter } from "../index.js";
 import { parseArgs } from "./args.js";
 import { COLORS } from "./colors.js";
-import { getLatestMtime } from "./file-utils.js";
 import { Spinner } from "./spinner.js";
+import { getLatestMtime, msToHumanReadable } from "./utils.js";
 
 const pkgDir = path.dirname(path.dirname(import.meta.dirname));
 
@@ -79,7 +79,7 @@ async function main() {
         spinner.text = "Checking precompiled headers...";
         spinner.start();
 
-        const pchFile = path.join(pchDir, "index.hpp.gch");
+        const pchFile = path.join(pchDir, "jspp.hpp.gch");
         let shouldRebuild = false;
         try {
             const pchStats = await fs.stat(pchFile);
@@ -131,11 +131,15 @@ async function main() {
         // Ensure output directory exists
         await fs.mkdir(path.dirname(exeFilePath), { recursive: true });
 
+        const compileStartTime = performance.now();
         const compile = spawn(
             "g++",
             [
                 "-std=c++23",
                 ...flags,
+                "-Winvalid-pch",
+                "-include",
+                "jspp.hpp",
                 cppFilePath,
                 "-o",
                 exeFilePath,
@@ -167,10 +171,16 @@ async function main() {
             console.error(stderr);
             process.exit(1);
         }
+
+        const compileEndTime = performance.now();
+        const compileTime = msToHumanReadable(
+            compileEndTime - compileStartTime,
+        );
+
         spinner.succeed(
             `Compiled to ${COLORS.green}${COLORS.bold}${
                 path.basename(exeFilePath)
-            }${COLORS.reset}`,
+            }${COLORS.reset} in ${COLORS.dim}${COLORS.bold}${compileTime}${COLORS.reset}`,
         );
 
         // Clean up C++ file if not requested to keep

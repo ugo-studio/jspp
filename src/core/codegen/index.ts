@@ -87,7 +87,7 @@ export class CodeGenerator {
             this.getDeclaredSymbols(ast),
         );
 
-        const declarations = `#include "index.hpp"\n\n`;
+        const declarations = `#include "jspp.hpp"\n\n`;
 
         let containerCode = `jspp::JsPromise ${MODULE_NAME}() {\n`;
         this.indentationLevel++;
