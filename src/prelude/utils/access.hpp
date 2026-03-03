@@ -320,6 +320,10 @@ namespace jspp
                 {
                     proto = current.as_function()->proto;
                 }
+                else if (current.is_promise())
+                {
+                    proto = current.as_promise()->get_property("__proto__", current); // Fallback for promise if not fully modularized
+                }
                 else
                 {
                     break;
@@ -468,10 +472,13 @@ namespace jspp
 
             auto result = AnyValue::make_object({});
             auto keys = get_object_keys(source, true);
-            
-            auto is_excluded = [&](const AnyValue& key) {
-                for (const auto& ex : excluded_keys) {
-                    if (is_strictly_equal_to_primitive(key, ex)) return true;
+
+            auto is_excluded = [&](const AnyValue &key)
+            {
+                for (const auto &ex : excluded_keys)
+                {
+                    if (is_strictly_equal_to_primitive(key, ex))
+                        return true;
                 }
                 return false;
             };
@@ -480,9 +487,12 @@ namespace jspp
             {
                 if (!is_excluded(key))
                 {
-                    if (key.is_symbol()) {
+                    if (key.is_symbol())
+                    {
                         result.set_own_symbol_property(key, source.get_symbol_property_with_receiver(key, source));
-                    } else {
+                    }
+                    else
+                    {
                         result.set_own_property(key.to_std_string(), source.get_property_with_receiver(key.to_std_string(), source));
                     }
                 }

@@ -99,14 +99,17 @@ describe("Interpreter tests", async () => {
 
     // Compile c++ code
     console.log("Compiling C++ code...");
+    const pchDir = path.resolve(pkgDir, "prelude-build", "debug");
+    const runtimeLibPath = path.join(pchDir, "libjspp.a");
     const compileCmd = [
         "-O0",
         "-std=c++23",
         outputFile,
+        runtimeLibPath,
         "-o",
         exeFile,
         "-I",
-        path.resolve(pkgDir, "prelude-build", "debug"),
+        pchDir,
         "-I",
         preludePath,
     ];

@@ -209,6 +209,46 @@ namespace jspp {
             jspp::Math.define_data_property("trunc", AnyValue::make_function([](AnyValue, std::span<const AnyValue> args) -> AnyValue {
                 return MathFunc1(args, std::trunc);
             }, "trunc"));
+
+            // Math.f16round(x)
+            jspp::Math.define_data_property("f16round", AnyValue::make_function([](AnyValue, std::span<const AnyValue> args) -> AnyValue {
+                double d = GetArgAsDouble(args, 0);
+#if defined(__STDCPP_FLOAT16_T__)
+                return AnyValue::make_number(static_cast<double>(static_cast<std::float16_t>(d)));
+#else
+                float f = static_cast<float>(d);
+                return AnyValue::make_number(static_cast<double>(f));
+#endif
+            }, "f16round"));
+            // Math.sumPrecise(iterable)
+            jspp::Math.define_data_property("sumPrecise", AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue {
+                if (args.empty()) throw Exception::make_exception("Math.sumPrecise requires an iterable", "TypeError");
+                
+                auto iterObj = jspp::Access::get_object_iterator(args[0], "iterable");
+                auto nextFunc = iterObj.get_own_property("next");
+                
+                double sum = 0;
+                // Kahan summation algorithm for better precision
+                double c = 0; 
+                
+                while (true) {
+                    auto nextRes = nextFunc.call(iterObj, std::span<const jspp::AnyValue>{}, "next");
+                    if (is_truthy(nextRes.get_own_property("done"))) break;
+                    
+                    double val = Operators_Private::ToNumber(nextRes.get_own_property("value"));
+                    if (std::isnan(val)) {
+                        sum = std::numeric_limits<double>::quiet_NaN();
+                        break;
+                    }
+                    
+                    double y = val - c;
+                    double t = sum + y;
+                    c = (t - sum) - y;
+                    sum = t;
+                }
+                
+                return AnyValue::make_number(sum);
+            }, "sumPrecise"));
         }
     };
     static MathInit mathInit;

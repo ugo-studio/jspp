@@ -46,7 +46,7 @@ async function main() {
         }${mode.toUpperCase()}${COLORS.reset}\n`,
     );
 
-    const flags = isRelease ? ["-O3", "-DNDEBUG"] : ["-Og"];
+    const flags = isRelease ? ["-O3", "-DNDEBUG"] : ["-Og", "-ftime-report"];
 
     if (process.platform === "win32") {
         flags.push("-Wa,-mbig-obj");

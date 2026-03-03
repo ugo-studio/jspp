@@ -160,8 +160,10 @@ namespace jspp
     }
     AnyValue AnyValue::get_own_property(uint32_t idx) const
     {
-        if (is_array()) return as_array()->get_property(idx);
-        if (is_string()) return as_string()->get_property(idx);
+        if (is_array())
+            return as_array()->get_property(idx);
+        if (is_string())
+            return as_string()->get_property(idx);
         return get_own_property(std::to_string(idx));
     }
     AnyValue AnyValue::get_own_property(const AnyValue &key) const
@@ -194,9 +196,9 @@ namespace jspp
         case JsType::Promise:
             return as_promise()->get_property(key, receiver);
         case JsType::Iterator:
-            return static_cast<JsIterator<AnyValue>*>(get_ptr())->get_property(key, receiver);
+            return static_cast<JsIterator<AnyValue> *>(get_ptr())->get_property(key, receiver);
         case JsType::AsyncIterator:
-            return static_cast<JsAsyncIterator<AnyValue>*>(get_ptr())->get_property(key, receiver);
+            return static_cast<JsAsyncIterator<AnyValue> *>(get_ptr())->get_property(key, receiver);
         case JsType::Symbol:
             return as_symbol()->get_property(key, receiver);
         case JsType::String:
@@ -347,8 +349,10 @@ namespace jspp
     }
     AnyValue AnyValue::call_own_property(uint32_t idx, std::span<const AnyValue> args) const
     {
-        if (is_array()) return as_array()->get_property(idx).call((*this), args, "[" + std::to_string(idx) + "]");
-        if (is_string()) return as_string()->get_property(idx).call((*this), args, "[" + std::to_string(idx) + "]");
+        if (is_array())
+            return as_array()->get_property(idx).call((*this), args, "[" + std::to_string(idx) + "]");
+        if (is_string())
+            return as_string()->get_property(idx).call((*this), args, "[" + std::to_string(idx) + "]");
         return call_own_property(std::to_string(idx), args);
     }
     AnyValue AnyValue::call_own_property(const AnyValue &key, std::span<const AnyValue> args) const
@@ -363,4 +367,5 @@ namespace jspp
 
         return call_own_property(key.to_std_string(), args);
     }
+
 }

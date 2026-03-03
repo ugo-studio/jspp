@@ -37,8 +37,6 @@ namespace jspp
     JsFunction *AnyValue::as_function() const noexcept { return static_cast<JsFunction *>(get_ptr()); }
     JsSymbol *AnyValue::as_symbol() const noexcept { return static_cast<JsSymbol *>(get_ptr()); }
     JsPromise *AnyValue::as_promise() const noexcept { return static_cast<JsPromise *>(get_ptr()); }
-    JsIterator<AnyValue> *AnyValue::as_iterator() const noexcept { return static_cast<JsIterator<AnyValue> *>(get_ptr()); }
-    JsAsyncIterator<AnyValue> *AnyValue::as_async_iterator() const noexcept { return static_cast<JsAsyncIterator<AnyValue> *>(get_ptr()); }
     DataDescriptor *AnyValue::as_data_descriptor() const noexcept { return static_cast<DataDescriptor *>(get_ptr()); }
     AccessorDescriptor *AnyValue::as_accessor_descriptor() const noexcept { return static_cast<AccessorDescriptor *>(get_ptr()); }
 
@@ -356,9 +354,4 @@ namespace jspp
         }
         return instance;
     }
-
-    // Explicit template instantiation declarations
-    // This works here because AnyValue is now a complete type.
-    extern template class JsIterator<AnyValue>;
-    extern template class JsAsyncIterator<AnyValue>;
 }

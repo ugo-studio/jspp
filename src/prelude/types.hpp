@@ -94,9 +94,6 @@ namespace jspp
         std::function<JsPromise(AnyValue, std::vector<AnyValue>)>,
         std::function<JsAsyncIterator<AnyValue>(AnyValue, std::vector<AnyValue>)>>;
 
-    // Awaiter for AnyValue
-    struct AnyValueAwaiter;
-
     // Truthiness checker
     const bool is_truthy(const double &val) noexcept;
     const bool is_truthy(const std::string &val) noexcept;

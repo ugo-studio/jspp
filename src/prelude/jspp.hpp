@@ -8,11 +8,12 @@
 #include "values/shape.hpp"
 #include "values/symbol.hpp"
 #include "values/non_values.hpp"
-#include "values/iterator.hpp"
-#include "values/async_iterator.hpp"
 #include "values/string.hpp"
 
-#include "any_value.hpp"
+#include "any_value.hpp" // Must be before iterators for AnyValueAwaiter
+#include "values/iterator.hpp"
+#include "values/async_iterator.hpp"
+
 #include "values/object.hpp"
 #include "values/array.hpp"
 #include "values/function.hpp"
@@ -56,5 +57,7 @@
 #include "library/object.hpp"
 #include "library/array.hpp"
 #include "library/global.hpp"
+
+#include "iterator_instantiations.hpp"
 
 #endif // JSPP_PRELUDE_JSPP_HPP

@@ -3,16 +3,12 @@
 #include "types.hpp"
 #include <coroutine>
 #include <optional>
-#include <iostream>
-#include <utility>
-#include <exception>
+#include <vector>
 
 namespace jspp
 {
-    // Forward declaration of AnyValue
     class AnyValue;
 
-    // Special exception to signal a return from a generator
     struct GeneratorReturnException {};
 
     template <typename T>
@@ -36,97 +32,64 @@ namespace jspp
             std::exception_ptr pending_exception = nullptr;
             bool pending_return = false;
 
-            JsIterator get_return_object()
+            JsIterator get_return_object();
+            std::suspend_always initial_suspend() noexcept;
+            std::suspend_always final_suspend() noexcept;
+
+            struct Awaiter
             {
-                return JsIterator{
-                    std::coroutine_handle<promise_type>::from_promise(*this)};
-            }
-
-            std::suspend_always initial_suspend() noexcept { return {}; }
-
-            // valid js generators allow access to the return value after completion,
-            // so we must suspend at the end to keep the promise (and value) alive.
-            std::suspend_always final_suspend() noexcept { return {}; }
-
-            // Handle co_yield
-            template <typename From>
-            auto yield_value(From &&from)
-            {
-                current_value = std::forward<From>(from);
-                struct Awaiter
-                {
-                    promise_type &p;
-                    bool await_ready() { return false; }
-                    void await_suspend(std::coroutine_handle<promise_type>) {}
-                    T await_resume() {
-                        if (p.pending_exception) {
-                            auto ex = p.pending_exception;
-                            p.pending_exception = nullptr;
-                            std::rethrow_exception(ex);
-                        }
-                        if (p.pending_return) {
-                            p.pending_return = false;
-                            throw GeneratorReturnException{};
-                        }
-                        return p.input_value;
+                promise_type &p;
+                bool await_ready() { return false; }
+                void await_suspend(std::coroutine_handle<promise_type>) {}
+                T await_resume() {
+                    if (p.pending_exception) {
+                        auto ex = p.pending_exception;
+                        p.pending_exception = nullptr;
+                        std::rethrow_exception(ex);
                     }
-                };
+                    if (p.pending_return) {
+                        p.pending_return = false;
+                        throw GeneratorReturnException{};
+                    }
+                    return p.input_value;
+                }
+            };
+
+            template <typename From>
+            Awaiter yield_value(From &&from) {
+                current_value = std::forward<From>(from);
                 return Awaiter{*this};
             }
 
-            // Handle co_return
-            // This replaces return_void.
-            // It captures the final value and moves to final_suspend (implicit).
             template <typename From>
-            void return_value(From &&from)
-            {
+            void return_value(From &&from) {
                 current_value = std::forward<From>(from);
             }
 
-            void unhandled_exception()
-            {
-                try {
-                    throw;
-                } catch (const GeneratorReturnException&) {
-                    // Handled return
-                } catch (...) {
-                    exception_ = std::current_exception();
-                }
-            }
+            void unhandled_exception();
         };
 
         using handle_type = std::coroutine_handle<promise_type>;
         handle_type handle;
 
-        explicit JsIterator(handle_type h) : handle(h) {}
-        JsIterator(JsIterator &&other) noexcept 
-            : handle(std::exchange(other.handle, nullptr)),
-              props(std::move(other.props)),
-              symbol_props(std::move(other.symbol_props)) {}
-
-        // Delete copy constructor/assignment to ensure unique ownership of the handle
+        explicit JsIterator(handle_type h);
+        JsIterator(JsIterator &&other) noexcept;
         JsIterator(const JsIterator &) = delete;
         JsIterator &operator=(const JsIterator &) = delete;
+        ~JsIterator();
 
-        ~JsIterator()
-        {
-            if (handle)
-                handle.destroy();
-        }
+        std::unordered_map<std::string, AnyValue> props;
+        std::map<AnyValue, AnyValue> symbol_props;
 
-                std::unordered_map<std::string, AnyValue> props;
-                std::map<AnyValue, AnyValue> symbol_props;
-        
-                std::string to_std_string() const;
-                NextResult next(const T &val = T());
-                NextResult return_(const T &val = T());
-                NextResult throw_(const AnyValue &err);
-                std::vector<T> to_vector();
-                bool has_symbol_property(const AnyValue &key) const;
-                AnyValue get_property(const std::string &key, AnyValue thisVal);
-                AnyValue get_symbol_property(const AnyValue &key, AnyValue thisVal);
-                AnyValue set_property(const std::string &key, AnyValue value, AnyValue thisVal);
-                AnyValue set_symbol_property(const AnyValue &key, AnyValue value, AnyValue thisVal);
-            };
+        std::string to_std_string() const;
+        NextResult next(const T &val = T());
+        NextResult return_(const T &val = T());
+        NextResult throw_(const AnyValue &err);
+        std::vector<T> to_vector();
+        bool has_symbol_property(const AnyValue &key) const;
+        AnyValue get_property(const std::string &key, AnyValue thisVal);
+        AnyValue get_symbol_property(const AnyValue &key, AnyValue thisVal);
+        AnyValue set_property(const std::string &key, AnyValue value, AnyValue thisVal);
+        AnyValue set_symbol_property(const AnyValue &key, AnyValue value, AnyValue thisVal);
+    };
 }
-        
