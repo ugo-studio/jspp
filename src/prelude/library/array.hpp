@@ -6,7 +6,8 @@
 #include "utils/access.hpp"
 
 namespace jspp {
-    extern AnyValue Array;
+    extern AnyValue Array; 
+    void init_array();
 }
 
 using jspp::Array;

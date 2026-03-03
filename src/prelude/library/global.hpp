@@ -15,6 +15,8 @@ namespace jspp {
     extern AnyValue AsyncFunction;
     extern AnyValue AsyncGeneratorFunction;
     extern AnyValue global;
+
+    void initialize_runtime();
 }
 
 using jspp::global;

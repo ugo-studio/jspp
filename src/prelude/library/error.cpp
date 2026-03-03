@@ -1,7 +1,8 @@
 #include "jspp.hpp"
 #include "library/error.hpp"
 
-namespace jspp {
+namespace jspp
+{
     jspp::AnyValue Error;
 
     auto errorConstructor = [](jspp::AnyValue thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
@@ -49,7 +50,7 @@ namespace jspp {
 
     jspp::AnyValue isErrorFn = jspp::AnyValue::make_function(
         std::function<AnyValue(AnyValue, std::span<const AnyValue>)>([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
-    {
+                                                                     {
         if (args.empty()) return jspp::Constants::FALSE;
         jspp::AnyValue val = args[0];
         if (!val.is_object()) return jspp::Constants::FALSE;
@@ -62,12 +63,12 @@ namespace jspp {
                  else break;
             }
         }
-        return jspp::Constants::FALSE; 
-    }), "isError");
+        return jspp::Constants::FALSE; }),
+        "isError");
 
     jspp::AnyValue errorToStringFn = jspp::AnyValue::make_function(
         std::function<AnyValue(AnyValue, std::span<const AnyValue>)>([](jspp::AnyValue thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
-    {
+                                                                     {
         std::string name = "Error";
         std::string msg = "";
         jspp::AnyValue n = thisVal.get_own_property("name");
@@ -77,8 +78,8 @@ namespace jspp {
         if (name.empty() && msg.empty()) return jspp::AnyValue::make_string("Error");
         if (name.empty()) return jspp::AnyValue::make_string(msg);
         if (msg.empty()) return jspp::AnyValue::make_string(name);
-        return jspp::AnyValue::make_string(name + ": " + msg); 
-    }), "toString");
+        return jspp::AnyValue::make_string(name + ": " + msg); }),
+        "toString");
 
     struct ErrorInit
     {
@@ -92,5 +93,8 @@ namespace jspp {
             Error.define_data_property("isError", isErrorFn, true, false, true);
         }
     };
-    static ErrorInit errorInit;
+    void init_error()
+    {
+        static ErrorInit errorInit;
+    }
 }

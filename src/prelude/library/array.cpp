@@ -184,5 +184,8 @@ namespace jspp {
             proto.define_data_property(iteratorSym, jspp::ArrayPrototypes::get(iteratorSym).value(), true, false, true);
         }
     };
-    static ArrayInit arrayInit;
+    void init_array()
+    {
+        static ArrayInit arrayInit;
+    }
 }

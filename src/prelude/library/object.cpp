@@ -372,5 +372,8 @@ namespace jspp {
             }), "isPrototypeOf"), true, false, true);
         }
     };
-    static ObjectInit objectInit;
+    void init_object()
+    {
+        static ObjectInit objectInit;
+    }
 }

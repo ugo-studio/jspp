@@ -5,8 +5,10 @@
 #include "utils/access.hpp"
 #include "exception.hpp"
 
-namespace jspp {
+namespace jspp
+{
     extern AnyValue Object;
+    void init_object();
 }
 
 using jspp::Object;

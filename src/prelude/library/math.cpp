@@ -251,5 +251,8 @@ namespace jspp {
             }, "sumPrecise"));
         }
     };
-    static MathInit mathInit;
+    void init_math()
+    {
+        static MathInit mathInit;
+    }
 }

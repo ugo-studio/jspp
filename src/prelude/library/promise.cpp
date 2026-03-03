@@ -123,5 +123,8 @@ namespace jspp {
             }), "all"));
         }
     };
-    static PromiseInit promiseInit;
+    void init_promise()
+    {
+        static PromiseInit promiseInit;
+    }
 }

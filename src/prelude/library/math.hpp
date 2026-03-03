@@ -22,5 +22,5 @@ namespace jspp {
 }
 
 namespace jspp {
-    extern AnyValue Math;
+    extern AnyValue Math; void init_math();
 }

@@ -19,5 +19,6 @@ namespace jspp {
     extern AnyValue errorFn;
     extern AnyValue timeFn;
     extern AnyValue timeEndFn;
-    extern AnyValue console;
+    extern AnyValue console; 
+    void init_console();
 }

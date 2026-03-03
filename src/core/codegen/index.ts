@@ -108,6 +108,7 @@ export class CodeGenerator {
 
         let mainCode = "int main(int argc, char** argv) {\n";
         mainCode += `  try {\n`;
+        mainCode += `    jspp::initialize_runtime();\n`;
         mainCode += `    jspp::setup_process_argv(argc, argv);\n`;
         mainCode += `    auto p = ${MODULE_NAME}();\n`;
         mainCode += `    p.then(nullptr, [](jspp::AnyValue err) {\n`;
