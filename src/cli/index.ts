@@ -46,7 +46,7 @@ async function main() {
         }${mode.toUpperCase()}${COLORS.reset}\n`,
     );
 
-    const flags = isRelease ? ["-O3", "-DNDEBUG"] : ["-O0"];
+    const flags = isRelease ? ["-O3", "-DNDEBUG"] : ["-Og"];
 
     if (process.platform === "win32") {
         flags.push("-Wa,-mbig-obj");
