@@ -11,7 +11,7 @@ const PRECOMPILED_HEADER_BASE_DIR = path.resolve(
 const MODES = [
     {
         name: "debug",
-        flags: ["-O0"],
+        flags: ["-Og"],
     },
     {
         name: "release",

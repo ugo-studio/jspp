@@ -102,7 +102,7 @@ describe("Interpreter tests", async () => {
     const pchDir = path.resolve(pkgDir, "prelude-build", "debug");
     const runtimeLibPath = path.join(pchDir, "libjspp.a");
     const compileCmd = [
-        "-O0",
+        "-Og",
         "-std=c++23",
         outputFile,
         runtimeLibPath,

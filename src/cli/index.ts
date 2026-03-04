@@ -185,6 +185,9 @@ async function main() {
             }${COLORS.reset} in ${COLORS.dim}${COLORS.bold}${compileTime}${COLORS.reset}`,
         );
 
+        // const stderr = Buffer.concat(compileStderrChunks).toString();
+        // console.log(stderr);
+
         // Clean up C++ file if not requested to keep
         if (!keepCpp) {
             try {
