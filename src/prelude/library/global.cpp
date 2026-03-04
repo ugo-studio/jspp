@@ -12,6 +12,7 @@ namespace jspp {
 
         // 1. Initialize core built-ins
         init_symbol();
+        init_function_lib();
         init_object();
         init_array();
         init_error();

@@ -11,7 +11,11 @@ The primary goal of this project is to achieve a near-perfect translation of Jav
 
 JavaScript is flexible and dynamic; C++ is performant and type-safe. JSPP aims to offer the best of both worlds. By transpiling JS/TS to C++, we can potentially run JavaScript logic in environments where C++ is native, with significant performance gains and opportunities for low-level interoperability.
 
-This project serves as a deep dive into compiler design, language semantics, and the expressive power of modern C++. The current implementation translates an entire JavaScript/TypeScript file into a single C++ `main` function, cleverly using `std::shared_ptr<std::any>` (and custom wrappers) to replicate JavaScript's dynamic typing, garbage-collection-like memory management, and complex features like closures.
+This project serves as a deep dive into compiler design, language semantics, and the expressive power of modern C++. The architecture is designed for performance, utilizing:
+- **Fast Runtime Library:** Core JavaScript logic is implemented in a static C++ library (`libjspp.a`), precompiled for speed.
+- **Precompiled Headers (PCH):** Common headers are precompiled to drastically reduce the front-end parsing time of the C++ compiler.
+- **NaN-Boxing:** An efficient 64-bit value representation (NaN-boxing) is used to replicate JavaScript's dynamic typing with minimal overhead.
+- **Modern C++23:** Leverages the latest language features, including coroutines for `async/await` and generators.
 
 ## Features
 
@@ -67,8 +71,10 @@ To contribute to JSPP or run its test suite, follow these steps:
 ### Prerequisites
 
 - **Bun:** This project uses [Bun](https://bun.sh/) for package management, script execution, and testing.
-- **C++ Compiler:** A compiler with support for C++23 is required. This project is tested with `g++`.
-  - `g++` (MinGW on Windows, or available via build-essentials on Linux)
+- **C++ Compiler:** A compiler with support for C++23 is required (e.g., `g++` 13+ or `clang` 17+).
+  - **Windows:** [MSYS2](https://www.msys2.org/) with `mingw-w64-x86_64-gcc` is recommended.
+  - **Linux:** `g++-14` or equivalent.
+  - **macOS:** `brew install gcc`.
 
 ### Setup
 
@@ -76,10 +82,11 @@ To contribute to JSPP or run its test suite, follow these steps:
     ```sh
     git clone https://github.com/ugo-studio/jspp.git
     ```
-2.  Install dependencies:
+2.  Install dependencies and build the runtime:
     ```sh
     bun install
     ```
+    *Note: The `postinstall` script will automatically check for your C++ compiler and precompile the runtime headers and library.*
 
 ## Usage
 
@@ -99,11 +106,9 @@ jspp my-code/test.ts
 
 The transpiled C++ file and executable will be generated in the same directory as the input file and cleaned up after execution (unless `--keep-cpp` is used).
 
-You can also run the test suite:
+### Timing and Reports
 
-```sh
-bun test
-```
+In debug mode (default), JSPP provides a compilation time report using GCC's `-ftime-report`. This helps track the performance of the transpilation and compilation phases.
 
 ## Roadmap
 
@@ -115,7 +120,7 @@ This project is ambitious, and there is a long and exciting road ahead. Here is 
 
 This phase focuses on building a solid foundation that correctly models JavaScript's core runtime behavior.
 
-- [x] Dynamic Variables & Primitives
+- [x] Dynamic Variables & Primitives (NaN-boxing)
 - [x] Function Declarations & Arrow Functions
 - [x] Correct Hoisting for Variables and Functions
 - [x] Closures & Lexical Scoping
@@ -139,16 +144,19 @@ This phase broadens the range of supported JavaScript syntax and features.
 
 This phase focuses on building out the standard library and enabling modular code.
 
-- [ ] **JS Standard Library:** Implementation of common built-in objects. (Currently supports: `Math`, `Symbol`, `Error`, `String`, `Array`, `Object`, `Timer`). **Pending:** `Date`, `Temporal`, `Map`, `Set`, `JSON`, etc.
-- [x] **Asynchronous Operations:** Event loop, `Promise`, `async/await`, and timers (`setTimeout`).
+- [x] **JS Standard Library:** Core implementation of `Math`, `Symbol`, `Error`, `String`, `Array`, `Object`, `Timer`.
+- [ ] **Expanded Library:** `Date`, `Temporal`, `Map`, `Set`, `JSON`, `RegExp`.
+- [x] **Asynchronous Operations:** Event loop, `Promise`, `async/await`.
 - [ ] **Module System:** Support for `import` and `export` to transpile multi-file projects.
 
 ### **Phase 4: Optimization & Advanced Features**
 
 With a feature-complete transpiler, the focus will shift to performance and advanced capabilities.
 
+- [x] **Architecture Optimization:** Static library runtime and Precompiled Headers.
 - [ ] **Performance Benchmarking:** Create a suite to compare transpiled C++ performance against V8.
-- [ ] **C++ Interoperability:** Define a clear API for calling C++ functions from the transpiled JavaScript and vice-versa.
+- [ ] **Linker Optimization:** Support for `LLD` or `Mold` linkers.
+- [ ] **C++ Interoperability:** Define a clear API for calling C++ functions from JavaScript.
 
 ## Contributing
 

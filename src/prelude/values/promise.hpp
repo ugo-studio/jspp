@@ -72,8 +72,8 @@ namespace jspp
         void unhandled_exception();
         
         // await_transform for AnyValue
-        auto await_transform(AnyValue value);
+        AnyValueAwaiter await_transform(AnyValue value);
         // await_transform for JsPromise
-        auto await_transform(const JsPromise& value);
+        AnyValueAwaiter await_transform(const JsPromise& value);
     };
 }

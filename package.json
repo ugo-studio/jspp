@@ -14,7 +14,7 @@
     "scripts"
   ],
   "scripts": {
-    "postinstall": "bun run scripts/setup-compiler.ts",
+    "postinstall": "bun run scripts/setup-compiler.ts && bun run scripts/precompile-headers.ts",
     "dev": "bun run src/cli/index.ts",
     "typecheck": "tsc --noEmit",
     "precompile": "bun run scripts/precompile-headers.ts",

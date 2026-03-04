@@ -1,6 +1,81 @@
-import { spawnSync } from "child_process";
+import { spawn, spawnSync } from "child_process";
 import fs from "fs/promises";
 import path from "path";
+
+const COLORS = {
+    reset: "\x1b[0m",
+    cyan: "\x1b[36m",
+    green: "\x1b[32m",
+    yellow: "\x1b[33m",
+    red: "\x1b[31m",
+    dim: "\x1b[2m",
+    bold: "\x1b[1m",
+};
+
+export class Spinner {
+    private frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+    private interval: any = null;
+    private frameIndex = 0;
+    public text: string;
+
+    constructor(text: string) {
+        this.text = text;
+    }
+
+    start() {
+        process.stdout.write("\x1b[?25l"); // Hide cursor
+        this.frameIndex = 0;
+        this.render();
+        this.interval = setInterval(() => {
+            this.frameIndex = (this.frameIndex + 1) % this.frames.length;
+            this.render();
+        }, 80);
+    }
+
+    update(text: string) {
+        this.text = text;
+        this.render();
+    }
+
+    stop(symbol: string = "", color: string = COLORS.reset) {
+        if (this.interval) {
+            clearInterval(this.interval);
+            this.interval = null;
+        }
+        this.clearLine();
+        process.stdout.write(
+            `${color}${symbol} ${COLORS.reset} ${this.text}\n`,
+        );
+        process.stdout.write("\x1b[?25h"); // Show cursor
+    }
+
+    succeed(text?: string) {
+        if (text) this.text = text;
+        this.stop("✔", COLORS.green);
+    }
+
+    fail(text?: string) {
+        if (text) this.text = text;
+        this.stop("✖", COLORS.red);
+    }
+
+    info(text?: string) {
+        if (text) this.text = text;
+        this.stop("ℹ", COLORS.cyan);
+    }
+
+    private render() {
+        this.clearLine();
+        const frame = this.frames[this.frameIndex];
+        process.stdout.write(
+            `${COLORS.cyan}${frame} ${COLORS.reset} ${this.text}`,
+        );
+    }
+
+    private clearLine() {
+        process.stdout.write("\r\x1b[K");
+    }
+}
 
 const PRELUDE_DIR = path.resolve(process.cwd(), "src", "prelude");
 const PRECOMPILED_HEADER_BASE_DIR = path.resolve(
@@ -48,17 +123,31 @@ async function findCppFiles(dir: string): Promise<string[]> {
     const entries = await fs.readdir(dir, { withFileTypes: true });
     const files = await Promise.all(entries.map((entry) => {
         const res = path.resolve(dir, entry.name);
-        return entry.isDirectory() ? findCppFiles(res) : res;
+        if (entry.isDirectory()) {
+            return findCppFiles(res);
+        } else {
+            return res.endsWith(".cpp") ? [res] : [];
+        }
     }));
-    return Array.prototype.concat(...files).filter((f) => f.endsWith(".cpp"));
+    return Array.prototype.concat(...files);
+}
+
+async function runCommand(cmd: string, args: string[]): Promise<boolean> {
+    return new Promise((resolve) => {
+        const proc = spawn(cmd, args, { stdio: "ignore" });
+        proc.on("close", (code) => resolve(code === 0));
+    });
 }
 
 async function precompileHeaders() {
+    console.log(
+        `${COLORS.bold}${COLORS.cyan}JSPP: Precompiling headers and runtime...${COLORS.reset}\n`,
+    );
+
     const force = process.argv.includes("--force");
     try {
         await fs.mkdir(PRECOMPILED_HEADER_BASE_DIR, { recursive: true });
 
-        // Latest mtime of any header file
         const latestHeaderMtime = await getLatestMtime(
             PRELUDE_DIR,
             (name) => name.endsWith(".hpp") || name.endsWith(".h"),
@@ -69,7 +158,10 @@ async function precompileHeaders() {
             const headerPath = path.join(modeDir, "jspp.hpp");
             const gchPath = path.join(modeDir, "jspp.hpp.gch");
 
-            console.log(`\n[${mode.name.toUpperCase()}] Checking headers...`);
+            const modeLabel = `[${mode.name.toUpperCase()}]`;
+            const spinner = new Spinner(`${modeLabel} Checking headers...`);
+            spinner.start();
+
             await fs.mkdir(modeDir, { recursive: true });
 
             let gchRebuilt = false;
@@ -87,49 +179,37 @@ async function precompileHeaders() {
             }
 
             if (shouldBuildGch) {
-                console.log(`[${mode.name.toUpperCase()}] Compiling header...`);
-                // Copy jspp.hpp
+                spinner.update(`${modeLabel} Compiling header...`);
                 await fs.copyFile(
                     path.join(PRELUDE_DIR, "jspp.hpp"),
                     headerPath,
                 );
 
                 const tempGchPath = `${gchPath}.tmp`;
-                const compile = spawnSync(
-                    "g++",
-                    [
-                        "-x",
-                        "c++-header",
-                        "-std=c++23",
-                        ...mode.flags,
-                        headerPath,
-                        "-o",
-                        tempGchPath,
-                        "-I",
-                        modeDir,
-                        "-I",
-                        PRELUDE_DIR,
-                    ],
-                    { stdio: "inherit" },
-                );
+                const success = await runCommand("g++", [
+                    "-x",
+                    "c++-header",
+                    "-std=c++23",
+                    ...mode.flags,
+                    headerPath,
+                    "-o",
+                    tempGchPath,
+                    "-I",
+                    modeDir,
+                    "-I",
+                    PRELUDE_DIR,
+                ]);
 
-                if (compile.status !== 0) {
-                    try {
-                        await fs.unlink(tempGchPath);
-                    } catch (e) {}
-                    console.error(
-                        `[${mode.name.toUpperCase()}] Failed to precompile headers.`,
-                    );
+                if (!success) {
+                    spinner.fail(`${modeLabel} Failed to precompile headers.`);
                     process.exit(1);
                 }
 
                 await fs.rename(tempGchPath, gchPath);
                 gchRebuilt = true;
-                console.log(`[${mode.name.toUpperCase()}] PCH Success.`);
+                spinner.succeed(`${modeLabel} PCH Success.`);
             } else {
-                console.log(
-                    `[${mode.name.toUpperCase()}] Headers are up-to-date.`,
-                );
+                spinner.succeed(`${modeLabel} Headers are up-to-date.`);
             }
 
             // --- Incremental Compilation of .cpp files ---
@@ -139,7 +219,13 @@ async function precompileHeaders() {
 
             const gchMtime = (await fs.stat(gchPath)).mtimeMs;
 
-            for (const cppFile of cppFiles) {
+            const libSpinner = new Spinner(
+                `${modeLabel} Checking runtime library...`,
+            );
+            libSpinner.start();
+
+            for (let idx = 0; idx < cppFiles.length; idx++) {
+                const cppFile = cppFiles[idx];
                 const relativePath = path.relative(PRELUDE_DIR, cppFile);
                 const objFile = path.join(
                     modeDir,
@@ -165,29 +251,27 @@ async function precompileHeaders() {
                 }
 
                 if (shouldCompile) {
-                    console.log(
-                        `[${mode.name.toUpperCase()}] Compiling ${relativePath}...`,
+                    libSpinner.update(
+                        `${modeLabel} Compiling ${relativePath} ${COLORS.dim}[${
+                            idx + 1
+                        }/${cppFiles.length}]${COLORS.reset}`,
                     );
-                    const compile = spawnSync(
-                        "g++",
-                        [
-                            "-c",
-                            "-std=c++23",
-                            ...mode.flags,
-                            cppFile,
-                            "-o",
-                            objFile,
-                            "-I",
-                            modeDir,
-                            "-I",
-                            PRELUDE_DIR,
-                        ],
-                        { stdio: "inherit" },
-                    );
+                    const success = await runCommand("g++", [
+                        "-c",
+                        "-std=c++23",
+                        ...mode.flags,
+                        cppFile,
+                        "-o",
+                        objFile,
+                        "-I",
+                        modeDir,
+                        "-I",
+                        PRELUDE_DIR,
+                    ]);
 
-                    if (compile.status !== 0) {
-                        console.error(
-                            `[${mode.name.toUpperCase()}] Failed to compile ${relativePath}`,
+                    if (!success) {
+                        libSpinner.fail(
+                            `${modeLabel} Failed to compile ${relativePath}`,
                         );
                         process.exit(1);
                     }
@@ -206,38 +290,35 @@ async function precompileHeaders() {
             }
 
             if (shouldArchive) {
-                console.log(
-                    `[${mode.name.toUpperCase()}] Updating runtime library...`,
-                );
+                libSpinner.update(`${modeLabel} Updating runtime library...`);
                 const tempLibPath = `${libPath}.tmp`;
-                const archive = spawnSync(
-                    "ar",
-                    ["rcs", tempLibPath, ...objFiles],
-                    { stdio: "inherit" },
-                );
 
-                if (archive.status !== 0) {
-                    try {
-                        await fs.unlink(tempLibPath);
-                    } catch (e) {}
-                    console.error(
-                        `[${mode.name.toUpperCase()}] Failed to create static library.`,
+                const success = await runCommand("ar", [
+                    "rcs",
+                    tempLibPath,
+                    ...objFiles,
+                ]);
+
+                if (!success) {
+                    libSpinner.fail(
+                        `${modeLabel} Failed to create static library.`,
                     );
                     process.exit(1);
                 }
 
                 await fs.rename(tempLibPath, libPath);
-                console.log(
-                    `[${mode.name.toUpperCase()}] Runtime Library Success.`,
-                );
+                libSpinner.succeed(`${modeLabel} Runtime Library Success.`);
             } else {
-                console.log(
-                    `[${mode.name.toUpperCase()}] Runtime library is up-to-date.`,
+                libSpinner.succeed(
+                    `${modeLabel} Runtime library is up-to-date.`,
                 );
             }
         }
+        console.log(
+            `\n${COLORS.bold}${COLORS.green}JSPP: Environment ready.${COLORS.reset}\n`,
+        );
     } catch (error: any) {
-        console.error(`Error: ${error.message}`);
+        console.error(`${COLORS.red}Error: ${error.message}${COLORS.reset}`);
         process.exit(1);
     }
 }

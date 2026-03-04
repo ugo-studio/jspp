@@ -1,8 +1,5 @@
-#pragma once
-
-#include "types.hpp"
+#include "jspp.hpp"
 #include "values/async_iterator.hpp"
-#include "any_value.hpp"
 #include "values/prototypes/async_iterator.hpp"
 
 namespace jspp {
@@ -198,4 +195,57 @@ AnyValue JsAsyncIterator<T>::set_symbol_property(const AnyValue &key, AnyValue v
     else { symbol_props[key] = value; return value; }
 }
 
+// Explicit template instantiation
+template class JsAsyncIterator<AnyValue>;
+
+namespace AsyncIteratorPrototypes {
+
+AnyValue &get_toString_fn()
+{
+    static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue>) -> AnyValue
+                                                 { return AnyValue::make_string(thisVal.as_async_iterator()->to_std_string()); },
+                                                 "toString");
+    return fn;
 }
+
+AnyValue &get_asyncIterator_fn()
+{
+    static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue>) -> AnyValue
+                                                 { return thisVal; },
+                                                 "Symbol.asyncIterator");
+    return fn;
+}
+
+AnyValue &get_next_fn()
+{
+    static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
+                                                 {
+                                                     AnyValue val = args.empty() ? Constants::UNDEFINED : args[0];
+                                                     auto res = thisVal.as_async_iterator()->next(val);
+                                                     return AnyValue::make_promise(res); },
+                                                 "next");
+    return fn;
+}
+
+std::optional<AnyValue> get(const std::string &key)
+{
+    if (key == "toString") return get_toString_fn();
+    if (key == "next") return get_next_fn();
+    return std::nullopt;
+}
+
+std::optional<AnyValue> get(const AnyValue &key)
+{
+    if (key.is_string())
+        return get(key.as_string()->value);
+
+    if (key == AnyValue::from_symbol(WellKnownSymbols::toStringTag)) return get_toString_fn();
+    if (key == AnyValue::from_symbol(WellKnownSymbols::asyncIterator)) return get_asyncIterator_fn();
+    if (key == "next") return get_next_fn();
+
+    return std::nullopt;
+}
+
+} // namespace AsyncIteratorPrototypes
+
+} // namespace jspp

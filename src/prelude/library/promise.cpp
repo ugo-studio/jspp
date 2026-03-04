@@ -1,10 +1,11 @@
 #include "jspp.hpp"
 #include "library/promise.hpp"
 
-namespace jspp {
+namespace jspp
+{
     jspp::AnyValue Promise = jspp::AnyValue::make_function(
         std::function<AnyValue(AnyValue, std::span<const AnyValue>)>([](jspp::AnyValue thisVal, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
-    {
+                                                                     {
         if (args.empty() || !args[0].is_function())
         {
             throw jspp::Exception::make_exception("Promise resolver undefined is not a function", "TypeError");
@@ -46,32 +47,32 @@ namespace jspp {
             promise.reject(jspp::AnyValue::make_string("Unknown error during Promise execution"));
         }
 
-        return jspp::AnyValue::make_promise(promise); 
-    }), "Promise");
+        return jspp::AnyValue::make_promise(promise); }),
+        "Promise");
 
     struct PromiseInit
     {
         PromiseInit()
         {
             Promise.define_data_property("resolve", jspp::AnyValue::make_function(
-                std::function<AnyValue(AnyValue, std::span<const AnyValue>)>([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
-            {
+                                                        std::function<AnyValue(AnyValue, std::span<const AnyValue>)>([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+                                                                                                                     {
                 jspp::JsPromise p;
                 p.resolve(args.empty() ? jspp::Constants::UNDEFINED : args[0]);
-                return jspp::AnyValue::make_promise(p); 
-            }), "resolve"));
+                return jspp::AnyValue::make_promise(p); }),
+                                                        "resolve"));
 
             Promise.define_data_property("reject", jspp::AnyValue::make_function(
-                std::function<AnyValue(AnyValue, std::span<const AnyValue>)>([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
-            {
+                                                       std::function<AnyValue(AnyValue, std::span<const AnyValue>)>([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+                                                                                                                    {
                 jspp::JsPromise p;
                 p.reject(args.empty() ? jspp::Constants::UNDEFINED : args[0]);
-                return jspp::AnyValue::make_promise(p); 
-            }), "reject"));
+                return jspp::AnyValue::make_promise(p); }),
+                                                       "reject"));
 
             Promise.define_data_property("all", jspp::AnyValue::make_function(
-                std::function<AnyValue(AnyValue, std::span<const AnyValue>)>([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
-            {
+                                                    std::function<AnyValue(AnyValue, std::span<const AnyValue>)>([](jspp::AnyValue, std::span<const jspp::AnyValue> args) -> jspp::AnyValue
+                                                                                                                 {
                  if (args.empty() || !args[0].is_array()) {
                      jspp::JsPromise p; p.reject(jspp::AnyValue::make_string("Promise.all argument must be an array"));
                      return jspp::AnyValue::make_promise(p);
@@ -119,8 +120,8 @@ namespace jspp {
                      }
                  }
                  
-                 return jspp::AnyValue::make_promise(masterPromise); 
-            }), "all"));
+                 return jspp::AnyValue::make_promise(masterPromise); }),
+                                                    "all"));
         }
     };
     void init_promise()

@@ -19,6 +19,7 @@
 #include "values/function.hpp"
 #include "values/promise.hpp"
 #include "values/descriptors.hpp"
+#include "exception.hpp"
 #include "library/error.hpp"
 #include "scheduler.hpp"
 
@@ -31,13 +32,6 @@
 #include "values/prototypes/promise.hpp"
 #include "values/prototypes/string.hpp"
 #include "values/prototypes/number.hpp"
-
-#include "values/helpers/symbol.hpp"
-#include "values/helpers/object.hpp"
-#include "values/helpers/array.hpp"
-#include "values/helpers/function.hpp"
-#include "values/helpers/promise.hpp"
-#include "values/helpers/string.hpp"
 
 // utilities
 #include "utils/operators_primitive.hpp"

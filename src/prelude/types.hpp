@@ -143,42 +143,42 @@ namespace jspp
     // AnyValue prototypes
     namespace ObjectPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key);
-        inline std::optional<AnyValue> get(const AnyValue &key);
+        std::optional<AnyValue> get(const std::string &key);
+        std::optional<AnyValue> get(const AnyValue &key);
     }
     namespace StringPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key);
-        inline std::optional<AnyValue> get(const AnyValue &key);
+        std::optional<AnyValue> get(const std::string &key);
+        std::optional<AnyValue> get(const AnyValue &key);
     }
     namespace NumberPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key);
-        inline std::optional<AnyValue> get(const AnyValue &key);
+        std::optional<AnyValue> get(const std::string &key);
+        std::optional<AnyValue> get(const AnyValue &key);
     }
     namespace ArrayPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key);
-        inline std::optional<AnyValue> get(const AnyValue &key);
+        std::optional<AnyValue> get(const std::string &key);
+        std::optional<AnyValue> get(const AnyValue &key);
     }
     namespace FunctionPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key);
-        inline std::optional<AnyValue> get(const AnyValue &key);
+        std::optional<AnyValue> get(const std::string &key);
+        std::optional<AnyValue> get(const AnyValue &key);
     }
     namespace PromisePrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key);
-        inline std::optional<AnyValue> get(const AnyValue &key);
+        std::optional<AnyValue> get(const std::string &key);
+        std::optional<AnyValue> get(const AnyValue &key);
     }
     namespace IteratorPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key);
-        inline std::optional<AnyValue> get(const AnyValue &key);
+        std::optional<AnyValue> get(const std::string &key);
+        std::optional<AnyValue> get(const AnyValue &key);
     }
     namespace SymbolPrototypes
     {
-        inline std::optional<AnyValue> get(const std::string &key);
-        inline std::optional<AnyValue> get(const AnyValue &key);
+        std::optional<AnyValue> get(const std::string &key);
+        std::optional<AnyValue> get(const AnyValue &key);
     }
 }
