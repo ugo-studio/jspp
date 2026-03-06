@@ -2,7 +2,7 @@ import { COLORS } from "./colors.js";
 
 export class Spinner {
     private frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-    private interval: Timer | null = null;
+    private interval: Timer | null = null; // Note: You may need NodeJS.Timeout depending on your environment
     private frameIndex = 0;
     public text: string;
 
@@ -11,13 +11,24 @@ export class Spinner {
     }
 
     start() {
+        if (this.interval) return; // Prevent multiple intervals
         process.stdout.write("\x1b[?25l"); // Hide cursor
         this.frameIndex = 0;
         this.render();
-        this.interval = setInterval(() => {
-            this.frameIndex = (this.frameIndex + 1) % this.frames.length;
-            this.render();
-        }, 80);
+        this.startInterval();
+    }
+
+    pause() {
+        if (this.interval) {
+            clearInterval(this.interval);
+            this.interval = null;
+        }
+    }
+
+    resume() {
+        if (this.interval) return; // Already running
+        process.stdout.write("\x1b[?25l"); // Ensure cursor stays hidden
+        this.startInterval();
     }
 
     update(text: string) {
@@ -25,15 +36,14 @@ export class Spinner {
         this.render();
     }
 
-    stop(symbol: string = "", color: string = COLORS.reset) {
-        if (this.interval) {
-            clearInterval(this.interval);
-            this.interval = null;
-        }
+    stop(symbol?: string, color: string = COLORS.reset) {
+        this.pause(); // Reuse pause logic to clear the interval
         this.clearLine();
-        process.stdout.write(
-            `${color}${symbol} ${COLORS.reset} ${this.text}\n`,
-        );
+        if (symbol) {
+            process.stdout.write(
+                `${color}${symbol} ${COLORS.reset} ${this.text}\n`,
+            );
+        }
         process.stdout.write("\x1b[?25h"); // Show cursor
     }
 
@@ -50,6 +60,13 @@ export class Spinner {
     info(text?: string) {
         if (text) this.text = text;
         this.stop("ℹ", COLORS.cyan);
+    }
+
+    private startInterval() {
+        this.interval = setInterval(() => {
+            this.frameIndex = (this.frameIndex + 1) % this.frames.length;
+            this.render();
+        }, 80);
     }
 
     private render() {

@@ -338,26 +338,27 @@ namespace jspp
         bool operator==(const AnyValue &other) const noexcept;
         bool operator==(const std::string &other) const noexcept;
         bool operator<(const AnyValue &other) const noexcept;
-        };
+    };
 
-        struct AnyValueAwaiter
-        {
+    struct AnyValueAwaiter
+    {
         AnyValue value;
         bool await_ready();
         void await_suspend(std::coroutine_handle<> h);
         AnyValue await_resume();
-        };
+    };
 
-        inline auto AnyValue::operator co_await() const
-        {
+    inline auto AnyValue::operator co_await() const
+    {
         return AnyValueAwaiter{*this};
-        }
-        }
+    }
+}
 
-        namespace jspp
-        {
-        namespace Constants
-        {        inline const AnyValue UNINITIALIZED = AnyValue::make_uninitialized();
+namespace jspp
+{
+    namespace Constants
+    {
+        inline const AnyValue UNINITIALIZED = AnyValue::make_uninitialized();
         inline const AnyValue UNDEFINED = AnyValue::make_undefined();
         inline const AnyValue Null = AnyValue::make_null();
         inline const AnyValue NaN = AnyValue::make_nan();

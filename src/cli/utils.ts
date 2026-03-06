@@ -18,9 +18,9 @@ export async function getLatestMtime(dirPath: string): Promise<number> {
 }
 
 /**
- * Converts milliseconds to a human-readable format.
+ * Converts milliseconds to a single-unit, human-readable decimal format.
  * @param ms - The time in milliseconds
- * @returns A formatted string (e.g., "2 hours, 1 minute, 4 seconds")
+ * @returns A formatted string (e.g., "2.52s", "1.5h")
  */
 export function msToHumanReadable(ms: number): string {
     if (ms < 0) {
@@ -28,41 +28,34 @@ export function msToHumanReadable(ms: number): string {
     }
 
     if (ms === 0) {
-        return "0 seconds";
+        return "0ms";
     }
 
-    // Define time constants in milliseconds
     const MS_PER_SECOND = 1000;
     const MS_PER_MINUTE = 60 * MS_PER_SECOND;
     const MS_PER_HOUR = 60 * MS_PER_MINUTE;
     const MS_PER_DAY = 24 * MS_PER_HOUR;
 
-    // Calculate each unit
-    const days = Math.floor(ms / MS_PER_DAY);
-    const hours = Math.floor((ms % MS_PER_DAY) / MS_PER_HOUR);
-    const minutes = Math.floor((ms % MS_PER_HOUR) / MS_PER_MINUTE);
-    const seconds = Math.floor((ms % MS_PER_MINUTE) / MS_PER_SECOND);
-
-    // Array to hold the formatted parts
-    const parts: string[] = [];
-
-    // Helper function to handle pluralization
-    const addPart = (value: number, unit: string) => {
-        if (value > 0) {
-            parts.push(`${value} ${unit}${value > 1 ? "s" : ""}`);
-        }
+    // Helper to safely truncate to 2 decimal places without rounding up
+    const formatValue = (val: number): string => {
+        // toFixed(3) resolves float math errors, slice(0,-1) enforces truncation (e.g. 2.528 -> 2.52)
+        let str = val.toFixed(3).slice(0, -1);
+        // Remove trailing zeroes and lingering decimal points (e.g., "2.00" -> "2")
+        return str.replace(/0+$/, "").replace(/\.$/, "");
     };
 
-    addPart(days, "day");
-    addPart(hours, "hour");
-    addPart(minutes, "minute");
-    addPart(seconds, "second");
-
-    // If the time was less than 1 second, it will be empty
-    if (parts.length === 0) {
-        return `${ms} millisecond${ms > 1 ? "s" : ""}`;
+    if (ms >= MS_PER_DAY) {
+        return formatValue(ms / MS_PER_DAY) + "d";
+    }
+    if (ms >= MS_PER_HOUR) {
+        return formatValue(ms / MS_PER_HOUR) + "h";
+    }
+    if (ms >= MS_PER_MINUTE) {
+        return formatValue(ms / MS_PER_MINUTE) + "m";
+    }
+    if (ms >= MS_PER_SECOND) {
+        return formatValue(ms / MS_PER_SECOND) + "s";
     }
 
-    // Join the parts with a comma and space
-    return parts.join(", ");
+    return formatValue(ms) + "ms";
 }

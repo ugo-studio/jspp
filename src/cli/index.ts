@@ -64,16 +64,22 @@ async function main() {
         const jsCode = await fs.readFile(jsFilePath, "utf-8");
 
         spinner.update("Transpiling to C++...");
+        const transpileStartTime = performance.now();
         const interpreter = new Interpreter();
         const { cppCode, preludePath } = interpreter.interpret(
             jsCode,
             jsFilePath,
         );
+        const transpileTime = msToHumanReadable(
+            performance.now() - transpileStartTime,
+        );
 
         // Ensure directory for cpp file exists (should exist as it's source dir, but for safety if we change logic)
         await fs.mkdir(path.dirname(cppFilePath), { recursive: true });
         await fs.writeFile(cppFilePath, cppCode);
-        spinner.succeed(`Generated cpp`);
+        spinner.succeed(
+            `Generated cpp ${COLORS.dim}[${transpileTime}]${COLORS.reset}`,
+        );
 
         // 2. Precompiled Header Check
         spinner.text = "Checking precompiled headers...";
@@ -81,29 +87,39 @@ async function main() {
 
         const pchFile = path.join(pchDir, "jspp.hpp.gch");
         const runtimeLibPath = path.join(pchDir, "libjspp.a");
-        let shouldRebuild = false;
+        let shouldRebuildPCH = false;
         try {
             const pchStats = await fs.stat(pchFile);
             const sourceMtime = await getLatestMtime(preludePath);
             if (sourceMtime > pchStats.mtimeMs) {
-                shouldRebuild = true;
+                shouldRebuildPCH = true;
             }
         } catch (e) {
-            shouldRebuild = true;
+            shouldRebuildPCH = true;
         }
 
-        if (shouldRebuild) {
+        if (shouldRebuildPCH) {
             spinner.update(
                 "Rebuilding precompiled headers (this may take a while)...",
             );
+            const pchStartTime = performance.now();
+
             // Use spawn (async) instead of spawnSync to keep spinner alive
             const rebuild = spawn("bun", [
                 "run",
                 "scripts/precompile-headers.ts",
+                "--jspp-cli-is-parent",
             ], {
                 cwd: pkgDir,
                 stdio: ["ignore", "pipe", "pipe"],
             });
+
+            if (rebuild.stdout) {
+                rebuild.stdout.on("data", (chunk) => {
+                    spinner.pause();
+                    process.stdout.write(chunk);
+                });
+            }
 
             const stderrChunks: Buffer[] = [];
             if (rebuild.stderr) {
@@ -111,7 +127,10 @@ async function main() {
             }
 
             const exitCode = await new Promise<number>((resolve) => {
-                rebuild.on("close", (code) => resolve(code ?? 1));
+                rebuild.on("close", (code) => {
+                    spinner.resume();
+                    resolve(code ?? 1);
+                });
             });
 
             if (exitCode !== 0) {
@@ -120,9 +139,12 @@ async function main() {
                 console.error(stderr);
                 process.exit(1);
             }
-            spinner.succeed("Precompiled headers updated");
+            const pchTime = msToHumanReadable(performance.now() - pchStartTime);
+            spinner.succeed(
+                `Precompiled headers updated ${COLORS.dim}[${pchTime}]${COLORS.reset}`,
+            );
         } else {
-            spinner.succeed("Precompiled headers");
+            spinner.stop();
         }
 
         // 3. Compilation Phase
@@ -182,7 +204,7 @@ async function main() {
         spinner.succeed(
             `Compiled to ${COLORS.green}${COLORS.bold}${
                 path.basename(exeFilePath)
-            }${COLORS.reset} in ${COLORS.dim}${COLORS.bold}${compileTime}${COLORS.reset}`,
+            }${COLORS.reset} ${COLORS.dim}[${compileTime}]${COLORS.reset}`,
         );
 
         // const stderr = Buffer.concat(compileStderrChunks).toString();

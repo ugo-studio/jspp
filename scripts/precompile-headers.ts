@@ -140,11 +140,15 @@ async function runCommand(cmd: string, args: string[]): Promise<boolean> {
 }
 
 async function precompileHeaders() {
-    console.log(
-        `${COLORS.bold}${COLORS.cyan}JSPP: Precompiling headers and runtime...${COLORS.reset}\n`,
-    );
-
     const force = process.argv.includes("--force");
+    const jsppCliIsParent = process.argv.includes("--jspp-cli-is-parent");
+
+    if (!jsppCliIsParent) {
+        console.log(
+            `${COLORS.bold}${COLORS.cyan}JSPP: Precompiling headers and runtime...${COLORS.reset}\n`,
+        );
+    }
+
     try {
         await fs.mkdir(PRECOMPILED_HEADER_BASE_DIR, { recursive: true });
 
@@ -314,9 +318,11 @@ async function precompileHeaders() {
                 );
             }
         }
-        console.log(
-            `\n${COLORS.bold}${COLORS.green}JSPP: Environment ready.${COLORS.reset}\n`,
-        );
+        if (!jsppCliIsParent) {
+            console.log(
+                `\n${COLORS.bold}${COLORS.green}JSPP: Environment ready.${COLORS.reset}\n`,
+            );
+        }
     } catch (error: any) {
         console.error(`${COLORS.red}Error: ${error.message}${COLORS.reset}`);
         process.exit(1);
