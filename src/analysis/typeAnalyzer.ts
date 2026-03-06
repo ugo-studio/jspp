@@ -76,6 +76,7 @@ export interface TypeInfo {
 export class TypeAnalyzer {
     private traverser = new Traverser();
     public readonly scopeManager = new ScopeManager();
+    public readonly callSites = new Map<ts.Declaration, ts.CallExpression[]>();
     public readonly functionTypeInfo = new Map<
         | ts.FunctionDeclaration
         | ts.ArrowFunction
@@ -101,7 +102,8 @@ export class TypeAnalyzer {
     public inferFunctionReturnType(
         node: ts.Node,
         scope?: Scope,
-        visited: Set<ts.Node> = new Set(),
+        visited: Set<string> = new Set(),
+        typeEnv?: Map<ts.ParameterDeclaration, ts.Expression>,
     ): "boolean" | "number" | "string" | "object" | "function" | "any" {
         if (
             !ts.isFunctionDeclaration(node) && !ts.isFunctionExpression(node) &&
@@ -111,16 +113,42 @@ export class TypeAnalyzer {
             return "any";
         }
 
+        // Create a unique key for the visit based on node and environment to allow context-sensitive recursion
+        const envKey = typeEnv ? Array.from(typeEnv.entries()).map(([p, e]) => `${p.pos}:${e.pos}`).join(",") : "no-env";
+        const visitKey = `func:${node.pos}:${envKey}`;
+        if (visited.has(visitKey)) return "any";
+        const newVisited = new Set(visited);
+        newVisited.add(visitKey);
+
         const info = this.functionTypeInfo.get(node as any);
+        const internalScope = this.nodeToScope.get(node) || scope || this.scopeManager.currentScope;
+
         if (info && info.assignments && info.assignments.length > 0) {
             const types = info.assignments.map((expr) =>
-                this.inferNodeReturnType(expr, scope, visited)
+                this.inferNodeReturnType(expr, internalScope, newVisited, typeEnv)
             );
             const uniqueTypes = new Set(types.filter((t) => t !== "any"));
             if (uniqueTypes.size === 1) {
                 return uniqueTypes.values().next().value as any;
             }
             if (uniqueTypes.size > 1) return "any";
+        }
+
+        // Check call sites if no definitive type found and we are not already in a specific call context
+        if (!typeEnv && (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node))) {
+            const sites = this.callSites.get(node as ts.Declaration);
+            if (sites && sites.length > 0) {
+                const callTypes = sites.map(site => {
+                    const env = new Map<ts.ParameterDeclaration, ts.Expression>();
+                    const params = (node as ts.FunctionLikeDeclaration).parameters;
+                    params.forEach((p, i) => {
+                        if (site.arguments[i]) env.set(p, site.arguments[i]);
+                    });
+                    return this.inferFunctionReturnType(node, internalScope, new Set(newVisited), env);
+                });
+                const uniqueCallTypes = new Set(callTypes.filter(t => t !== "any"));
+                if (uniqueCallTypes.size === 1) return uniqueCallTypes.values().next().value as any;
+            }
         }
 
         // Type checking TS signature
@@ -146,13 +174,43 @@ export class TypeAnalyzer {
     public inferNodeReturnType(
         node: ts.Node,
         scope?: Scope,
-        visited: Set<ts.Node> = new Set(),
+        visited: Set<string> = new Set(),
+        typeEnv?: Map<ts.ParameterDeclaration, ts.Expression>,
     ): "boolean" | "number" | "string" | "object" | "function" | "any" {
-        if (visited.has(node)) return "any";
-        visited.add(node);
+        const visitKey = `node:${node.pos}:${node.kind}`;
+        if (visited.has(visitKey)) return "any";
+        const newVisited = new Set(visited);
+        newVisited.add(visitKey);
 
         if (!scope) {
             scope = this.nodeToScope.get(node) || this.scopeManager.currentScope;
+        }
+
+        // 0. Check parameter environment
+        if (ts.isIdentifier(node)) {
+            const definingScope = scope.findScopeFor(node.text);
+            const typeInfo = definingScope ? definingScope.symbols.get(node.text) : null;
+            
+            if (typeInfo && typeInfo.isParameter && typeInfo.declaration && ts.isParameter(typeInfo.declaration)) {
+                const arg = typeEnv?.get(typeInfo.declaration);
+                if (arg) {
+                    return this.inferNodeReturnType(arg, scope, newVisited, typeEnv);
+                }
+            }
+        }
+
+        if (ts.isVariableDeclarationList(node)) {
+            if (node.declarations.length > 0) {
+                return this.inferNodeReturnType(node.declarations[0]!, scope, newVisited, typeEnv);
+            }
+            return "any";
+        }
+
+        if (ts.isVariableDeclaration(node)) {
+            if (node.initializer) {
+                return this.inferNodeReturnType(node.initializer, scope, newVisited, typeEnv);
+            }
+            return "any";
         }
 
         // 1. Literal types
@@ -185,14 +243,14 @@ export class TypeAnalyzer {
 
         // 3. Parenthesized / Await / Yield
         if (ts.isParenthesizedExpression(node)) {
-            return this.inferNodeReturnType(node.expression, scope, visited);
+            return this.inferNodeReturnType(node.expression, scope, newVisited, typeEnv);
         }
         if (ts.isAwaitExpression(node)) {
-            return this.inferNodeReturnType(node.expression, scope, visited);
+            return this.inferNodeReturnType(node.expression, scope, newVisited, typeEnv);
         }
         if (ts.isYieldExpression(node)) {
             return node.expression
-                ? this.inferNodeReturnType(node.expression, scope, visited)
+                ? this.inferNodeReturnType(node.expression, scope, newVisited, typeEnv)
                 : "any";
         }
 
@@ -222,7 +280,7 @@ export class TypeAnalyzer {
                 op >= ts.SyntaxKind.FirstAssignment &&
                 op <= ts.SyntaxKind.LastAssignment
             ) {
-                return this.inferNodeReturnType(node.right, scope, visited);
+                return this.inferNodeReturnType(node.right, scope, newVisited, typeEnv);
             }
             // Comparison
             if (
@@ -261,11 +319,12 @@ export class TypeAnalyzer {
             }
             // Plus
             if (op === ts.SyntaxKind.PlusToken) {
-                const left = this.inferNodeReturnType(node.left, scope, visited);
+                const left = this.inferNodeReturnType(node.left, scope, newVisited, typeEnv);
                 const right = this.inferNodeReturnType(
                     node.right,
                     scope,
-                    visited,
+                    newVisited,
+                    typeEnv,
                 );
                 if (left === "string" || right === "string") return "string";
                 if (left === "number" && right === "number") return "number";
@@ -279,11 +338,12 @@ export class TypeAnalyzer {
                     ts.SyntaxKind.QuestionQuestionToken,
                 ].includes(op)
             ) {
-                const left = this.inferNodeReturnType(node.left, scope, visited);
+                const left = this.inferNodeReturnType(node.left, scope, newVisited, typeEnv);
                 const right = this.inferNodeReturnType(
                     node.right,
                     scope,
-                    visited,
+                    newVisited,
+                    typeEnv,
                 );
                 return left === right ? left : "any";
             }
@@ -294,12 +354,14 @@ export class TypeAnalyzer {
             const trueType = this.inferNodeReturnType(
                 node.whenTrue,
                 scope,
-                visited,
+                newVisited,
+                typeEnv,
             );
             const falseType = this.inferNodeReturnType(
                 node.whenFalse,
                 scope,
-                visited,
+                newVisited,
+                typeEnv,
             );
             return trueType === falseType ? trueType : "any";
         }
@@ -326,10 +388,18 @@ export class TypeAnalyzer {
 
                 const typeInfo = this.scopeManager.lookupFromScope(name, scope);
                 if (typeInfo && typeInfo.declaration) {
+                    const decl = typeInfo.declaration;
+                    const env = new Map<ts.ParameterDeclaration, ts.Expression>();
+                    if (ts.isFunctionLike(decl)) {
+                        (decl as ts.FunctionLikeDeclaration).parameters.forEach((p, i) => {
+                            if (node.arguments[i]) env.set(p, node.arguments[i]);
+                        });
+                    }
                     return this.inferFunctionReturnType(
-                        typeInfo.declaration,
+                        decl,
                         scope,
-                        visited,
+                        newVisited,
+                        env,
                     );
                 }
             } else if (ts.isPropertyAccessExpression(callee)) {
@@ -358,7 +428,7 @@ export class TypeAnalyzer {
                 // Check assignments
                 if (typeInfo.assignments && typeInfo.assignments.length > 0) {
                     const types = typeInfo.assignments.map((expr) =>
-                        this.inferNodeReturnType(expr, scope, visited)
+                        this.inferNodeReturnType(expr, scope, newVisited, typeEnv)
                     );
                     const uniqueTypes = new Set(types.filter((t) => t !== "any"));
                     if (uniqueTypes.size === 1) {
@@ -406,7 +476,8 @@ export class TypeAnalyzer {
                 const objType = this.inferNodeReturnType(
                     node.expression,
                     scope,
-                    visited,
+                    newVisited,
+                    typeEnv,
                 );
                 if (objType === "string" || objType === "object") return "number";
             }
@@ -420,7 +491,7 @@ export class TypeAnalyzer {
             ts.isArrowFunction(node) || ts.isMethodDeclaration(node) ||
             ts.isConstructorDeclaration(node)
         ) {
-            return this.inferFunctionReturnType(node, scope, visited);
+            return this.inferFunctionReturnType(node, scope, newVisited, typeEnv);
         }
 
         return "any";
@@ -1063,6 +1134,24 @@ export class TypeAnalyzer {
                         }
                     }
                 },
+            },
+            CallExpression: {
+                enter: (node) => {
+                    if (ts.isCallExpression(node)) {
+                        const callee = node.expression;
+                        if (ts.isIdentifier(callee)) {
+                            const name = callee.text;
+                            const typeInfo = this.scopeManager.lookup(name);
+                            if (typeInfo && typeInfo.declaration && ts.isFunctionLike(typeInfo.declaration)) {
+                                const decl = typeInfo.declaration as ts.Declaration;
+                                if (!this.callSites.has(decl)) {
+                                    this.callSites.set(decl, []);
+                                }
+                                this.callSites.get(decl)!.push(node);
+                            }
+                        }
+                    }
+                }
             },
             ReturnStatement: {
                 enter: (node) => {

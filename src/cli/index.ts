@@ -88,10 +88,28 @@ async function main() {
         const pchFile = path.join(pchDir, "jspp.hpp.gch");
         const runtimeLibPath = path.join(pchDir, "libjspp.a");
         let shouldRebuildPCH = false;
+
         try {
             const pchStats = await fs.stat(pchFile);
-            const sourceMtime = await getLatestMtime(preludePath);
-            if (sourceMtime > pchStats.mtimeMs) {
+            const libStats = await fs.stat(runtimeLibPath);
+
+            // 1. Check if any header is newer than the PCH
+            const latestHeaderMtime = await getLatestMtime(
+                preludePath,
+                (name) => name.endsWith(".hpp") || name.endsWith(".h"),
+            );
+
+            // 2. Check if any CPP file is newer than the library
+            const latestCppMtime = await getLatestMtime(
+                preludePath,
+                (name) => name.endsWith(".cpp"),
+            );
+
+            if (
+                latestHeaderMtime > pchStats.mtimeMs ||
+                latestCppMtime > libStats.mtimeMs ||
+                pchStats.mtimeMs > libStats.mtimeMs
+            ) {
                 shouldRebuildPCH = true;
             }
         } catch (e) {
