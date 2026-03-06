@@ -5,7 +5,7 @@
 #include "operators_primitive.hpp"
 #include <cstdint>   // For int32_t
 #include <cmath>     // For fmod, isnan, isinf, floor, abs, pow
-#include <string>    // For std::to_string, std::stod
+#include <string>    // For std::stod
 #include <algorithm> // For std::all_of
 #include <limits>    // For numeric_limits
 
@@ -99,7 +99,7 @@ namespace jspp
         if (lhs.is_number())
             return AnyValue::make_number(lhs.as_double() + rhs);
         if (lhs.is_string())
-            return AnyValue::make_string(lhs.to_std_string() + std::to_string(rhs));
+            return AnyValue::make_string(lhs.to_std_string() + JsNumber::to_std_string(rhs));
         return AnyValue::make_number(add_primitive(lhs, rhs));
     }
     inline AnyValue add(const double &lhs, const AnyValue &rhs)
@@ -107,7 +107,7 @@ namespace jspp
         if (rhs.is_number())
             return AnyValue::make_number(lhs + rhs.as_double());
         if (rhs.is_string())
-            return AnyValue::make_string(std::to_string(lhs) + rhs.to_std_string());
+            return AnyValue::make_string(JsNumber::to_std_string(lhs) + rhs.to_std_string());
         return AnyValue::make_number(add_primitive(lhs, rhs));
     }
     inline AnyValue add(const double &lhs, const double &rhs)

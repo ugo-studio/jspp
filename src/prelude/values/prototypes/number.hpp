@@ -7,9 +7,16 @@ namespace jspp
 {
     class AnyValue;
 
+    namespace JsNumber
+    {
+        std::string to_std_string(double num);
+        std::string to_std_string(const AnyValue &value);
+        std::string to_radix_string(double value, int radix);
+
+    }
+
     namespace NumberPrototypes
     {
-        std::string number_to_radix_string(double value, int radix);
         AnyValue &get_toExponential_fn();
         AnyValue &get_toFixed_fn();
         AnyValue &get_toPrecision_fn();

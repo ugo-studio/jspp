@@ -112,6 +112,10 @@ export function visitSourceFile(
             },
         });
 
+        const inferedType = this.typeAnalyzer.inferFunctionReturnType(stmt);
+        code +=
+            `${this.indent()}/* ${nativeName} infered type is ${inferedType} */\n`;
+
         // Generate lambda components
         const lambdaComps = this.generateLambdaComponents(
             stmt,

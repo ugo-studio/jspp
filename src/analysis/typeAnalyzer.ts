@@ -70,6 +70,7 @@ export interface TypeInfo {
     properties?: Map<string, string>;
     elementType?: string;
     declaration?: ts.Node;
+    assignments?: ts.Expression[];
 }
 
 export class TypeAnalyzer {
@@ -96,6 +97,334 @@ export class TypeAnalyzer {
     private labelStack: string[] = [];
     private loopDepth = 0;
     private switchDepth = 0;
+
+    public inferFunctionReturnType(
+        node: ts.Node,
+        scope?: Scope,
+        visited: Set<ts.Node> = new Set(),
+    ): "boolean" | "number" | "string" | "object" | "function" | "any" {
+        if (
+            !ts.isFunctionDeclaration(node) && !ts.isFunctionExpression(node) &&
+            !ts.isArrowFunction(node) && !ts.isMethodDeclaration(node) &&
+            !ts.isConstructorDeclaration(node)
+        ) {
+            return "any";
+        }
+
+        const info = this.functionTypeInfo.get(node as any);
+        if (info && info.assignments && info.assignments.length > 0) {
+            const types = info.assignments.map((expr) =>
+                this.inferNodeReturnType(expr, scope, visited)
+            );
+            const uniqueTypes = new Set(types.filter((t) => t !== "any"));
+            if (uniqueTypes.size === 1) {
+                return uniqueTypes.values().next().value as any;
+            }
+            if (uniqueTypes.size > 1) return "any";
+        }
+
+        // Type checking TS signature
+        const signature = node as ts.SignatureDeclaration;
+        if (signature.type) {
+            switch (signature.type.kind) {
+                case ts.SyntaxKind.StringKeyword:
+                    return "string";
+                case ts.SyntaxKind.NumberKeyword:
+                    return "number";
+                case ts.SyntaxKind.BooleanKeyword:
+                    return "boolean";
+                case ts.SyntaxKind.ObjectKeyword:
+                    return "object";
+                case ts.SyntaxKind.VoidKeyword:
+                    return "any";
+            }
+        }
+
+        return "any";
+    }
+
+    public inferNodeReturnType(
+        node: ts.Node,
+        scope?: Scope,
+        visited: Set<ts.Node> = new Set(),
+    ): "boolean" | "number" | "string" | "object" | "function" | "any" {
+        if (visited.has(node)) return "any";
+        visited.add(node);
+
+        if (!scope) {
+            scope = this.nodeToScope.get(node) || this.scopeManager.currentScope;
+        }
+
+        // 1. Literal types
+        if (ts.isNumericLiteral(node)) return "number";
+        if (
+            ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)
+        ) return "string";
+        if (
+            node.kind === ts.SyntaxKind.TrueKeyword ||
+            node.kind === ts.SyntaxKind.FalseKeyword
+        ) return "boolean";
+        if (
+            node.kind === ts.SyntaxKind.NullKeyword ||
+            node.kind === ts.SyntaxKind.UndefinedKeyword
+        ) return "any";
+
+        // 2. Complex literals / expressions
+        if (
+            ts.isObjectLiteralExpression(node) ||
+            ts.isArrayLiteralExpression(node)
+        ) return "object";
+        if (
+            ts.isFunctionExpression(node) || ts.isArrowFunction(node) ||
+            ts.isClassExpression(node)
+        ) return "function";
+        if (ts.isClassDeclaration(node) || ts.isFunctionDeclaration(node)) {
+            return "function";
+        }
+        if (ts.isEnumDeclaration(node)) return "object";
+
+        // 3. Parenthesized / Await / Yield
+        if (ts.isParenthesizedExpression(node)) {
+            return this.inferNodeReturnType(node.expression, scope, visited);
+        }
+        if (ts.isAwaitExpression(node)) {
+            return this.inferNodeReturnType(node.expression, scope, visited);
+        }
+        if (ts.isYieldExpression(node)) {
+            return node.expression
+                ? this.inferNodeReturnType(node.expression, scope, visited)
+                : "any";
+        }
+
+        // 4. Unary
+        if (ts.isTypeOfExpression(node)) return "string";
+        if (ts.isVoidExpression(node)) return "any";
+        if (ts.isDeleteExpression(node)) return "boolean";
+        if (ts.isPrefixUnaryExpression(node)) {
+            switch (node.operator) {
+                case ts.SyntaxKind.ExclamationToken:
+                    return "boolean";
+                case ts.SyntaxKind.PlusToken:
+                case ts.SyntaxKind.MinusToken:
+                case ts.SyntaxKind.TildeToken:
+                case ts.SyntaxKind.PlusPlusToken:
+                case ts.SyntaxKind.MinusMinusToken:
+                    return "number";
+            }
+        }
+        if (ts.isPostfixUnaryExpression(node)) return "number";
+
+        // 5. Binary
+        if (ts.isBinaryExpression(node)) {
+            const op = node.operatorToken.kind;
+            // Assignment
+            if (
+                op >= ts.SyntaxKind.FirstAssignment &&
+                op <= ts.SyntaxKind.LastAssignment
+            ) {
+                return this.inferNodeReturnType(node.right, scope, visited);
+            }
+            // Comparison
+            if (
+                [
+                    ts.SyntaxKind.EqualsEqualsToken,
+                    ts.SyntaxKind.ExclamationEqualsToken,
+                    ts.SyntaxKind.EqualsEqualsEqualsToken,
+                    ts.SyntaxKind.ExclamationEqualsEqualsToken,
+                    ts.SyntaxKind.LessThanToken,
+                    ts.SyntaxKind.LessThanEqualsToken,
+                    ts.SyntaxKind.GreaterThanToken,
+                    ts.SyntaxKind.GreaterThanEqualsToken,
+                    ts.SyntaxKind.InKeyword,
+                    ts.SyntaxKind.InstanceOfKeyword,
+                ].includes(op)
+            ) {
+                return "boolean";
+            }
+            // Arithmetic
+            if (
+                [
+                    ts.SyntaxKind.MinusToken,
+                    ts.SyntaxKind.AsteriskToken,
+                    ts.SyntaxKind.SlashToken,
+                    ts.SyntaxKind.PercentToken,
+                    ts.SyntaxKind.AsteriskAsteriskToken,
+                    ts.SyntaxKind.LessThanLessThanToken,
+                    ts.SyntaxKind.GreaterThanGreaterThanToken,
+                    ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken,
+                    ts.SyntaxKind.AmpersandToken,
+                    ts.SyntaxKind.BarToken,
+                    ts.SyntaxKind.CaretToken,
+                ].includes(op)
+            ) {
+                return "number";
+            }
+            // Plus
+            if (op === ts.SyntaxKind.PlusToken) {
+                const left = this.inferNodeReturnType(node.left, scope, visited);
+                const right = this.inferNodeReturnType(
+                    node.right,
+                    scope,
+                    visited,
+                );
+                if (left === "string" || right === "string") return "string";
+                if (left === "number" && right === "number") return "number";
+                return "any";
+            }
+            // Logical
+            if (
+                [
+                    ts.SyntaxKind.AmpersandAmpersandToken,
+                    ts.SyntaxKind.BarBarToken,
+                    ts.SyntaxKind.QuestionQuestionToken,
+                ].includes(op)
+            ) {
+                const left = this.inferNodeReturnType(node.left, scope, visited);
+                const right = this.inferNodeReturnType(
+                    node.right,
+                    scope,
+                    visited,
+                );
+                return left === right ? left : "any";
+            }
+        }
+
+        // 6. Conditional
+        if (ts.isConditionalExpression(node)) {
+            const trueType = this.inferNodeReturnType(
+                node.whenTrue,
+                scope,
+                visited,
+            );
+            const falseType = this.inferNodeReturnType(
+                node.whenFalse,
+                scope,
+                visited,
+            );
+            return trueType === falseType ? trueType : "any";
+        }
+
+        // 7. Template
+        if (ts.isTemplateExpression(node)) return "string";
+
+        // 8. New
+        if (ts.isNewExpression(node)) return "object";
+
+        // 9. Call
+        if (ts.isCallExpression(node)) {
+            const callee = node.expression;
+            if (ts.isIdentifier(callee)) {
+                const name = callee.text;
+                if (
+                    name === "Number" || name === "parseInt" ||
+                    name === "parseFloat"
+                ) return "number";
+                if (name === "String") return "string";
+                if (
+                    name === "Boolean" || name === "isNaN" || name === "isFinite"
+                ) return "boolean";
+
+                const typeInfo = this.scopeManager.lookupFromScope(name, scope);
+                if (typeInfo && typeInfo.declaration) {
+                    return this.inferFunctionReturnType(
+                        typeInfo.declaration,
+                        scope,
+                        visited,
+                    );
+                }
+            } else if (ts.isPropertyAccessExpression(callee)) {
+                const obj = callee.expression.getText();
+                const prop = callee.name.text;
+                const full = `${obj}.${prop}`;
+                if (full.startsWith("Math.") && prop !== "PI" && prop !== "E") {
+                    return "number";
+                }
+                if (full === "Array.isArray") return "boolean";
+                if (
+                    full === "Object.keys" || full === "Object.values" ||
+                    full === "Object.entries"
+                ) return "object";
+            }
+            return "any";
+        }
+
+        // 10. Identifier
+        if (ts.isIdentifier(node)) {
+            if (node.text === "NaN" || node.text === "Infinity") return "number";
+            if (node.text === "undefined") return "any";
+
+            const typeInfo = this.scopeManager.lookupFromScope(node.text, scope);
+            if (typeInfo) {
+                // Check assignments
+                if (typeInfo.assignments && typeInfo.assignments.length > 0) {
+                    const types = typeInfo.assignments.map((expr) =>
+                        this.inferNodeReturnType(expr, scope, visited)
+                    );
+                    const uniqueTypes = new Set(types.filter((t) => t !== "any"));
+                    if (uniqueTypes.size === 1) {
+                        return uniqueTypes.values().next().value as any;
+                    }
+                    if (uniqueTypes.size > 1) return "any";
+                }
+
+                // Check declaration for TS type
+                if (
+                    typeInfo.declaration &&
+                    ts.isVariableDeclaration(typeInfo.declaration) &&
+                    typeInfo.declaration.type
+                ) {
+                    const kind = typeInfo.declaration.type.kind;
+                    if (kind === ts.SyntaxKind.StringKeyword) return "string";
+                    if (kind === ts.SyntaxKind.NumberKeyword) return "number";
+                    if (kind === ts.SyntaxKind.BooleanKeyword) return "boolean";
+                    if (kind === ts.SyntaxKind.ObjectKeyword) return "object";
+                }
+
+                // Builtin check
+                if (typeInfo.isBuiltin) {
+                    if (
+                        ["console", "Math", "process", "global", "globalThis"]
+                            .includes(node.text)
+                    ) return "object";
+                }
+
+                // Fallback to what we know
+                if (
+                    typeInfo.type === "string" || typeInfo.type === "number" ||
+                    typeInfo.type === "boolean" || typeInfo.type === "object" ||
+                    typeInfo.type === "function"
+                ) {
+                    return typeInfo.type as any;
+                }
+                if (typeInfo.type === "array") return "object";
+            }
+        }
+
+        // 11. Property Access
+        if (ts.isPropertyAccessExpression(node)) {
+            if (node.name.text === "length") {
+                const objType = this.inferNodeReturnType(
+                    node.expression,
+                    scope,
+                    visited,
+                );
+                if (objType === "string" || objType === "object") return "number";
+            }
+            // Hard to know other properties without full type system
+            return "any";
+        }
+
+        // 12. Function / Method Return type inference
+        if (
+            ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) ||
+            ts.isArrowFunction(node) || ts.isMethodDeclaration(node) ||
+            ts.isConstructorDeclaration(node)
+        ) {
+            return this.inferFunctionReturnType(node, scope, visited);
+        }
+
+        return "any";
+    }
 
     private defineParameter(
         nameNode: ts.BindingName,
@@ -342,6 +671,7 @@ export class TypeAnalyzer {
                             type: "function",
                             isClosure: false,
                             captures: new Map(),
+                            assignments: !ts.isBlock(node.body) ? [node.body] : [],
                         };
                         this.functionTypeInfo.set(node, funcType);
 
@@ -382,7 +712,8 @@ export class TypeAnalyzer {
                             isClosure: false,
                             captures: new Map(),
                             declaration: node,
-                            needsHeapAllocation: true, // Added: Functions are always heap-allocated
+                            needsHeapAllocation: true,
+                            assignments: [],
                         };
                         this.functionTypeInfo.set(node, funcType);
 
@@ -435,6 +766,7 @@ export class TypeAnalyzer {
                                 captures: new Map(),
                                 declaration: node,
                                 needsHeapAllocation: true,
+                                assignments: [],
                             };
                             this.scopeManager.define(funcName, funcType);
                             this.functionTypeInfo.set(node, funcType);
@@ -478,6 +810,7 @@ export class TypeAnalyzer {
                             type: "function", // Classes are functions
                             declaration: classNode,
                             needsHeapAllocation: true,
+                            assignments: [],
                         };
                         this.scopeManager.define(name, typeInfo);
                     }
@@ -521,8 +854,8 @@ export class TypeAnalyzer {
                             captures: new Map(),
                             declaration: node,
                             needsHeapAllocation: true,
-                        };
-                        // Methods don't need to be defined in scope by name generally,
+                            assignments: [],
+                        };                        // Methods don't need to be defined in scope by name generally,
                         // but we need to track them for captures.
                         this.functionTypeInfo.set(node, funcType);
 
@@ -554,8 +887,8 @@ export class TypeAnalyzer {
                             captures: new Map(),
                             declaration: node,
                             needsHeapAllocation: true,
-                        };
-                        this.functionTypeInfo.set(node, funcType);
+                            assignments: [],
+                        };                        this.functionTypeInfo.set(node, funcType);
 
                         this.scopeManager.enterScope(node);
                         this.nodeToScope.set(
@@ -639,6 +972,7 @@ export class TypeAnalyzer {
                                     declaration: node,
                                     isConst,
                                     needsHeapAllocation: needsHeap,
+                                    assignments: node.initializer ? [node.initializer] : [],
                                 };
 
                                 if (isBlockScoped) {
@@ -715,6 +1049,36 @@ export class TypeAnalyzer {
                                 ts.SyntaxKind.LastAssignment;
                         if (isAssignment) {
                             crossScopeModificationVisitor(node.left);
+
+                            if (ts.isIdentifier(node.left)) {
+                                const name = node.left.text;
+                                const typeInfo = this.scopeManager.lookup(name);
+                                if (typeInfo) {
+                                    if (!typeInfo.assignments) {
+                                        typeInfo.assignments = [];
+                                    }
+                                    typeInfo.assignments.push(node.right);
+                                }
+                            }
+                        }
+                    }
+                },
+            },
+            ReturnStatement: {
+                enter: (node) => {
+                    if (ts.isReturnStatement(node) && node.expression) {
+                        const currentFuncNode =
+                            this.functionStack[this.functionStack.length - 1];
+                        if (currentFuncNode) {
+                            const info = this.functionTypeInfo.get(
+                                currentFuncNode,
+                            );
+                            if (info) {
+                                if (!info.assignments) {
+                                    info.assignments = [];
+                                }
+                                info.assignments.push(node.expression);
+                            }
                         }
                     }
                 },
