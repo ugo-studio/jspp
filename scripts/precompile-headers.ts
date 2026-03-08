@@ -148,7 +148,10 @@ async function findCppFiles(dir: string): Promise<string[]> {
 async function runCommand(cmd: string, args: string[]): Promise<boolean> {
     console.log(`${COLORS.dim}> ${cmd} ${args.join(" ")}${COLORS.reset}`);
     return new Promise((resolve) => {
-        const proc = spawn(cmd, args, { stdio: "inherit", shell: process.platform === "win32" });
+        const proc = spawn(cmd, args, {
+            stdio: "inherit",
+            shell: process.platform === "win32",
+        });
         proc.on("close", (code) => resolve(code === 0));
     });
 }
@@ -236,7 +239,9 @@ async function precompileHeaders() {
                 gchRebuilt = true;
                 spinner.succeed(`${modeLabel} PCH Success.`);
             } else {
-                if (!silent) spinner.succeed(`${modeLabel} Headers are up-to-date.`);
+                if (!silent) {
+                    spinner.succeed(`${modeLabel} Headers are up-to-date.`);
+                }
             }
 
             // --- Incremental Compilation of .cpp files ---

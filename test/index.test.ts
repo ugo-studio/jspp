@@ -7,6 +7,12 @@ import { Interpreter } from "../src";
 import cases from "./expected-results.json";
 
 const pkgDir = path.dirname(import.meta.dirname);
+const emsdkEnv = {
+    ...process.env,
+    PATH: `${path.join(pkgDir, ".emsdk")}${path.delimiter}${
+        path.join(pkgDir, ".emsdk", "upstream", "emscripten")
+    }${path.delimiter}${process.env.PATH}`,
+};
 
 // --- Helper: Strip ANSI Codes ---
 const stripAnsi = (str: string) =>
@@ -23,6 +29,7 @@ const ensureHeaders = () => {
     ], {
         cwd: pkgDir,
         stdio: "inherit",
+        env: emsdkEnv,
     });
     if (precompile.status !== 0) {
         throw new Error("Failed to precompile headers for tests.");
@@ -124,6 +131,8 @@ describe("Interpreter tests", async () => {
         {
             cwd: pkgDir,
             stdio: ["ignore", "pipe", "pipe"],
+            env: emsdkEnv,
+            shell: process.platform === "win32",
         },
     );
 

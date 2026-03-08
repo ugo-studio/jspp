@@ -889,6 +889,35 @@ export function isVariableUsedWithoutDeclaration(
 }
 
 /**
+ * Checks if a node (usually a SourceFile) contains any top-level await expressions.
+ * This determines if the module function should be a coroutine.
+ */
+export function needsTopLevelAwait(node: ts.Node): boolean {
+    let found = false;
+    const visitor = (n: ts.Node) => {
+        if (found) return;
+        if (ts.isAwaitExpression(n)) {
+            found = true;
+            return;
+        }
+        if (ts.isForOfStatement(n) && n.awaitModifier) {
+            found = true;
+            return;
+        }
+
+        // Nested functions/classes have their own context
+        if (
+            ts.isFunctionLike(n) || ts.isClassLike(n) || ts.isModuleDeclaration(n)
+        ) {
+            return;
+        }
+        ts.forEachChild(n, visitor);
+    };
+    ts.forEachChild(node, visitor);
+    return found;
+}
+
+/**
  * Validates and filters function parameters, checking for illegal "this"
  * and correctly positioned rest parameters.
  *

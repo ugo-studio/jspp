@@ -28,6 +28,7 @@ import {
   isGeneratorFunction,
   isVariableUsedWithoutDeclaration,
   markSymbolAsInitialized,
+  needsTopLevelAwait,
   prepareScopeSymbolsForVisit,
   validateFunctionParams,
 } from "./helpers.js";
@@ -101,6 +102,12 @@ export class CodeGenerator {
             this.getDeclaredSymbols(ast),
         );
 
+        const isAsyncModule = needsTopLevelAwait(ast);
+        const moduleReturnType = isAsyncModule
+            ? "jspp::JsPromise"
+            : "jspp::AnyValue";
+        const moduleReturnCommand = isAsyncModule ? "co_return" : "return";
+
         let declarations =
             `#include "jspp.hpp"\n#include "library/global_usings.hpp"\n`;
 
@@ -110,7 +117,7 @@ export class CodeGenerator {
         declarations += `\n`;
 
         // module function code
-        let moduleCode = `jspp::JsPromise ${this.moduleFunctionName}() {\n`;
+        let moduleCode = `${moduleReturnType} ${this.moduleFunctionName}() {\n`;
         this.indentationLevel++;
         moduleCode +=
             `${this.indent()}jspp::AnyValue ${this.globalThisVar} = global;\n`;
@@ -120,14 +127,15 @@ export class CodeGenerator {
             isMainContext: true,
             isInsideFunction: true,
             isFunctionBody: true,
-            isInsideAsyncFunction: true,
+            isInsideAsyncFunction: isAsyncModule,
             globalScopeSymbols: new DeclaredSymbols(),
             localScopeSymbols: new DeclaredSymbols(),
         };
 
         const generatedBody = this.visit(ast, context);
         moduleCode += generatedBody;
-        moduleCode += `${this.indent()}co_return jspp::Constants::UNDEFINED;\n`;
+        moduleCode +=
+            `${this.indent()}${moduleReturnCommand} jspp::Constants::UNDEFINED;\n`;
         this.indentationLevel--;
         moduleCode += "}\n\n";
 
@@ -137,17 +145,19 @@ export class CodeGenerator {
 
         if (isWasm) {
             for (const exp of this.wasmExports) {
-                const paramList = exp.params.map((_, i) => `jspp::AnyValue`).join(", ");
+                const paramTypes = exp.params.map((_, i) => `jspp::AnyValue`);
+                const paramList = paramTypes.length > 0 ? `, ${paramTypes.join(", ")}` : "";
                 const pointerName = `__wasm_export_ptr_${exp.jsName}`;
-                wasmGlobalPointers += `std::function<jspp::AnyValue(jspp::AnyValue, ${paramList})> ${pointerName} = nullptr;\n`;
+                wasmGlobalPointers += `std::function<jspp::AnyValue(jspp::AnyValue${paramList})> ${pointerName} = nullptr;\n`;
 
                 const wrapperParamList = exp.params.map((_, i) => `double p${i}`).join(", ");
-                const callArgs = exp.params.map((_, i) => `jspp::AnyValue::make_number(p${i})`).join(", ");
+                const callArgsList = exp.params.map((_, i) => `jspp::AnyValue::make_number(p${i})`);
+                const callArgs = callArgsList.length > 0 ? `, ${callArgsList.join(", ")}` : "";
 
                 wasmWrappers += `extern "C" EMSCRIPTEN_KEEPALIVE\n`;
                 wasmWrappers += `double wasm_export_${exp.jsName}(${wrapperParamList}) {\n`;
                 wasmWrappers += `    if (!${pointerName}) return 0;\n`;
-                wasmWrappers += `    auto res = ${pointerName}(global, ${callArgs});\n`;
+                wasmWrappers += `    auto res = ${pointerName}(global${callArgs});\n`;
                 wasmWrappers += `    return jspp::Operators_Private::ToNumber(res);\n`;
                 wasmWrappers += `}\n\n`;
             }
@@ -160,23 +170,32 @@ export class CodeGenerator {
         this.indentationLevel++;
         mainCode += `${this.indent()}jspp::initialize_runtime();\n`;
         mainCode += `${this.indent()}jspp::setup_process_argv(argc, argv);\n`;
-        mainCode += `${this.indent()}auto p = ${this.moduleFunctionName}();\n`;
-        mainCode +=
-            `${this.indent()}p.then(nullptr, [](jspp::AnyValue err) {\n`;
-        this.indentationLevel++;
-        mainCode +=
-            `${this.indent()}auto error = std::make_shared<jspp::AnyValue>(err);\n`;
-        mainCode +=
-            `${this.indent()}console.call_own_property("error", std::span<const jspp::AnyValue>((const jspp::AnyValue[]){*error}, 1));\n`;
-        mainCode += `${this.indent()}std::exit(1);\n`;
-        this.indentationLevel--;
-        mainCode += `${this.indent()}});\n`;
+
+        if (isAsyncModule) {
+            mainCode +=
+                `${this.indent()}auto p = ${this.moduleFunctionName}();\n`;
+            mainCode +=
+                `${this.indent()}p.then(nullptr, [](jspp::AnyValue err) {\n`;
+            this.indentationLevel++;
+            mainCode +=
+                `${this.indent()}auto error = std::make_shared<jspp::AnyValue>(err);\n`;
+            this.indentationLevel++;
+            mainCode +=
+                `${this.indent()}console.call_own_property("error", std::span<const jspp::AnyValue>((const jspp::AnyValue[]){*error}, 1));\n`;
+            mainCode += `${this.indent()}std::exit(1);\n`;
+            this.indentationLevel--;
+            mainCode += `${this.indent()}});\n`;
+        } else {
+            mainCode += `${this.indent()}${this.moduleFunctionName}();\n`;
+        }
+
         mainCode += `${this.indent()}jspp::Scheduler::instance().run();\n`;
         this.indentationLevel--;
         mainCode += `${this.indent()}} catch (const std::exception& ex) {\n`;
         this.indentationLevel++;
         mainCode +=
             `${this.indent()}auto error = std::make_shared<jspp::AnyValue>(jspp::Exception::exception_to_any_value(ex));\n`;
+        this.indentationLevel++;
         mainCode +=
             `${this.indent()}console.call_own_property("error", std::span<const jspp::AnyValue>((const jspp::AnyValue[]){*error}, 1));\n`;
         mainCode += `${this.indent()}return 1;\n`;
@@ -186,7 +205,7 @@ export class CodeGenerator {
         this.indentationLevel--;
         mainCode += `}`;
 
-        return declarations + wasmGlobalPointers + wasmWrappers + moduleCode + mainCode;
+        return declarations + wasmGlobalPointers + wasmWrappers + moduleCode +
+            mainCode;
     }
 }
-

@@ -12,6 +12,12 @@ import { Spinner } from "./spinner.js";
 import { getLatestMtime, msToHumanReadable } from "./utils.js";
 
 const pkgDir = path.dirname(path.dirname(import.meta.dirname));
+const emsdkEnv = {
+    ...process.env,
+    PATH: `${path.join(pkgDir, ".emsdk")}${path.delimiter}${
+        path.join(pkgDir, ".emsdk", "upstream", "emscripten")
+    }${path.delimiter}${process.env.PATH}`,
+};
 
 async function main() {
     const {
@@ -60,7 +66,7 @@ async function main() {
     );
 
     const flags = (isRelease || isWasm)
-        ? ["-O3", "-DNDEBUG"]
+        ? ["-O3", "-DNDEBUG", "-ftime-report"]
         : ["-Og", "-ftime-report"];
 
     if (isWasm) {
@@ -158,15 +164,6 @@ async function main() {
             );
             const pchStartTime = performance.now();
 
-            const emsdkEnv = isWasm
-                ? {
-                    ...process.env,
-                    PATH: `${path.join(pkgDir, ".emsdk")}${path.delimiter}${
-                        path.join(pkgDir, ".emsdk", "upstream", "emscripten")
-                    }${path.delimiter}${process.env.PATH}`,
-                }
-                : process.env;
-
             // Use spawn (async) instead of spawnSync to keep spinner alive
             const rebuild = spawn("bun", [
                 "run",
@@ -239,15 +236,6 @@ async function main() {
         if (!isWasm) {
             compileArgs.splice(1, 0, "-Winvalid-pch");
         }
-
-        const emsdkEnv = isWasm
-            ? {
-                ...process.env,
-                PATH: `${path.join(pkgDir, ".emsdk")}${path.delimiter}${
-                    path.join(pkgDir, ".emsdk", "upstream", "emscripten")
-                }${path.delimiter}${process.env.PATH}`,
-            }
-            : process.env;
 
         const compileStartTime = performance.now();
         const compile = spawn(
