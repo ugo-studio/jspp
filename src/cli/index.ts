@@ -54,6 +54,9 @@ async function main() {
 
     // Mode Configuration
     const mode = isWasm ? "wasm" : (isRelease ? "release" : "debug");
+    const modeNote = isRelease
+        ? `${COLORS.dim}(optimized)${COLORS.reset}`
+        : `\n${COLORS.dim}NOTE: Use "--release" for a optimized output for production${COLORS.reset}`;
     console.log(
         `${COLORS.bold}JSPP Compiler${COLORS.reset} ${COLORS.dim}v${pkg.version}${COLORS.reset}`,
     );
@@ -61,13 +64,11 @@ async function main() {
         `Target: ${
             isWasm ? COLORS.cyan : COLORS.green
         }${target.toUpperCase()}${COLORS.reset} | Mode: ${
-            (isRelease || isWasm) ? COLORS.green : COLORS.yellow
-        }${mode.toUpperCase()}${COLORS.reset}\n`,
+            isRelease ? COLORS.green : COLORS.yellow
+        }${mode.toUpperCase()}${COLORS.reset} ${modeNote}\n`,
     );
 
-    const flags = (isRelease || isWasm)
-        ? ["-O3", "-DNDEBUG", "-ftime-report"]
-        : ["-Og", "-ftime-report"];
+    const flags = isRelease ? ["-O3", "-DNDEBUG"] : ["-Og"];
 
     if (isWasm) {
         flags.push("-sASYNCIFY", "-sALLOW_MEMORY_GROWTH=1", "-sWASM=1");
