@@ -9,6 +9,7 @@ export interface CliOptions {
     keepCpp: boolean;
     outputExePath: string | null;
     scriptArgs: string[];
+    target: "native" | "wasm";
 }
 
 export function parseArgs(rawArgs: string[]): CliOptions {
@@ -17,6 +18,7 @@ export function parseArgs(rawArgs: string[]): CliOptions {
     let keepCpp = false;
     let outputExePath: string | null = null;
     let scriptArgs: string[] = [];
+    let target: "native" | "wasm" = "native";
 
     for (let i = 0; i < rawArgs.length; i++) {
         const arg = rawArgs[i];
@@ -31,6 +33,26 @@ export function parseArgs(rawArgs: string[]): CliOptions {
             isRelease = true;
         } else if (arg === "--keep-cpp") {
             keepCpp = true;
+        } else if (arg === "-t" || arg === "--target") {
+            if (i + 1 < rawArgs.length) {
+                const targetValue = rawArgs[i + 1]?.toLowerCase();
+                if (targetValue === "wasm") {
+                    target = "wasm";
+                } else if (targetValue === "native") {
+                    target = "native";
+                } else {
+                    console.error(
+                        `${COLORS.red}Error: Invalid target '${targetValue}'. Supported targets: native, wasm.${COLORS.reset}`,
+                    );
+                    process.exit(1);
+                }
+                i++;
+            } else {
+                console.error(
+                    `${COLORS.red}Error: --target requires a value (native or wasm).${COLORS.reset}`,
+                );
+                process.exit(1);
+            }
         } else if (arg === "-o" || arg === "--output") {
             if (i + 1 < rawArgs.length) {
                 outputExePath = rawArgs[i + 1] ?? null;
@@ -74,5 +96,6 @@ export function parseArgs(rawArgs: string[]): CliOptions {
             ? path.resolve(process.cwd(), outputExePath)
             : null,
         scriptArgs,
+        target,
     };
 }

@@ -87,10 +87,20 @@ const MODES = [
     {
         name: "debug",
         flags: ["-Og"],
+        compiler: "g++",
+        archiver: "ar",
     },
     {
         name: "release",
         flags: ["-O3", "-DNDEBUG"],
+        compiler: "g++",
+        archiver: "ar",
+    },
+    {
+        name: "wasm",
+        flags: ["-O3", "-DNDEBUG", "-sASYNCIFY", "-sALLOW_MEMORY_GROWTH=1"],
+        compiler: "em++",
+        archiver: "emar",
     },
 ];
 
@@ -191,7 +201,7 @@ async function precompileHeaders() {
                 );
 
                 const tempGchPath = `${gchPath}.tmp`;
-                const success = await runCommand("g++", [
+                const success = await runCommand(mode.compiler, [
                     "-x",
                     "c++-header",
                     "-std=c++23",
@@ -261,7 +271,7 @@ async function precompileHeaders() {
                             idx + 1
                         }/${cppFiles.length}]${COLORS.reset}`,
                     );
-                    const success = await runCommand("g++", [
+                    const success = await runCommand(mode.compiler, [
                         "-c",
                         "-std=c++23",
                         ...mode.flags,
@@ -298,7 +308,7 @@ async function precompileHeaders() {
                 libSpinner.update(`${modeLabel} Updating runtime library...`);
                 const tempLibPath = `${libPath}.tmp`;
 
-                const success = await runCommand("ar", [
+                const success = await runCommand(mode.archiver, [
                     "rcs",
                     tempLibPath,
                     ...objFiles,
