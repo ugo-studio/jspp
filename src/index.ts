@@ -1,8 +1,8 @@
 import path from "path";
 
-import { TypeAnalyzer } from "./analysis/typeAnalyzer.js";
-import { CodeGenerator } from "./core/codegen/index.js";
-import { Parser } from "./core/parser.js";
+import { TypeAnalyzer } from "./interpreter/analysis/typeAnalyzer.js";
+import { CodeGenerator } from "./interpreter/core/codegen/index.js";
+import { Parser } from "./interpreter/core/parser.js";
 
 export class Interpreter {
     private parser = new Parser();

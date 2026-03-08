@@ -318,7 +318,7 @@ export function generateLambdaComponents(
                 isFunctionBody: true,
                 isInsideGeneratorFunction: isInsideGeneratorFunction,
                 isInsideAsyncFunction: isInsideAsyncFunction,
-            }).trimStart().substring(2);
+            }).trim().substring(2);
         } else {
             this.indentationLevel++;
             paramsContent += generateParamsBuilder();
@@ -338,7 +338,7 @@ export function generateLambdaComponents(
         }
     } else {
         blockContentWithoutOpeningBrace =
-            `${returnCommand} jspp::Constants::UNDEFINED; }\n`;
+            `${returnCommand} jspp::Constants::UNDEFINED; }`;
     }
 
     return {

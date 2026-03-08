@@ -1,6 +1,7 @@
 import type { TypeAnalyzer } from "../../analysis/typeAnalyzer.js";
 import { DeclaredSymbols } from "../../ast/symbols.js";
 import type { Node } from "../../ast/types.js";
+import { generateDestructuring } from "./destructuring-handlers.js";
 import {
   generateLambdaComponents,
   generateNativeLambda,
@@ -22,21 +23,19 @@ import {
   isDeclarationCalledAsFunction,
   isDeclarationUsedAsValue,
   isDeclarationUsedBeforeInitialization,
-  isVariableUsedWithoutDeclaration,
   isGeneratorFunction,
+  isVariableUsedWithoutDeclaration,
   markSymbolAsInitialized,
   prepareScopeSymbolsForVisit,
   validateFunctionParams,
 } from "./helpers.js";
-import { generateDestructuring } from "./destructuring-handlers.js";
 import { visit } from "./visitor.js";
-
-const MODULE_NAME = "__entry_point__";
 
 export class CodeGenerator {
     public indentationLevel: number = 0;
     public typeAnalyzer!: TypeAnalyzer;
     public isTypescript = false;
+    public moduleFunctionName!: string;
     public globalThisVar!: string;
     public uniqueNameCounter = 0;
 
@@ -82,18 +81,24 @@ export class CodeGenerator {
     ): string {
         this.typeAnalyzer = analyzer;
         this.isTypescript = isTypescript;
+        this.moduleFunctionName = this.generateUniqueName(
+            "__module_entry_point_",
+            this.getDeclaredSymbols(ast),
+        );
         this.globalThisVar = this.generateUniqueName(
             "__this_val__",
             this.getDeclaredSymbols(ast),
         );
 
-        const declarations = `#include "jspp.hpp"\n#include "library/global_usings.hpp"\n\n`;
+        const declarations =
+            `#include "jspp.hpp"\n#include "library/global_usings.hpp"\n\n`;
 
-        let containerCode = `jspp::JsPromise ${MODULE_NAME}() {\n`;
+        // module function code
+        let moduleCode = `jspp::JsPromise ${this.moduleFunctionName}() {\n`;
         this.indentationLevel++;
-        containerCode +=
+        moduleCode +=
             `${this.indent()}jspp::AnyValue ${this.globalThisVar} = global;\n`;
-        containerCode += this.visit(ast, {
+        moduleCode += this.visit(ast, {
             currentScopeNode: ast,
             isMainContext: true,
             isInsideFunction: true,
@@ -102,32 +107,43 @@ export class CodeGenerator {
             globalScopeSymbols: new DeclaredSymbols(),
             localScopeSymbols: new DeclaredSymbols(),
         });
+        moduleCode += `${this.indent()}co_return jspp::Constants::UNDEFINED;\n`;
         this.indentationLevel--;
-        containerCode += "  co_return jspp::Constants::UNDEFINED;\n";
-        containerCode += "}\n\n";
+        moduleCode += "}\n\n";
 
+        // main function code
         let mainCode = "int main(int argc, char** argv) {\n";
-        mainCode += `  try {\n`;
-        mainCode += `    jspp::initialize_runtime();\n`;
-        mainCode += `    jspp::setup_process_argv(argc, argv);\n`;
-        mainCode += `    auto p = ${MODULE_NAME}();\n`;
-        mainCode += `    p.then(nullptr, [](jspp::AnyValue err) {\n`;
+        this.indentationLevel++;
+        mainCode += `${this.indent()}try {\n`;
+        this.indentationLevel++;
+        mainCode += `${this.indent()}jspp::initialize_runtime();\n`;
+        mainCode += `${this.indent()}jspp::setup_process_argv(argc, argv);\n`;
+        mainCode += `${this.indent()}auto p = ${this.moduleFunctionName}();\n`;
         mainCode +=
-            `        auto error = std::make_shared<jspp::AnyValue>(err);\n`;
+            `${this.indent()}p.then(nullptr, [](jspp::AnyValue err) {\n`;
+        this.indentationLevel++;
         mainCode +=
-            `        console.call_own_property("error", std::span<const jspp::AnyValue>((const jspp::AnyValue[]){*error}, 1));\n`;
-        mainCode += `        std::exit(1);\n`;
-        mainCode += `    });\n`;
-        mainCode += `    jspp::Scheduler::instance().run();\n`;
-        mainCode += `  } catch (const std::exception& ex) {\n`;
+            `${this.indent()}auto error = std::make_shared<jspp::AnyValue>(err);\n`;
         mainCode +=
-            "    auto error = std::make_shared<jspp::AnyValue>(jspp::Exception::exception_to_any_value(ex));\n";
+            `${this.indent()}console.call_own_property("error", std::span<const jspp::AnyValue>((const jspp::AnyValue[]){*error}, 1));\n`;
+        mainCode += `${this.indent()}std::exit(1);\n`;
+        this.indentationLevel--;
+        mainCode += `${this.indent()}});\n`;
+        mainCode += `${this.indent()}jspp::Scheduler::instance().run();\n`;
+        this.indentationLevel--;
+        mainCode += `${this.indent()}} catch (const std::exception& ex) {\n`;
+        this.indentationLevel++;
         mainCode +=
-            `    console.call_own_property("error", std::span<const jspp::AnyValue>((const jspp::AnyValue[]){*error}, 1));\n`;
-        mainCode += `    return 1;\n`;
-        mainCode += `  }\n`;
-        mainCode += "  return 0;\n}";
+            `${this.indent()}auto error = std::make_shared<jspp::AnyValue>(jspp::Exception::exception_to_any_value(ex));\n`;
+        mainCode +=
+            `${this.indent()}console.call_own_property("error", std::span<const jspp::AnyValue>((const jspp::AnyValue[]){*error}, 1));\n`;
+        mainCode += `${this.indent()}return 1;\n`;
+        this.indentationLevel--;
+        mainCode += `${this.indent()}}\n`;
+        mainCode += `${this.indent()}return 0;\n`;
+        this.indentationLevel--;
+        mainCode += `}`;
 
-        return declarations + containerCode + mainCode;
+        return declarations + moduleCode + mainCode;
     }
 }

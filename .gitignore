@@ -10,6 +10,7 @@ test/cases/*.exe
 test/output/
 my-code/
 prelude-build/
+.emsdk/
 
 # code coverage
 coverage

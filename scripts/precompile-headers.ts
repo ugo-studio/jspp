@@ -133,8 +133,9 @@ async function findCppFiles(dir: string): Promise<string[]> {
 }
 
 async function runCommand(cmd: string, args: string[]): Promise<boolean> {
+    console.log(`${COLORS.dim}> ${cmd} ${args.join(" ")}${COLORS.reset}`);
     return new Promise((resolve) => {
-        const proc = spawn(cmd, args, { stdio: "ignore" });
+        const proc = spawn(cmd, args, { stdio: "inherit", shell: process.platform === "win32" });
         proc.on("close", (code) => resolve(code === 0));
     });
 }

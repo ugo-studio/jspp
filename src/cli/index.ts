@@ -4,8 +4,8 @@ import fs from "fs/promises";
 import path from "path";
 
 import pkg from "../../package.json" with { type: "json" };
-import { CompilerError } from "../core/error.js";
 import { Interpreter } from "../index.js";
+import { CompilerError } from "../interpreter/core/error.js";
 import { parseArgs } from "./args.js";
 import { COLORS } from "./colors.js";
 import { Spinner } from "./spinner.js";
