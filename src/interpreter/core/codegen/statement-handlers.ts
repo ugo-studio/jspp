@@ -92,6 +92,25 @@ export function visitSourceFile(
             localScopeSymbols,
         );
 
+        // Check for @export comment
+        let exported = false;
+        if (this.isWasm) {
+            const fullText = sourceFile.text;
+            const commentRanges = ts.getLeadingCommentRanges(
+                fullText,
+                stmt.pos,
+            );
+            if (commentRanges) {
+                for (const range of commentRanges) {
+                    const comment = fullText.substring(range.pos, range.end);
+                    if (comment.includes("@export")) {
+                        exported = true;
+                        break;
+                    }
+                }
+            }
+        }
+
         // Update features in the symbol registry
         const nativeName = this.generateUniqueName(
             `__${funcName}_native_`,
@@ -124,9 +143,19 @@ export function visitSourceFile(
         );
 
         // Generate native lambda
-        if (this.isDeclarationCalledAsFunction(stmt, node)) {
+        if (this.isDeclarationCalledAsFunction(stmt, node) || exported) {
             const nativeLambda = this.generateNativeLambda(lambdaComps);
             code += `${this.indent()}auto ${nativeName} = ${nativeLambda};\n`;
+
+            if (exported) {
+                this.wasmExports.push({
+                    jsName: funcName,
+                    nativeName,
+                    params: Array.from(stmt.parameters),
+                });
+                code +=
+                    `${this.indent()}__wasm_export_ptr_${funcName} = ${nativeName};\n`;
+            }
         }
 
         // Generate AnyValue wrapped lamda

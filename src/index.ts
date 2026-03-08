@@ -12,6 +12,7 @@ export class Interpreter {
     public interpret(
         code: string,
         fileName?: string,
+        target: "native" | "wasm" = "native",
     ): { cppCode: string; preludePath: string } {
         const ast = this.parser.parse(code, fileName);
         this.analyzer.analyze(ast);
@@ -22,6 +23,7 @@ export class Interpreter {
             ast,
             this.analyzer,
             isTypescript,
+            target === "wasm",
         );
         const preludePath = path.resolve(
             import.meta.dirname,

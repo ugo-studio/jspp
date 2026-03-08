@@ -14,10 +14,16 @@ import { getLatestMtime, msToHumanReadable } from "./utils.js";
 const pkgDir = path.dirname(path.dirname(import.meta.dirname));
 
 async function main() {
-    const { jsFilePath, isRelease, keepCpp, outputExePath, scriptArgs, target } =
-        parseArgs(
-            process.argv.slice(2),
-        );
+    const {
+        jsFilePath,
+        isRelease,
+        keepCpp,
+        outputExePath,
+        scriptArgs,
+        target,
+    } = parseArgs(
+        process.argv.slice(2),
+    );
 
     const isWasm = target === "wasm";
     const ext = path.extname(jsFilePath);
@@ -46,12 +52,16 @@ async function main() {
         `${COLORS.bold}JSPP Compiler${COLORS.reset} ${COLORS.dim}v${pkg.version}${COLORS.reset}`,
     );
     console.log(
-        `Target: ${isWasm ? COLORS.cyan : COLORS.green}${target.toUpperCase()}${COLORS.reset} | Mode: ${
+        `Target: ${
+            isWasm ? COLORS.cyan : COLORS.green
+        }${target.toUpperCase()}${COLORS.reset} | Mode: ${
             (isRelease || isWasm) ? COLORS.green : COLORS.yellow
         }${mode.toUpperCase()}${COLORS.reset}\n`,
     );
 
-    const flags = (isRelease || isWasm) ? ["-O3", "-DNDEBUG"] : ["-Og", "-ftime-report"];
+    const flags = (isRelease || isWasm)
+        ? ["-O3", "-DNDEBUG"]
+        : ["-Og", "-ftime-report"];
 
     if (isWasm) {
         flags.push("-sASYNCIFY", "-sALLOW_MEMORY_GROWTH=1", "-sWASM=1");
@@ -94,6 +104,7 @@ async function main() {
         const { cppCode, preludePath } = interpreter.interpret(
             jsCode,
             jsFilePath,
+            target as "native" | "wasm",
         );
         const transpileTime = msToHumanReadable(
             performance.now() - transpileStartTime,
@@ -110,7 +121,7 @@ async function main() {
         spinner.text = "Checking precompiled headers...";
         spinner.start();
 
-        const pchFile = isWasm ? path.join(pchDir, "jspp.hpp") : path.join(pchDir, "jspp.hpp.gch");
+        const pchFile = path.join(pchDir, "jspp.hpp.gch");
         const runtimeLibPath = path.join(pchDir, "libjspp.a");
         let shouldRebuildPCH = false;
 
@@ -147,13 +158,22 @@ async function main() {
             );
             const pchStartTime = performance.now();
 
-            const emsdkEnv = isWasm ? { ...process.env, PATH: `${path.join(pkgDir, ".emsdk")}${path.delimiter}${path.join(pkgDir, ".emsdk", "upstream", "emscripten")}${path.delimiter}${process.env.PATH}` } : process.env;
+            const emsdkEnv = isWasm
+                ? {
+                    ...process.env,
+                    PATH: `${path.join(pkgDir, ".emsdk")}${path.delimiter}${
+                        path.join(pkgDir, ".emsdk", "upstream", "emscripten")
+                    }${path.delimiter}${process.env.PATH}`,
+                }
+                : process.env;
 
             // Use spawn (async) instead of spawnSync to keep spinner alive
             const rebuild = spawn("bun", [
                 "run",
                 "scripts/precompile-headers.ts",
                 "--jspp-cli-is-parent",
+                "--mode",
+                mode,
             ], {
                 cwd: pkgDir,
                 stdio: ["ignore", "pipe", "pipe"],
@@ -220,7 +240,14 @@ async function main() {
             compileArgs.splice(1, 0, "-Winvalid-pch");
         }
 
-        const emsdkEnv = isWasm ? { ...process.env, PATH: `${path.join(pkgDir, ".emsdk")}${path.delimiter}${path.join(pkgDir, ".emsdk", "upstream", "emscripten")}${path.delimiter}${process.env.PATH}` } : process.env;
+        const emsdkEnv = isWasm
+            ? {
+                ...process.env,
+                PATH: `${path.join(pkgDir, ".emsdk")}${path.delimiter}${
+                    path.join(pkgDir, ".emsdk", "upstream", "emscripten")
+                }${path.delimiter}${process.env.PATH}`,
+            }
+            : process.env;
 
         const compileStartTime = performance.now();
         const compile = spawn(
@@ -274,10 +301,18 @@ async function main() {
 
         // 4. Execution Phase
         if (isWasm) {
-            console.log(`\n${COLORS.cyan}Compilation finished. To run the output, use node or a browser:${COLORS.reset}`);
-            console.log(`${COLORS.bold}    node ${path.basename(exeFilePath)}${COLORS.reset}\n`);
+            console.log(
+                `\n${COLORS.cyan}Compilation finished. To run the output, use node or a browser:${COLORS.reset}`,
+            );
+            console.log(
+                `${COLORS.bold}    node ${
+                    path.basename(exeFilePath)
+                }${COLORS.reset}\n`,
+            );
         } else {
-            console.log(`\n${COLORS.cyan}--- Running Output ---${COLORS.reset}`);
+            console.log(
+                `\n${COLORS.cyan}--- Running Output ---${COLORS.reset}`,
+            );
             const run = spawn(exeFilePath, scriptArgs, {
                 stdio: "inherit",
             });
@@ -285,7 +320,9 @@ async function main() {
             const runExitCode = await new Promise<number>((resolve) => {
                 run.on("close", (code) => resolve(code ?? 1));
             });
-            console.log(`${COLORS.cyan}----------------------${COLORS.reset}\n`);
+            console.log(
+                `${COLORS.cyan}----------------------${COLORS.reset}\n`,
+            );
 
             if (runExitCode !== 0) {
                 console.error(

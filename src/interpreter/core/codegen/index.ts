@@ -1,3 +1,5 @@
+import ts from "typescript";
+
 import type { TypeAnalyzer } from "../../analysis/typeAnalyzer.js";
 import { DeclaredSymbols } from "../../ast/symbols.js";
 import type { Node } from "../../ast/types.js";
@@ -29,7 +31,7 @@ import {
   prepareScopeSymbolsForVisit,
   validateFunctionParams,
 } from "./helpers.js";
-import { visit } from "./visitor.js";
+import { visit, type VisitContext } from "./visitor.js";
 
 export class CodeGenerator {
     public indentationLevel: number = 0;
@@ -38,6 +40,12 @@ export class CodeGenerator {
     public moduleFunctionName!: string;
     public globalThisVar!: string;
     public uniqueNameCounter = 0;
+    public isWasm = false;
+    public wasmExports: {
+        jsName: string;
+        nativeName: string;
+        params: ts.ParameterDeclaration[];
+    }[] = [];
 
     // visitor
     public visit = visit;
@@ -78,9 +86,12 @@ export class CodeGenerator {
         ast: Node,
         analyzer: TypeAnalyzer,
         isTypescript: boolean,
+        isWasm: boolean = false,
     ): string {
         this.typeAnalyzer = analyzer;
         this.isTypescript = isTypescript;
+        this.isWasm = isWasm;
+        this.wasmExports = [];
         this.moduleFunctionName = this.generateUniqueName(
             "__module_entry_point_",
             this.getDeclaredSymbols(ast),
@@ -90,15 +101,21 @@ export class CodeGenerator {
             this.getDeclaredSymbols(ast),
         );
 
-        const declarations =
-            `#include "jspp.hpp"\n#include "library/global_usings.hpp"\n\n`;
+        let declarations =
+            `#include "jspp.hpp"\n#include "library/global_usings.hpp"\n`;
+
+        if (isWasm) {
+            declarations += `#include <emscripten.h>\n`;
+        }
+        declarations += `\n`;
 
         // module function code
         let moduleCode = `jspp::JsPromise ${this.moduleFunctionName}() {\n`;
         this.indentationLevel++;
         moduleCode +=
             `${this.indent()}jspp::AnyValue ${this.globalThisVar} = global;\n`;
-        moduleCode += this.visit(ast, {
+
+        const context: VisitContext = {
             currentScopeNode: ast,
             isMainContext: true,
             isInsideFunction: true,
@@ -106,10 +123,35 @@ export class CodeGenerator {
             isInsideAsyncFunction: true,
             globalScopeSymbols: new DeclaredSymbols(),
             localScopeSymbols: new DeclaredSymbols(),
-        });
+        };
+
+        const generatedBody = this.visit(ast, context);
+        moduleCode += generatedBody;
         moduleCode += `${this.indent()}co_return jspp::Constants::UNDEFINED;\n`;
         this.indentationLevel--;
         moduleCode += "}\n\n";
+
+        // Wasm Exports
+        let wasmGlobalPointers = "";
+        let wasmWrappers = "";
+
+        if (isWasm) {
+            for (const exp of this.wasmExports) {
+                const paramList = exp.params.map((_, i) => `jspp::AnyValue`).join(", ");
+                const pointerName = `__wasm_export_ptr_${exp.jsName}`;
+                wasmGlobalPointers += `std::function<jspp::AnyValue(jspp::AnyValue, ${paramList})> ${pointerName} = nullptr;\n`;
+
+                const wrapperParamList = exp.params.map((_, i) => `double p${i}`).join(", ");
+                const callArgs = exp.params.map((_, i) => `jspp::AnyValue::make_number(p${i})`).join(", ");
+
+                wasmWrappers += `extern "C" EMSCRIPTEN_KEEPALIVE\n`;
+                wasmWrappers += `double wasm_export_${exp.jsName}(${wrapperParamList}) {\n`;
+                wasmWrappers += `    if (!${pointerName}) return 0;\n`;
+                wasmWrappers += `    auto res = ${pointerName}(global, ${callArgs});\n`;
+                wasmWrappers += `    return jspp::Operators_Private::ToNumber(res);\n`;
+                wasmWrappers += `}\n\n`;
+            }
+        }
 
         // main function code
         let mainCode = "int main(int argc, char** argv) {\n";
@@ -144,6 +186,7 @@ export class CodeGenerator {
         this.indentationLevel--;
         mainCode += `}`;
 
-        return declarations + moduleCode + mainCode;
+        return declarations + wasmGlobalPointers + wasmWrappers + moduleCode + mainCode;
     }
 }
+

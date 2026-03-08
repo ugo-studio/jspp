@@ -6,7 +6,9 @@
 #include <algorithm>
 #include <bit>
 #include <numbers>
+#if __has_include(<stdfloat>)
 #include <stdfloat>
+#endif
 
 #include "types.hpp"
 #include "any_value.hpp"

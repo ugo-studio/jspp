@@ -87,18 +87,21 @@ const MODES = [
     {
         name: "debug",
         flags: ["-Og"],
+        linkerFlags: [],
         compiler: "g++",
         archiver: "ar",
     },
     {
         name: "release",
         flags: ["-O3", "-DNDEBUG"],
+        linkerFlags: [],
         compiler: "g++",
         archiver: "ar",
     },
     {
         name: "wasm",
-        flags: ["-O3", "-DNDEBUG", "-sASYNCIFY", "-sALLOW_MEMORY_GROWTH=1"],
+        flags: ["-O3", "-DNDEBUG"],
+        linkerFlags: ["-sASYNCIFY", "-sALLOW_MEMORY_GROWTH=1"],
         compiler: "em++",
         archiver: "emar",
     },
@@ -153,8 +156,14 @@ async function runCommand(cmd: string, args: string[]): Promise<boolean> {
 async function precompileHeaders() {
     const force = process.argv.includes("--force");
     const jsppCliIsParent = process.argv.includes("--jspp-cli-is-parent");
+    const silent = process.argv.includes("--silent");
 
-    if (!jsppCliIsParent) {
+    const modeArgIdx = process.argv.indexOf("--mode");
+    const targetMode = modeArgIdx !== -1
+        ? process.argv[modeArgIdx + 1]
+        : undefined;
+
+    if (!jsppCliIsParent && !silent) {
         console.log(
             `${COLORS.bold}${COLORS.cyan}JSPP: Precompiling headers and runtime...${COLORS.reset}\n`,
         );
@@ -169,13 +178,15 @@ async function precompileHeaders() {
         );
 
         for (const mode of MODES) {
+            if (targetMode && mode.name !== targetMode) continue;
+
             const modeDir = path.join(PRECOMPILED_HEADER_BASE_DIR, mode.name);
             const headerPath = path.join(modeDir, "jspp.hpp");
             const gchPath = path.join(modeDir, "jspp.hpp.gch");
 
             const modeLabel = `[${mode.name.toUpperCase()}]`;
             const spinner = new Spinner(`${modeLabel} Checking headers...`);
-            spinner.start();
+            if (!silent) spinner.start();
 
             await fs.mkdir(modeDir, { recursive: true });
 
@@ -194,6 +205,7 @@ async function precompileHeaders() {
             }
 
             if (shouldBuildGch) {
+                if (silent) spinner.start();
                 spinner.update(`${modeLabel} Compiling header...`);
                 await fs.copyFile(
                     path.join(PRELUDE_DIR, "jspp.hpp"),
@@ -224,7 +236,7 @@ async function precompileHeaders() {
                 gchRebuilt = true;
                 spinner.succeed(`${modeLabel} PCH Success.`);
             } else {
-                spinner.succeed(`${modeLabel} Headers are up-to-date.`);
+                if (!silent) spinner.succeed(`${modeLabel} Headers are up-to-date.`);
             }
 
             // --- Incremental Compilation of .cpp files ---
@@ -232,12 +244,16 @@ async function precompileHeaders() {
             const objFiles: string[] = [];
             let anyObjRebuilt = false;
 
-            const gchMtime = (await fs.stat(gchPath)).mtimeMs;
+            // We need gchPath to exist for next check, if it doesn't we probably have a problem or it's a first run
+            let gchMtime = 0;
+            try {
+                gchMtime = (await fs.stat(gchPath)).mtimeMs;
+            } catch (e) {}
 
             const libSpinner = new Spinner(
                 `${modeLabel} Checking runtime library...`,
             );
-            libSpinner.start();
+            if (!silent) libSpinner.start();
 
             for (let idx = 0; idx < cppFiles.length; idx++) {
                 const cppFile = cppFiles[idx];
@@ -266,6 +282,7 @@ async function precompileHeaders() {
                 }
 
                 if (shouldCompile) {
+                    if (silent && !libSpinner["interval"]) libSpinner.start();
                     libSpinner.update(
                         `${modeLabel} Compiling ${relativePath} ${COLORS.dim}[${
                             idx + 1
@@ -305,6 +322,7 @@ async function precompileHeaders() {
             }
 
             if (shouldArchive) {
+                if (silent && !libSpinner["interval"]) libSpinner.start();
                 libSpinner.update(`${modeLabel} Updating runtime library...`);
                 const tempLibPath = `${libPath}.tmp`;
 
@@ -324,12 +342,16 @@ async function precompileHeaders() {
                 await fs.rename(tempLibPath, libPath);
                 libSpinner.succeed(`${modeLabel} Runtime Library Success.`);
             } else {
-                libSpinner.succeed(
-                    `${modeLabel} Runtime library is up-to-date.`,
-                );
+                if (!silent) {
+                    libSpinner.succeed(
+                        `${modeLabel} Runtime library is up-to-date.`,
+                    );
+                } else {
+                    libSpinner.stop();
+                }
             }
         }
-        if (!jsppCliIsParent) {
+        if (!jsppCliIsParent && !silent) {
             console.log(
                 `\n${COLORS.bold}${COLORS.green}JSPP: Environment ready.${COLORS.reset}\n`,
             );
