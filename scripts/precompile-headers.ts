@@ -146,7 +146,7 @@ async function findCppFiles(dir: string): Promise<string[]> {
 }
 
 async function runCommand(cmd: string, args: string[]): Promise<boolean> {
-    console.log(`${COLORS.dim}> ${cmd} ${args.join(" ")}${COLORS.reset}`);
+    // console.log(`${COLORS.dim}> ${cmd} ${args.join(" ")}${COLORS.reset}`);
     return new Promise((resolve) => {
         const proc = spawn(cmd, args, {
             stdio: "inherit",

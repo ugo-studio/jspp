@@ -268,13 +268,13 @@ namespace jspp
 
         bool is_generator() const noexcept;
 
-        double as_double() const noexcept
+        inline double as_double() const noexcept
         {
             double d;
             std::memcpy(&d, &storage, 8);
             return d;
         }
-        bool as_boolean() const noexcept
+        inline bool as_boolean() const noexcept
         {
             return static_cast<bool>(storage & 1);
         }
