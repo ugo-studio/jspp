@@ -58,8 +58,8 @@ async function main() {
     const mode = isWasm ? "wasm" : (isRelease ? "release" : "debug");
     const modeNote = isRelease
         ? `${COLORS.dim}(optimized)${COLORS.reset}`
-        : `${COLORS.dim}(debug)${COLORS.reset}\n${COLORS.dim}NOTE: Use "--release" for an optimized output for production${COLORS.reset}`;
-    
+        : `${COLORS.dim}(debug)${COLORS.reset}\n${COLORS.dim}NOTE: Use "--release" for an optimized build for production${COLORS.reset}`;
+
     console.log(
         `${COLORS.bold}JSPP Compiler${COLORS.reset} ${COLORS.dim}v${pkg.version}${COLORS.reset}`,
     );
@@ -142,7 +142,6 @@ async function main() {
 
         // 4. Execution Phase
         await runOutput(exeFilePath, scriptArgs, isWasm);
-
     } catch (error: any) {
         if (error instanceof CompilerError) {
             spinner.fail("Compilation failed");
