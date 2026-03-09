@@ -56,7 +56,7 @@ async function main() {
     const mode = isWasm ? "wasm" : (isRelease ? "release" : "debug");
     const modeNote = isRelease
         ? `${COLORS.dim}(optimized)${COLORS.reset}`
-        : `\n${COLORS.dim}NOTE: Use "--release" for a optimized output for production${COLORS.reset}`;
+        : `${COLORS.dim}(debug)${COLORS.reset}\n${COLORS.dim}NOTE: Use "--release" for an optimized output for production${COLORS.reset}`;
     console.log(
         `${COLORS.bold}JSPP Compiler${COLORS.reset} ${COLORS.dim}v${pkg.version}${COLORS.reset}`,
     );
@@ -71,7 +71,14 @@ async function main() {
     const flags = isRelease ? ["-O3", "-DNDEBUG"] : ["-Og"];
 
     if (isWasm) {
-        flags.push("-sASYNCIFY", "-sALLOW_MEMORY_GROWTH=1", "-sWASM=1");
+        flags.push(
+            "-sASYNCIFY",
+            "-sALLOW_MEMORY_GROWTH=1",
+            "-sWASM=1",
+            "-sEXPORT_ES6=1",
+            "-sMODULARIZE=1",
+            "-sEXPORT_NAME=jsppModule",
+        );
     } else if (process.platform === "win32") {
         flags.push("-Wa,-mbig-obj");
     }
@@ -108,7 +115,7 @@ async function main() {
         spinner.update("Transpiling to C++...");
         const transpileStartTime = performance.now();
         const interpreter = new Interpreter();
-        const { cppCode, preludePath } = interpreter.interpret(
+        const { cppCode, preludePath, wasmExports } = interpreter.interpret(
             jsCode,
             jsFilePath,
             target as "native" | "wasm",
@@ -278,6 +285,66 @@ async function main() {
                 path.basename(exeFilePath)
             }${COLORS.reset} ${COLORS.dim}[${compileTime}]${COLORS.reset}`,
         );
+
+        // 3.5 Post-processing for Wasm (Exports)
+        if (isWasm) {
+            const outputDir = path.dirname(exeFilePath);
+            const outputBaseName = path.basename(exeFilePath, ".js");
+
+            // Generate .d.ts
+            let dtsContent = "";
+            for (const exp of wasmExports) {
+                const params = exp.params.map((p) => `${p.name}: ${p.type}`)
+                    .join(", ");
+                dtsContent +=
+                    `export declare function wasm_export_${exp.jsName}(${params}): Promise<${exp.returnType}>;\n`;
+            }
+            dtsContent += `export declare const Module: Promise<any>;\n`;
+            dtsContent += `export declare const load: () => typeof Module;\n`;
+            dtsContent +=
+                `declare const jsppModule: (options?: any) => Promise<any>;\n`;
+            dtsContent += `export default jsppModule;\n`;
+
+            const dtsPath = path.join(outputDir, `${outputBaseName}.d.ts`);
+            await fs.writeFile(dtsPath, dtsContent);
+
+            // Append exports to .js glue code
+            let jsGlue = await fs.readFile(exeFilePath, "utf-8");
+
+            // Emscripten with -sEXPORT_ES6=1 adds this at the end
+            const defaultExportStr = "export default jsppModule;";
+            if (jsGlue.trim().endsWith(defaultExportStr)) {
+                jsGlue = jsGlue.trim().substring(
+                    0,
+                    jsGlue.trim().length - defaultExportStr.length,
+                );
+            }
+
+            jsGlue += `\n\n// JSPP Named Exports\n`;
+            jsGlue += `let _notLoaded = true;\n`;
+            jsGlue += `let _resolve = () => {};\n`;
+            jsGlue += `let _reject = () => {};\n`;
+            jsGlue += `let _instance;\n`;
+            jsGlue +=
+                `const _getinstance=()=>{if(!_instance)throw new Error("Module not loaded");return _instance}\n`;
+            jsGlue +=
+                `export const Module = new Promise((res,rej)=>{_resolve=res;_reject=rej});\n`;
+            jsGlue += `export const load = async () => {\n`;
+            jsGlue += ` if (_notLoaded) {\n`;
+            jsGlue += `  _notLoaded = false;\n`;
+            jsGlue +=
+                `  jsppModule().then(m=>{_instance=m;_resolve(m)}).catch(e=>{_notLoaded=true;_reject(e)});\n`;
+            jsGlue += ` }\n`;
+            jsGlue += ` return Module;\n`;
+            jsGlue += `};\n`;
+            for (const exp of wasmExports) {
+                jsGlue +=
+                    `export const wasm_export_${exp.jsName} = (...args) => _getinstance()._wasm_export_${exp.jsName}(...args);\n`;
+            }
+            jsGlue += `export default jsppModule;\n`;
+
+            await fs.writeFile(exeFilePath, jsGlue);
+        }
 
         // Clean up C++ file if not requested to keep
         if (!keepCpp) {
