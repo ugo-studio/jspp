@@ -1,15 +1,17 @@
 #!/usr/bin/env node
-import { spawn } from "child_process";
 import fs from "fs/promises";
 import path from "path";
 
 import pkg from "../../package.json" with { type: "json" };
-import { Interpreter } from "../index.js";
 import { CompilerError } from "../interpreter/core/error.js";
 import { parseArgs } from "./args.js";
 import { COLORS } from "./colors.js";
+import { compileCpp } from "./compiler.js";
+import { checkAndRebuildPCH } from "./pch.js";
+import { runOutput } from "./runner.js";
 import { Spinner } from "./spinner.js";
-import { getLatestMtime, msToHumanReadable } from "./utils.js";
+import { transpile } from "./transpiler.js";
+import { postProcessWasm, setupEmsdk } from "./wasm.js";
 
 const pkgDir = path.dirname(path.dirname(import.meta.dirname));
 const emsdkEnv = {
@@ -57,6 +59,7 @@ async function main() {
     const modeNote = isRelease
         ? `${COLORS.dim}(optimized)${COLORS.reset}`
         : `${COLORS.dim}(debug)${COLORS.reset}\n${COLORS.dim}NOTE: Use "--release" for an optimized output for production${COLORS.reset}`;
+    
     console.log(
         `${COLORS.bold}JSPP Compiler${COLORS.reset} ${COLORS.dim}v${pkg.version}${COLORS.reset}`,
     );
@@ -84,266 +87,48 @@ async function main() {
     }
 
     const pchDir = path.resolve(pkgDir, "prelude-build", mode);
-
     const spinner = new Spinner("Initializing...");
 
     try {
         if (isWasm) {
-            spinner.text = "Checking Emscripten SDK...";
-            spinner.start();
-            // Ensure emsdk is set up
-            const setupEmsdk = spawn("bun", ["run", "scripts/setup-emsdk.ts"], {
-                cwd: pkgDir,
-                stdio: ["ignore", "pipe", "pipe"],
-            });
-            const setupExitCode = await new Promise<number>((resolve) => {
-                setupEmsdk.on("close", (code) => resolve(code ?? 1));
-            });
-            if (setupExitCode !== 0) {
-                spinner.fail("Emscripten SDK setup failed");
-                process.exit(1);
-            }
-            spinner.stop();
+            await setupEmsdk(pkgDir, spinner);
         }
 
         spinner.start();
 
-        // 1. Interpreter Phase
-        spinner.update(`Reading ${path.basename(jsFilePath)}...`);
-        const jsCode = await fs.readFile(jsFilePath, "utf-8");
-
-        spinner.update("Transpiling to C++...");
-        const transpileStartTime = performance.now();
-        const interpreter = new Interpreter();
-        const { cppCode, preludePath, wasmExports } = interpreter.interpret(
-            jsCode,
+        // 1. Transpilation Phase
+        const { preludePath, wasmExports } = await transpile(
             jsFilePath,
+            cppFilePath,
             target as "native" | "wasm",
-        );
-        const transpileTime = msToHumanReadable(
-            performance.now() - transpileStartTime,
-        );
-
-        // Ensure directory for cpp file exists (should exist as it's source dir, but for safety if we change logic)
-        await fs.mkdir(path.dirname(cppFilePath), { recursive: true });
-        await fs.writeFile(cppFilePath, cppCode);
-        spinner.succeed(
-            `Generated cpp ${COLORS.dim}[${transpileTime}]${COLORS.reset}`,
+            spinner,
         );
 
         // 2. Precompiled Header Check
-        spinner.text = "Checking precompiled headers...";
-        spinner.start();
-
-        const pchFile = path.join(pchDir, "jspp.hpp.gch");
-        const runtimeLibPath = path.join(pchDir, "libjspp.a");
-        let shouldRebuildPCH = false;
-
-        try {
-            const pchStats = await fs.stat(pchFile);
-            const libStats = await fs.stat(runtimeLibPath);
-
-            // 1. Check if any header is newer than the PCH
-            const latestHeaderMtime = await getLatestMtime(
-                preludePath,
-                (name) => name.endsWith(".hpp") || name.endsWith(".h"),
-            );
-
-            // 2. Check if any CPP file is newer than the library
-            const latestCppMtime = await getLatestMtime(
-                preludePath,
-                (name) => name.endsWith(".cpp"),
-            );
-
-            if (
-                latestHeaderMtime > pchStats.mtimeMs ||
-                latestCppMtime > libStats.mtimeMs ||
-                pchStats.mtimeMs > libStats.mtimeMs
-            ) {
-                shouldRebuildPCH = true;
-            }
-        } catch (e) {
-            shouldRebuildPCH = true;
-        }
-
-        if (shouldRebuildPCH) {
-            spinner.update(
-                "Rebuilding precompiled headers (this may take a while)...",
-            );
-            const pchStartTime = performance.now();
-
-            // Use spawn (async) instead of spawnSync to keep spinner alive
-            const rebuild = spawn("bun", [
-                "run",
-                "scripts/precompile-headers.ts",
-                "--jspp-cli-is-parent",
-                "--mode",
-                mode,
-            ], {
-                cwd: pkgDir,
-                stdio: ["ignore", "pipe", "pipe"],
-                env: emsdkEnv,
-            });
-
-            if (rebuild.stdout) {
-                rebuild.stdout.on("data", (chunk) => {
-                    spinner.pause();
-                    process.stdout.write(chunk);
-                });
-            }
-
-            const stderrChunks: Buffer[] = [];
-            if (rebuild.stderr) {
-                rebuild.stderr.on("data", (chunk) => stderrChunks.push(chunk));
-            }
-
-            const exitCode = await new Promise<number>((resolve) => {
-                rebuild.on("close", (code) => {
-                    spinner.resume();
-                    resolve(code ?? 1);
-                });
-            });
-
-            if (exitCode !== 0) {
-                const stderr = Buffer.concat(stderrChunks).toString();
-                spinner.fail("Failed to rebuild precompiled headers");
-                console.error(stderr);
-                process.exit(1);
-            }
-            const pchTime = msToHumanReadable(performance.now() - pchStartTime);
-            spinner.succeed(
-                `Precompiled headers updated ${COLORS.dim}[${pchTime}]${COLORS.reset}`,
-            );
-        } else {
-            spinner.stop();
-        }
+        await checkAndRebuildPCH(
+            pkgDir,
+            pchDir,
+            mode,
+            preludePath,
+            emsdkEnv,
+            spinner,
+        );
 
         // 3. Compilation Phase
-        spinner.text = `Compiling binary...`;
-        spinner.start();
-
-        // Ensure output directory exists
-        await fs.mkdir(path.dirname(exeFilePath), { recursive: true });
-
-        const compiler = isWasm ? "em++" : "g++";
-        const compileArgs = [
-            "-std=c++23",
-            ...flags,
-            "-include",
-            "jspp.hpp",
+        await compileCpp(
             cppFilePath,
-            runtimeLibPath,
-            "-o",
             exeFilePath,
-            "-I",
             pchDir,
-            "-I",
             preludePath,
-        ];
-
-        if (!isWasm) {
-            compileArgs.splice(1, 0, "-Winvalid-pch");
-        }
-
-        const compileStartTime = performance.now();
-        const compile = spawn(
-            compiler,
-            compileArgs,
-            {
-                stdio: ["ignore", "pipe", "pipe"],
-                env: emsdkEnv,
-                shell: process.platform === "win32",
-            },
-        );
-
-        const compileStderrChunks: Buffer[] = [];
-        if (compile.stderr) {
-            compile.stderr.on(
-                "data",
-                (chunk) => compileStderrChunks.push(chunk),
-            );
-        }
-
-        const compileExitCode = await new Promise<number>((resolve) => {
-            compile.on("close", (code) => resolve(code ?? 1));
-        });
-
-        if (compileExitCode !== 0) {
-            const stderr = Buffer.concat(compileStderrChunks).toString();
-            spinner.fail(`Compilation failed`);
-            console.error(stderr);
-            process.exit(1);
-        }
-
-        const compileEndTime = performance.now();
-        const compileTime = msToHumanReadable(
-            compileEndTime - compileStartTime,
-        );
-
-        spinner.succeed(
-            `Compiled to ${COLORS.green}${COLORS.bold}${
-                path.basename(exeFilePath)
-            }${COLORS.reset} ${COLORS.dim}[${compileTime}]${COLORS.reset}`,
+            isWasm,
+            flags,
+            emsdkEnv,
+            spinner,
         );
 
         // 3.5 Post-processing for Wasm (Exports)
         if (isWasm) {
-            const outputDir = path.dirname(exeFilePath);
-            const outputBaseName = path.basename(exeFilePath, ".js");
-
-            // Generate .d.ts
-            let dtsContent = "";
-            for (const exp of wasmExports) {
-                const params = exp.params.map((p) => `${p.name}: ${p.type}`)
-                    .join(", ");
-                dtsContent +=
-                    `export declare function wasm_export_${exp.jsName}(${params}): Promise<${exp.returnType}>;\n`;
-            }
-            dtsContent += `export declare const Module: Promise<any>;\n`;
-            dtsContent += `export declare const load: () => typeof Module;\n`;
-            dtsContent +=
-                `declare const jsppModule: (options?: any) => Promise<any>;\n`;
-            dtsContent += `export default jsppModule;\n`;
-
-            const dtsPath = path.join(outputDir, `${outputBaseName}.d.ts`);
-            await fs.writeFile(dtsPath, dtsContent);
-
-            // Append exports to .js glue code
-            let jsGlue = await fs.readFile(exeFilePath, "utf-8");
-
-            // Emscripten with -sEXPORT_ES6=1 adds this at the end
-            const defaultExportStr = "export default jsppModule;";
-            if (jsGlue.trim().endsWith(defaultExportStr)) {
-                jsGlue = jsGlue.trim().substring(
-                    0,
-                    jsGlue.trim().length - defaultExportStr.length,
-                );
-            }
-
-            jsGlue += `\n\n// JSPP Named Exports\n`;
-            jsGlue += `let _notLoaded = true;\n`;
-            jsGlue += `let _resolve = () => {};\n`;
-            jsGlue += `let _reject = () => {};\n`;
-            jsGlue += `let _instance;\n`;
-            jsGlue +=
-                `const _getinstance=()=>{if(!_instance)throw new Error("Module not loaded");return _instance}\n`;
-            jsGlue +=
-                `export const Module = new Promise((res,rej)=>{_resolve=res;_reject=rej});\n`;
-            jsGlue += `export const load = async () => {\n`;
-            jsGlue += ` if (_notLoaded) {\n`;
-            jsGlue += `  _notLoaded = false;\n`;
-            jsGlue +=
-                `  jsppModule().then(m=>{_instance=m;_resolve(m)}).catch(e=>{_notLoaded=true;_reject(e)});\n`;
-            jsGlue += ` }\n`;
-            jsGlue += ` return Module;\n`;
-            jsGlue += `};\n`;
-            for (const exp of wasmExports) {
-                jsGlue +=
-                    `export const wasm_export_${exp.jsName} = (...args) => _getinstance()._wasm_export_${exp.jsName}(...args);\n`;
-            }
-            jsGlue += `export default jsppModule;\n`;
-
-            await fs.writeFile(exeFilePath, jsGlue);
+            await postProcessWasm(exeFilePath, wasmExports);
         }
 
         // Clean up C++ file if not requested to keep
@@ -356,37 +141,8 @@ async function main() {
         }
 
         // 4. Execution Phase
-        if (isWasm) {
-            console.log(
-                `\n${COLORS.cyan}Compilation finished. To run the output, use node or a browser:${COLORS.reset}`,
-            );
-            console.log(
-                `${COLORS.bold}    node ${
-                    path.basename(exeFilePath)
-                }${COLORS.reset}\n`,
-            );
-        } else {
-            console.log(
-                `\n${COLORS.cyan}--- Running Output ---${COLORS.reset}`,
-            );
-            const run = spawn(exeFilePath, scriptArgs, {
-                stdio: "inherit",
-            });
+        await runOutput(exeFilePath, scriptArgs, isWasm);
 
-            const runExitCode = await new Promise<number>((resolve) => {
-                run.on("close", (code) => resolve(code ?? 1));
-            });
-            console.log(
-                `${COLORS.cyan}----------------------${COLORS.reset}\n`,
-            );
-
-            if (runExitCode !== 0) {
-                console.error(
-                    `${COLORS.red}Execution failed with exit code ${runExitCode}${COLORS.reset}`,
-                );
-                process.exit(1);
-            }
-        }
     } catch (error: any) {
         if (error instanceof CompilerError) {
             spinner.fail("Compilation failed");
