@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+
 import { Interpreter } from "../index.js";
 import { COLORS } from "./colors.js";
 import { Spinner } from "./spinner.js";

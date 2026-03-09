@@ -257,13 +257,6 @@ namespace jspp
         }
     }
 
-    std::string AnyValue::to_property_key() const
-    {
-        if (is_symbol())
-            return as_symbol()->key;
-        return to_std_string();
-    }
-
     AnyValue &AnyValue::set_prototype(AnyValue proto)
     {
         if (is_object())

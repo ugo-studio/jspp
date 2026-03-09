@@ -38,13 +38,17 @@ async function main() {
     const jsFileName = path.basename(jsFilePath, ext);
     const sourceDir = path.dirname(jsFilePath);
 
-    // Intermediate C++ file goes alongside the source JS file
-    const cppFilePath = path.join(sourceDir, `${jsFileName}.cpp`);
+    // Intermediate C++ file goes alongside the source JS file if `--output` is not set
+    let cppFilePath = path.join(sourceDir, `${jsFileName}.cpp`);
 
     // Determine output executable path
     let exeFilePath: string;
     if (outputExePath) {
         exeFilePath = outputExePath;
+        cppFilePath = path.join(
+            path.dirname(outputExePath),
+            `${jsFileName}.cpp`,
+        );
     } else {
         if (isWasm) {
             exeFilePath = path.join(sourceDir, `${jsFileName}.js`);

@@ -330,7 +330,6 @@ namespace jspp
         AnyValue construct(std::span<const AnyValue> args, const std::optional<std::string> &name = std::nullopt) const;
         AnyValue &set_prototype(AnyValue proto);
         std::string to_std_string() const;
-        std::string to_property_key() const;
 
         inline uint64_t get_storage() const noexcept { return storage; }
         inline void *get_raw_ptr() const noexcept { return reinterpret_cast<void *>(storage & PAYLOAD_MASK); }
