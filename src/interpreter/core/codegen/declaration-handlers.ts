@@ -155,7 +155,7 @@ export function visitVariableDeclaration(
                 return nativeLambdaCode;
             }
         }
-        initializer = " = " + initText;
+        initializer = initText;
     }
 
     const isLetOrConst =
@@ -163,11 +163,24 @@ export function visitVariableDeclaration(
     const shouldDeref = context.derefBeforeAssignment &&
         (!context.localScopeSymbols.has(name));
 
-    const assignmentTarget = shouldDeref
+    let assignmentTarget = shouldDeref
         ? this.getDerefCode(name, name, context, typeInfo)
         : (typeInfo?.needsHeapAllocation && !shouldSkipDeref
             ? `*${name}`
             : name);
+
+    const sym = context.localScopeSymbols.get(name) ||
+        context.globalScopeSymbols.get(name);
+    if (sym?.checks.skippedHoisting) {
+        assignmentTarget = typeInfo?.needsHeapAllocation && !shouldSkipDeref
+            ? `auto ${name}`
+            : `jspp::AnyValue ${name}`;
+        if (initializer) {
+            initializer = typeInfo?.needsHeapAllocation && !shouldSkipDeref
+                ? `std::make_shared<jspp::AnyValue>(${initializer})`
+                : initializer;
+        }
+    }
 
     if (nativeLambdaCode) nativeLambdaCode += `;\n${this.indent()}`;
     if (isLetOrConst) {
@@ -185,18 +198,18 @@ export function visitVariableDeclaration(
                 return `${nativeLambdaCode}${assignmentTarget} = jspp::Constants::UNDEFINED`;
             }
         }
-        return `${nativeLambdaCode}${assignmentTarget}${initializer}`;
+        return `${nativeLambdaCode}${assignmentTarget} = ${initializer}`;
     }
 
     // For 'var', it's a bit more complex.
     if (context.isAssignmentOnly) {
         if (!initializer) return "";
-        return `${nativeLambdaCode}${assignmentTarget}${initializer}`;
+        return `${nativeLambdaCode}${assignmentTarget} = ${initializer}`;
     } else {
         // This case should not be hit with the new hoisting logic,
         // but is kept for safety.
         const initValue = initializer
-            ? initializer.substring(3)
+            ? initializer
             : "jspp::Constants::UNDEFINED";
         if (typeInfo?.needsHeapAllocation) {
             return `auto ${name} = std::make_shared<jspp::AnyValue>(${initValue})`;

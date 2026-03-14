@@ -21,33 +21,48 @@ export function visitIdentifier(
 export function visitNumericLiteral(
     this: CodeGenerator,
     node: ts.NumericLiteral,
-    context: VisitContext,
 ): string {
+    const getOuterExpr = (n: ts.Node): ts.Node =>
+        !ts.isParenthesizedExpression(n) &&
+            n.kind !== ts.SyntaxKind.FirstLiteralToken
+            ? n
+            : getOuterExpr(n.parent);
+
+    const outerExpr = getOuterExpr(node);
     if (
-        context.isInsideNativeLambda &&
-        context.isInsideFunction
+        ts.isPropertyAccessExpression(outerExpr) ||
+        ts.isElementAccessExpression(outerExpr)
     ) {
-        const funcDecl = this.findEnclosingFunctionDeclarationFromReturnStatement(node);
-        if (funcDecl) {
-            const funcReturnType = this.typeAnalyzer
-                .inferFunctionReturnType(funcDecl);
-            if (funcReturnType === "number") {
-                return node.getText();
-            }
-        }
+        return `jspp::AnyValue::make_number(${this.escapeString(node.text)})`;
     }
 
-    if (
-        node.text === "0" || (node.text.startsWith("0.") &&
-            !node.text.substring(2).split("").some((c) => c !== "0"))
-    ) return "jspp::Constants::ZERO";
+    return this.escapeString(node.text);
 
-    if (
-        node.text === "1" || (node.text.startsWith("1.") &&
-            !node.text.substring(2).split("").some((c) => c !== "0"))
-    ) return "jspp::Constants::ONE";
+    // if (
+    //     context.isInsideNativeLambda &&
+    //     context.isInsideFunction
+    // ) {
+    //     const funcDecl = this.findEnclosingFunctionDeclarationFromReturnStatement(node);
+    //     if (funcDecl) {
+    //         const funcReturnType = this.typeAnalyzer
+    //             .inferFunctionReturnType(funcDecl);
+    //         if (funcReturnType === "number") {
+    //             return node.getText();
+    //         }
+    //     }
+    // }
 
-    return `jspp::AnyValue::make_number(${this.escapeString(node.text)})`;
+    // if (
+    //     node.text === "0" || (node.text.startsWith("0.") &&
+    //         !node.text.substring(2).split("").some((c) => c !== "0"))
+    // ) return "jspp::Constants::ZERO";
+
+    // if (
+    //     node.text === "1" || (node.text.startsWith("1.") &&
+    //         !node.text.substring(2).split("").some((c) => c !== "0"))
+    // ) return "jspp::Constants::ONE";
+
+    // return `jspp::AnyValue::make_number(${this.escapeString(node.text)})`;
 }
 
 export function visitStringLiteral(

@@ -11,6 +11,7 @@ export enum DeclarationType {
 
 export type SymbolChecks = {
     initialized?: boolean;
+    skippedHoisting?: boolean;
 };
 
 export type SymbolFeatures = {

@@ -312,11 +312,7 @@ export function visit(
         case ts.SyntaxKind.Identifier:
             return visitIdentifier.call(this, node as ts.Identifier);
         case ts.SyntaxKind.NumericLiteral:
-            return visitNumericLiteral.call(
-                this,
-                node as ts.NumericLiteral,
-                context,
-            );
+            return visitNumericLiteral.call(this, node as ts.NumericLiteral);
         case ts.SyntaxKind.StringLiteral:
             return visitStringLiteral.call(this, node as ts.StringLiteral);
         case ts.SyntaxKind.NoSubstitutionTemplateLiteral:

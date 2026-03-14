@@ -2,7 +2,11 @@ import ts from "typescript";
 
 import { BUILTIN_OBJECTS, Scope } from "../../analysis/scope.js";
 import type { TypeAnalyzer, TypeInfo } from "../../analysis/typeAnalyzer.js";
-import { DeclarationType, DeclaredSymbols } from "../../ast/symbols.js";
+import {
+  DeclarationType,
+  DeclaredSymbols,
+  type SymbolFeatures,
+} from "../../ast/symbols.js";
 import { CompilerError } from "../error.js";
 import { CodeGenerator } from "./index.js";
 import type { VisitContext } from "./visitor.js";
@@ -310,6 +314,9 @@ export function hoistDeclaration(
     const hoistName = (nameNode: ts.BindingName): string => {
         if (ts.isIdentifier(nameNode)) {
             const name = nameNode.text;
+
+            let symbolFeatures: SymbolFeatures | undefined;
+
             if (hoistedSymbols.has(name)) {
                 const existingSymbol = hoistedSymbols.get(name);
                 // Don't allow multiple declaration of `let`,`const`,`function`, `class` or `enum` variables
@@ -331,6 +338,10 @@ export function hoistDeclaration(
                 return "";
             } else {
                 // Add the symbol to the hoisted symbols
+                hoistedSymbols.add(name, {
+                    type: declType,
+                });
+                // Get and update symbol features
                 if (
                     ts.isFunctionDeclaration(decl) ||
                     (ts.isVariableDeclaration(decl) && decl.initializer &&
@@ -344,11 +355,12 @@ export function hoistDeclaration(
                             | ts.ArrowFunction
                             | ts.FunctionExpression
                         : decl;
-                    const isAsync = this.isAsyncFunction(funcExpr);
-                    const isGenerator = this.isGeneratorFunction(funcExpr);
-                    hoistedSymbols.add(name, {
-                        type: declType,
-                        features: { isAsync, isGenerator },
+                    // Update features
+                    hoistedSymbols.update(name, {
+                        features: {
+                            isAsync: this.isAsyncFunction(funcExpr),
+                            isGenerator: this.isGeneratorFunction(funcExpr),
+                        },
                     });
                     // Don't hoist declarations not used as a variable
                     // They will be called with their native lambda/value
@@ -364,10 +376,11 @@ export function hoistDeclaration(
                             scopeNode,
                         )
                     ) {
+                        hoistedSymbols.update(name, {
+                            checks: { skippedHoisting: true },
+                        });
                         return "";
                     }
-                } else {
-                    hoistedSymbols.add(name, { type: declType });
                 }
             }
 
