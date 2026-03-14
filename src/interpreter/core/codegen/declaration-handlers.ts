@@ -98,7 +98,7 @@ export function visitVariableDeclaration(
         ) {
             const initContext: VisitContext = {
                 ...context,
-                lambdaName: name, // Use the variable name as function name
+                functionName: name, // Use the variable name as function name
             };
             const nativeName = this.generateUniqueName(
                 `__${name}_native_`,

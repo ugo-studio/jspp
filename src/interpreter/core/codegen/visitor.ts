@@ -97,7 +97,8 @@ export interface VisitContext {
     localScopeSymbols: DeclaredSymbols;
     derefBeforeAssignment?: boolean;
     superClassVar?: string;
-    lambdaName?: string;
+    functionName?: string;
+    isInsideNativeLambda?: boolean;
     // supportedNativeLiterals?: ("boolean" | "number")[];
 }
 

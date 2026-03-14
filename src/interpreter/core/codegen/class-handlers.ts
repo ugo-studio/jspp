@@ -60,7 +60,7 @@ export function visitClassDeclaration(
             this.generateLambdaComponents(constructor, {
                 ...classContext,
                 isInsideFunction: true,
-                lambdaName: className,
+                functionName: className,
             }, { isClass: true }),
         );
     } else {

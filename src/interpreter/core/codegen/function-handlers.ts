@@ -75,7 +75,7 @@ export function generateLambdaComponents(
         isMainContext: false,
         isInsideFunction: true,
         isFunctionBody: false,
-        lambdaName: undefined,
+        functionName: undefined,
         globalScopeSymbols,
         localScopeSymbols: new DeclaredSymbols(),
         superClassVar: context.superClassVar,
@@ -459,7 +459,7 @@ export function generateWrappedLambda(
         }
     }
 
-    const funcName = context?.lambdaName || node.name?.getText();
+    const funcName = context?.functionName || node.name?.getText();
     const hasName = !!funcName && funcName.length > 0;
 
     let args = callable;
@@ -554,8 +554,9 @@ export function visitFunctionExpression(
         const lambda = this.generateWrappedLambda(
             this.generateLambdaComponents(funcExpr, {
                 ...context,
-                lambdaName: funcName,
+                functionName: funcName,
             }, {
+
                 isAssignment: true,
                 capture: "[=]",
             }),
