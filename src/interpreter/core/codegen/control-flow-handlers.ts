@@ -636,12 +636,12 @@ export function visitSwitchStatement(
 
             if (firstIf) {
                 condition =
-                    `(${fallthroughVar} || jspp::is_strictly_equal_to_primitive(${switchValueVar}, ${caseExprCode}))`;
+                    `(${fallthroughVar} || jspp::is_strictly_equal_to_native(${switchValueVar}, ${caseExprCode}))`;
                 code += `${this.indent()}if ${condition} {\n`;
                 firstIf = false;
             } else {
                 condition =
-                    `(${fallthroughVar} || jspp::is_strictly_equal_to_primitive(${switchValueVar}, ${caseExprCode}))`;
+                    `(${fallthroughVar} || jspp::is_strictly_equal_to_native(${switchValueVar}, ${caseExprCode}))`;
                 code += `${this.indent()}if ${condition} {\n`;
             }
 

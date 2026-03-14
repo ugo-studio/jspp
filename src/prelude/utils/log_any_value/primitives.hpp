@@ -11,7 +11,7 @@ namespace jspp
 {
     namespace LogAnyValue
     {
-        inline std::optional<std::string> format_primitive(const AnyValue &val, int depth)
+        inline std::optional<std::string> format_native(const AnyValue &val, int depth)
         {
             if (val.is_uninitialized())
             {

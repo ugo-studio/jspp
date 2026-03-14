@@ -362,7 +362,7 @@ namespace jspp {
                 }
                 
                 while (!current.is_null()) {
-                    if (jspp::is_strictly_equal_to_primitive(current, thisVal)) return jspp::Constants::TRUE;
+                    if (jspp::is_strictly_equal_to_native(current, thisVal)) return jspp::Constants::TRUE;
                     if (current.is_object()) current = current.as_object()->proto;
                     else if (current.is_array()) current = current.as_array()->proto;
                     else if (current.is_function()) current = current.as_function()->proto;

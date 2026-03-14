@@ -331,7 +331,7 @@ namespace jspp
 
                 if (proto.is_null() || proto.is_undefined())
                     break;
-                if (is_strictly_equal_to_primitive(proto, targetProto))
+                if (is_strictly_equal_to_native(proto, targetProto))
                     return Constants::TRUE;
                 current = proto;
             }
@@ -477,7 +477,7 @@ namespace jspp
             {
                 for (const auto &ex : excluded_keys)
                 {
-                    if (is_strictly_equal_to_primitive(key, ex))
+                    if (is_strictly_equal_to_native(key, ex))
                         return true;
                 }
                 return false;

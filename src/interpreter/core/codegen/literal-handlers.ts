@@ -1,6 +1,7 @@
 import ts from "typescript";
 
 import { CodeGenerator } from "./index.js";
+import type { VisitContext } from "./visitor.js";
 
 export function visitIdentifier(
     this: CodeGenerator,
@@ -20,7 +21,22 @@ export function visitIdentifier(
 export function visitNumericLiteral(
     this: CodeGenerator,
     node: ts.NumericLiteral,
+    context: VisitContext,
 ): string {
+    if (
+        context.isInsideNativeLambda &&
+        context.isInsideFunction
+    ) {
+        const funcDecl = this.findEnclosingFunctionDeclarationFromReturnStatement(node);
+        if (funcDecl) {
+            const funcReturnType = this.typeAnalyzer
+                .inferFunctionReturnType(funcDecl);
+            if (funcReturnType === "number") {
+                return node.getText();
+            }
+        }
+    }
+
     if (
         node.text === "0" || (node.text.startsWith("0.") &&
             !node.text.substring(2).split("").some((c) => c !== "0"))

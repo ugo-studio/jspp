@@ -969,7 +969,8 @@ export function visitBinaryExpression(
             );
         }
         // Number optimizations
-        if (typeInfo && typeInfo.type === "number") {
+        const nodeType = this.typeAnalyzer.inferNodeReturnType(binExpr.left);
+        if (nodeType === "number") {
             finalLeft = `${finalLeft}.as_double()`;
         }
     }
@@ -999,7 +1000,8 @@ export function visitBinaryExpression(
             );
         }
         // Number optimizations
-        if (typeInfo && typeInfo.type === "number") {
+        const nodeType = this.typeAnalyzer.inferNodeReturnType(binExpr.right);
+        if (nodeType === "number") {
             finalRight = `${finalRight}.as_double()`;
         }
     }
@@ -1020,109 +1022,90 @@ export function visitBinaryExpression(
         return `jspp::nullish_coalesce(${finalLeft}, ${finalRight})`;
     }
 
-    const isLiteral = (n: ts.Node) => ts.isNumericLiteral(n);
-    const supportsNativeBoolean = ts.isIfStatement(node.parent) ||
-        ts.isConditionalExpression(node.parent);
-
     // Native values for lhs and rhs
-    const literalLeft = isLiteral(binExpr.left)
+    const literalLeft = ts.isNumericLiteral(binExpr.left)
         ? binExpr.left.getText()
         : finalLeft;
-    const literalRight = isLiteral(binExpr.right)
+    const literalRight = ts.isNumericLiteral(binExpr.right)
         ? binExpr.right.getText()
         : finalRight;
 
-    // Operations that returns boolean should return the native boolean if supported
+    let supportsNativeValue = false;
+    const exprReturnType = this.typeAnalyzer.inferNodeReturnType(node);
     if (
-        constants.booleanOperators.includes(opToken.kind) &&
-        supportsNativeBoolean
+        exprReturnType === "boolean" &&
+        (ts.isIfStatement(node.parent) ||
+            ts.isConditionalExpression(node.parent))
     ) {
-        if (opToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken) {
-            return `jspp::is_strictly_equal_to_primitive(${literalLeft}, ${literalRight})`;
+        supportsNativeValue = true;
+    } else if (
+        exprReturnType === "number" &&
+        context.isInsideNativeLambda &&
+        context.isInsideFunction
+    ) {
+        const funcDecl = this.findEnclosingFunctionDeclarationFromReturnStatement(node);
+        if (funcDecl) {
+            const funcReturnType = this.typeAnalyzer.inferFunctionReturnType(
+                funcDecl,
+            );
+            if (funcReturnType === "number") {
+                supportsNativeValue = true;
+            }
         }
-        if (opToken.kind === ts.SyntaxKind.EqualsEqualsToken) {
-            return `jspp::is_equal_to_primitive(${literalLeft}, ${literalRight})`;
-        }
-        if (opToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken) {
-            return `!jspp::is_strictly_equal_to_primitive(${literalLeft}, ${literalRight})`;
-        }
-        if (opToken.kind === ts.SyntaxKind.ExclamationEqualsToken) {
-            return `!jspp::is_equal_to_primitive(${literalLeft}, ${literalRight})`;
-        }
-
-        let funcName = "";
-        if (opToken.kind === ts.SyntaxKind.LessThanToken) {
-            funcName = "jspp::less_than_primitive";
-        }
-        if (opToken.kind === ts.SyntaxKind.LessThanEqualsToken) {
-            funcName = "jspp::less_than_or_equal_primitive";
-        }
-        if (opToken.kind === ts.SyntaxKind.GreaterThanToken) {
-            funcName = "jspp::greater_than_primitive";
-        }
-        if (opToken.kind === ts.SyntaxKind.GreaterThanEqualsToken) {
-            funcName = "jspp::greater_than_or_equal_primitive";
-        }
-
-        // For C++ primitive literals, standard operators are fine if they map directly,
-        // but we are safe using our functions (which handle doubles correctly).
-        // Actually, for pure numeric literals like "1 < 2", we can leave it as is if we want optimization,
-        // but consistency is safer.
-        // Let's stick to valid C++ syntax for literals if possible to avoid overhead?
-        // jspp::less_than(1, 2) works.
-        return `${funcName}(${literalLeft}, ${literalRight})`;
     }
+
+    const method = supportsNativeValue ? "_native" : "";
 
     // Return boxed value
     if (opToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken) {
-        return `jspp::is_strictly_equal_to(${literalLeft}, ${literalRight})`;
+        return `jspp::is_strictly_equal_to${method}(${literalLeft}, ${literalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.EqualsEqualsToken) {
-        return `jspp::is_equal_to(${literalLeft}, ${literalRight})`;
+        return `jspp::is_equal_to${method}(${literalLeft}, ${literalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken) {
-        return `jspp::not_strictly_equal_to(${literalLeft}, ${literalRight})`;
+        return `jspp::not_strictly_equal_to${method}(${literalLeft}, ${literalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.ExclamationEqualsToken) {
-        return `jspp::not_equal_to(${literalLeft}, ${literalRight})`;
+        return `jspp::not_equal_to${method}(${literalLeft}, ${literalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.AsteriskAsteriskToken) {
-        return `jspp::pow(${literalLeft}, ${literalRight})`;
+        return `jspp::pow${method}(${literalLeft}, ${literalRight})`;
     }
     if (opToken.kind === ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken) {
-        return `jspp::unsigned_right_shift(${literalLeft}, ${literalRight})`;
+        return `jspp::unsigned_right_shift${method}(${literalLeft}, ${literalRight})`;
     }
 
     // For other arithmetic and bitwise operations, use native operations if possible
     switch (op) {
         case "+":
-            return `jspp::add(${literalLeft}, ${literalRight})`;
+            return `jspp::add${method}(${literalLeft}, ${literalRight})`;
         case "-":
-            return `jspp::sub(${literalLeft}, ${literalRight})`;
+            return `jspp::sub${method}(${literalLeft}, ${literalRight})`;
         case "*":
-            return `jspp::mul(${literalLeft}, ${literalRight})`;
+            return `jspp::mul${method}(${literalLeft}, ${literalRight})`;
         case "/":
-            return `jspp::div(${literalLeft}, ${literalRight})`;
+            return `jspp::div${method}(${literalLeft}, ${literalRight})`;
         case "%":
-            return `jspp::mod(${literalLeft}, ${literalRight})`;
+            return `jspp::mod${method}(${literalLeft}, ${literalRight})`;
         case "^":
-            return `jspp::bitwise_xor(${literalLeft}, ${literalRight})`;
+            return `jspp::bitwise_xor${method}(${literalLeft}, ${literalRight})`;
         case "&":
-            return `jspp::bitwise_and(${literalLeft}, ${literalRight})`;
+            return `jspp::bitwise_and${method}(${literalLeft}, ${literalRight})`;
         case "|":
-            return `jspp::bitwise_or(${literalLeft}, ${literalRight})`;
+            return `jspp::bitwise_or${method}(${literalLeft}, ${literalRight})`;
         case "<<":
-            return `jspp::left_shift(${literalLeft}, ${literalRight})`;
+            return `jspp::left_shift${method}(${literalLeft}, ${literalRight})`;
         case ">>":
-            return `jspp::right_shift(${literalLeft}, ${literalRight})`;
+            return `jspp::right_shift${method}(${literalLeft}, ${literalRight})`;
         case "<":
-            return `jspp::less_than(${literalLeft}, ${literalRight})`;
+            return `jspp::less_than${method}(${literalLeft}, ${literalRight})`;
         case ">":
-            return `jspp::greater_than(${literalLeft}, ${literalRight})`;
+            return `jspp::greater_than${method}(${literalLeft}, ${literalRight})`;
         case "<=":
-            return `jspp::less_than_or_equal(${literalLeft}, ${literalRight})`;
+            return `jspp::less_than_or_equal${method}(${literalLeft}, ${literalRight})`;
         case ">=":
-            return `jspp::greater_than_or_equal(${literalLeft}, ${literalRight})`;
+            return `jspp::greater_than_or_equal${method}(${literalLeft}, ${literalRight})`;
     }
 
     return `/* Unhandled Operator: ${finalLeft} ${op} ${finalRight} */`; // Default fallback

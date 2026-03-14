@@ -11,6 +11,7 @@ test/output/
 my-code/
 prelude-build/
 .emsdk/
+*.zip
 
 # code coverage
 coverage

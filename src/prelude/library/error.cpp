@@ -14,7 +14,7 @@ namespace jspp
         if (target.is_object())
         {
             auto obj = target.as_object();
-            if (!obj->proto.is_null() && !obj->proto.is_undefined() && is_strictly_equal_to_primitive(obj->proto, proto))
+            if (!obj->proto.is_null() && !obj->proto.is_undefined() && is_strictly_equal_to_native(obj->proto, proto))
             {
                 is_construct_call = true;
             }
@@ -58,7 +58,7 @@ namespace jspp
         if (val.is_object()) {
             auto current = val.as_object()->proto;
             while (!current.is_null()) {
-                 if (is_strictly_equal_to_primitive(current, proto)) return jspp::Constants::TRUE;
+                 if (is_strictly_equal_to_native(current, proto)) return jspp::Constants::TRUE;
                  if (current.is_object()) current = current.as_object()->proto;
                  else break;
             }

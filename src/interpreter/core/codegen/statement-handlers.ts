@@ -1216,8 +1216,26 @@ export function visitReturnStatement(
                     typeInfo,
                 );
             }
+
+            const exprReturnType = this.typeAnalyzer.inferNodeReturnType(expr);
+            if (
+                exprReturnType === "number" &&
+                context.isInsideNativeLambda &&
+                context.isInsideFunction
+            ) {
+                const funcDecl = this
+                    .findEnclosingFunctionDeclarationFromReturnStatement(expr);
+                if (funcDecl) {
+                    const funcReturnType = this.typeAnalyzer
+                        .inferFunctionReturnType(funcDecl);
+                    if (funcReturnType === "number") {
+                        finalExpr = `${finalExpr}.as_double()`;
+                    }
+                }
+            }
         }
         return `${this.indent()}${returnCmd} ${finalExpr};\n`;
     }
+
     return `${this.indent()}${returnCmd} jspp::Constants::UNDEFINED;\n`;
 }

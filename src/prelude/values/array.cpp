@@ -513,7 +513,7 @@ AnyValue &get_includes_fn()
                                                          AnyValue element = self->get_property(static_cast<uint32_t>(i));
                                                          // SameValueZero algorithm (includes handles NaN)
                                                          if (element.is_number() && searchElement.is_number() && std::isnan(element.as_double()) && std::isnan(searchElement.as_double())) return Constants::TRUE;
-                                                         if (is_strictly_equal_to_primitive(element, searchElement)) return Constants::TRUE;
+                                                         if (is_strictly_equal_to_native(element, searchElement)) return Constants::TRUE;
                                                      }
                                                      return Constants::FALSE; },
                                                  "includes");
@@ -538,7 +538,7 @@ AnyValue &get_indexOf_fn()
                                                      {
                                                          if (self->has_property(std::to_string(i))) {
                                                              AnyValue element = self->get_property(static_cast<uint32_t>(i));
-                                                             if (is_strictly_equal_to_primitive(element, searchElement)) return AnyValue::make_number(i);
+                                                             if (is_strictly_equal_to_native(element, searchElement)) return AnyValue::make_number(i);
                                                          }
                                                      }
                                                      return AnyValue::make_number(-1); },
@@ -565,7 +565,7 @@ AnyValue &get_lastIndexOf_fn()
                                                      {
                                                          if (self->has_property(std::to_string(i))) {
                                                              AnyValue element = self->get_property(static_cast<uint32_t>(i));
-                                                             if (is_strictly_equal_to_primitive(element, searchElement)) return AnyValue::make_number(i);
+                                                             if (is_strictly_equal_to_native(element, searchElement)) return AnyValue::make_number(i);
                                                          }
                                                      }
                                                      return AnyValue::make_number(-1); },

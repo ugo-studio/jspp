@@ -11,6 +11,7 @@ import {
 } from "./function-handlers.js";
 import {
   escapeString,
+  findEnclosingFunctionDeclarationFromReturnStatement,
   generateUniqueExceptionName,
   generateUniqueName,
   getDeclaredSymbols,
@@ -74,6 +75,8 @@ export class CodeGenerator {
     public isVariableUsedWithoutDeclaration = isVariableUsedWithoutDeclaration;
     public validateFunctionParams = validateFunctionParams;
     public generateDestructuring = generateDestructuring;
+    public findEnclosingFunctionDeclarationFromReturnStatement =
+        findEnclosingFunctionDeclarationFromReturnStatement;
 
     // function handlers
     public generateLambdaComponents = generateLambdaComponents;
@@ -146,19 +149,31 @@ export class CodeGenerator {
         if (isWasm) {
             for (const exp of this.wasmExports) {
                 const paramTypes = exp.params.map((_, i) => `jspp::AnyValue`);
-                const paramList = paramTypes.length > 0 ? `, ${paramTypes.join(", ")}` : "";
+                const paramList = paramTypes.length > 0
+                    ? `, ${paramTypes.join(", ")}`
+                    : "";
                 const pointerName = `__wasm_export_ptr_${exp.jsName}`;
-                wasmGlobalPointers += `std::function<jspp::AnyValue(jspp::AnyValue${paramList})> ${pointerName} = nullptr;\n`;
+                wasmGlobalPointers +=
+                    `std::function<jspp::AnyValue(jspp::AnyValue${paramList})> ${pointerName} = nullptr;\n`;
 
-                const wrapperParamList = exp.params.map((_, i) => `double p${i}`).join(", ");
-                const callArgsList = exp.params.map((_, i) => `jspp::AnyValue::make_number(p${i})`);
-                const callArgs = callArgsList.length > 0 ? `, ${callArgsList.join(", ")}` : "";
+                const wrapperParamList = exp.params.map((_, i) =>
+                    `double p${i}`
+                ).join(", ");
+                const callArgsList = exp.params.map((_, i) =>
+                    `jspp::AnyValue::make_number(p${i})`
+                );
+                const callArgs = callArgsList.length > 0
+                    ? `, ${callArgsList.join(", ")}`
+                    : "";
 
                 wasmWrappers += `extern "C" EMSCRIPTEN_KEEPALIVE\n`;
-                wasmWrappers += `double wasm_export_${exp.jsName}(${wrapperParamList}) {\n`;
+                wasmWrappers +=
+                    `double wasm_export_${exp.jsName}(${wrapperParamList}) {\n`;
                 wasmWrappers += `    if (!${pointerName}) return 0;\n`;
-                wasmWrappers += `    auto res = ${pointerName}(global${callArgs});\n`;
-                wasmWrappers += `    return jspp::Operators_Private::ToNumber(res);\n`;
+                wasmWrappers +=
+                    `    auto res = ${pointerName}(global${callArgs});\n`;
+                wasmWrappers +=
+                    `    return jspp::Operators_Private::ToNumber(res);\n`;
                 wasmWrappers += `}\n\n`;
             }
         }

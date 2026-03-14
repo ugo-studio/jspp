@@ -907,7 +907,8 @@ export function needsTopLevelAwait(node: ts.Node): boolean {
 
         // Nested functions/classes have their own context
         if (
-            ts.isFunctionLike(n) || ts.isClassLike(n) || ts.isModuleDeclaration(n)
+            ts.isFunctionLike(n) || ts.isClassLike(n) ||
+            ts.isModuleDeclaration(n)
         ) {
             return;
         }
@@ -952,4 +953,33 @@ export function validateFunctionParams(
         }
         return p;
     }) || [];
+}
+
+/**
+ * Traverses the AST upwards from the given node to find the nearest enclosing
+ * `FunctionDeclaration` node that contains a `ReturnStatement` ancestor.
+ *
+ * This function is useful for determining the function context in which a return
+ * statement appears. It starts from the provided node and walks up the parent
+ * chain, tracking whether a return statement has been encountered. Once a
+ * function declaration is found after encountering a return statement, it is returned.
+ *
+ * @param node - The starting TypeScript AST node.
+ * @returns The enclosing `ts.FunctionDeclaration` node if found, otherwise `undefined`.
+ */
+export function findEnclosingFunctionDeclarationFromReturnStatement(
+    node: ts.Node,
+): ts.FunctionDeclaration | undefined {
+    let current: ts.Node | undefined = node;
+    let foundReturn = false;
+    while (current) {
+        if (ts.isFunctionDeclaration(current) && foundReturn) {
+            return current;
+        }
+        if (ts.isReturnStatement(current)) {
+            foundReturn = true;
+        }
+        current = current.parent;
+    }
+    return undefined;
 }

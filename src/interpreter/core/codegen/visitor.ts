@@ -99,7 +99,6 @@ export interface VisitContext {
     superClassVar?: string;
     functionName?: string;
     isInsideNativeLambda?: boolean;
-    // supportedNativeLiterals?: ("boolean" | "number")[];
 }
 
 export function visit(
@@ -189,11 +188,7 @@ export function visit(
                 context,
             );
         case ts.SyntaxKind.DoStatement:
-            return visitDoStatement.call(
-                this,
-                node as ts.DoStatement,
-                context,
-            );
+            return visitDoStatement.call(this, node as ts.DoStatement, context);
         case ts.SyntaxKind.SwitchStatement:
             return visitSwitchStatement.call(
                 this,
@@ -201,11 +196,7 @@ export function visit(
                 context,
             );
         case ts.SyntaxKind.CaseClause:
-            return visitCaseClause.call(
-                this,
-                node as ts.CaseClause,
-                context,
-            );
+            return visitCaseClause.call(this, node as ts.CaseClause, context);
         case ts.SyntaxKind.DefaultClause:
             return visitDefaultClause.call(
                 this,
@@ -299,11 +290,7 @@ export function visit(
                 context,
             );
         case ts.SyntaxKind.CatchClause:
-            return visitCatchClause.call(
-                this,
-                node as ts.CatchClause,
-                context,
-            );
+            return visitCatchClause.call(this, node as ts.CatchClause, context);
         case ts.SyntaxKind.CallExpression:
             return visitCallExpression.call(
                 this,
@@ -325,7 +312,11 @@ export function visit(
         case ts.SyntaxKind.Identifier:
             return visitIdentifier.call(this, node as ts.Identifier);
         case ts.SyntaxKind.NumericLiteral:
-            return visitNumericLiteral.call(this, node as ts.NumericLiteral);
+            return visitNumericLiteral.call(
+                this,
+                node as ts.NumericLiteral,
+                context,
+            );
         case ts.SyntaxKind.StringLiteral:
             return visitStringLiteral.call(this, node as ts.StringLiteral);
         case ts.SyntaxKind.NoSubstitutionTemplateLiteral:

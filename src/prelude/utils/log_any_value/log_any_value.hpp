@@ -26,7 +26,7 @@ namespace jspp
         inline std::string to_log_string(const AnyValue &val, std::unordered_set<const void *> &visited, int depth)
         {
             // 1. Try Primitives
-            auto primitiveStr = format_primitive(val, depth);
+            auto primitiveStr = format_native(val, depth);
             if (primitiveStr.has_value())
             {
                 return primitiveStr.value();

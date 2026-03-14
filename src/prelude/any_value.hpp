@@ -65,8 +65,7 @@ namespace jspp
 
         // default ctor (Undefined)
         AnyValue() noexcept : storage(TAG_SPECIAL | VAL_UNDEFINED) {}
-
-        explicit AnyValue(double d) noexcept
+        AnyValue(double d) noexcept
         {
             std::memcpy(&storage, &d, 8);
             if (storage >= TAG_BASE) [[unlikely]]
@@ -74,20 +73,28 @@ namespace jspp
                 storage = 0x7FF8000000000000ULL;
             }
         }
-
+        AnyValue(int i) noexcept
+        {
+            double d = static_cast<double>(i);
+            std::memcpy(&storage, &d, 8);
+        }
         explicit AnyValue(bool b) noexcept : storage(TAG_BOOLEAN | (b ? 1 : 0)) {}
-
         AnyValue(const AnyValue &other) noexcept : storage(other.storage)
         {
             if (is_heap_object())
                 get_ptr()->ref();
         }
-
         AnyValue(AnyValue &&other) noexcept : storage(other.storage)
         {
             other.storage = TAG_SPECIAL | VAL_UNDEFINED;
         }
+        ~AnyValue()
+        {
+            if (is_heap_object())
+                get_ptr()->deref();
+        }
 
+        // Assignments
         AnyValue &operator=(const AnyValue &other) noexcept
         {
             if (this != &other)
@@ -100,7 +107,6 @@ namespace jspp
             }
             return *this;
         }
-
         AnyValue &operator=(AnyValue &&other) noexcept
         {
             if (this != &other)
@@ -112,14 +118,6 @@ namespace jspp
             }
             return *this;
         }
-
-        ~AnyValue()
-        {
-            if (is_heap_object())
-                get_ptr()->deref();
-        }
-
-        // Assignments
         AnyValue &operator=(double val) noexcept
         {
             if (is_heap_object())

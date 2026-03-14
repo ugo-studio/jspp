@@ -99,6 +99,109 @@ export class TypeAnalyzer {
     private loopDepth = 0;
     private switchDepth = 0;
 
+    /**
+     * Resolve the scope for a node by walking up the parent chain to find
+     * the nearest ancestor that has a mapped scope entry.
+     */
+    private resolveScope(node: ts.Node): Scope {
+        let current: ts.Node | undefined = node;
+        while (current) {
+            const mapped = this.nodeToScope.get(current);
+            if (mapped) return mapped;
+            current = current.parent;
+        }
+        return this.scopeManager.currentScope;
+    }
+
+    /**
+     * Walk up the AST to find the containing function-like declaration.
+     */
+    private findContainingFunction(
+        node: ts.Node,
+    ):
+        | ts.FunctionDeclaration
+        | ts.FunctionExpression
+        | ts.ArrowFunction
+        | ts.MethodDeclaration
+        | ts.ConstructorDeclaration
+        | null {
+        let current: ts.Node | undefined = node.parent;
+        while (current) {
+            if (
+                ts.isFunctionDeclaration(current) ||
+                ts.isFunctionExpression(current) ||
+                ts.isArrowFunction(current) ||
+                ts.isMethodDeclaration(current) ||
+                ts.isConstructorDeclaration(current)
+            ) {
+                return current as any;
+            }
+            current = current.parent;
+        }
+        return null;
+    }
+
+    /**
+     * Check if a call expression is inside a given function (i.e. it's a recursive/internal call).
+     */
+    private isCallInsideFunction(
+        call: ts.CallExpression,
+        func: ts.Node,
+    ): boolean {
+        let current: ts.Node | undefined = call.parent;
+        while (current) {
+            if (current === func) return true;
+            current = current.parent;
+        }
+        return false;
+    }
+
+    /**
+     * Infer the type of a parameter by looking at external (non-recursive) call sites.
+     * Returns null if no external call sites found or types are indeterminate.
+     */
+    private inferParameterTypeFromCallSites(
+        paramDecl: ts.ParameterDeclaration,
+        scope: Scope,
+        visited: Set<string>,
+    ): "boolean" | "number" | "string" | "object" | "function" | "any" | null {
+        const containingFunc = this.findContainingFunction(paramDecl);
+        if (!containingFunc) return null;
+
+        // Find the parameter index
+        const paramIndex = (containingFunc as ts.FunctionLikeDeclaration)
+            .parameters.indexOf(paramDecl);
+        if (paramIndex < 0) return null;
+
+        // Get call sites for this function
+        const sites = this.callSites.get(containingFunc as ts.Declaration);
+        if (!sites || sites.length === 0) return null;
+
+        // Filter to external call sites only (not recursive calls from within the function)
+        const externalSites = sites.filter((site) =>
+            !this.isCallInsideFunction(site, containingFunc)
+        );
+        if (externalSites.length === 0) return null;
+
+        const types: string[] = [];
+        for (const site of externalSites) {
+            const arg = site.arguments[paramIndex];
+            if (arg) {
+                types.push(
+                    this.inferNodeReturnType(arg, scope, new Set(visited)),
+                );
+            }
+        }
+
+        const uniqueTypes = new Set(types.filter((t) => t !== "any"));
+        if (uniqueTypes.size === 1) {
+            return uniqueTypes.values().next().value as any;
+        }
+        if (uniqueTypes.size > 1) return "any";
+
+        return null; // all were "any" or no arguments
+    }
+
     public inferFunctionReturnType(
         node: ts.Node,
         scope?: Scope,
@@ -114,41 +217,102 @@ export class TypeAnalyzer {
         }
 
         // Create a unique key for the visit based on node and environment to allow context-sensitive recursion
-        const envKey = typeEnv ? Array.from(typeEnv.entries()).map(([p, e]) => `${p.pos}:${e.pos}`).join(",") : "no-env";
+        const envKey = typeEnv
+            ? Array.from(typeEnv.entries()).map(([p, e]) => `${p.pos}:${e.pos}`)
+                .join(",")
+            : "no-env";
         const visitKey = `func:${node.pos}:${envKey}`;
         if (visited.has(visitKey)) return "any";
         const newVisited = new Set(visited);
         newVisited.add(visitKey);
 
         const info = this.functionTypeInfo.get(node as any);
-        const internalScope = this.nodeToScope.get(node) || scope || this.scopeManager.currentScope;
+        const internalScope = this.nodeToScope.get(node) || scope ||
+            this.scopeManager.currentScope;
 
-        if (info && info.assignments && info.assignments.length > 0) {
+        // When called with a specific type environment (from a call site), use assignments analysis
+        // to determine the return type for this particular instantiation.
+        if (typeEnv) {
+            if (info && info.assignments && info.assignments.length > 0) {
+                const types = info.assignments.map((expr) =>
+                    this.inferNodeReturnType(
+                        expr,
+                        internalScope,
+                        newVisited,
+                        typeEnv,
+                    )
+                );
+                const uniqueTypes = new Set(types.filter((t) => t !== "any"));
+                if (uniqueTypes.size === 1) {
+                    return uniqueTypes.values().next().value as any;
+                }
+                if (uniqueTypes.size > 1) return "any";
+            }
+        }
+
+        // When called without typeEnv (top-level inference), prefer call-site analysis over
+        // raw assignments. Call-site analysis instantiates the function with actual argument
+        // types and is more precise — raw assignment analysis can't resolve parameter types
+        // and produces misleading "any" from recursion guards.
+        if (
+            !typeEnv &&
+            (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) ||
+                ts.isArrowFunction(node))
+        ) {
+            const sites = this.callSites.get(node as ts.Declaration);
+            if (sites && sites.length > 0) {
+                // Only use external call sites — recursive calls create circular reasoning
+                const externalSites = sites.filter((site) =>
+                    !this.isCallInsideFunction(site, node)
+                );
+                if (externalSites.length > 0) {
+                    const callTypes = externalSites.map((site) => {
+                        const env = new Map<
+                            ts.ParameterDeclaration,
+                            ts.Expression
+                        >();
+                        const params =
+                            (node as ts.FunctionLikeDeclaration).parameters;
+                        params.forEach((p, i) => {
+                            if (site.arguments[i]) {
+                                env.set(p, site.arguments[i]);
+                            }
+                        });
+                        return this.inferFunctionReturnType(
+                            node,
+                            internalScope,
+                            new Set(newVisited),
+                            env,
+                        );
+                    });
+                    // Don't filter "any" here — each external call site was instantiated with
+                    // real arguments, so "any" means that instantiation genuinely returns mixed types.
+                    const uniqueCallTypes = new Set(callTypes);
+                    if (uniqueCallTypes.size === 1) {
+                        return uniqueCallTypes.values().next().value as any;
+                    }
+                    if (uniqueCallTypes.size > 1) return "any";
+                }
+            }
+        }
+
+        // Fallback: use assignments analysis without typeEnv (e.g. no call sites exist)
+        if (
+            !typeEnv && info && info.assignments && info.assignments.length > 0
+        ) {
             const types = info.assignments.map((expr) =>
-                this.inferNodeReturnType(expr, internalScope, newVisited, typeEnv)
+                this.inferNodeReturnType(
+                    expr,
+                    internalScope,
+                    newVisited,
+                    typeEnv,
+                )
             );
             const uniqueTypes = new Set(types.filter((t) => t !== "any"));
             if (uniqueTypes.size === 1) {
                 return uniqueTypes.values().next().value as any;
             }
             if (uniqueTypes.size > 1) return "any";
-        }
-
-        // Check call sites if no definitive type found and we are not already in a specific call context
-        if (!typeEnv && (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node))) {
-            const sites = this.callSites.get(node as ts.Declaration);
-            if (sites && sites.length > 0) {
-                const callTypes = sites.map(site => {
-                    const env = new Map<ts.ParameterDeclaration, ts.Expression>();
-                    const params = (node as ts.FunctionLikeDeclaration).parameters;
-                    params.forEach((p, i) => {
-                        if (site.arguments[i]) env.set(p, site.arguments[i]);
-                    });
-                    return this.inferFunctionReturnType(node, internalScope, new Set(newVisited), env);
-                });
-                const uniqueCallTypes = new Set(callTypes.filter(t => t !== "any"));
-                if (uniqueCallTypes.size === 1) return uniqueCallTypes.values().next().value as any;
-            }
         }
 
         // Type checking TS signature
@@ -177,38 +341,108 @@ export class TypeAnalyzer {
         visited: Set<string> = new Set(),
         typeEnv?: Map<ts.ParameterDeclaration, ts.Expression>,
     ): "boolean" | "number" | "string" | "object" | "function" | "any" {
-        const visitKey = `node:${node.pos}:${node.kind}`;
+        const envKey = typeEnv
+            ? Array.from(typeEnv.entries()).map(([p, e]) => `${p.pos}:${e.pos}`)
+                .join(",")
+            : "";
+        const visitKey = `node:${node.pos}:${node.kind}:${envKey}`;
         if (visited.has(visitKey)) return "any";
         const newVisited = new Set(visited);
         newVisited.add(visitKey);
 
         if (!scope) {
-            scope = this.nodeToScope.get(node) || this.scopeManager.currentScope;
+            scope = this.resolveScope(node);
         }
 
-        // 0. Check parameter environment
+        // 0a. Handle ParameterDeclaration nodes directly
+        if (ts.isParameter(node)) {
+            if (typeEnv) {
+                const arg = typeEnv.get(node);
+                if (arg) {
+                    return this.inferNodeReturnType(
+                        arg,
+                        scope,
+                        newVisited,
+                        typeEnv,
+                    );
+                }
+            }
+            // Infer from call sites
+            const callSiteType = this.inferParameterTypeFromCallSites(
+                node,
+                scope,
+                newVisited,
+            );
+            if (callSiteType) return callSiteType;
+
+            // Fall back to TS type annotation
+            if (node.type) {
+                switch (node.type.kind) {
+                    case ts.SyntaxKind.StringKeyword:
+                        return "string";
+                    case ts.SyntaxKind.NumberKeyword:
+                        return "number";
+                    case ts.SyntaxKind.BooleanKeyword:
+                        return "boolean";
+                    case ts.SyntaxKind.ObjectKeyword:
+                        return "object";
+                    case ts.SyntaxKind.FunctionType:
+                        return "function";
+                }
+            }
+            return "any";
+        }
+
+        // 0b. Check parameter environment for identifiers
         if (ts.isIdentifier(node)) {
             const definingScope = scope.findScopeFor(node.text);
-            const typeInfo = definingScope ? definingScope.symbols.get(node.text) : null;
-            
-            if (typeInfo && typeInfo.isParameter && typeInfo.declaration && ts.isParameter(typeInfo.declaration)) {
+            const typeInfo = definingScope
+                ? definingScope.symbols.get(node.text)
+                : null;
+
+            if (
+                typeInfo && typeInfo.isParameter && typeInfo.declaration &&
+                ts.isParameter(typeInfo.declaration)
+            ) {
                 const arg = typeEnv?.get(typeInfo.declaration);
                 if (arg) {
-                    return this.inferNodeReturnType(arg, scope, newVisited, typeEnv);
+                    return this.inferNodeReturnType(
+                        arg,
+                        scope,
+                        newVisited,
+                        typeEnv,
+                    );
                 }
+                // No typeEnv for this parameter — try call-site inference
+                const callSiteType = this.inferParameterTypeFromCallSites(
+                    typeInfo.declaration,
+                    scope,
+                    newVisited,
+                );
+                if (callSiteType) return callSiteType;
             }
         }
 
         if (ts.isVariableDeclarationList(node)) {
             if (node.declarations.length > 0) {
-                return this.inferNodeReturnType(node.declarations[0]!, scope, newVisited, typeEnv);
+                return this.inferNodeReturnType(
+                    node.declarations[0]!,
+                    scope,
+                    newVisited,
+                    typeEnv,
+                );
             }
             return "any";
         }
 
         if (ts.isVariableDeclaration(node)) {
             if (node.initializer) {
-                return this.inferNodeReturnType(node.initializer, scope, newVisited, typeEnv);
+                return this.inferNodeReturnType(
+                    node.initializer,
+                    scope,
+                    newVisited,
+                    typeEnv,
+                );
             }
             return "any";
         }
@@ -243,14 +477,29 @@ export class TypeAnalyzer {
 
         // 3. Parenthesized / Await / Yield
         if (ts.isParenthesizedExpression(node)) {
-            return this.inferNodeReturnType(node.expression, scope, newVisited, typeEnv);
+            return this.inferNodeReturnType(
+                node.expression,
+                scope,
+                newVisited,
+                typeEnv,
+            );
         }
         if (ts.isAwaitExpression(node)) {
-            return this.inferNodeReturnType(node.expression, scope, newVisited, typeEnv);
+            return this.inferNodeReturnType(
+                node.expression,
+                scope,
+                newVisited,
+                typeEnv,
+            );
         }
         if (ts.isYieldExpression(node)) {
             return node.expression
-                ? this.inferNodeReturnType(node.expression, scope, newVisited, typeEnv)
+                ? this.inferNodeReturnType(
+                    node.expression,
+                    scope,
+                    newVisited,
+                    typeEnv,
+                )
                 : "any";
         }
 
@@ -280,7 +529,12 @@ export class TypeAnalyzer {
                 op >= ts.SyntaxKind.FirstAssignment &&
                 op <= ts.SyntaxKind.LastAssignment
             ) {
-                return this.inferNodeReturnType(node.right, scope, newVisited, typeEnv);
+                return this.inferNodeReturnType(
+                    node.right,
+                    scope,
+                    newVisited,
+                    typeEnv,
+                );
             }
             // Comparison
             if (
@@ -319,7 +573,12 @@ export class TypeAnalyzer {
             }
             // Plus
             if (op === ts.SyntaxKind.PlusToken) {
-                const left = this.inferNodeReturnType(node.left, scope, newVisited, typeEnv);
+                const left = this.inferNodeReturnType(
+                    node.left,
+                    scope,
+                    newVisited,
+                    typeEnv,
+                );
                 const right = this.inferNodeReturnType(
                     node.right,
                     scope,
@@ -338,7 +597,12 @@ export class TypeAnalyzer {
                     ts.SyntaxKind.QuestionQuestionToken,
                 ].includes(op)
             ) {
-                const left = this.inferNodeReturnType(node.left, scope, newVisited, typeEnv);
+                const left = this.inferNodeReturnType(
+                    node.left,
+                    scope,
+                    newVisited,
+                    typeEnv,
+                );
                 const right = this.inferNodeReturnType(
                     node.right,
                     scope,
@@ -383,17 +647,25 @@ export class TypeAnalyzer {
                 ) return "number";
                 if (name === "String") return "string";
                 if (
-                    name === "Boolean" || name === "isNaN" || name === "isFinite"
+                    name === "Boolean" || name === "isNaN" ||
+                    name === "isFinite"
                 ) return "boolean";
 
                 const typeInfo = this.scopeManager.lookupFromScope(name, scope);
                 if (typeInfo && typeInfo.declaration) {
                     const decl = typeInfo.declaration;
-                    const env = new Map<ts.ParameterDeclaration, ts.Expression>();
+                    const env = new Map<
+                        ts.ParameterDeclaration,
+                        ts.Expression
+                    >();
                     if (ts.isFunctionLike(decl)) {
-                        (decl as ts.FunctionLikeDeclaration).parameters.forEach((p, i) => {
-                            if (node.arguments[i]) env.set(p, node.arguments[i]);
-                        });
+                        (decl as ts.FunctionLikeDeclaration).parameters.forEach(
+                            (p, i) => {
+                                if (node.arguments[i]) {
+                                    env.set(p, node.arguments[i]);
+                                }
+                            },
+                        );
                     }
                     return this.inferFunctionReturnType(
                         decl,
@@ -420,17 +692,29 @@ export class TypeAnalyzer {
 
         // 10. Identifier
         if (ts.isIdentifier(node)) {
-            if (node.text === "NaN" || node.text === "Infinity") return "number";
+            if (node.text === "NaN" || node.text === "Infinity") {
+                return "number";
+            }
             if (node.text === "undefined") return "any";
 
-            const typeInfo = this.scopeManager.lookupFromScope(node.text, scope);
+            const typeInfo = this.scopeManager.lookupFromScope(
+                node.text,
+                scope,
+            );
             if (typeInfo) {
                 // Check assignments
                 if (typeInfo.assignments && typeInfo.assignments.length > 0) {
                     const types = typeInfo.assignments.map((expr) =>
-                        this.inferNodeReturnType(expr, scope, newVisited, typeEnv)
+                        this.inferNodeReturnType(
+                            expr,
+                            scope,
+                            newVisited,
+                            typeEnv,
+                        )
                     );
-                    const uniqueTypes = new Set(types.filter((t) => t !== "any"));
+                    const uniqueTypes = new Set(
+                        types.filter((t) => t !== "any"),
+                    );
                     if (uniqueTypes.size === 1) {
                         return uniqueTypes.values().next().value as any;
                     }
@@ -479,7 +763,9 @@ export class TypeAnalyzer {
                     newVisited,
                     typeEnv,
                 );
-                if (objType === "string" || objType === "object") return "number";
+                if (objType === "string" || objType === "object") {
+                    return "number";
+                }
             }
             // Hard to know other properties without full type system
             return "any";
@@ -491,7 +777,12 @@ export class TypeAnalyzer {
             ts.isArrowFunction(node) || ts.isMethodDeclaration(node) ||
             ts.isConstructorDeclaration(node)
         ) {
-            return this.inferFunctionReturnType(node, scope, newVisited, typeEnv);
+            return this.inferFunctionReturnType(
+                node,
+                scope,
+                newVisited,
+                typeEnv,
+            );
         }
 
         return "any";
@@ -742,7 +1033,9 @@ export class TypeAnalyzer {
                             type: "function",
                             isClosure: false,
                             captures: new Map(),
-                            assignments: !ts.isBlock(node.body) ? [node.body] : [],
+                            assignments: !ts.isBlock(node.body)
+                                ? [node.body]
+                                : [],
                         };
                         this.functionTypeInfo.set(node, funcType);
 
@@ -926,7 +1219,7 @@ export class TypeAnalyzer {
                             declaration: node,
                             needsHeapAllocation: true,
                             assignments: [],
-                        };                        // Methods don't need to be defined in scope by name generally,
+                        }; // Methods don't need to be defined in scope by name generally,
                         // but we need to track them for captures.
                         this.functionTypeInfo.set(node, funcType);
 
@@ -959,7 +1252,8 @@ export class TypeAnalyzer {
                             declaration: node,
                             needsHeapAllocation: true,
                             assignments: [],
-                        };                        this.functionTypeInfo.set(node, funcType);
+                        };
+                        this.functionTypeInfo.set(node, funcType);
 
                         this.scopeManager.enterScope(node);
                         this.nodeToScope.set(
@@ -1043,7 +1337,9 @@ export class TypeAnalyzer {
                                     declaration: node,
                                     isConst,
                                     needsHeapAllocation: needsHeap,
-                                    assignments: node.initializer ? [node.initializer] : [],
+                                    assignments: node.initializer
+                                        ? [node.initializer]
+                                        : [],
                                 };
 
                                 if (isBlockScoped) {
@@ -1142,8 +1438,12 @@ export class TypeAnalyzer {
                         if (ts.isIdentifier(callee)) {
                             const name = callee.text;
                             const typeInfo = this.scopeManager.lookup(name);
-                            if (typeInfo && typeInfo.declaration && ts.isFunctionLike(typeInfo.declaration)) {
-                                const decl = typeInfo.declaration as ts.Declaration;
+                            if (
+                                typeInfo && typeInfo.declaration &&
+                                ts.isFunctionLike(typeInfo.declaration)
+                            ) {
+                                const decl = typeInfo
+                                    .declaration as ts.Declaration;
                                 if (!this.callSites.has(decl)) {
                                     this.callSites.set(decl, []);
                                 }
@@ -1151,7 +1451,7 @@ export class TypeAnalyzer {
                             }
                         }
                     }
-                }
+                },
             },
             ReturnStatement: {
                 enter: (node) => {

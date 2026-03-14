@@ -2,7 +2,7 @@
 
 #include "types.hpp"
 #include "any_value.hpp"
-#include "operators_primitive.hpp"
+#include "operators_native.hpp"
 #include <cstdint>   // For int32_t
 #include <cmath>     // For fmod, isnan, isinf, floor, abs, pow
 #include <string>    // For std::stod
@@ -14,73 +14,73 @@ namespace jspp
     // Operator === (returns boolean wrapped in AnyValue)
     inline const AnyValue is_strictly_equal_to(const AnyValue &lhs, const double &rhs) noexcept
     {
-        return AnyValue::make_boolean(is_strictly_equal_to_primitive(lhs, rhs));
+        return AnyValue::make_boolean(is_strictly_equal_to_native(lhs, rhs));
     }
     inline const AnyValue is_strictly_equal_to(const double &lhs, const AnyValue &rhs) noexcept
     {
-        return AnyValue::make_boolean(is_strictly_equal_to_primitive(lhs, rhs));
+        return AnyValue::make_boolean(is_strictly_equal_to_native(lhs, rhs));
     }
     inline const AnyValue is_strictly_equal_to(const double &lhs, const double &rhs) noexcept
     {
-        return AnyValue::make_boolean(is_strictly_equal_to_primitive(lhs, rhs));
+        return AnyValue::make_boolean(is_strictly_equal_to_native(lhs, rhs));
     }
     inline const AnyValue is_strictly_equal_to(const AnyValue &lhs, const AnyValue &rhs) noexcept
     {
-        return AnyValue::make_boolean(is_strictly_equal_to_primitive(lhs, rhs));
+        return AnyValue::make_boolean(is_strictly_equal_to_native(lhs, rhs));
     }
 
     // Operator == (returns boolean wrapped in AnyValue)
     inline const AnyValue is_equal_to(const AnyValue &lhs, const double &rhs) noexcept
     {
-        return AnyValue::make_boolean(is_equal_to_primitive(lhs, rhs));
+        return AnyValue::make_boolean(is_equal_to_native(lhs, rhs));
     }
     inline const AnyValue is_equal_to(const double &lhs, const AnyValue &rhs) noexcept
     {
-        return AnyValue::make_boolean(is_equal_to_primitive(lhs, rhs));
+        return AnyValue::make_boolean(is_equal_to_native(lhs, rhs));
     }
     inline const AnyValue is_equal_to(const double &lhs, const double &rhs) noexcept
     {
-        return AnyValue::make_boolean(is_equal_to_primitive(lhs, rhs));
+        return AnyValue::make_boolean(is_equal_to_native(lhs, rhs));
     }
     inline const AnyValue is_equal_to(const AnyValue &lhs, const AnyValue &rhs) noexcept
     {
-        return AnyValue::make_boolean(is_equal_to_primitive(lhs, rhs));
+        return AnyValue::make_boolean(is_equal_to_native(lhs, rhs));
     }
 
     // Operator !== (returns boolean wrapped in AnyValue)
     inline const AnyValue not_strictly_equal_to(const AnyValue &lhs, const double &rhs) noexcept
     {
-        return AnyValue::make_boolean(!is_strictly_equal_to_primitive(lhs, rhs));
+        return AnyValue::make_boolean(!is_strictly_equal_to_native(lhs, rhs));
     }
     inline const AnyValue not_strictly_equal_to(const double &lhs, const AnyValue &rhs) noexcept
     {
-        return AnyValue::make_boolean(!is_strictly_equal_to_primitive(lhs, rhs));
+        return AnyValue::make_boolean(!is_strictly_equal_to_native(lhs, rhs));
     }
     inline const AnyValue not_strictly_equal_to(const double &lhs, const double &rhs) noexcept
     {
-        return AnyValue::make_boolean(!is_strictly_equal_to_primitive(lhs, rhs));
+        return AnyValue::make_boolean(!is_strictly_equal_to_native(lhs, rhs));
     }
     inline const AnyValue not_strictly_equal_to(const AnyValue &lhs, const AnyValue &rhs) noexcept
     {
-        return AnyValue::make_boolean(!is_strictly_equal_to_primitive(lhs, rhs));
+        return AnyValue::make_boolean(!is_strictly_equal_to_native(lhs, rhs));
     }
 
     // Operator != (returns boolean wrapped in AnyValue)
     inline const AnyValue not_equal_to(const AnyValue &lhs, const double &rhs) noexcept
     {
-        return AnyValue::make_boolean(!is_equal_to_primitive(lhs, rhs));
+        return AnyValue::make_boolean(!is_equal_to_native(lhs, rhs));
     }
     inline const AnyValue not_equal_to(const double &lhs, const AnyValue &rhs) noexcept
     {
-        return AnyValue::make_boolean(!is_equal_to_primitive(lhs, rhs));
+        return AnyValue::make_boolean(!is_equal_to_native(lhs, rhs));
     }
     inline const AnyValue not_equal_to(const double &lhs, const double &rhs) noexcept
     {
-        return AnyValue::make_boolean(!is_equal_to_primitive(lhs, rhs));
+        return AnyValue::make_boolean(!is_equal_to_native(lhs, rhs));
     }
     inline const AnyValue not_equal_to(const AnyValue &lhs, const AnyValue &rhs) noexcept
     {
-        return AnyValue::make_boolean(!is_equal_to_primitive(lhs, rhs));
+        return AnyValue::make_boolean(!is_equal_to_native(lhs, rhs));
     }
 
     // --- BASIC ARITHMETIC ---
@@ -92,7 +92,7 @@ namespace jspp
             return AnyValue::make_number(lhs.as_double() + rhs.as_double());
         if (lhs.is_string() || rhs.is_string())
             return AnyValue::make_string(lhs.to_std_string() + rhs.to_std_string());
-        return AnyValue::make_number(add_primitive(lhs, rhs));
+        return AnyValue::make_number(add_native(lhs, rhs));
     }
     inline AnyValue add(const AnyValue &lhs, const double &rhs)
     {
@@ -100,7 +100,7 @@ namespace jspp
             return AnyValue::make_number(lhs.as_double() + rhs);
         if (lhs.is_string())
             return AnyValue::make_string(lhs.to_std_string() + JsNumber::to_std_string(rhs));
-        return AnyValue::make_number(add_primitive(lhs, rhs));
+        return AnyValue::make_number(add_native(lhs, rhs));
     }
     inline AnyValue add(const double &lhs, const AnyValue &rhs)
     {
@@ -108,7 +108,7 @@ namespace jspp
             return AnyValue::make_number(lhs + rhs.as_double());
         if (rhs.is_string())
             return AnyValue::make_string(JsNumber::to_std_string(lhs) + rhs.to_std_string());
-        return AnyValue::make_number(add_primitive(lhs, rhs));
+        return AnyValue::make_number(add_native(lhs, rhs));
     }
     inline AnyValue add(const double &lhs, const double &rhs)
     {
@@ -120,39 +120,39 @@ namespace jspp
     {
         if (lhs.is_number() && rhs.is_number())
             return AnyValue::make_number(lhs.as_double() - rhs.as_double());
-        return AnyValue::make_number(sub_primitive(lhs, rhs));
+        return AnyValue::make_number(sub_native(lhs, rhs));
     }
     inline AnyValue sub(const AnyValue &lhs, const double &rhs)
     {
         if (lhs.is_number())
             return AnyValue::make_number(lhs.as_double() - rhs);
-        return AnyValue::make_number(sub_primitive(lhs, rhs));
+        return AnyValue::make_number(sub_native(lhs, rhs));
     }
     inline AnyValue sub(const double &lhs, const AnyValue &rhs)
     {
         if (rhs.is_number())
             return AnyValue::make_number(lhs - rhs.as_double());
-        return AnyValue::make_number(sub_primitive(lhs, rhs));
+        return AnyValue::make_number(sub_native(lhs, rhs));
     }
     inline AnyValue sub(const double &lhs, const double &rhs) { return AnyValue::make_number(lhs - rhs); }
 
     // Function mul
-    inline AnyValue mul(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(mul_primitive(lhs, rhs)); }
-    inline AnyValue mul(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(mul_primitive(lhs, rhs)); }
-    inline AnyValue mul(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(mul_primitive(lhs, rhs)); }
-    inline AnyValue mul(const double &lhs, const double &rhs) { return AnyValue::make_number(mul_primitive(lhs, rhs)); }
+    inline AnyValue mul(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(mul_native(lhs, rhs)); }
+    inline AnyValue mul(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(mul_native(lhs, rhs)); }
+    inline AnyValue mul(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(mul_native(lhs, rhs)); }
+    inline AnyValue mul(const double &lhs, const double &rhs) { return AnyValue::make_number(mul_native(lhs, rhs)); }
 
     // Function div
-    inline AnyValue div(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(div_primitive(lhs, rhs)); }
-    inline AnyValue div(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(div_primitive(lhs, rhs)); }
-    inline AnyValue div(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(div_primitive(lhs, rhs)); }
-    inline AnyValue div(const double &lhs, const double &rhs) { return AnyValue::make_number(div_primitive(lhs, rhs)); }
+    inline AnyValue div(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(div_native(lhs, rhs)); }
+    inline AnyValue div(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(div_native(lhs, rhs)); }
+    inline AnyValue div(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(div_native(lhs, rhs)); }
+    inline AnyValue div(const double &lhs, const double &rhs) { return AnyValue::make_number(div_native(lhs, rhs)); }
 
     // Function mod
-    inline AnyValue mod(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(mod_primitive(lhs, rhs)); }
-    inline AnyValue mod(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(mod_primitive(lhs, rhs)); }
-    inline AnyValue mod(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(mod_primitive(lhs, rhs)); }
-    inline AnyValue mod(const double &lhs, const double &rhs) { return AnyValue::make_number(mod_primitive(lhs, rhs)); }
+    inline AnyValue mod(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(mod_native(lhs, rhs)); }
+    inline AnyValue mod(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(mod_native(lhs, rhs)); }
+    inline AnyValue mod(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(mod_native(lhs, rhs)); }
+    inline AnyValue mod(const double &lhs, const double &rhs) { return AnyValue::make_number(mod_native(lhs, rhs)); }
 
     // --- UNARY OPERATORS ---
     inline AnyValue plus(const AnyValue &val)
@@ -173,10 +173,10 @@ namespace jspp
     }
 
     // --- EXPONENTIATION ---
-    inline AnyValue pow(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(pow_primitive(lhs, rhs)); }
-    inline AnyValue pow(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(pow_primitive(lhs, rhs)); }
-    inline AnyValue pow(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(pow_primitive(lhs, rhs)); }
-    inline AnyValue pow(const double &lhs, const double &rhs) { return AnyValue::make_number(pow_primitive(lhs, rhs)); }
+    inline AnyValue pow(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(pow_native(lhs, rhs)); }
+    inline AnyValue pow(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(pow_native(lhs, rhs)); }
+    inline AnyValue pow(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(pow_native(lhs, rhs)); }
+    inline AnyValue pow(const double &lhs, const double &rhs) { return AnyValue::make_number(pow_native(lhs, rhs)); }
 
     // --- COMPARISON OPERATORS ---
 
@@ -186,122 +186,122 @@ namespace jspp
         if (lhs.is_string() && rhs.is_string())
             return AnyValue::make_boolean(lhs.as_string()->value < rhs.as_string()->value);
 
-        return AnyValue::make_boolean(less_than_primitive(lhs, rhs));
+        return AnyValue::make_boolean(less_than_native(lhs, rhs));
     }
     inline AnyValue less_than(const AnyValue &lhs, const double &rhs)
     {
-        return AnyValue::make_boolean(less_than_primitive(lhs, rhs));
+        return AnyValue::make_boolean(less_than_native(lhs, rhs));
     }
     inline AnyValue less_than(const double &lhs, const AnyValue &rhs)
     {
-        return AnyValue::make_boolean(less_than_primitive(lhs, rhs));
+        return AnyValue::make_boolean(less_than_native(lhs, rhs));
     }
     inline AnyValue less_than(const double &lhs, const double &rhs)
     {
-        return AnyValue::make_boolean(less_than_primitive(lhs, rhs));
+        return AnyValue::make_boolean(less_than_native(lhs, rhs));
     }
 
     inline AnyValue greater_than(const AnyValue &lhs, const AnyValue &rhs) { return less_than(rhs, lhs); }
     inline AnyValue greater_than(const AnyValue &lhs, const double &rhs) { return less_than(rhs, lhs); }
     inline AnyValue greater_than(const double &lhs, const AnyValue &rhs) { return less_than(rhs, lhs); }
-    inline AnyValue greater_than(const double &lhs, const double &rhs) { return AnyValue::make_boolean(greater_than_primitive(lhs, rhs)); }
+    inline AnyValue greater_than(const double &lhs, const double &rhs) { return AnyValue::make_boolean(greater_than_native(lhs, rhs)); }
 
     inline AnyValue less_than_or_equal(const AnyValue &lhs, const AnyValue &rhs)
     {
         if (lhs.is_string() && rhs.is_string())
             return AnyValue::make_boolean(lhs.as_string()->value <= rhs.as_string()->value);
-        return AnyValue::make_boolean(less_than_or_equal_primitive(lhs, rhs));
+        return AnyValue::make_boolean(less_than_or_equal_native(lhs, rhs));
     }
     inline AnyValue less_than_or_equal(const AnyValue &lhs, const double &rhs)
     {
-        return AnyValue::make_boolean(less_than_or_equal_primitive(lhs, rhs));
+        return AnyValue::make_boolean(less_than_or_equal_native(lhs, rhs));
     }
     inline AnyValue less_than_or_equal(const double &lhs, const AnyValue &rhs)
     {
-        return AnyValue::make_boolean(less_than_or_equal_primitive(lhs, rhs));
+        return AnyValue::make_boolean(less_than_or_equal_native(lhs, rhs));
     }
     inline AnyValue less_than_or_equal(const double &lhs, const double &rhs)
     {
-        return AnyValue::make_boolean(less_than_or_equal_primitive(lhs, rhs));
+        return AnyValue::make_boolean(less_than_or_equal_native(lhs, rhs));
     }
 
     inline AnyValue greater_than_or_equal(const AnyValue &lhs, const AnyValue &rhs)
     {
         if (lhs.is_string() && rhs.is_string())
             return AnyValue::make_boolean(lhs.as_string()->value >= rhs.as_string()->value);
-        return AnyValue::make_boolean(greater_than_or_equal_primitive(lhs, rhs));
+        return AnyValue::make_boolean(greater_than_or_equal_native(lhs, rhs));
     }
     inline AnyValue greater_than_or_equal(const AnyValue &lhs, const double &rhs)
     {
-        return AnyValue::make_boolean(greater_than_or_equal_primitive(lhs, rhs));
+        return AnyValue::make_boolean(greater_than_or_equal_native(lhs, rhs));
     }
     inline AnyValue greater_than_or_equal(const double &lhs, const AnyValue &rhs)
     {
-        return AnyValue::make_boolean(greater_than_or_equal_primitive(lhs, rhs));
+        return AnyValue::make_boolean(greater_than_or_equal_native(lhs, rhs));
     }
     inline AnyValue greater_than_or_equal(const double &lhs, const double &rhs)
     {
-        return AnyValue::make_boolean(greater_than_or_equal_primitive(lhs, rhs));
+        return AnyValue::make_boolean(greater_than_or_equal_native(lhs, rhs));
     }
 
     // Equality ==
     inline AnyValue equal(const AnyValue &lhs, const AnyValue &rhs)
     {
-        return AnyValue::make_boolean(is_equal_to_primitive(lhs, rhs));
+        return AnyValue::make_boolean(is_equal_to_native(lhs, rhs));
     }
     inline AnyValue equal(const AnyValue &lhs, const double &rhs)
     {
         if (lhs.is_number())
-            return AnyValue::make_boolean(equal_primitive(lhs.as_double(), rhs));
-        return AnyValue::make_boolean(is_equal_to_primitive(lhs, AnyValue::make_number(rhs)));
+            return AnyValue::make_boolean(equal_native(lhs.as_double(), rhs));
+        return AnyValue::make_boolean(is_equal_to_native(lhs, AnyValue::make_number(rhs)));
     }
     inline AnyValue equal(const double &lhs, const AnyValue &rhs)
     {
         if (rhs.is_number())
-            return AnyValue::make_boolean(equal_primitive(lhs, rhs.as_double()));
-        return AnyValue::make_boolean(is_equal_to_primitive(rhs, AnyValue::make_number(lhs)));
+            return AnyValue::make_boolean(equal_native(lhs, rhs.as_double()));
+        return AnyValue::make_boolean(is_equal_to_native(rhs, AnyValue::make_number(lhs)));
     }
     inline AnyValue equal(const double &lhs, const double &rhs)
     {
-        return AnyValue::make_boolean(equal_primitive(lhs, rhs));
+        return AnyValue::make_boolean(equal_native(lhs, rhs));
     }
 
-    inline AnyValue not_equal(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_boolean(!is_equal_to_primitive(lhs, rhs)); }
+    inline AnyValue not_equal(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_boolean(!is_equal_to_native(lhs, rhs)); }
     inline AnyValue not_equal(const AnyValue &lhs, const double &rhs) { return AnyValue::make_boolean(!equal(lhs, rhs).as_boolean()); }
     inline AnyValue not_equal(const double &lhs, const AnyValue &rhs) { return AnyValue::make_boolean(!equal(lhs, rhs).as_boolean()); }
-    inline AnyValue not_equal(const double &lhs, const double &rhs) { return AnyValue::make_boolean(not_equal_primitive(lhs, rhs)); }
+    inline AnyValue not_equal(const double &lhs, const double &rhs) { return AnyValue::make_boolean(not_equal_native(lhs, rhs)); }
 
     // --- BITWISE OPERATORS ---
-    inline AnyValue bitwise_xor(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(bitwise_xor_primitive(lhs, rhs)); }
-    inline AnyValue bitwise_xor(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(bitwise_xor_primitive(lhs, rhs)); }
-    inline AnyValue bitwise_xor(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(bitwise_xor_primitive(lhs, rhs)); }
-    inline AnyValue bitwise_xor(const double &lhs, const double &rhs) { return AnyValue::make_number(bitwise_xor_primitive(lhs, rhs)); }
+    inline AnyValue bitwise_xor(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(bitwise_xor_native(lhs, rhs)); }
+    inline AnyValue bitwise_xor(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(bitwise_xor_native(lhs, rhs)); }
+    inline AnyValue bitwise_xor(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(bitwise_xor_native(lhs, rhs)); }
+    inline AnyValue bitwise_xor(const double &lhs, const double &rhs) { return AnyValue::make_number(bitwise_xor_native(lhs, rhs)); }
 
-    inline AnyValue bitwise_and(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(bitwise_and_primitive(lhs, rhs)); }
-    inline AnyValue bitwise_and(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(bitwise_and_primitive(lhs, rhs)); }
-    inline AnyValue bitwise_and(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(bitwise_and_primitive(lhs, rhs)); }
-    inline AnyValue bitwise_and(const double &lhs, const double &rhs) { return AnyValue::make_number(bitwise_and_primitive(lhs, rhs)); }
+    inline AnyValue bitwise_and(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(bitwise_and_native(lhs, rhs)); }
+    inline AnyValue bitwise_and(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(bitwise_and_native(lhs, rhs)); }
+    inline AnyValue bitwise_and(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(bitwise_and_native(lhs, rhs)); }
+    inline AnyValue bitwise_and(const double &lhs, const double &rhs) { return AnyValue::make_number(bitwise_and_native(lhs, rhs)); }
 
-    inline AnyValue bitwise_or(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(bitwise_or_primitive(lhs, rhs)); }
-    inline AnyValue bitwise_or(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(bitwise_or_primitive(lhs, rhs)); }
-    inline AnyValue bitwise_or(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(bitwise_or_primitive(lhs, rhs)); }
-    inline AnyValue bitwise_or(const double &lhs, const double &rhs) { return AnyValue::make_number(bitwise_or_primitive(lhs, rhs)); }
+    inline AnyValue bitwise_or(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(bitwise_or_native(lhs, rhs)); }
+    inline AnyValue bitwise_or(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(bitwise_or_native(lhs, rhs)); }
+    inline AnyValue bitwise_or(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(bitwise_or_native(lhs, rhs)); }
+    inline AnyValue bitwise_or(const double &lhs, const double &rhs) { return AnyValue::make_number(bitwise_or_native(lhs, rhs)); }
 
     // --- SHIFT OPERATORS ---
-    inline AnyValue left_shift(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(left_shift_primitive(lhs, rhs)); }
-    inline AnyValue left_shift(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(left_shift_primitive(lhs, rhs)); }
-    inline AnyValue left_shift(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(left_shift_primitive(lhs, rhs)); }
-    inline AnyValue left_shift(const double &lhs, const double &rhs) { return AnyValue::make_number(left_shift_primitive(lhs, rhs)); }
+    inline AnyValue left_shift(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(left_shift_native(lhs, rhs)); }
+    inline AnyValue left_shift(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(left_shift_native(lhs, rhs)); }
+    inline AnyValue left_shift(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(left_shift_native(lhs, rhs)); }
+    inline AnyValue left_shift(const double &lhs, const double &rhs) { return AnyValue::make_number(left_shift_native(lhs, rhs)); }
 
-    inline AnyValue right_shift(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(right_shift_primitive(lhs, rhs)); }
-    inline AnyValue right_shift(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(right_shift_primitive(lhs, rhs)); }
-    inline AnyValue right_shift(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(right_shift_primitive(lhs, rhs)); }
-    inline AnyValue right_shift(const double &lhs, const double &rhs) { return AnyValue::make_number(right_shift_primitive(lhs, rhs)); }
+    inline AnyValue right_shift(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(right_shift_native(lhs, rhs)); }
+    inline AnyValue right_shift(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(right_shift_native(lhs, rhs)); }
+    inline AnyValue right_shift(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(right_shift_native(lhs, rhs)); }
+    inline AnyValue right_shift(const double &lhs, const double &rhs) { return AnyValue::make_number(right_shift_native(lhs, rhs)); }
 
-    inline AnyValue unsigned_right_shift(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(unsigned_right_shift_primitive(lhs, rhs)); }
-    inline AnyValue unsigned_right_shift(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(unsigned_right_shift_primitive(lhs, rhs)); }
-    inline AnyValue unsigned_right_shift(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(unsigned_right_shift_primitive(lhs, rhs)); }
-    inline AnyValue unsigned_right_shift(const double &lhs, const double &rhs) { return AnyValue::make_number(unsigned_right_shift_primitive(lhs, rhs)); }
+    inline AnyValue unsigned_right_shift(const AnyValue &lhs, const AnyValue &rhs) { return AnyValue::make_number(unsigned_right_shift_native(lhs, rhs)); }
+    inline AnyValue unsigned_right_shift(const AnyValue &lhs, const double &rhs) { return AnyValue::make_number(unsigned_right_shift_native(lhs, rhs)); }
+    inline AnyValue unsigned_right_shift(const double &lhs, const AnyValue &rhs) { return AnyValue::make_number(unsigned_right_shift_native(lhs, rhs)); }
+    inline AnyValue unsigned_right_shift(const double &lhs, const double &rhs) { return AnyValue::make_number(unsigned_right_shift_native(lhs, rhs)); }
 
     // --- LOGICAL SHORT-CIRCUITING HELPERS ---
     inline AnyValue logical_and(const AnyValue &lhs, const AnyValue &rhs)
