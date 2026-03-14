@@ -986,8 +986,11 @@ export function findEnclosingFunctionDeclarationFromReturnStatement(
     let current: ts.Node | undefined = node;
     let foundReturn = false;
     while (current) {
-        if (ts.isFunctionDeclaration(current) && foundReturn) {
-            return current;
+        if (ts.isFunctionDeclaration(current)) {
+            if (foundReturn) {
+                return current;
+            }
+            break;
         }
         if (ts.isReturnStatement(current)) {
             foundReturn = true;
