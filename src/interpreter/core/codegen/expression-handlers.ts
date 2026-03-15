@@ -364,6 +364,25 @@ export function visitPrefixUnaryExpression(
     const operator = ts.tokenToString(prefixUnaryExpr.operator);
 
     if (operator === "++" || operator === "--") {
+        const opFunc = operator === "++" ? "add" : "sub";
+        if (ts.isPropertyAccessExpression(prefixUnaryExpr.operand)) {
+            const obj = this.visit(prefixUnaryExpr.operand.expression, context);
+            const prop = visitObjectPropertyName.call(
+                this,
+                prefixUnaryExpr.operand.name,
+                context,
+            );
+            return `${obj}.set_own_property(${prop}, jspp::${opFunc}(${obj}.get_own_property(${prop}), 1.0))`;
+        } else if (ts.isElementAccessExpression(prefixUnaryExpr.operand)) {
+            const obj = this.visit(prefixUnaryExpr.operand.expression, context);
+            const prop = visitObjectPropertyName.call(
+                this,
+                prefixUnaryExpr.operand.argumentExpression as ts.PropertyName,
+                { ...context, isBracketNotationPropertyAccess: true },
+            );
+            return `${obj}.set_own_property(${prop}, jspp::${opFunc}(${obj}.get_own_property(${prop}), 1.0))`;
+        }
+
         let target = operand;
         if (ts.isIdentifier(prefixUnaryExpr.operand)) {
             const scope = this.getScopeForNode(prefixUnaryExpr.operand);
@@ -416,6 +435,29 @@ export function visitPostfixUnaryExpression(
     const postfixUnaryExpr = node as ts.PostfixUnaryExpression;
     const operand = this.visit(postfixUnaryExpr.operand, context);
     const operator = ts.tokenToString(postfixUnaryExpr.operator);
+
+    if (ts.isPropertyAccessExpression(postfixUnaryExpr.operand)) {
+        const obj = this.visit(postfixUnaryExpr.operand.expression, context);
+        const prop = visitObjectPropertyName.call(
+            this,
+            postfixUnaryExpr.operand.name,
+            context,
+        );
+        const opFunc = operator === "++" ? "add" : "sub";
+        // Postfix needs IILE to return old value
+        return `([&]() { auto oldVal = ${obj}.get_own_property(${prop}); ${obj}.set_own_property(${prop}, jspp::${opFunc}(oldVal, 1.0)); return oldVal; })()`;
+    } else if (ts.isElementAccessExpression(postfixUnaryExpr.operand)) {
+        const obj = this.visit(postfixUnaryExpr.operand.expression, context);
+        const prop = visitObjectPropertyName.call(
+            this,
+            postfixUnaryExpr.operand.argumentExpression as ts.PropertyName,
+            { ...context, isBracketNotationPropertyAccess: true },
+        );
+        const opFunc = operator === "++" ? "add" : "sub";
+        // Postfix needs IILE to return old value
+        return `([&]() { auto oldVal = ${obj}.get_own_property(${prop}); ${obj}.set_own_property(${prop}, jspp::${opFunc}(oldVal, 1.0)); return oldVal; })()`;
+    }
+
     let target = operand;
     if (ts.isIdentifier(postfixUnaryExpr.operand)) {
         const scope = this.getScopeForNode(postfixUnaryExpr.operand);
@@ -625,53 +667,51 @@ export function visitBinaryExpression(
             opToken.kind ===
                 ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken
         ) {
-            const leftText = this.visit(binExpr.left, visitContext);
             const rightText = this.visit(binExpr.right, visitContext);
-            let target = leftText;
             if (ts.isIdentifier(binExpr.left)) {
+                const leftText = this.visit(binExpr.left, visitContext);
                 const scope = this.getScopeForNode(binExpr.left);
                 const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
                     binExpr.left.text,
                     scope,
                 );
-                target = typeInfo?.needsHeapAllocation
+                const target = typeInfo?.needsHeapAllocation
                     ? `*${leftText}`
                     : leftText;
-                return `${target} = jspp::unsigned_right_shift(${target}, ${rightText})`;
-            }
-        }
-        if (opToken.kind === ts.SyntaxKind.AsteriskAsteriskEqualsToken) {
-            const leftText = this.visit(binExpr.left, visitContext);
-            const rightText = this.visit(binExpr.right, visitContext);
-            let target = leftText;
-            if (ts.isIdentifier(binExpr.left)) {
-                const scope = this.getScopeForNode(binExpr.left);
-                const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
-                    binExpr.left.text,
-                    scope,
+                return `jspp::unsigned_right_shift_assign(${target}, ${rightText})`;
+            } else if (ts.isPropertyAccessExpression(binExpr.left)) {
+                const obj = this.visit(binExpr.left.expression, context);
+                const prop = visitObjectPropertyName.call(
+                    this,
+                    binExpr.left.name,
+                    context,
                 );
-                target = typeInfo?.needsHeapAllocation
-                    ? `*${leftText}`
-                    : leftText;
-                return `${target} = jspp::pow(${target}, ${rightText})`;
+                return `${obj}.set_own_property(${prop}, jspp::unsigned_right_shift(${obj}.get_own_property(${prop}), ${rightText}))`;
+            } else if (ts.isElementAccessExpression(binExpr.left)) {
+                const obj = this.visit(binExpr.left.expression, context);
+                const prop = visitObjectPropertyName.call(
+                    this,
+                    binExpr.left.argumentExpression as ts.PropertyName,
+                    { ...context, isBracketNotationPropertyAccess: true },
+                );
+                return `${obj}.set_own_property(${prop}, jspp::unsigned_right_shift(${obj}.get_own_property(${prop}), ${rightText}))`;
             }
-            // For complex LHS, we need a different approach, but this is a start.
         }
+
         if (
             opToken.kind === ts.SyntaxKind.AmpersandAmpersandEqualsToken ||
             opToken.kind === ts.SyntaxKind.BarBarEqualsToken ||
             opToken.kind === ts.SyntaxKind.QuestionQuestionEqualsToken
         ) {
-            const leftText = this.visit(binExpr.left, visitContext);
             const rightText = this.visit(binExpr.right, visitContext);
-            let target = leftText;
             if (ts.isIdentifier(binExpr.left)) {
+                const leftText = this.visit(binExpr.left, visitContext);
                 const scope = this.getScopeForNode(binExpr.left);
                 const typeInfo = this.typeAnalyzer.scopeManager.lookupFromScope(
                     binExpr.left.text,
                     scope,
                 );
-                target = typeInfo?.needsHeapAllocation
+                const target = typeInfo?.needsHeapAllocation
                     ? `*${leftText}`
                     : leftText;
 
@@ -684,6 +724,35 @@ export function visitBinaryExpression(
                 } else {
                     return `jspp::nullish_coalesce_assign(${target}, ${rightText})`;
                 }
+            } else if (ts.isPropertyAccessExpression(binExpr.left)) {
+                const obj = this.visit(binExpr.left.expression, context);
+                const prop = visitObjectPropertyName.call(
+                    this,
+                    binExpr.left.name,
+                    context,
+                );
+                const func = opToken.kind ===
+                        ts.SyntaxKind.AmpersandAmpersandEqualsToken
+                    ? "logical_and"
+                    : (opToken.kind === ts.SyntaxKind.BarBarEqualsToken
+                        ? "logical_or"
+                        : "nullish_coalesce");
+                // Logical assignments return newVal, set_own_property returns newVal.
+                return `${obj}.set_own_property(${prop}, jspp::${func}(${obj}.get_own_property(${prop}), ${rightText}))`;
+            } else if (ts.isElementAccessExpression(binExpr.left)) {
+                const obj = this.visit(binExpr.left.expression, context);
+                const prop = visitObjectPropertyName.call(
+                    this,
+                    binExpr.left.argumentExpression as ts.PropertyName,
+                    { ...context, isBracketNotationPropertyAccess: true },
+                );
+                const func = opToken.kind ===
+                        ts.SyntaxKind.AmpersandAmpersandEqualsToken
+                    ? "logical_and"
+                    : (opToken.kind === ts.SyntaxKind.BarBarEqualsToken
+                        ? "logical_or"
+                        : "nullish_coalesce");
+                return `${obj}.set_own_property(${prop}, jspp::${func}(${obj}.get_own_property(${prop}), ${rightText}))`;
             }
         }
 
@@ -704,6 +773,79 @@ export function visitBinaryExpression(
                 visitContext,
                 typeInfo,
             );
+        }
+
+        if (ts.isPropertyAccessExpression(binExpr.left)) {
+            const obj = this.visit(binExpr.left.expression, context);
+            const prop = visitObjectPropertyName.call(
+                this,
+                binExpr.left.name,
+                context,
+            );
+            const opBase = op.slice(0, -1); // "+=", "-=" -> "+", "-"
+            const opFunc = opBase === "+" ? "add" : (
+                opBase === "-" ? "sub" : (
+                    opBase === "*" ? "mul" : (
+                        opBase === "/" ? "div" : (
+                            opBase === "%" ? "mod" : (
+                                opBase === "&" ? "bitwise_and" : (
+                                    opBase === "|" ? "bitwise_or" : (
+                                        opBase === "^" ? "bitwise_xor" : (
+                                            opBase === "<<" ? "left_shift" : (
+                                                opBase === ">>"
+                                                    ? "right_shift"
+                                                    : ""
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+
+            if (opFunc) {
+                return `${obj}.set_own_property(${prop}, jspp::${opFunc}(${obj}.get_own_property(${prop}), ${rightText}))`;
+            } else {
+                // Fallback to IILE if we don't have an opFunc mapping
+                return `([&]() { auto val = ${obj}.get_own_property(${prop}); val ${op} ${rightText}; ${obj}.set_own_property(${prop}, val); return val; })()`;
+            }
+        } else if (ts.isElementAccessExpression(binExpr.left)) {
+            const obj = this.visit(binExpr.left.expression, context);
+            const prop = visitObjectPropertyName.call(
+                this,
+                binExpr.left.argumentExpression as ts.PropertyName,
+                { ...context, isBracketNotationPropertyAccess: true },
+            );
+            const opBase = op.slice(0, -1);
+            const opFunc = opBase === "+" ? "add" : (
+                opBase === "-" ? "sub" : (
+                    opBase === "*" ? "mul" : (
+                        opBase === "/" ? "div" : (
+                            opBase === "%" ? "mod" : (
+                                opBase === "&" ? "bitwise_and" : (
+                                    opBase === "|" ? "bitwise_or" : (
+                                        opBase === "^" ? "bitwise_xor" : (
+                                            opBase === "<<" ? "left_shift" : (
+                                                opBase === ">>"
+                                                    ? "right_shift"
+                                                    : ""
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+
+            if (opFunc) {
+                return `${obj}.set_own_property(${prop}, jspp::${opFunc}(${obj}.get_own_property(${prop}), ${rightText}))`;
+            } else {
+                return `([&]() { auto val = ${obj}.get_own_property(${prop}); val ${op} ${rightText}; ${obj}.set_own_property(${prop}, val); return val; })()`;
+            }
         }
 
         let target = leftText;

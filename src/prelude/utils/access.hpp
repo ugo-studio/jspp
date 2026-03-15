@@ -48,40 +48,6 @@ namespace jspp
             return var;
         }
 
-        inline AnyValue type_of(const std::optional<AnyValue> &val = std::nullopt)
-        {
-            if (!val.has_value())
-                return AnyValue::make_string("undefined");
-
-            switch (val.value().get_type())
-            {
-            case JsType::Undefined:
-                return AnyValue::make_string("undefined");
-            case JsType::Null:
-                return AnyValue::make_string("object");
-            case JsType::Boolean:
-                return AnyValue::make_string("boolean");
-            case JsType::Number:
-                return AnyValue::make_string("number");
-            case JsType::String:
-                return AnyValue::make_string("string");
-            case JsType::Symbol:
-                return AnyValue::make_string("symbol");
-            case JsType::Function:
-                return AnyValue::make_string("function");
-            case JsType::Object:
-                return AnyValue::make_string("object");
-            case JsType::Array:
-                return AnyValue::make_string("object");
-            case JsType::Iterator:
-                return AnyValue::make_string("object");
-            case JsType::AsyncIterator:
-                return AnyValue::make_string("object");
-            default:
-                return AnyValue::make_string("undefined");
-            }
-        }
-
         // Helper function to get enumerable own property keys/values of an object
         inline std::vector<AnyValue> get_object_keys(const AnyValue &obj, bool include_symbols = false)
         {

@@ -2,6 +2,7 @@
 
 #include "types.hpp"
 #include "any_value.hpp"
+#include "exception.hpp"
 #include <cstdint>   // For int32_t
 #include <cmath>     // For fmod, isnan, isinf, floor, abs, pow
 #include <string>    // For std::to_string, std::stod
@@ -108,6 +109,16 @@ namespace jspp
             return true;
         }
     }
+
+    // --- UNARY NATIVE ---
+    inline double plus_native(const AnyValue &val) { return Operators_Private::ToNumber(val); }
+    inline double plus_native(double val) { return val; }
+    inline double negate_native(const AnyValue &val) { return -Operators_Private::ToNumber(val); }
+    inline double negate_native(double val) { return -val; }
+    inline double bitwise_not_native(const AnyValue &val) { return static_cast<double>(~Operators_Private::ToInt32(val)); }
+    inline double bitwise_not_native(double val) { return static_cast<double>(~static_cast<int32_t>(val)); }
+    inline bool logical_not_native(const AnyValue &val) { return !is_truthy(val); }
+    inline bool logical_not_native(double val) { return !is_truthy(val); }
 
     // --- BASIC EQUALITY ---
 
