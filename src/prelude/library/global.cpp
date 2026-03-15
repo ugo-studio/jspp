@@ -19,6 +19,7 @@ namespace jspp {
         init_promise();
         init_math();
         init_console();
+        init_boolean();
 
         // 2. Initialize functions and linking
         GeneratorFunction = jspp::AnyValue::make_generator([](jspp::AnyValue, std::vector<jspp::AnyValue>) -> jspp::JsIterator<jspp::AnyValue>
@@ -52,6 +53,7 @@ namespace jspp {
             {"Math", jspp::Math},
             {"Object", jspp::Object},
             {"Array", jspp::Array},
+            {"Boolean", jspp::Boolean},
         });
 
         auto objectProto = ::Object.get_own_property("prototype");

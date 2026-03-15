@@ -222,7 +222,7 @@ namespace jspp
         case JsType::Null:
             return "null";
         case JsType::Boolean:
-            return as_boolean() ? "true" : "false";
+            return JsBoolean::to_std_string(as_boolean());
         case JsType::String:
             return as_string()->to_std_string();
         case JsType::Object:
@@ -510,6 +510,13 @@ namespace jspp
                 return AnyValue::resolve_property_for_read(proto_it.value(), receiver, key);
             return Constants::UNDEFINED;
         }
+        case JsType::Boolean:
+        {
+            auto proto_it = BooleanPrototypes::get(key);
+            if (proto_it.has_value())
+                return AnyValue::resolve_property_for_read(proto_it.value(), receiver, key);
+            return Constants::UNDEFINED;
+        }
         case JsType::Undefined:
             throw Exception::make_exception("Cannot read properties of undefined (reading '" + key + "')", "TypeError");
         case JsType::Null:
@@ -554,6 +561,13 @@ namespace jspp
         case JsType::Number:
         {
             auto proto_it = NumberPrototypes::get(key);
+            if (proto_it.has_value())
+                return AnyValue::resolve_property_for_read(proto_it.value(), receiver, key.to_std_string());
+            return Constants::UNDEFINED;
+        }
+        case JsType::Boolean:
+        {
+            auto proto_it = BooleanPrototypes::get(key);
             if (proto_it.has_value())
                 return AnyValue::resolve_property_for_read(proto_it.value(), receiver, key.to_std_string());
             return Constants::UNDEFINED;

@@ -222,6 +222,18 @@ namespace jspp
         return false;
     }
 
+    // Operator !== (returns primitive boolean)
+    inline const bool not_strictly_equal_to_native(const AnyValue &lhs, const double &rhs) noexcept { return !is_strictly_equal_to_native(lhs, rhs); }
+    inline const bool not_strictly_equal_to_native(const double &lhs, const AnyValue &rhs) noexcept { return !is_strictly_equal_to_native(lhs, rhs); }
+    inline const bool not_strictly_equal_to_native(const double &lhs, const double &rhs) noexcept { return !is_strictly_equal_to_native(lhs, rhs); }
+    inline const bool not_strictly_equal_to_native(const AnyValue &lhs, const AnyValue &rhs) noexcept { return !is_strictly_equal_to_native(lhs, rhs); }
+
+    // Operator != (returns primitive boolean)
+    inline const bool not_equal_to_native(const AnyValue &lhs, const double &rhs) noexcept { return !is_equal_to_native(lhs, rhs); }
+    inline const bool not_equal_to_native(const double &lhs, const AnyValue &rhs) noexcept { return !is_equal_to_native(lhs, rhs); }
+    inline const bool not_equal_to_native(const double &lhs, const double &rhs) noexcept { return !is_equal_to_native(lhs, rhs); }
+    inline const bool not_equal_to_native(const AnyValue &lhs, const AnyValue &rhs) noexcept { return !is_equal_to_native(lhs, rhs); }
+
     // --- PRIMITIVE ARITHMETIC OPERATORS ---
     inline double add_native(const double &lhs, const double &rhs) { return lhs + rhs; }
     inline double add_native(const AnyValue &lhs, const AnyValue &rhs) { return Operators_Private::ToNumber(lhs) + Operators_Private::ToNumber(rhs); }

@@ -1,6 +1,6 @@
 import ts from "typescript";
 
-import { RESERVED_VAR_NAMES_FOR_STRICT_MODE } from "../../analysis/scope.js";
+import { RESERVED_VAR_NAMES } from "../../analysis/scope.js";
 import { CompilerError } from "../error.js";
 import { CodeGenerator } from "./index.js";
 import type { VisitContext } from "./visitor.js";
@@ -33,9 +33,9 @@ export function visitVariableDeclaration(
 
     const name = varDecl.name.getText();
 
-    if (RESERVED_VAR_NAMES_FOR_STRICT_MODE.has(name)) {
+    if (RESERVED_VAR_NAMES.has(name)) {
         throw new CompilerError(
-            `Cannot declare a variable named '${name}' in strict mode.`,
+            `Cannot declare a variable named '${name}'.`,
             varDecl.name,
             "SyntaxError",
         );

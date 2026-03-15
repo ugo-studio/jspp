@@ -32,6 +32,7 @@
 #include "values/prototypes/promise.hpp"
 #include "values/prototypes/string.hpp"
 #include "values/prototypes/number.hpp"
+#include "values/prototypes/boolean.hpp"
 
 // utilities
 #include "utils/operators_native.hpp"
@@ -50,6 +51,7 @@
 #include "library/math.hpp"
 #include "library/object.hpp"
 #include "library/array.hpp"
+#include "library/boolean.hpp"
 #include "library/global.hpp"
 
 #include "iterator_instantiations.hpp"
