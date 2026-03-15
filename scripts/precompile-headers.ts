@@ -112,6 +112,14 @@ if (process.platform === "win32") {
     MODES[1].flags.push("-Wa,-mbig-obj");
 }
 
+const pkgDir = path.dirname(path.dirname(import.meta.dirname));
+const emsdkEnv = {
+    ...process.env,
+    PATH: `${path.join(pkgDir, ".emsdk")}${path.delimiter}${
+        path.join(pkgDir, ".emsdk", "upstream", "emscripten")
+    }${path.delimiter}${process.env.PATH}`,
+};
+
 async function getLatestMtime(
     dirPath: string,
     filter?: (name: string) => boolean,
@@ -146,11 +154,11 @@ async function findCppFiles(dir: string): Promise<string[]> {
 }
 
 async function runCommand(cmd: string, args: string[]): Promise<boolean> {
-    // console.log(`${COLORS.dim}> ${cmd} ${args.join(" ")}${COLORS.reset}`);
     return new Promise((resolve) => {
         const proc = spawn(cmd, args, {
             stdio: "inherit",
             shell: process.platform === "win32",
+            env: emsdkEnv,
         });
         proc.on("close", (code) => resolve(code === 0));
     });
