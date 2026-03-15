@@ -311,11 +311,12 @@ export function hoistDeclaration(
         ? DeclarationType.enum
         : DeclarationType.var;
 
-    const hoistName = (nameNode: ts.BindingName): string => {
+    const hoistName = (
+        nameNode: ts.BindingName,
+        isFromDestructuring = false,
+    ): string => {
         if (ts.isIdentifier(nameNode)) {
             const name = nameNode.text;
-
-            let symbolFeatures: SymbolFeatures | undefined;
 
             if (hoistedSymbols.has(name)) {
                 const existingSymbol = hoistedSymbols.get(name);
@@ -397,13 +398,25 @@ export function hoistDeclaration(
             if (typeInfo?.needsHeapAllocation) {
                 return `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initializer});\n`;
             } else {
+                if (
+                    (isLet || isConst) &&
+                    !this.isDeclarationUsedBeforeInitialization(
+                        name,
+                        scopeNode,
+                    ) && !isFromDestructuring
+                ) {
+                    hoistedSymbols.update(name, {
+                        checks: { skippedHoisting: true },
+                    });
+                    return "";
+                }
                 return `${this.indent()}jspp::AnyValue ${name} = ${initializer};\n`;
             }
         } else {
             let code = "";
             nameNode.elements.forEach((element) => {
                 if (ts.isBindingElement(element)) {
-                    code += hoistName(element.name);
+                    code += hoistName(element.name, true);
                 }
             });
             return code;

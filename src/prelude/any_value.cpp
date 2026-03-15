@@ -192,7 +192,7 @@ namespace jspp
             }
             else
             {
-                throw Exception::make_exception("Cannot assign to read only property '" + propName + "' of object '#<Object>'", "TypeError");
+                throw Exception::make_exception("Cannot assign to read only property '" + propName + "'", "TypeError");
             }
         }
         if (val.is_accessor_descriptor())

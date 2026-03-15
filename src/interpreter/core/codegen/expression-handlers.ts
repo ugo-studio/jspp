@@ -29,7 +29,7 @@ function flattenArrayElements(
                 flattened.push({ dynamicSpread: expr });
             }
         } else {
-            flattened.push(elem as ts.Expression);
+            flattened.push(elem);
         }
     }
     return flattened;
@@ -1043,7 +1043,8 @@ export function visitBinaryExpression(
         context.isInsideNativeLambda &&
         context.isInsideFunction
     ) {
-        const funcDecl = this.findEnclosingFunctionDeclarationFromReturnStatement(node);
+        const funcDecl = this
+            .findEnclosingFunctionDeclarationFromReturnStatement(node);
         if (funcDecl) {
             const funcReturnType = this.typeAnalyzer.inferFunctionReturnType(
                 funcDecl,

@@ -30,39 +30,23 @@ export function visitNumericLiteral(
 
     const outerExpr = getOuterExpr(node);
     if (
-        ts.isPropertyAccessExpression(outerExpr) ||
-        ts.isElementAccessExpression(outerExpr)
+        !ts.isPropertyAccessExpression(outerExpr) &&
+        !ts.isElementAccessExpression(outerExpr)
     ) {
-        return `jspp::AnyValue::make_number(${this.escapeString(node.text)})`;
+        return this.escapeString(node.text);
     }
 
-    return this.escapeString(node.text);
+    if (
+        node.text === "0" || (node.text.startsWith("0.") &&
+            !node.text.substring(2).split("").some((c) => c !== "0"))
+    ) return "jspp::Constants::ZERO";
 
-    // if (
-    //     context.isInsideNativeLambda &&
-    //     context.isInsideFunction
-    // ) {
-    //     const funcDecl = this.findEnclosingFunctionDeclarationFromReturnStatement(node);
-    //     if (funcDecl) {
-    //         const funcReturnType = this.typeAnalyzer
-    //             .inferFunctionReturnType(funcDecl);
-    //         if (funcReturnType === "number") {
-    //             return node.getText();
-    //         }
-    //     }
-    // }
+    if (
+        node.text === "1" || (node.text.startsWith("1.") &&
+            !node.text.substring(2).split("").some((c) => c !== "0"))
+    ) return "jspp::Constants::ONE";
 
-    // if (
-    //     node.text === "0" || (node.text.startsWith("0.") &&
-    //         !node.text.substring(2).split("").some((c) => c !== "0"))
-    // ) return "jspp::Constants::ZERO";
-
-    // if (
-    //     node.text === "1" || (node.text.startsWith("1.") &&
-    //         !node.text.substring(2).split("").some((c) => c !== "0"))
-    // ) return "jspp::Constants::ONE";
-
-    // return `jspp::AnyValue::make_number(${this.escapeString(node.text)})`;
+    return `jspp::AnyValue::make_number(${this.escapeString(node.text)})`;
 }
 
 export function visitStringLiteral(
