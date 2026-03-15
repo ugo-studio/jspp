@@ -112,7 +112,7 @@ if (process.platform === "win32") {
     MODES[1].flags.push("-Wa,-mbig-obj");
 }
 
-const pkgDir = path.dirname(path.dirname(import.meta.dirname));
+const pkgDir = path.dirname(import.meta.dirname);
 const emsdkEnv = {
     ...process.env,
     PATH: `${path.join(pkgDir, ".emsdk")}${path.delimiter}${
