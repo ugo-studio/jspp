@@ -2096,7 +2096,7 @@ export function visitTypeOfExpression(
         }
     }
 
-    return `jspp::Access::type_of(${derefExpr})`;
+    return `jspp::type_of(${derefExpr})`;
 }
 
 export function visitAwaitExpression(
