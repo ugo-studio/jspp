@@ -14,7 +14,7 @@
     "scripts"
   ],
   "scripts": {
-    "postinstall": "bun run scripts/setup-compiler.ts && bun run scripts/setup-emsdk.ts && bun run scripts/precompile-headers.ts",
+    "postinstall": "bun run scripts/setup-compiler.ts && bun run scripts/setup-emsdk.ts && bun run scripts/precompile-headers.ts --mode debug",
     "dev": "bun run src/cli/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
