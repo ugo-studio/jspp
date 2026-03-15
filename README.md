@@ -61,7 +61,7 @@ Using these keywords as variable names will result in a `SyntaxError`.
 To use JSPP as a command-line tool, install it globally via npm:
 
 ```sh
-npm i @ugo-studio/jspp -g
+npm i @ugo-studio/jspp@latest -g
 ```
 
 ## For Developers
