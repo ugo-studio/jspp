@@ -106,10 +106,6 @@ jspp my-code/test.ts
 
 The transpiled C++ file and executable will be generated in the same directory as the input file and cleaned up after execution (unless `--keep-cpp` is used).
 
-### Timing and Reports
-
-In debug mode (default), JSPP provides a compilation time report using GCC's `-ftime-report`. This helps track the performance of the transpilation and compilation phases.
-
 ## Roadmap
 
 This project is ambitious, and there is a long and exciting road ahead. Here is a high-level overview of the planned features and the project's current standing.
