@@ -7,6 +7,7 @@ export interface CliOptions {
     jsFilePath: string;
     isRelease: boolean;
     keepCpp: boolean;
+    shouldRunOutput: boolean;
     outputExePath: string | null;
     scriptArgs: string[];
     target: "native" | "wasm";
@@ -16,6 +17,7 @@ export function parseArgs(rawArgs: string[]): CliOptions {
     let jsFilePathArg: string | null = null;
     let isRelease = false;
     let keepCpp = false;
+    let shouldRunOutput = false;
     let outputExePath: string | null = null;
     let scriptArgs: string[] = [];
     let target: "native" | "wasm" = "native";
@@ -33,6 +35,8 @@ export function parseArgs(rawArgs: string[]): CliOptions {
             isRelease = true;
         } else if (arg === "--keep-cpp") {
             keepCpp = true;
+        } else if (arg === "--run-output") {
+            shouldRunOutput = true;
         } else if (arg === "-t" || arg === "--target") {
             if (i + 1 < rawArgs.length) {
                 const targetValue = rawArgs[i + 1]?.toLowerCase();
@@ -92,6 +96,7 @@ export function parseArgs(rawArgs: string[]): CliOptions {
         jsFilePath: path.resolve(process.cwd(), jsFilePathArg),
         isRelease,
         keepCpp,
+        shouldRunOutput,
         outputExePath: outputExePath
             ? path.resolve(process.cwd(), outputExePath)
             : null,

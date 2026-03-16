@@ -1206,7 +1206,6 @@ export function visitReturnStatement(
             }
             if (
                 typeInfo &&
-                !typeInfo.isParameter &&
                 !typeInfo.isBuiltin
             ) {
                 finalExpr = this.getDerefCode(

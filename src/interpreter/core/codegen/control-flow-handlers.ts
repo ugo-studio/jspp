@@ -203,16 +203,23 @@ export function visitForInStatement(
     }
 
     const keysVar = this.generateUniqueName("__keys_", new Set([varName]));
+    const visitContext: VisitContext = {
+        ...context,
+        globalScopeSymbols: this.prepareScopeSymbolsForVisit(
+            context.globalScopeSymbols,
+            context.localScopeSymbols,
+        ),
+        localScopeSymbols: new DeclaredSymbols(),
+        currentLabel: undefined,
+        isFunctionBody: false,
+    };
+
     code +=
         `${this.indent()}std::vector<jspp::AnyValue> ${keysVar} = jspp::Access::get_object_keys(${derefExpr});\n`;
     code += `${this.indent()}for (const auto& ${varName}_val : ${keysVar}) {\n`;
     this.indentationLevel++;
     code += `${this.indent()}${assignmentTarget} = ${varName}_val;\n`;
-    code += this.visit(forIn.statement, {
-        ...context,
-        currentLabel: undefined,
-        isFunctionBody: false,
-    });
+    code += this.visit(forIn.statement, visitContext);
     this.indentationLevel--;
     if (context.currentLabel) {
         code += `${this.indent()}${context.currentLabel}_continue:;\n`;
@@ -247,6 +254,7 @@ export function visitForOfStatement(
     this.indentationLevel++; // Enter a new scope for the for-of loop
     let elemName = "";
     let assignmentTarget = "";
+    let declarationType = DeclarationType.const;
 
     code += `${this.indent()}{\n`;
     if (ts.isVariableDeclarationList(forOf.initializer)) {
@@ -267,6 +275,11 @@ export function visitForOfStatement(
                     `${this.indent()}jspp::AnyValue ${elemName} = jspp::Constants::UNDEFINED;\n`;
                 assignmentTarget = elemName;
             }
+            declarationType = (decl.parent.flags & (ts.NodeFlags.Let)) !== 0
+                ? DeclarationType.let
+                : (decl.parent.flags & (ts.NodeFlags.Const)) !== 0
+                ? DeclarationType.const
+                : DeclarationType.var;
         }
     } else if (ts.isIdentifier(forOf.initializer)) {
         elemName = forOf.initializer.getText();
@@ -278,6 +291,12 @@ export function visitForOfStatement(
         assignmentTarget = typeInfo?.needsHeapAllocation
             ? `*${elemName}`
             : elemName;
+        declarationType =
+            (forOf.initializer.parent.flags & (ts.NodeFlags.Let)) !== 0
+                ? DeclarationType.let
+                : (forOf.initializer.parent.flags & (ts.NodeFlags.Const)) !== 0
+                ? DeclarationType.const
+                : DeclarationType.var;
     }
 
     const iterableExpr = this.visit(forOf.expression, context);
@@ -306,6 +325,24 @@ export function visitForOfStatement(
     const isAwait = forOf.awaitModifier !== undefined;
 
     const varName = this.getJsVarName(forOf.expression as ts.Identifier);
+    const visitContext: VisitContext = {
+        ...context,
+        globalScopeSymbols: this.prepareScopeSymbolsForVisit(
+            context.globalScopeSymbols,
+            context.localScopeSymbols,
+        ),
+        localScopeSymbols: new DeclaredSymbols(),
+        currentLabel: undefined,
+        isFunctionBody: false,
+    };
+
+    if (elemName) {
+        visitContext.localScopeSymbols.add(elemName, {
+            type: declarationType,
+            checks: { initialized: true },
+        });
+    }
+
     code += `${this.indent()}auto ${iterableRef} = ${derefIterable};\n`;
     if (isAwait) {
         code +=
@@ -328,11 +365,7 @@ export function visitForOfStatement(
     this.indentationLevel++;
     code +=
         `${this.indent()}${assignmentTarget} = ${nextRes}.get_own_property("value");\n`;
-    code += this.visit(forOf.statement, {
-        ...context,
-        currentLabel: undefined,
-        isFunctionBody: false,
-    });
+    code += this.visit(forOf.statement, visitContext);
     if (context.currentLabel) {
         code += `${this.indent()}${context.currentLabel}_continue:;\n`;
     }

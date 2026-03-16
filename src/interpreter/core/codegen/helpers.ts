@@ -610,7 +610,11 @@ export function collectBlockScopedDeclarations(
  */
 export function isDeclarationUsedAsValue(
     this: CodeGenerator,
-    decl: ts.FunctionDeclaration | ts.ClassDeclaration | ts.VariableDeclaration,
+    decl:
+        | ts.FunctionDeclaration
+        | ts.ClassDeclaration
+        | ts.VariableDeclaration
+        | ts.ParameterDeclaration,
     root: ts.Node,
 ): boolean {
     const nameNode = decl.name;
@@ -681,7 +685,11 @@ export function isDeclarationUsedAsValue(
  */
 export function isDeclarationCalledAsFunction(
     this: CodeGenerator,
-    decl: ts.FunctionDeclaration | ts.ClassDeclaration | ts.VariableDeclaration,
+    decl:
+        | ts.FunctionDeclaration
+        | ts.ClassDeclaration
+        | ts.VariableDeclaration
+        | ts.ParameterDeclaration,
     root: ts.Node,
 ): boolean {
     const nameNode = decl.name;

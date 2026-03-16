@@ -1,6 +1,7 @@
 import { spawn } from "child_process";
 import fs from "fs/promises";
 import path from "path";
+
 import { COLORS } from "./colors.js";
 import { Spinner } from "./spinner.js";
 import { msToHumanReadable } from "./utils.js";
@@ -78,8 +79,6 @@ export async function compileCpp(
     );
 
     spinner.succeed(
-        `Compiled to ${COLORS.green}${COLORS.bold}${
-            path.basename(exeFilePath)
-        }${COLORS.reset} ${COLORS.dim}[${compileTime}]${COLORS.reset}`,
+        `Compiled to ${COLORS.green}${COLORS.bold}${exeFilePath}${COLORS.reset} ${COLORS.dim}[${compileTime}]${COLORS.reset}`,
     );
 }
