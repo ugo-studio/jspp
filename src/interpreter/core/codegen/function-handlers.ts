@@ -183,7 +183,7 @@ export function generateLambdaComponents(
     });
 
     // Extract lambda parameters from arguments span/vector
-    const generateParamsBuilder = () => {
+    const wrappedFuncParamsBuilder = () => {
         let paramsCode = "";
         this.validateFunctionParams(node.parameters).forEach((p, i) => {
             if (ts.isIdentifier(p.name)) {
@@ -314,7 +314,7 @@ export function generateLambdaComponents(
             });
 
             this.indentationLevel++;
-            paramsContent += generateParamsBuilder();
+            paramsContent += wrappedFuncParamsBuilder();
             this.indentationLevel--;
 
             // The block visitor already adds braces, so we need to remove the opening brace to inject the preamble and param extraction.
@@ -339,7 +339,7 @@ export function generateLambdaComponents(
             };
         } else {
             this.indentationLevel++;
-            paramsContent += generateParamsBuilder();
+            paramsContent += wrappedFuncParamsBuilder();
 
             const properIndentationLevel = this.indentationLevel;
             const nodeBody = node.body as ts.ConciseBody;
