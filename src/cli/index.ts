@@ -26,6 +26,7 @@ async function main() {
         jsFilePath,
         isRelease,
         keepCpp,
+        shouldRunOutput,
         outputExePath,
         scriptArgs,
         target,
@@ -145,7 +146,9 @@ async function main() {
         }
 
         // 4. Execution Phase
-        await runOutput(exeFilePath, scriptArgs, isWasm);
+        if (shouldRunOutput) {
+            await runOutput(exeFilePath, scriptArgs, isWasm);
+        }
     } catch (error: any) {
         if (error instanceof CompilerError) {
             spinner.fail("Compilation failed");
