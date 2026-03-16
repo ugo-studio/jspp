@@ -219,6 +219,7 @@ export function generateLambdaComponents(
                 }
 
                 // Normal parameter
+                // TODO: Skip parameters that aren't used in the body of the function
                 const initValue =
                     `${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue}`;
                 if (typeInfo?.needsHeapAllocation) {
