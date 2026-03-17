@@ -1003,11 +1003,23 @@ export function validateFunctionParams(
  */
 export function findEnclosingFunctionDeclarationFromReturnStatement(
     node: ts.Node,
-): ts.FunctionDeclaration | undefined {
+):
+    | ts.FunctionDeclaration
+    | ts.FunctionExpression
+    | ts.ArrowFunction
+    | ts.MethodDeclaration
+    | ts.ConstructorDeclaration
+    | undefined {
     let current: ts.Node | undefined = node;
     let foundReturn = false;
     while (current) {
-        if (ts.isFunctionDeclaration(current)) {
+        if (
+            ts.isFunctionDeclaration(current) ||
+            ts.isFunctionExpression(current) ||
+            ts.isArrowFunction(current) ||
+            ts.isMethodDeclaration(current) ||
+            ts.isConstructorDeclaration(current)
+        ) {
             if (foundReturn) {
                 return current;
             }

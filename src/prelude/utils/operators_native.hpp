@@ -12,10 +12,10 @@
 namespace jspp
 {
     // Private namespace for helper functions that implement JS type conversions.
-    namespace Operators_Private
+    namespace NumberOperators
     {
-        // Implements the ToNumber abstract operation from ECMA-262.
-        inline double ToNumber(const AnyValue &val)
+        // Implements the ToDouble abstract operation from ECMA-262.
+        inline double ToDouble(const AnyValue &val)
         {
             if (val.is_number())
                 return val.as_double();
@@ -57,7 +57,7 @@ namespace jspp
         // Implements the ToInt32 abstract operation from ECMA-262.
         inline int32_t ToInt32(const AnyValue &val)
         {
-            double num = ToNumber(val);
+            double num = ToDouble(val);
 
             if (std::isnan(num) || std::isinf(num) || num == 0)
                 return 0;
@@ -73,7 +73,7 @@ namespace jspp
         // Implements the ToUint32 abstract operation from ECMA-262.
         inline uint32_t ToUint32(const AnyValue &val)
         {
-            double num = ToNumber(val);
+            double num = ToDouble(val);
             if (std::isnan(num) || std::isinf(num) || num == 0)
                 return 0;
             double posInt = std::signbit(num) ? -std::floor(std::abs(num)) : std::floor(std::abs(num));
@@ -111,11 +111,11 @@ namespace jspp
     }
 
     // --- UNARY NATIVE ---
-    inline double plus_native(const AnyValue &val) { return Operators_Private::ToNumber(val); }
+    inline double plus_native(const AnyValue &val) { return NumberOperators::ToDouble(val); }
     inline double plus_native(double val) { return val; }
-    inline double negate_native(const AnyValue &val) { return -Operators_Private::ToNumber(val); }
+    inline double negate_native(const AnyValue &val) { return -NumberOperators::ToDouble(val); }
     inline double negate_native(double val) { return -val; }
-    inline double bitwise_not_native(const AnyValue &val) { return static_cast<double>(~Operators_Private::ToInt32(val)); }
+    inline double bitwise_not_native(const AnyValue &val) { return static_cast<double>(~NumberOperators::ToInt32(val)); }
     inline double bitwise_not_native(double val) { return static_cast<double>(~static_cast<int32_t>(val)); }
     inline bool logical_not_native(const AnyValue &val) { return !is_truthy(val); }
     inline bool logical_not_native(double val) { return !is_truthy(val); }
@@ -202,11 +202,11 @@ namespace jspp
         }
         if (lhs_type == JsType::Number && rhs_type == JsType::String)
         {
-            return lhs.as_double() == Operators_Private::ToNumber(rhs);
+            return lhs.as_double() == NumberOperators::ToDouble(rhs);
         }
         if (lhs_type == JsType::String && rhs_type == JsType::Number)
         {
-            return Operators_Private::ToNumber(lhs) == rhs.as_double();
+            return NumberOperators::ToDouble(lhs) == rhs.as_double();
         }
         if (lhs_type == JsType::Boolean)
         {
@@ -247,114 +247,114 @@ namespace jspp
 
     // --- PRIMITIVE ARITHMETIC OPERATORS ---
     inline double add_native(const double &lhs, const double &rhs) { return lhs + rhs; }
-    inline double add_native(const AnyValue &lhs, const AnyValue &rhs) { return Operators_Private::ToNumber(lhs) + Operators_Private::ToNumber(rhs); }
-    inline double add_native(const AnyValue &lhs, const double &rhs) { return Operators_Private::ToNumber(lhs) + rhs; }
-    inline double add_native(const double &lhs, const AnyValue &rhs) { return lhs + Operators_Private::ToNumber(rhs); }
+    inline double add_native(const AnyValue &lhs, const AnyValue &rhs) { return NumberOperators::ToDouble(lhs) + NumberOperators::ToDouble(rhs); }
+    inline double add_native(const AnyValue &lhs, const double &rhs) { return NumberOperators::ToDouble(lhs) + rhs; }
+    inline double add_native(const double &lhs, const AnyValue &rhs) { return lhs + NumberOperators::ToDouble(rhs); }
 
     inline double sub_native(const double &lhs, const double &rhs) { return lhs - rhs; }
-    inline double sub_native(const AnyValue &lhs, const AnyValue &rhs) { return Operators_Private::ToNumber(lhs) - Operators_Private::ToNumber(rhs); }
-    inline double sub_native(const AnyValue &lhs, const double &rhs) { return Operators_Private::ToNumber(lhs) - rhs; }
-    inline double sub_native(const double &lhs, const AnyValue &rhs) { return lhs - Operators_Private::ToNumber(rhs); }
+    inline double sub_native(const AnyValue &lhs, const AnyValue &rhs) { return NumberOperators::ToDouble(lhs) - NumberOperators::ToDouble(rhs); }
+    inline double sub_native(const AnyValue &lhs, const double &rhs) { return NumberOperators::ToDouble(lhs) - rhs; }
+    inline double sub_native(const double &lhs, const AnyValue &rhs) { return lhs - NumberOperators::ToDouble(rhs); }
 
     inline double mul_native(const double &lhs, const double &rhs) { return lhs * rhs; }
-    inline double mul_native(const AnyValue &lhs, const AnyValue &rhs) { return Operators_Private::ToNumber(lhs) * Operators_Private::ToNumber(rhs); }
-    inline double mul_native(const AnyValue &lhs, const double &rhs) { return Operators_Private::ToNumber(lhs) * rhs; }
-    inline double mul_native(const double &lhs, const AnyValue &rhs) { return lhs * Operators_Private::ToNumber(rhs); }
+    inline double mul_native(const AnyValue &lhs, const AnyValue &rhs) { return NumberOperators::ToDouble(lhs) * NumberOperators::ToDouble(rhs); }
+    inline double mul_native(const AnyValue &lhs, const double &rhs) { return NumberOperators::ToDouble(lhs) * rhs; }
+    inline double mul_native(const double &lhs, const AnyValue &rhs) { return lhs * NumberOperators::ToDouble(rhs); }
 
     inline double div_native(const double &lhs, const double &rhs) { return lhs / rhs; }
-    inline double div_native(const AnyValue &lhs, const AnyValue &rhs) { return Operators_Private::ToNumber(lhs) / Operators_Private::ToNumber(rhs); }
-    inline double div_native(const AnyValue &lhs, const double &rhs) { return Operators_Private::ToNumber(lhs) / rhs; }
-    inline double div_native(const double &lhs, const AnyValue &rhs) { return lhs / Operators_Private::ToNumber(rhs); }
+    inline double div_native(const AnyValue &lhs, const AnyValue &rhs) { return NumberOperators::ToDouble(lhs) / NumberOperators::ToDouble(rhs); }
+    inline double div_native(const AnyValue &lhs, const double &rhs) { return NumberOperators::ToDouble(lhs) / rhs; }
+    inline double div_native(const double &lhs, const AnyValue &rhs) { return lhs / NumberOperators::ToDouble(rhs); }
 
     inline double mod_native(const double &lhs, const double &rhs) { return std::fmod(lhs, rhs); }
-    inline double mod_native(const AnyValue &lhs, const AnyValue &rhs) { return std::fmod(Operators_Private::ToNumber(lhs), Operators_Private::ToNumber(rhs)); }
-    inline double mod_native(const AnyValue &lhs, const double &rhs) { return std::fmod(Operators_Private::ToNumber(lhs), rhs); }
-    inline double mod_native(const double &lhs, const AnyValue &rhs) { return std::fmod(lhs, Operators_Private::ToNumber(rhs)); }
+    inline double mod_native(const AnyValue &lhs, const AnyValue &rhs) { return std::fmod(NumberOperators::ToDouble(lhs), NumberOperators::ToDouble(rhs)); }
+    inline double mod_native(const AnyValue &lhs, const double &rhs) { return std::fmod(NumberOperators::ToDouble(lhs), rhs); }
+    inline double mod_native(const double &lhs, const AnyValue &rhs) { return std::fmod(lhs, NumberOperators::ToDouble(rhs)); }
 
     inline double pow_native(const double &lhs, const double &rhs) { return std::pow(lhs, rhs); }
-    inline double pow_native(const AnyValue &lhs, const AnyValue &rhs) { return std::pow(Operators_Private::ToNumber(lhs), Operators_Private::ToNumber(rhs)); }
-    inline double pow_native(const AnyValue &lhs, const double &rhs) { return std::pow(Operators_Private::ToNumber(lhs), rhs); }
-    inline double pow_native(const double &lhs, const AnyValue &rhs) { return std::pow(lhs, Operators_Private::ToNumber(rhs)); }
+    inline double pow_native(const AnyValue &lhs, const AnyValue &rhs) { return std::pow(NumberOperators::ToDouble(lhs), NumberOperators::ToDouble(rhs)); }
+    inline double pow_native(const AnyValue &lhs, const double &rhs) { return std::pow(NumberOperators::ToDouble(lhs), rhs); }
+    inline double pow_native(const double &lhs, const AnyValue &rhs) { return std::pow(lhs, NumberOperators::ToDouble(rhs)); }
 
     // --- PRIMITIVE COMPARISON OPERATORS ---
     inline bool less_than_native(const double &lhs, const double &rhs) { return lhs < rhs; }
-    inline bool less_than_native(const AnyValue &lhs, const AnyValue &rhs) { return less_than_native(Operators_Private::ToNumber(lhs), Operators_Private::ToNumber(rhs)); }
-    inline bool less_than_native(const AnyValue &lhs, const double &rhs) { return less_than_native(Operators_Private::ToNumber(lhs), rhs); }
-    inline bool less_than_native(const double &lhs, const AnyValue &rhs) { return less_than_native(lhs, Operators_Private::ToNumber(rhs)); }
+    inline bool less_than_native(const AnyValue &lhs, const AnyValue &rhs) { return less_than_native(NumberOperators::ToDouble(lhs), NumberOperators::ToDouble(rhs)); }
+    inline bool less_than_native(const AnyValue &lhs, const double &rhs) { return less_than_native(NumberOperators::ToDouble(lhs), rhs); }
+    inline bool less_than_native(const double &lhs, const AnyValue &rhs) { return less_than_native(lhs, NumberOperators::ToDouble(rhs)); }
 
     inline bool greater_than_native(const double &lhs, const double &rhs) { return lhs > rhs; }
-    inline bool greater_than_native(const AnyValue &lhs, const AnyValue &rhs) { return greater_than_native(Operators_Private::ToNumber(lhs), Operators_Private::ToNumber(rhs)); }
-    inline bool greater_than_native(const AnyValue &lhs, const double &rhs) { return greater_than_native(Operators_Private::ToNumber(lhs), rhs); }
-    inline bool greater_than_native(const double &lhs, const AnyValue &rhs) { return greater_than_native(lhs, Operators_Private::ToNumber(rhs)); }
+    inline bool greater_than_native(const AnyValue &lhs, const AnyValue &rhs) { return greater_than_native(NumberOperators::ToDouble(lhs), NumberOperators::ToDouble(rhs)); }
+    inline bool greater_than_native(const AnyValue &lhs, const double &rhs) { return greater_than_native(NumberOperators::ToDouble(lhs), rhs); }
+    inline bool greater_than_native(const double &lhs, const AnyValue &rhs) { return greater_than_native(lhs, NumberOperators::ToDouble(rhs)); }
 
     inline bool less_than_or_equal_native(const double &lhs, const double &rhs) { return lhs <= rhs; }
-    inline bool less_than_or_equal_native(const AnyValue &lhs, const AnyValue &rhs) { return less_than_or_equal_native(Operators_Private::ToNumber(lhs), Operators_Private::ToNumber(rhs)); }
-    inline bool less_than_or_equal_native(const AnyValue &lhs, const double &rhs) { return less_than_or_equal_native(Operators_Private::ToNumber(lhs), rhs); }
-    inline bool less_than_or_equal_native(const double &lhs, const AnyValue &rhs) { return less_than_or_equal_native(lhs, Operators_Private::ToNumber(rhs)); }
+    inline bool less_than_or_equal_native(const AnyValue &lhs, const AnyValue &rhs) { return less_than_or_equal_native(NumberOperators::ToDouble(lhs), NumberOperators::ToDouble(rhs)); }
+    inline bool less_than_or_equal_native(const AnyValue &lhs, const double &rhs) { return less_than_or_equal_native(NumberOperators::ToDouble(lhs), rhs); }
+    inline bool less_than_or_equal_native(const double &lhs, const AnyValue &rhs) { return less_than_or_equal_native(lhs, NumberOperators::ToDouble(rhs)); }
 
     inline bool greater_than_or_equal_native(const double &lhs, const double &rhs) { return lhs >= rhs; }
-    inline bool greater_than_or_equal_native(const AnyValue &lhs, const AnyValue &rhs) { return greater_than_or_equal_native(Operators_Private::ToNumber(lhs), Operators_Private::ToNumber(rhs)); }
-    inline bool greater_than_or_equal_native(const AnyValue &lhs, const double &rhs) { return greater_than_or_equal_native(Operators_Private::ToNumber(lhs), rhs); }
-    inline bool greater_than_or_equal_native(const double &lhs, const AnyValue &rhs) { return greater_than_or_equal_native(lhs, Operators_Private::ToNumber(rhs)); }
+    inline bool greater_than_or_equal_native(const AnyValue &lhs, const AnyValue &rhs) { return greater_than_or_equal_native(NumberOperators::ToDouble(lhs), NumberOperators::ToDouble(rhs)); }
+    inline bool greater_than_or_equal_native(const AnyValue &lhs, const double &rhs) { return greater_than_or_equal_native(NumberOperators::ToDouble(lhs), rhs); }
+    inline bool greater_than_or_equal_native(const double &lhs, const AnyValue &rhs) { return greater_than_or_equal_native(lhs, NumberOperators::ToDouble(rhs)); }
 
     inline bool equal_native(const double &lhs, const double &rhs) { return lhs == rhs; }
-    inline bool equal_native(const AnyValue &lhs, const AnyValue &rhs) { return equal_native(Operators_Private::ToNumber(lhs), Operators_Private::ToNumber(rhs)); }
-    inline bool equal_native(const AnyValue &lhs, const double &rhs) { return equal_native(Operators_Private::ToNumber(lhs), rhs); }
-    inline bool equal_native(const double &lhs, const AnyValue &rhs) { return equal_native(lhs, Operators_Private::ToNumber(rhs)); }
+    inline bool equal_native(const AnyValue &lhs, const AnyValue &rhs) { return equal_native(NumberOperators::ToDouble(lhs), NumberOperators::ToDouble(rhs)); }
+    inline bool equal_native(const AnyValue &lhs, const double &rhs) { return equal_native(NumberOperators::ToDouble(lhs), rhs); }
+    inline bool equal_native(const double &lhs, const AnyValue &rhs) { return equal_native(lhs, NumberOperators::ToDouble(rhs)); }
 
     inline bool not_equal_native(const double &lhs, const double &rhs) { return lhs != rhs; }
-    inline bool not_equal_native(const AnyValue &lhs, const AnyValue &rhs) { return not_equal_native(Operators_Private::ToNumber(lhs), Operators_Private::ToNumber(rhs)); }
-    inline bool not_equal_native(const AnyValue &lhs, const double &rhs) { return not_equal_native(Operators_Private::ToNumber(lhs), rhs); }
-    inline bool not_equal_native(const double &lhs, const AnyValue &rhs) { return not_equal_native(lhs, Operators_Private::ToNumber(rhs)); }
+    inline bool not_equal_native(const AnyValue &lhs, const AnyValue &rhs) { return not_equal_native(NumberOperators::ToDouble(lhs), NumberOperators::ToDouble(rhs)); }
+    inline bool not_equal_native(const AnyValue &lhs, const double &rhs) { return not_equal_native(NumberOperators::ToDouble(lhs), rhs); }
+    inline bool not_equal_native(const double &lhs, const AnyValue &rhs) { return not_equal_native(lhs, NumberOperators::ToDouble(rhs)); }
 
     // --- PRIMITIVE BITWISE OPERATORS ---
     inline double bitwise_and_native(const double &lhs, const double &rhs)
     {
         return static_cast<double>(static_cast<int32_t>(lhs) & static_cast<int32_t>(rhs));
     }
-    inline double bitwise_and_native(const AnyValue &lhs, const AnyValue &rhs) { return bitwise_and_native(Operators_Private::ToInt32(lhs), Operators_Private::ToInt32(rhs)); }
-    inline double bitwise_and_native(const AnyValue &lhs, const double &rhs) { return bitwise_and_native(Operators_Private::ToInt32(lhs), rhs); }
-    inline double bitwise_and_native(const double &lhs, const AnyValue &rhs) { return bitwise_and_native(lhs, Operators_Private::ToInt32(rhs)); }
+    inline double bitwise_and_native(const AnyValue &lhs, const AnyValue &rhs) { return bitwise_and_native(NumberOperators::ToInt32(lhs), NumberOperators::ToInt32(rhs)); }
+    inline double bitwise_and_native(const AnyValue &lhs, const double &rhs) { return bitwise_and_native(NumberOperators::ToInt32(lhs), rhs); }
+    inline double bitwise_and_native(const double &lhs, const AnyValue &rhs) { return bitwise_and_native(lhs, NumberOperators::ToInt32(rhs)); }
 
     inline double bitwise_or_native(const double &lhs, const double &rhs)
     {
         return static_cast<double>(static_cast<int32_t>(lhs) | static_cast<int32_t>(rhs));
     }
-    inline double bitwise_or_native(const AnyValue &lhs, const AnyValue &rhs) { return bitwise_or_native(Operators_Private::ToInt32(lhs), Operators_Private::ToInt32(rhs)); }
-    inline double bitwise_or_native(const AnyValue &lhs, const double &rhs) { return bitwise_or_native(Operators_Private::ToInt32(lhs), rhs); }
-    inline double bitwise_or_native(const double &lhs, const AnyValue &rhs) { return bitwise_or_native(lhs, Operators_Private::ToInt32(rhs)); }
+    inline double bitwise_or_native(const AnyValue &lhs, const AnyValue &rhs) { return bitwise_or_native(NumberOperators::ToInt32(lhs), NumberOperators::ToInt32(rhs)); }
+    inline double bitwise_or_native(const AnyValue &lhs, const double &rhs) { return bitwise_or_native(NumberOperators::ToInt32(lhs), rhs); }
+    inline double bitwise_or_native(const double &lhs, const AnyValue &rhs) { return bitwise_or_native(lhs, NumberOperators::ToInt32(rhs)); }
 
     inline double bitwise_xor_native(const double &lhs, const double &rhs)
     {
         return static_cast<double>(static_cast<int32_t>(lhs) ^ static_cast<int32_t>(rhs));
     }
-    inline double bitwise_xor_native(const AnyValue &lhs, const AnyValue &rhs) { return bitwise_xor_native(Operators_Private::ToInt32(lhs), Operators_Private::ToInt32(rhs)); }
-    inline double bitwise_xor_native(const AnyValue &lhs, const double &rhs) { return bitwise_xor_native(Operators_Private::ToInt32(lhs), rhs); }
-    inline double bitwise_xor_native(const double &lhs, const AnyValue &rhs) { return bitwise_xor_native(lhs, Operators_Private::ToInt32(rhs)); }
+    inline double bitwise_xor_native(const AnyValue &lhs, const AnyValue &rhs) { return bitwise_xor_native(NumberOperators::ToInt32(lhs), NumberOperators::ToInt32(rhs)); }
+    inline double bitwise_xor_native(const AnyValue &lhs, const double &rhs) { return bitwise_xor_native(NumberOperators::ToInt32(lhs), rhs); }
+    inline double bitwise_xor_native(const double &lhs, const AnyValue &rhs) { return bitwise_xor_native(lhs, NumberOperators::ToInt32(rhs)); }
 
     inline double left_shift_native(const double &lhs, const double &rhs)
     {
         return static_cast<double>(static_cast<int32_t>(lhs) << (static_cast<int32_t>(rhs) & 0x1F));
     }
-    inline double left_shift_native(const AnyValue &lhs, const AnyValue &rhs) { return left_shift_native(Operators_Private::ToInt32(lhs), Operators_Private::ToInt32(rhs)); }
-    inline double left_shift_native(const AnyValue &lhs, const double &rhs) { return left_shift_native(Operators_Private::ToInt32(lhs), rhs); }
-    inline double left_shift_native(const double &lhs, const AnyValue &rhs) { return left_shift_native(lhs, Operators_Private::ToInt32(rhs)); }
+    inline double left_shift_native(const AnyValue &lhs, const AnyValue &rhs) { return left_shift_native(NumberOperators::ToInt32(lhs), NumberOperators::ToInt32(rhs)); }
+    inline double left_shift_native(const AnyValue &lhs, const double &rhs) { return left_shift_native(NumberOperators::ToInt32(lhs), rhs); }
+    inline double left_shift_native(const double &lhs, const AnyValue &rhs) { return left_shift_native(lhs, NumberOperators::ToInt32(rhs)); }
 
     inline double right_shift_native(const double &lhs, const double &rhs)
     {
         return static_cast<double>(static_cast<int32_t>(lhs) >> (static_cast<int32_t>(rhs) & 0x1F));
     }
-    inline double right_shift_native(const AnyValue &lhs, const AnyValue &rhs) { return right_shift_native(Operators_Private::ToInt32(lhs), Operators_Private::ToInt32(rhs)); }
-    inline double right_shift_native(const AnyValue &lhs, const double &rhs) { return right_shift_native(Operators_Private::ToInt32(lhs), rhs); }
-    inline double right_shift_native(const double &lhs, const AnyValue &rhs) { return right_shift_native(lhs, Operators_Private::ToInt32(rhs)); }
+    inline double right_shift_native(const AnyValue &lhs, const AnyValue &rhs) { return right_shift_native(NumberOperators::ToInt32(lhs), NumberOperators::ToInt32(rhs)); }
+    inline double right_shift_native(const AnyValue &lhs, const double &rhs) { return right_shift_native(NumberOperators::ToInt32(lhs), rhs); }
+    inline double right_shift_native(const double &lhs, const AnyValue &rhs) { return right_shift_native(lhs, NumberOperators::ToInt32(rhs)); }
 
     inline double unsigned_right_shift_native(const double &lhs, const double &rhs)
     {
         uint32_t l = static_cast<uint32_t>(fmod(lhs, 4294967296.0));
         return static_cast<double>(l >> (static_cast<int32_t>(rhs) & 0x1F));
     }
-    inline double unsigned_right_shift_native(const AnyValue &lhs, const AnyValue &rhs) { return unsigned_right_shift_native(Operators_Private::ToUint32(lhs), Operators_Private::ToInt32(rhs)); }
-    inline double unsigned_right_shift_native(const AnyValue &lhs, const double &rhs) { return unsigned_right_shift_native(Operators_Private::ToUint32(lhs), rhs); }
-    inline double unsigned_right_shift_native(const double &lhs, const AnyValue &rhs) { return unsigned_right_shift_native(lhs, Operators_Private::ToInt32(rhs)); }
+    inline double unsigned_right_shift_native(const AnyValue &lhs, const AnyValue &rhs) { return unsigned_right_shift_native(NumberOperators::ToUint32(lhs), NumberOperators::ToInt32(rhs)); }
+    inline double unsigned_right_shift_native(const AnyValue &lhs, const double &rhs) { return unsigned_right_shift_native(NumberOperators::ToUint32(lhs), rhs); }
+    inline double unsigned_right_shift_native(const double &lhs, const AnyValue &rhs) { return unsigned_right_shift_native(lhs, NumberOperators::ToInt32(rhs)); }
 
 }

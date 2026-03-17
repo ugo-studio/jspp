@@ -92,7 +92,7 @@ AnyValue &get_charAt_fn()
     static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                  {
                                                      auto self = thisVal.as_string();
-                                                     double pos = args.empty() ? 0 : Operators_Private::ToNumber(args[0]);
+                                                     double pos = args.empty() ? 0 : NumberOperators::ToDouble(args[0]);
                                                      int index = static_cast<int>(pos);
                                                      if (index < 0 || index >= self->value.length())
                                                      {
@@ -125,7 +125,7 @@ AnyValue &get_endsWith_fn()
                                                      if (args.empty())
                                                          return Constants::FALSE;
                                                      std::string search = args[0].to_std_string();
-                                                     size_t end_pos = (args.size() > 1 && !args[1].is_undefined()) ? static_cast<size_t>(Operators_Private::ToNumber(args[1])) : self->value.length();
+                                                     size_t end_pos = (args.size() > 1 && !args[1].is_undefined()) ? static_cast<size_t>(NumberOperators::ToDouble(args[1])) : self->value.length();
 
                                                      if (end_pos > self->value.length())
                                                          end_pos = self->value.length();
@@ -145,7 +145,7 @@ AnyValue &get_includes_fn()
                                                      if (args.empty())
                                                          return Constants::FALSE;
                                                      std::string search = args[0].to_std_string();
-                                                     size_t pos = (args.size() > 1) ? static_cast<size_t>(Operators_Private::ToNumber(args[1])) : 0;
+                                                     size_t pos = (args.size() > 1) ? static_cast<size_t>(NumberOperators::ToDouble(args[1])) : 0;
 
                                                      return AnyValue::make_boolean(self->value.find(search, pos) != std::string::npos); },
                                                  "includes");
@@ -160,7 +160,7 @@ AnyValue &get_indexOf_fn()
                                                      if (args.empty())
                                                          return AnyValue::make_number(-1);
                                                      std::string search = args[0].to_std_string();
-                                                     size_t pos = (args.size() > 1) ? static_cast<size_t>(Operators_Private::ToNumber(args[1])) : 0;
+                                                     size_t pos = (args.size() > 1) ? static_cast<size_t>(NumberOperators::ToDouble(args[1])) : 0;
                                                      size_t result = self->value.find(search, pos);
                                                      return result == std::string::npos ? AnyValue::make_number(-1) : AnyValue::make_number(result); },
                                                  "indexOf");
@@ -175,7 +175,7 @@ AnyValue &get_lastIndexOf_fn()
                                                      if (args.empty())
                                                          return AnyValue::make_number(-1);
                                                      std::string search = args[0].to_std_string();
-                                                     size_t pos = (args.size() > 1 && !args[1].is_undefined()) ? static_cast<size_t>(Operators_Private::ToNumber(args[1])) : std::string::npos;
+                                                     size_t pos = (args.size() > 1 && !args[1].is_undefined()) ? static_cast<size_t>(NumberOperators::ToDouble(args[1])) : std::string::npos;
                                                      size_t result = self->value.rfind(search, pos);
                                                      return result == std::string::npos ? AnyValue::make_number(-1) : AnyValue::make_number(result); },
                                                  "lastIndexOf");
@@ -187,7 +187,7 @@ AnyValue &get_padEnd_fn()
     static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                  {
                                                      auto self = thisVal.as_string();
-                                                     size_t target_length = args.empty() ? 0 : static_cast<size_t>(Operators_Private::ToNumber(args[0]));
+                                                     size_t target_length = args.empty() ? 0 : static_cast<size_t>(NumberOperators::ToDouble(args[0]));
                                                      if (self->value.length() >= target_length)
                                                          return AnyValue::make_string(self->value);
                                                      std::string pad_string = (args.size() > 1 && !args[1].is_undefined() && !args[1].to_std_string().empty()) ? args[1].to_std_string() : " ";
@@ -206,7 +206,7 @@ AnyValue &get_padStart_fn()
     static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                  {
                                                      auto self = thisVal.as_string();
-                                                     size_t target_length = args.empty() ? 0 : static_cast<size_t>(Operators_Private::ToNumber(args[0]));
+                                                     size_t target_length = args.empty() ? 0 : static_cast<size_t>(NumberOperators::ToDouble(args[0]));
                                                      if (self->value.length() >= target_length)
                                                          return AnyValue::make_string(self->value);
                                                      std::string pad_string = (args.size() > 1 && !args[1].is_undefined() && !args[1].to_std_string().empty()) ? args[1].to_std_string() : " ";
@@ -225,7 +225,7 @@ AnyValue &get_repeat_fn()
     static AnyValue fn = AnyValue::make_function([](const AnyValue &thisVal, std::span<const AnyValue> args) -> AnyValue
                                                  {
                                                      auto self = thisVal.as_string();
-                                                     double count = args.empty() ? 0 : Operators_Private::ToNumber(args[0]);
+                                                     double count = args.empty() ? 0 : NumberOperators::ToDouble(args[0]);
                                                      if (count < 0)
                                                      {
                                                          // In a real implementation, this should throw a RangeError.
@@ -290,8 +290,8 @@ AnyValue &get_slice_fn()
                                                  {
                                                      auto self = thisVal.as_string();
                                                      int len = self->value.length();
-                                                     int start = args.empty() ? 0 : Operators_Private::ToInt32(args[0]);
-                                                     int end = (args.size() < 2 || args[1].is_undefined()) ? len : Operators_Private::ToInt32(args[1]);
+                                                     int start = args.empty() ? 0 : NumberOperators::ToInt32(args[0]);
+                                                     int end = (args.size() < 2 || args[1].is_undefined()) ? len : NumberOperators::ToInt32(args[1]);
 
                                                      if (start < 0)
                                                          start += len;
@@ -347,7 +347,7 @@ AnyValue &get_startsWith_fn()
                                                      if (args.empty())
                                                          return Constants::FALSE;
                                                      std::string search = args[0].to_std_string();
-                                                     size_t pos = (args.size() > 1) ? static_cast<size_t>(Operators_Private::ToNumber(args[1])) : 0;
+                                                     size_t pos = (args.size() > 1) ? static_cast<size_t>(NumberOperators::ToDouble(args[1])) : 0;
                                                      if (pos > self->value.length())
                                                          pos = self->value.length();
 
@@ -362,8 +362,8 @@ AnyValue &get_substring_fn()
                                                  {
                                                      auto self = thisVal.as_string();
                                                      int len = self->value.length();
-                                                     int start = args.empty() ? 0 : Operators_Private::ToInt32(args[0]);
-                                                     int end = (args.size() < 2 || args[1].is_undefined()) ? len : Operators_Private::ToInt32(args[1]);
+                                                     int start = args.empty() ? 0 : NumberOperators::ToInt32(args[0]);
+                                                     int end = (args.size() < 2 || args[1].is_undefined()) ? len : NumberOperators::ToInt32(args[1]);
 
                                                      start = std::max(0, start);
                                                      end = std::max(0, end);

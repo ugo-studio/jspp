@@ -11,7 +11,7 @@ namespace jspp {
 
         double GetArgAsDouble(std::span<const jspp::AnyValue> args, size_t index) {
             if (index >= args.size()) return std::numeric_limits<double>::quiet_NaN();
-            return Operators_Private::ToNumber(args[index]);
+            return NumberOperators::ToDouble(args[index]);
         }
 
         jspp::AnyValue MathFunc1(std::span<const jspp::AnyValue> args, double (*func)(double)) {
@@ -86,7 +86,7 @@ namespace jspp {
             }, "ceil"));
 
             defMutable("clz32", AnyValue::make_function([](AnyValue, std::span<const AnyValue> args) -> AnyValue {
-                uint32_t val = Operators_Private::ToInt32(args.empty() ? Constants::UNDEFINED : args[0]);
+                uint32_t val = NumberOperators::ToInt32(args.empty() ? Constants::UNDEFINED : args[0]);
                 if (val == 0) return AnyValue::make_number(32);
                 return AnyValue::make_number(std::countl_zero(val));
             }, "clz32"));
@@ -119,7 +119,7 @@ namespace jspp {
             defMutable("hypot", AnyValue::make_function([](AnyValue, std::span<const AnyValue> args) -> AnyValue {
                 double result = 0;
                 for (const auto& arg : args) {
-                    double val = Operators_Private::ToNumber(arg);
+                    double val = NumberOperators::ToDouble(arg);
                     if (std::isinf(val)) return AnyValue::make_number(std::numeric_limits<double>::infinity());
                     result = std::hypot(result, val);
                 }
@@ -127,8 +127,8 @@ namespace jspp {
             }, "hypot"));
 
             defMutable("imul", AnyValue::make_function([](AnyValue, std::span<const AnyValue> args) -> AnyValue {
-                int32_t a = Operators_Private::ToInt32(args.empty() ? Constants::UNDEFINED : args[0]);
-                int32_t b = Operators_Private::ToInt32(args.size() < 2 ? Constants::UNDEFINED : args[1]);
+                int32_t a = NumberOperators::ToInt32(args.empty() ? Constants::UNDEFINED : args[0]);
+                int32_t b = NumberOperators::ToInt32(args.size() < 2 ? Constants::UNDEFINED : args[1]);
                 return AnyValue::make_number(a * b);
             }, "imul"));
 
@@ -151,7 +151,7 @@ namespace jspp {
             defMutable("max", AnyValue::make_function([](AnyValue, std::span<const AnyValue> args) -> AnyValue {
                 double maxVal = -std::numeric_limits<double>::infinity();
                 for (const auto& arg : args) {
-                    double val = Operators_Private::ToNumber(arg);
+                    double val = NumberOperators::ToDouble(arg);
                     if (std::isnan(val)) return AnyValue::make_nan();
                     if (val > maxVal) maxVal = val;
                 }
@@ -161,7 +161,7 @@ namespace jspp {
             defMutable("min", AnyValue::make_function([](AnyValue, std::span<const AnyValue> args) -> AnyValue {
                 double minVal = std::numeric_limits<double>::infinity();
                 for (const auto& arg : args) {
-                    double val = Operators_Private::ToNumber(arg);
+                    double val = NumberOperators::ToDouble(arg);
                     if (std::isnan(val)) return AnyValue::make_nan();
                     if (val < minVal) minVal = val;
                 }
@@ -238,7 +238,7 @@ namespace jspp {
                     auto nextRes = nextFunc.call(iterObj, std::span<const jspp::AnyValue>{}, "next");
                     if (is_truthy(nextRes.get_own_property("done"))) break;
                     
-                    double val = Operators_Private::ToNumber(nextRes.get_own_property("value"));
+                    double val = NumberOperators::ToDouble(nextRes.get_own_property("value"));
                     if (std::isnan(val)) {
                         sum = std::numeric_limits<double>::quiet_NaN();
                         break;

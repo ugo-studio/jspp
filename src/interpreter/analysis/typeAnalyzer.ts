@@ -83,7 +83,9 @@ export class TypeAnalyzer {
         | ts.FunctionExpression
         | ts.ClassDeclaration
         | ts.MethodDeclaration
-        | ts.ConstructorDeclaration,
+        | ts.ConstructorDeclaration
+        | ts.GetAccessorDeclaration
+        | ts.SetAccessorDeclaration,
         TypeInfo
     >();
     private functionStack: (
@@ -93,6 +95,8 @@ export class TypeAnalyzer {
         | ts.ClassDeclaration
         | ts.MethodDeclaration
         | ts.ConstructorDeclaration
+        | ts.GetAccessorDeclaration
+        | ts.SetAccessorDeclaration
     )[] = [];
     public readonly nodeToScope = new Map<ts.Node, Scope>();
     private labelStack: string[] = [];
@@ -833,7 +837,7 @@ export class TypeAnalyzer {
 
         const visitor: Visitor = {
             // Enter new scope for any block-like structure
-            Block: {
+            [ts.SyntaxKind.Block]: {
                 enter: (node, parent) => {
                     const currentFuncNode =
                         this.functionStack[this.functionStack.length - 1] ??
@@ -859,7 +863,7 @@ export class TypeAnalyzer {
                 },
                 exit: () => this.scopeManager.exitScope(),
             },
-            ForStatement: {
+            [ts.SyntaxKind.ForStatement]: {
                 enter: (node) => {
                     this.loopDepth++;
                     const currentFuncNode =
@@ -873,7 +877,7 @@ export class TypeAnalyzer {
                     this.scopeManager.exitScope();
                 },
             },
-            ForOfStatement: {
+            [ts.SyntaxKind.ForOfStatement]: {
                 enter: (node) => {
                     this.loopDepth++;
                     const currentFuncNode =
@@ -887,7 +891,7 @@ export class TypeAnalyzer {
                     this.scopeManager.exitScope();
                 },
             },
-            ForInStatement: {
+            [ts.SyntaxKind.ForInStatement]: {
                 enter: (node) => {
                     this.loopDepth++;
                     const currentFuncNode =
@@ -920,7 +924,7 @@ export class TypeAnalyzer {
                     this.scopeManager.exitScope();
                 },
             },
-            WhileStatement: {
+            [ts.SyntaxKind.WhileStatement]: {
                 enter: (node) => {
                     this.loopDepth++;
                     const currentFuncNode =
@@ -934,7 +938,7 @@ export class TypeAnalyzer {
                     this.scopeManager.exitScope();
                 },
             },
-            DoStatement: {
+            [ts.SyntaxKind.DoStatement]: {
                 enter: (node) => {
                     this.loopDepth++;
                     const currentFuncNode =
@@ -949,7 +953,7 @@ export class TypeAnalyzer {
                 },
             },
 
-            SwitchStatement: {
+            [ts.SyntaxKind.SwitchStatement]: {
                 enter: (node) => {
                     this.switchDepth++;
                     const currentFuncNode =
@@ -964,7 +968,7 @@ export class TypeAnalyzer {
                 },
             },
 
-            LabeledStatement: {
+            [ts.SyntaxKind.LabeledStatement]: {
                 enter: (node) => {
                     this.nodeToScope.set(node, this.scopeManager.currentScope);
                     this.labelStack.push(
@@ -976,7 +980,7 @@ export class TypeAnalyzer {
                 },
             },
 
-            BreakStatement: {
+            [ts.SyntaxKind.BreakStatement]: {
                 enter: (node) => {
                     const breakNode = node as ts.BreakStatement;
                     if (breakNode.label) {
@@ -999,7 +1003,7 @@ export class TypeAnalyzer {
                 },
             },
 
-            ContinueStatement: {
+            [ts.SyntaxKind.ContinueStatement]: {
                 enter: (node) => {
                     const continueNode = node as ts.ContinueStatement;
                     if (continueNode.label) {
@@ -1026,7 +1030,7 @@ export class TypeAnalyzer {
                 },
             },
 
-            ArrowFunction: {
+            [ts.SyntaxKind.ArrowFunction]: {
                 enter: (node) => {
                     if (ts.isArrowFunction(node)) {
                         const funcType: TypeInfo = {
@@ -1068,7 +1072,7 @@ export class TypeAnalyzer {
                 },
             },
 
-            FunctionExpression: {
+            [ts.SyntaxKind.FunctionExpression]: {
                 enter: (node) => {
                     if (ts.isFunctionExpression(node)) {
                         const funcType: TypeInfo = {
@@ -1118,7 +1122,7 @@ export class TypeAnalyzer {
                 },
             },
 
-            FunctionDeclaration: {
+            [ts.SyntaxKind.FunctionDeclaration]: {
                 enter: (node) => {
                     if (ts.isFunctionDeclaration(node)) {
                         // Define the function in the current scope.
@@ -1165,7 +1169,58 @@ export class TypeAnalyzer {
                 },
             },
 
-            ClassDeclaration: {
+            [ts.SyntaxKind.GetAccessor]: {
+                enter: (node) => {
+                    if (ts.isGetAccessorDeclaration(node)) {
+                        this.scopeManager.enterScope(node);
+                        this.nodeToScope.set(
+                            node,
+                            this.scopeManager.currentScope,
+                        );
+                        this.functionStack.push(node);
+                    }
+                },
+                exit: (node) => {
+                    if (ts.isGetAccessorDeclaration(node)) {
+                        this.functionStack.pop();
+                    }
+                    this.scopeManager.exitScope();
+                },
+            },
+
+            [ts.SyntaxKind.SetAccessor]: {
+                enter: (node) => {
+                    if (ts.isSetAccessorDeclaration(node)) {
+                        this.scopeManager.enterScope(node);
+                        this.nodeToScope.set(
+                            node,
+                            this.scopeManager.currentScope,
+                        );
+
+                        // Define parameters in the new scope
+                        node.parameters.forEach((p) => {
+                            if (p.getText() == "this") { // Catch invalid parameters
+                                throw new CompilerError(
+                                    "Cannot use 'this' as a parameter name.",
+                                    p,
+                                    "SyntaxError",
+                                );
+                            }
+
+                            this.defineParameter(p.name, p);
+                        });
+                        this.functionStack.push(node);
+                    }
+                },
+                exit: (node) => {
+                    if (ts.isSetAccessorDeclaration(node)) {
+                        this.functionStack.pop();
+                    }
+                    this.scopeManager.exitScope();
+                },
+            },
+
+            [ts.SyntaxKind.ClassDeclaration]: {
                 enter: (node) => {
                     const classNode = node as ts.ClassDeclaration;
                     if (classNode.name) {
@@ -1189,7 +1244,7 @@ export class TypeAnalyzer {
                 },
             },
 
-            EnumDeclaration: {
+            [ts.SyntaxKind.EnumDeclaration]: {
                 enter: (node) => {
                     const enumNode = node as ts.EnumDeclaration;
                     if (enumNode.name) {
@@ -1209,7 +1264,7 @@ export class TypeAnalyzer {
                 },
             },
 
-            MethodDeclaration: {
+            [ts.SyntaxKind.MethodDeclaration]: {
                 enter: (node) => {
                     if (ts.isMethodDeclaration(node)) {
                         const funcType: TypeInfo = {
@@ -1242,7 +1297,7 @@ export class TypeAnalyzer {
                 },
             },
 
-            Constructor: {
+            [ts.SyntaxKind.Constructor]: {
                 enter: (node) => {
                     if (ts.isConstructorDeclaration(node)) {
                         const funcType: TypeInfo = {
@@ -1274,7 +1329,7 @@ export class TypeAnalyzer {
                 },
             },
 
-            VariableDeclaration: {
+            [ts.SyntaxKind.VariableDeclaration]: {
                 enter: (node) => {
                     if (ts.isVariableDeclaration(node)) {
                         // Check if it is an ambient declaration (declare var/let/const ...)
@@ -1361,8 +1416,8 @@ export class TypeAnalyzer {
                 },
             },
 
-            Identifier: {
-                enter: (node, parent) => {
+            [ts.SyntaxKind.Identifier]: {
+                enter: (node) => {
                     if (ts.isIdentifier(node)) {
                         if (isBuiltinObject.call(this, node)) return;
 
@@ -1407,7 +1462,7 @@ export class TypeAnalyzer {
                 },
             },
 
-            BinaryExpression: {
+            [ts.SyntaxKind.BinaryExpression]: {
                 enter: (node) => {
                     if (ts.isBinaryExpression(node)) {
                         const isAssignment = node.operatorToken.kind >=
@@ -1431,7 +1486,7 @@ export class TypeAnalyzer {
                     }
                 },
             },
-            CallExpression: {
+            [ts.SyntaxKind.CallExpression]: {
                 enter: (node) => {
                     if (ts.isCallExpression(node)) {
                         const callee = node.expression;
@@ -1453,7 +1508,7 @@ export class TypeAnalyzer {
                     }
                 },
             },
-            ReturnStatement: {
+            [ts.SyntaxKind.ReturnStatement]: {
                 enter: (node) => {
                     if (ts.isReturnStatement(node) && node.expression) {
                         const currentFuncNode =
@@ -1472,14 +1527,14 @@ export class TypeAnalyzer {
                     }
                 },
             },
-            PostfixUnaryExpression: {
+            [ts.SyntaxKind.PostfixUnaryExpression]: {
                 enter: (node) => {
                     if (ts.isPostfixUnaryExpression(node)) {
                         crossScopeModificationVisitor(node.operand);
                     }
                 },
             },
-            PrefixUnaryExpression: {
+            [ts.SyntaxKind.PrefixUnaryExpression]: {
                 enter: (node) => {
                     if (ts.isPrefixUnaryExpression(node)) {
                         const op = node.operator;

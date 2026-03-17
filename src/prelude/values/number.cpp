@@ -87,7 +87,7 @@ namespace jspp
                                                      int digits = -1;
                                                      if (!args.empty() && !args[0].is_undefined())
                                                      {
-                                                         digits = Operators_Private::ToInt32(args[0]);
+                                                         digits = NumberOperators::ToInt32(args[0]);
                                                          if (digits < 0 || digits > 100)
                                                          {
                                                              throw Exception::make_exception("toExponential() digits argument must be between 0 and 100", "RangeError");
@@ -118,7 +118,7 @@ namespace jspp
                                                      int digits = 0;
                                                      if (!args.empty() && !args[0].is_undefined())
                                                      {
-                                                         digits = Operators_Private::ToInt32(args[0]);
+                                                         digits = NumberOperators::ToInt32(args[0]);
                                                      }
                                                      if (digits < 0 || digits > 100)
                                                      {
@@ -141,7 +141,7 @@ namespace jspp
                                                      {
                                                          return AnyValue::make_number(self).get_own_property("toString").call(AnyValue::make_number(self), {}, "toString");
                                                      }
-                                                     int precision = Operators_Private::ToInt32(args[0]);
+                                                     int precision = NumberOperators::ToInt32(args[0]);
                                                      if (precision < 1 || precision > 100)
                                                      {
                                                          throw Exception::make_exception("toPrecision() precision argument must be between 1 and 100", "RangeError");
@@ -162,7 +162,7 @@ namespace jspp
                                                      int radix = 10;
                                                      if (!args.empty() && !args[0].is_undefined())
                                                      {
-                                                         radix = Operators_Private::ToInt32(args[0]);
+                                                         radix = NumberOperators::ToInt32(args[0]);
                                                      }
                                                      if (radix < 2 || radix > 36)
                                                      {

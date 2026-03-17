@@ -8,8 +8,7 @@ export class Traverser {
     }
 
     private traverseNode(node: Node, parent: Node | null, visitor: Visitor) {
-        const nodeKind = ts.SyntaxKind[node.kind];
-        const visitorActions = visitor[nodeKind];
+        const visitorActions = visitor[node.kind];
 
         if (visitorActions && visitorActions.enter) {
             visitorActions.enter(node, parent);

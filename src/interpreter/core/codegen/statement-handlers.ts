@@ -1216,19 +1216,23 @@ export function visitReturnStatement(
                 );
             }
 
-            const exprReturnType = this.typeAnalyzer.inferNodeReturnType(expr);
-            if (
-                exprReturnType === "number" &&
-                context.isInsideNativeLambda &&
-                context.isInsideFunction
-            ) {
-                const funcDecl = this
-                    .findEnclosingFunctionDeclarationFromReturnStatement(expr);
-                if (funcDecl) {
-                    const funcReturnType = this.typeAnalyzer
-                        .inferFunctionReturnType(funcDecl);
-                    if (funcReturnType === "number") {
+            const funcDecl = this
+                .findEnclosingFunctionDeclarationFromReturnStatement(expr);
+            if (funcDecl) {
+                const funcReturnType = this.typeAnalyzer
+                    .inferFunctionReturnType(funcDecl);
+                if (
+                    funcReturnType === "number" &&
+                    context.isInsideNativeLambda &&
+                    context.isInsideFunction
+                ) {
+                    const exprReturnType = this.typeAnalyzer
+                        .inferNodeReturnType(expr);
+                    if (exprReturnType === "number") {
                         finalExpr = `${finalExpr}.as_double()`;
+                    } else {
+                        finalExpr =
+                            `jspp::NumberOperators::ToDouble(${finalExpr})`;
                     }
                 }
             }

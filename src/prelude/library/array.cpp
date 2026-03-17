@@ -78,7 +78,7 @@ namespace jspp {
                     }
                 } else {
                     auto lenVal = items.get_property_with_receiver("length", items);
-                    size_t len = static_cast<size_t>(jspp::Operators_Private::ToUint32(lenVal));
+                    size_t len = static_cast<size_t>(jspp::NumberOperators::ToUint32(lenVal));
                     
                     for (size_t k = 0; k < len; ++k) {
                         auto kVal = items.get_property_with_receiver(std::to_string(k), items);
@@ -149,7 +149,7 @@ namespace jspp {
                     }
                 } else {
                     auto lenVal = items.get_property_with_receiver("length", items);
-                    size_t len = static_cast<size_t>(jspp::Operators_Private::ToUint32(lenVal));
+                    size_t len = static_cast<size_t>(jspp::NumberOperators::ToUint32(lenVal));
                     for (size_t k = 0; k < len; ++k) {
                         auto kVal = items.get_property_with_receiver(std::to_string(k), items);
                         if (kVal.is_promise()) kVal = co_await kVal;

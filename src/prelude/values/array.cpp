@@ -286,7 +286,7 @@ AnyValue &get_length_desc()
 
         auto self = thisVal.as_array();
         const auto &new_len_val = args[0];
-        double new_len_double = Operators_Private::ToNumber(new_len_val);
+        double new_len_double = NumberOperators::ToDouble(new_len_val);
 
         if (new_len_double < 0 || std::isnan(new_len_double) || std::isinf(new_len_double) || new_len_double != static_cast<uint64_t>(new_len_double))
         {
@@ -484,7 +484,7 @@ AnyValue &get_at_fn()
                                                  {
                                                      auto self = thisVal.as_array();
                                                      double len = static_cast<double>(self->length);
-                                                     double relativeIndex = args.empty() ? 0 : Operators_Private::ToNumber(args[0]);
+                                                     double relativeIndex = args.empty() ? 0 : NumberOperators::ToDouble(args[0]);
                                                      double k;
                                                      if (relativeIndex >= 0) k = relativeIndex;
                                                      else k = len + relativeIndex;
@@ -502,7 +502,7 @@ AnyValue &get_includes_fn()
                                                      AnyValue searchElement = args.empty() ? Constants::UNDEFINED : args[0];
                                                      double len = static_cast<double>(self->length);
                                                      if (len == 0) return Constants::FALSE;
-                                                     double n = (args.size() > 1) ? Operators_Private::ToNumber(args[1]) : 0;
+                                                     double n = (args.size() > 1) ? NumberOperators::ToDouble(args[1]) : 0;
                                                      double k;
                                                      if (n >= 0) k = n;
                                                      else k = len + n;
@@ -528,7 +528,7 @@ AnyValue &get_indexOf_fn()
                                                      AnyValue searchElement = args.empty() ? Constants::UNDEFINED : args[0];
                                                      double len = static_cast<double>(self->length);
                                                      if (len == 0) return AnyValue::make_number(-1);
-                                                     double n = (args.size() > 1) ? Operators_Private::ToNumber(args[1]) : 0;
+                                                     double n = (args.size() > 1) ? NumberOperators::ToDouble(args[1]) : 0;
                                                      double k;
                                                      if (n >= 0) k = n;
                                                      else k = len + n;
@@ -554,7 +554,7 @@ AnyValue &get_lastIndexOf_fn()
                                                      AnyValue searchElement = args.empty() ? Constants::UNDEFINED : args[0];
                                                      double len = static_cast<double>(self->length);
                                                      if (len == 0) return AnyValue::make_number(-1);
-                                                     double n = (args.size() > 1) ? Operators_Private::ToNumber(args[1]) : len - 1;
+                                                     double n = (args.size() > 1) ? NumberOperators::ToDouble(args[1]) : len - 1;
                                                      double k;
                                                      if (n >= 0) k = std::min(n, len - 1);
                                                      else k = len + n;
@@ -897,7 +897,7 @@ AnyValue &get_flat_fn()
     static AnyValue fn = AnyValue::make_function([](AnyValue thisVal, std::span<const AnyValue> args) -> AnyValue
                                                  {
                                                      auto self = thisVal.as_array();
-                                                     double depthVal = (args.size() > 0 && !args[0].is_undefined()) ? Operators_Private::ToNumber(args[0]) : 1;
+                                                     double depthVal = (args.size() > 0 && !args[0].is_undefined()) ? NumberOperators::ToDouble(args[0]) : 1;
                                                      int depth = static_cast<int>(depthVal);
                                                      if (depth < 0) depth = 0;
                                                      
@@ -968,8 +968,8 @@ AnyValue &get_fill_fn()
                                                      auto self = thisVal.as_array();
                                                      AnyValue value = args.empty() ? Constants::UNDEFINED : args[0];
                                                      double len = static_cast<double>(self->length);
-                                                     double start = (args.size() > 1) ? Operators_Private::ToNumber(args[1]) : 0;
-                                                     double end = (args.size() > 2 && !args[2].is_undefined()) ? Operators_Private::ToNumber(args[2]) : len;
+                                                     double start = (args.size() > 1) ? NumberOperators::ToDouble(args[1]) : 0;
+                                                     double end = (args.size() > 2 && !args[2].is_undefined()) ? NumberOperators::ToDouble(args[2]) : len;
                                                      
                                                      double k;
                                                      if (start >= 0) k = start; else k = len + start;
@@ -1041,7 +1041,7 @@ AnyValue &get_sort_fn()
                                                          
                                                          if (compareFn.is_function()) {
                                                              const AnyValue cmpArgs[] = {a, b};
-                                                             double res = Operators_Private::ToNumber(compareFn.call(Constants::UNDEFINED, std::span<const AnyValue>(cmpArgs, 2)));
+                                                             double res = NumberOperators::ToDouble(compareFn.call(Constants::UNDEFINED, std::span<const AnyValue>(cmpArgs, 2)));
                                                              return res < 0;
                                                          } else {
                                                              std::string sA = a.to_std_string();
@@ -1069,13 +1069,13 @@ AnyValue &get_splice_fn()
                                                  {
                                                      auto self = thisVal.as_array();
                                                      double len = static_cast<double>(self->length);
-                                                     double start = args.empty() ? 0 : Operators_Private::ToNumber(args[0]);
+                                                     double start = args.empty() ? 0 : NumberOperators::ToDouble(args[0]);
                                                      double actualStart = (start < 0) ? std::max(len + start, 0.0) : std::min(start, len);
                                                      
                                                      uint64_t startIdx = static_cast<uint64_t>(actualStart);
                                                      uint64_t deleteCount = 0;
                                                      if (args.size() >= 2) {
-                                                         double dc = Operators_Private::ToNumber(args[1]);
+                                                         double dc = NumberOperators::ToDouble(args[1]);
                                                          deleteCount = static_cast<uint64_t>(std::max(0.0, std::min(dc, len - startIdx)));
                                                      } else if (args.size() == 1) {
                                                          deleteCount = len - startIdx;
@@ -1141,9 +1141,9 @@ AnyValue &get_copyWithin_fn()
                                                  {
                                                      auto self = thisVal.as_array();
                                                      double len = static_cast<double>(self->length);
-                                                     double target = args.empty() ? 0 : Operators_Private::ToNumber(args[0]);
-                                                     double start = (args.size() > 1) ? Operators_Private::ToNumber(args[1]) : 0;
-                                                     double end = (args.size() > 2 && !args[2].is_undefined()) ? Operators_Private::ToNumber(args[2]) : len;
+                                                     double target = args.empty() ? 0 : NumberOperators::ToDouble(args[0]);
+                                                     double start = (args.size() > 1) ? NumberOperators::ToDouble(args[1]) : 0;
+                                                     double end = (args.size() > 2 && !args[2].is_undefined()) ? NumberOperators::ToDouble(args[2]) : len;
                                                      
                                                      double to;
                                                      if (target >= 0) to = target; else to = len + target;
@@ -1239,9 +1239,9 @@ AnyValue &get_slice_fn()
                                                  {
                                                      auto self = thisVal.as_array();
                                                      double len = static_cast<double>(self->length);
-                                                     double start = args.empty() ? 0 : Operators_Private::ToNumber(args[0]);
+                                                     double start = args.empty() ? 0 : NumberOperators::ToDouble(args[0]);
                                                      double actualStart = (start < 0) ? std::max(len + start, 0.0) : std::min(start, len);
-                                                     double end = (args.size() < 2 || args[1].is_undefined()) ? len : Operators_Private::ToNumber(args[1]);
+                                                     double end = (args.size() < 2 || args[1].is_undefined()) ? len : NumberOperators::ToDouble(args[1]);
                                                      double actualEnd = (end < 0) ? std::max(len + end, 0.0) : std::min(end, len);
                                                      
                                                      std::vector<AnyValue> result;
@@ -1298,7 +1298,7 @@ AnyValue &get_with_fn()
                                                      auto copy = thisVal.get_property_with_receiver("slice", thisVal).call(thisVal, {});
                                                      
                                                      double len = static_cast<double>(self->length);
-                                                     double idx = args.empty() ? 0 : Operators_Private::ToNumber(args[0]);
+                                                     double idx = args.empty() ? 0 : NumberOperators::ToDouble(args[0]);
                                                      double k;
                                                      if (idx >= 0) k = idx; else k = len + idx;
                                                      

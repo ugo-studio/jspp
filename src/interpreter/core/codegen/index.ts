@@ -173,7 +173,7 @@ export class CodeGenerator {
                 wasmWrappers +=
                     `    auto res = ${pointerName}(global${callArgs});\n`;
                 wasmWrappers +=
-                    `    return jspp::Operators_Private::ToNumber(res);\n`;
+                    `    return jspp::NumberOperators::ToDouble(res);\n`;
                 wasmWrappers += `}\n\n`;
             }
         }

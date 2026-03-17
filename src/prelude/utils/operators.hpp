@@ -192,15 +192,15 @@ namespace jspp
     // --- UNARY OPERATORS ---
     inline AnyValue plus(const AnyValue &val)
     {
-        return AnyValue::make_number(Operators_Private::ToNumber(val));
+        return AnyValue::make_number(NumberOperators::ToDouble(val));
     }
     inline AnyValue negate(const AnyValue &val)
     {
-        return AnyValue::make_number(-Operators_Private::ToNumber(val));
+        return AnyValue::make_number(-NumberOperators::ToDouble(val));
     }
     inline AnyValue bitwise_not(const AnyValue &val)
     {
-        return AnyValue::make_number(~Operators_Private::ToInt32(val));
+        return AnyValue::make_number(~NumberOperators::ToInt32(val));
     }
     inline AnyValue logical_not(const AnyValue &val)
     {

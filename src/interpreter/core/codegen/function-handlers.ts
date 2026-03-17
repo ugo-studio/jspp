@@ -219,15 +219,19 @@ export function generateLambdaComponents(
                 }
 
                 // Normal parameter
-                // TODO: Skip parameters that aren't used in the body of the function
-                const initValue =
-                    `${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue}`;
-                if (typeInfo?.needsHeapAllocation) {
-                    paramsCode +=
-                        `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initValue});\n`;
-                } else {
-                    paramsCode +=
-                        `${this.indent()}jspp::AnyValue ${name} = ${initValue};\n`;
+                const isUsedInFuncBody = !!p.initializer ||
+                    this.isDeclarationUsedAsValue(p, node) ||
+                    this.isDeclarationCalledAsFunction(p, node);
+                if (isUsedInFuncBody) {
+                    const initValue =
+                        `${argsName}.size() > ${i} ? ${argsName}[${i}] : ${defaultValue}`;
+                    if (typeInfo?.needsHeapAllocation) {
+                        paramsCode +=
+                            `${this.indent()}auto ${name} = std::make_shared<jspp::AnyValue>(${initValue});\n`;
+                    } else {
+                        paramsCode +=
+                            `${this.indent()}jspp::AnyValue ${name} = ${initValue};\n`;
+                    }
                 }
             } else {
                 const tempName = this.generateUniqueName(
