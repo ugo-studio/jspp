@@ -86,7 +86,7 @@ To contribute to JSPP or run its test suite, follow these steps:
     ```sh
     bun install
     ```
-    *Note: The `postinstall` script will automatically check for your C++ compiler and precompile the runtime headers and library.*
+    *Note: The `postinstall` script will automatically check for your C++ compiler and setup emsdk for wasm support.*
 
 ## Usage
 
